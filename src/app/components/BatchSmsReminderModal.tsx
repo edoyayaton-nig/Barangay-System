@@ -43,8 +43,9 @@ interface BatchSmsReminderModalProps {
   isOpen: boolean;
   onClose: () => void;
   duePatients: DuePatientItem[];
-  barangay: string;
-  attendingName: string;
+  barangay?: string;
+  attendingName?: string;
+  initialService?: 'Child Immunization' | 'Maternal Health';
   onBatchSent?: (sentIds: Array<number | string>) => void;
 }
 
@@ -52,8 +53,9 @@ export default function BatchSmsReminderModal({
   isOpen,
   onClose,
   duePatients,
-  barangay,
-  attendingName,
+  barangay = 'Pianing',
+  attendingName = 'Health Worker',
+  initialService,
   onBatchSent
 }: BatchSmsReminderModalProps) {
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});

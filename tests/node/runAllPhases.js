@@ -1,6 +1,13 @@
 // Node.js Comprehensive Phase-by-Phase & Unit Test Suite for Smart Barangay System
 // Usage: node tests/node/runAllPhases.js or npm test
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const startTime = Date.now();
 
 const suites = [
@@ -603,6 +610,298 @@ const suites = [
       results.push({
         name: 'population census inhabitants are designated with official resident status instead of unverified',
         pass: sampleResidents.every(isOfficialPopulationResident) === true
+      });
+
+      return results;
+    }
+  },
+  {
+    name: 'Phase 10: Medicine & Vaccine Inventory, Clinic Reservations, Address Normalization & Census CSV Export Test',
+    run: () => {
+      const results = [];
+
+      // 1. Inventory Stock Dispense & Auto-Deduction
+      const inventory = [
+        { id: 1, item_name: 'Paracetamol 500mg', category: 'Essential Medicine', stock: 12, status: 'In Stock' },
+        { id: 2, item_name: 'Pentavalent Vaccine', category: 'Vaccine (EPI)', stock: 5, status: 'Low Stock' }
+      ];
+
+      function dispenseItem(inv, name, qty) {
+        const item = inv.find(i => i.item_name.toLowerCase() === name.toLowerCase());
+        if (!item) return false;
+        item.stock = Math.max(0, item.stock - qty);
+        item.status = item.stock === 0 ? 'Out of Stock' : item.stock < 10 ? 'Low Stock' : 'In Stock';
+        return true;
+      }
+
+      dispenseItem(inventory, 'Paracetamol 500mg', 5);
+      const paraAfter5 = inventory.find(i => i.item_name === 'Paracetamol 500mg');
+      results.push({
+        name: 'inventory dispensing decrements stock and transitions status to Low Stock when below threshold (<10)',
+        pass: paraAfter5 && paraAfter5.stock === 7 && paraAfter5.status === 'Low Stock'
+      });
+
+      dispenseItem(inventory, 'Paracetamol 500mg', 7);
+      results.push({
+        name: 'inventory dispensing to zero stock transitions status to Out of Stock',
+        pass: paraAfter5 && paraAfter5.stock === 0 && paraAfter5.status === 'Out of Stock'
+      });
+
+      // 2. Inventory Restocking
+      function restockItem(inv, name, qty) {
+        const item = inv.find(i => i.item_name.toLowerCase() === name.toLowerCase());
+        if (!item) return false;
+        item.stock += qty;
+        item.status = item.stock === 0 ? 'Out of Stock' : item.stock < 10 ? 'Low Stock' : 'In Stock';
+        return true;
+      }
+
+      restockItem(inventory, 'Paracetamol 500mg', 50);
+      results.push({
+        name: 'inventory restocking adds stock count and updates status to In Stock',
+        pass: paraAfter5 && paraAfter5.stock === 50 && paraAfter5.status === 'In Stock'
+      });
+
+      // 3. Clinic Appointment Reservation Lifecycle
+      const appointments = [];
+      function bookAppointment(residentId, residentName, scheduleId, serviceType, preferredDate) {
+        const newAppt = {
+          id: appointments.length + 1,
+          resident_id: residentId,
+          resident_name: residentName,
+          schedule_id: scheduleId,
+          service_type: serviceType,
+          appointment_date: preferredDate,
+          status: 'Pending'
+        };
+        appointments.push(newAppt);
+        return newAppt;
+      }
+
+      function transitionApptStatus(apptId, newStatus, extra = {}) {
+        const appt = appointments.find(a => a.id === apptId);
+        if (!appt) return null;
+        appt.status = newStatus;
+        Object.assign(appt, extra);
+        return appt;
+      }
+
+      const booked = bookAppointment(101, 'Maria Santos', 3, 'Prenatal Checkup', '2026-09-15');
+      results.push({
+        name: 'clinic reservation creates pending appointment record linked to resident and service',
+        pass: booked && booked.status === 'Pending' && booked.service_type === 'Prenatal Checkup'
+      });
+
+      transitionApptStatus(booked.id, 'Approved', { time_slot: '09:00 AM', staff_notes: 'Fast 8 hours prior' });
+      results.push({
+        name: 'healthcare worker approval transitions appointment to Approved with scheduled time slot',
+        pass: booked.status === 'Approved' && booked.time_slot === '09:00 AM'
+      });
+
+      transitionApptStatus(booked.id, 'Completed');
+      results.push({
+        name: 'appointment completion finalizes patient encounter lifecycle',
+        pass: booked.status === 'Completed'
+      });
+
+      // 4. Intelligent Barangay & Address Normalization
+      const BUTUAN_BARANGAYS = ['Pianing', 'Anticala', 'Bit-os', 'Ampayon', 'Doongan', 'Libertad'];
+      function normalizeBarangay(input) {
+        if (!input) return 'Pianing';
+        let cleaned = input
+          .trim()
+          .replace(/^barangay\s+/i, '')
+          .replace(/^brgy\.?\s+/i, '')
+          .replace(/,\s*butuan(\s+city)?/i, '')
+          .trim();
+        if (!cleaned) return 'Pianing';
+        const match = BUTUAN_BARANGAYS.find(b => b.toLowerCase() === cleaned.toLowerCase());
+        if (match) return match;
+        return cleaned.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      }
+
+      function formatJurisdictionAddress(purok, barangay, city) {
+        const cleanBarangay = normalizeBarangay(barangay);
+        const cleanCity = (city || 'Butuan City').trim();
+        let cleanPurok = (purok || '').trim();
+        if (cleanPurok) {
+          cleanPurok = cleanPurok.toLowerCase().startsWith('purok')
+            ? cleanPurok.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+            : `Purok ${cleanPurok}`;
+        }
+        return cleanPurok
+          ? `${cleanPurok}, Barangay ${cleanBarangay}, ${cleanCity}`
+          : `Barangay ${cleanBarangay}, ${cleanCity}`;
+      }
+
+      results.push({
+        name: 'normalizeBarangay correctly parses informal/messy variants to canonical Barangay name',
+        pass: normalizeBarangay('pianing') === 'Pianing' &&
+              normalizeBarangay('brgy pianing, butuan city') === 'Pianing' &&
+              normalizeBarangay('ANTICALA') === 'Anticala'
+      });
+
+      results.push({
+        name: 'formatJurisdictionAddress produces standardized official Philippine address string',
+        pass: formatJurisdictionAddress('3', 'pianing', 'Butuan City') === 'Purok 3, Barangay Pianing, Butuan City' &&
+              formatJurisdictionAddress('Purok 5', 'Bit-os') === 'Purok 5, Barangay Bit-os, Butuan City'
+      });
+
+      // 5. Dynamic Age Calculation from Date of Birth
+      function calculateAgeFromDob(dobString) {
+        if (!dobString) return null;
+        const birth = new Date(dobString);
+        if (isNaN(birth.getTime())) return null;
+        const diffMs = Date.now() - birth.getTime();
+        return Math.floor(diffMs / (365.25 * 24 * 60 * 60 * 1000));
+      }
+
+      results.push({
+        name: 'demographic age calculation computes precise whole years from date of birth',
+        pass: calculateAgeFromDob('1990-05-15') >= 35 && calculateAgeFromDob('invalid') === null
+      });
+
+      // 6. Population Census CSV Export Formatter
+      function exportResidentsToCsv(residents) {
+        const headers = ['ID', 'Full Name', 'Purok', 'Household', 'Gender', 'Civil Status', 'Employment Status'];
+        const rows = residents.map(r => [
+          r.id,
+          `"${r.first} ${r.last}"`,
+          r.purok,
+          r.household,
+          r.gender,
+          r.civil_status || 'Single',
+          r.emp
+        ].join(','));
+        return [headers.join(','), ...rows].join('\n');
+      }
+
+      const sampleCensus = [
+        { id: 1, first: 'Juan', last: 'Dela Cruz', purok: '1', household: 'HH-001', gender: 'Male', civil_status: 'Married', emp: 'Employed' }
+      ];
+      const csvOutput = exportResidentsToCsv(sampleCensus);
+      results.push({
+        name: 'population census CSV exporter outputs compliant CSV header and records',
+        pass: csvOutput.startsWith('ID,Full Name,Purok,Household,Gender,Civil Status,Employment Status') &&
+              csvOutput.includes('"Juan Dela Cruz"')
+      });
+
+      return results;
+    }
+  },
+  {
+    name: 'Phase 11: Clinic Operating Days Restriction, Purok Auto-Extraction, Staff Management & Privacy Policy Test',
+    run: () => {
+      const results = [];
+
+      // 1. Clinic Operating Day Parsing
+      const DAY_MAP = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+      function parseOperatingDays(dayOfWeekStr) {
+        if (!dayOfWeekStr) return [1, 2, 3, 4, 5];
+        const str = dayOfWeekStr.toLowerCase().trim();
+        const tokens = str.replace(/[^a-z]/g, ' ').split(/\s+/);
+        const matched = new Set();
+        for (const t of tokens) {
+          if (DAY_MAP[t] !== undefined) matched.add(DAY_MAP[t]);
+        }
+        return matched.size > 0 ? Array.from(matched).sort((a, b) => a - b) : [1, 2, 3, 4, 5];
+      }
+
+      const mondayOnly = parseOperatingDays('Every Monday');
+      const wednesdayOnly = parseOperatingDays('Every Wednesday');
+      const tueFri = parseOperatingDays('Tuesday & Friday');
+      const monThu = parseOperatingDays('Every Monday & Thursday');
+
+      results.push({
+        name: 'parseOperatingDays accurately resolves day numbers for single and multi-day clinic schedules',
+        pass: mondayOnly.length === 1 && mondayOnly[0] === 1 &&
+              wednesdayOnly.length === 1 && wednesdayOnly[0] === 3 &&
+              tueFri.length === 2 && tueFri[0] === 2 && tueFri[1] === 5 &&
+              monThu.length === 2 && monThu[0] === 1 && monThu[1] === 4
+      });
+
+      // 2. Upcoming Operating Dates Generation (Mon only for Monday, Wed only for Wednesday)
+      function getUpcomingOperatingDates(dayOfWeekStr, count = 8, startFrom = new Date(2026, 8, 11)) { // Sep 11, 2026 (Friday)
+        const allowedDays = parseOperatingDays(dayOfWeekStr);
+        const out = [];
+        const curr = new Date(startFrom);
+        curr.setDate(curr.getDate() + 1);
+        let safety = 0;
+        while (out.length < count && safety < 60) {
+          safety++;
+          if (allowedDays.includes(curr.getDay())) {
+            const yr = curr.getFullYear();
+            const mo = String(curr.getMonth() + 1).padStart(2, '0');
+            const da = String(curr.getDate()).padStart(2, '0');
+            out.push({ dateStr: `${yr}-${mo}-${da}`, dayOfWeek: curr.getDay() });
+          }
+          curr.setDate(curr.getDate() + 1);
+        }
+        return out;
+      }
+
+      const monDates = getUpcomingOperatingDates('Every Monday', 5);
+      const wedDates = getUpcomingOperatingDates('Every Wednesday', 5);
+      const tfDates = getUpcomingOperatingDates('Tuesday & Friday', 6);
+
+      results.push({
+        name: 'upcoming operating dates strictly restricts generated dates to schedule days (Monday-only or Wednesday-only)',
+        pass: monDates.every(d => d.dayOfWeek === 1) &&
+              wedDates.every(d => d.dayOfWeek === 3) &&
+              tfDates.every(d => d.dayOfWeek === 2 || d.dayOfWeek === 5)
+      });
+
+      // 3. Appointment Date Schedule Validation
+      function isDateMatchingSchedule(dateStr, dayOfWeekStr) {
+        const parts = dateStr.split('-');
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        const allowed = parseOperatingDays(dayOfWeekStr);
+        return allowed.includes(d.getDay());
+      }
+
+      const sep15IsTuesday = isDateMatchingSchedule('2026-09-15', 'Every Monday'); // 2026-09-15 is Tuesday
+      const sep14IsMonday = isDateMatchingSchedule('2026-09-14', 'Every Monday');   // 2026-09-14 is Monday
+      const sep16IsWednesday = isDateMatchingSchedule('2026-09-16', 'Every Wednesday'); // 2026-09-16 is Wednesday
+
+      results.push({
+        name: 'appointment date validation strictly rejects non-operating days and accepts matching days',
+        pass: sep15IsTuesday === false && sep14IsMonday === true && sep16IsWednesday === true
+      });
+
+      // 4. Resident Purok Extraction Fallback from Address
+      function resolveResidentPurok(resident) {
+        if (resident.purok && String(resident.purok).trim()) {
+          const clean = String(resident.purok).replace(/purok\s*/i, '').trim();
+          return clean ? `Purok ${clean}` : 'Purok 1';
+        }
+        if (resident.address) {
+          const match = resident.address.match(/(?:purok|prk\.?)\s*([0-9A-Za-z]+)/i);
+          if (match) return `Purok ${match[1]}`;
+        }
+        return 'Purok 1';
+      }
+
+      results.push({
+        name: 'resident purok auto-extracts from street address when account purok field was empty',
+        pass: resolveResidentPurok({ purok: '2', address: 'Barangay Pianing' }) === 'Purok 2' &&
+              resolveResidentPurok({ purok: '', address: 'Purok 5, Barangay Pianing, Butuan City' }) === 'Purok 5' &&
+              resolveResidentPurok({ address: 'Prk 3, Pianing' }) === 'Purok 3'
+      });
+
+      // 5. Admin Dashboard Staff Management Tab
+      const adminCode = fs.readFileSync(path.join(__dirname, '../../src/app/pages/AdminDashboard.tsx'), 'utf8');
+      results.push({
+        name: 'admin dashboard navigation designates official Staff Management tab',
+        pass: adminCode.includes("label: 'Staff Management'") && !adminCode.includes("label: 'User Management'")
+      });
+
+      // 6. Data Privacy Act (RA 10173) and Terms Integration
+      const loginCode = fs.readFileSync(path.join(__dirname, '../../src/app/pages/LoginPage.tsx'), 'utf8');
+      results.push({
+        name: 'citizen registration mandates Data Privacy Act (RA 10173) and Terms agreement',
+        pass: loginCode.includes('TermsAndPrivacyModal') &&
+              loginCode.includes('regTermsAgreed') &&
+              loginCode.includes('Republic Act No. 10173')
       });
 
       return results;

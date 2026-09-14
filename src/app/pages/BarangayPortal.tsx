@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import {
   FileText,
@@ -21,14 +21,24 @@ import {
   MessageSquare,
   RefreshCw,
   Phone,
-  Mail
+  Mail,
+  Calendar,
+  CalendarCheck,
+  CalendarPlus,
+  MapPin,
+  Stethoscope,
+  Syringe,
+  Users,
+  ShieldCheck
 } from 'lucide-react';
 import { getBarangayContact, getBarangayEmail } from '../../utils/barangays';
-import { apiService, DocumentRequest } from '../../services/api';
+import { apiService, DocumentRequest, ClinicSchedule, HealthAppointment } from '../../services/api';
 import BarangayChatbot from '../components/BarangayChatbot';
 import ProfileSettingsModal from '../components/ProfileSettingsModal';
+import TermsAndPrivacyModal from '../components/TermsAndPrivacyModal';
 import ResubmitIdModal from '../components/ResubmitIdModal';
 import SuperAdminNavigationDock from '../components/SuperAdminNavigationDock';
+import { getUpcomingOperatingDates, formatOperatingDaysSummary } from '../../utils/scheduleDateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -78,6 +88,53 @@ const DUPLICATE_SUGGESTIONS: Record<string, string> = {
   'Barangay Activity Permit':        'Your Activity Permit request is under evaluation by the Punong Barangay.',
 };
 
+function getHealthServiceIcon(serviceType?: string) {
+  const s = (serviceType || '').toLowerCase();
+  if (s.includes('prenatal') || s.includes('maternal') || s.includes('pregnancy')) return Heart;
+  if (s.includes('immun') || s.includes('vaccin') || s.includes('baby') || s.includes('child')) return Syringe;
+  if (s.includes('family') || s.includes('planning')) return Users;
+  if (s.includes('senior') || s.includes('elderly')) return ShieldCheck;
+  return Stethoscope;
+}
+
+function getHealthServiceColor(serviceType?: string) {
+  const s = (serviceType || '').toLowerCase();
+  if (s.includes('prenatal') || s.includes('maternal')) {
+    return {
+      gradient: 'from-emerald-500 to-teal-600',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      badge: 'bg-emerald-100 text-emerald-800',
+      iconBg: 'bg-emerald-100 text-emerald-700'
+    };
+  }
+  if (s.includes('immun') || s.includes('vaccin') || s.includes('child')) {
+    return {
+      gradient: 'from-blue-500 to-cyan-600',
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      badge: 'bg-blue-100 text-blue-800',
+      iconBg: 'bg-blue-100 text-blue-700'
+    };
+  }
+  if (s.includes('family')) {
+    return {
+      gradient: 'from-purple-500 to-indigo-600',
+      bg: 'bg-purple-50',
+      border: 'border-purple-200',
+      badge: 'bg-purple-100 text-purple-800',
+      iconBg: 'bg-purple-100 text-purple-700'
+    };
+  }
+  return {
+    gradient: 'from-amber-500 to-orange-600',
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    badge: 'bg-amber-100 text-amber-800',
+    iconBg: 'bg-amber-100 text-amber-700'
+  };
+}
+
 export default function BarangayPortal() {
   const navigate = useNavigate();
   const [documents, setDocuments] = useState<DocumentRequest[]>([]);
@@ -92,6 +149,31 @@ export default function BarangayPortal() {
   const [isRejectionBannerDismissed, setIsRejectionBannerDismissed] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<PersistentNotification[]>([]);
+
+  // Health Clinic Schedules and Appointment Booking States
+  const [clinicSchedules, setClinicSchedules] = useState<ClinicSchedule[]>([]);
+  const [myBookings, setMyBookings] = useState<HealthAppointment[]>([]);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<ClinicSchedule | null>(null);
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingNotes, setBookingNotes] = useState('');
+  const [isBookingLoading, setIsBookingLoading] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+
+  // Available dates strictly restricted to the schedule's operating days
+  const availableOperatingDates = useMemo(() => {
+    return getUpcomingOperatingDates(selectedSchedule?.day_of_week, 10);
+  }, [selectedSchedule?.day_of_week]);
+
+  // Automatically update booking date whenever schedule changes
+  useEffect(() => {
+    if (selectedSchedule) {
+      const dates = getUpcomingOperatingDates(selectedSchedule.day_of_week, 10);
+      if (dates.length > 0) {
+        setBookingDate(dates[0].dateStr);
+      }
+    }
+  }, [selectedSchedule]);
 
   const markNotifRead = (key: string) => {
     if (user?.email) {
@@ -193,12 +275,82 @@ export default function BarangayPortal() {
       const uEmail = (loggedInUser?.email || '').toLowerCase().trim();
       const uId = loggedInUser?.id ? Number(loggedInUser.id) : undefined;
       const uName = (loggedInUser?.name || `${loggedInUser?.first_name || ''} ${loggedInUser?.last_name || ''}`).toLowerCase().trim();
+      const currentBrgy = loggedInUser?.barangay || 'Pianing';
 
-      const [data, cats] = await Promise.all([
+      const [data, cats, apts, schedules] = await Promise.all([
         apiService.getDocuments(uEmail ? { email: uEmail, resident_id: uId } : undefined),
-        apiService.getCategories().catch(() => [])
+        apiService.getCategories().catch(() => []),
+        apiService.getAppointments({ barangay: currentBrgy }).catch(() => []),
+        apiService.getClinicSchedules(currentBrgy).catch(() => [])
       ]);
       if (cats && cats.length > 0) setCategories(cats);
+
+      if (schedules && schedules.length > 0) {
+        setClinicSchedules(schedules);
+      } else {
+        setClinicSchedules([
+          {
+            id: 1,
+            title: 'Prenatal & Maternal Care Clinic',
+            service_type: 'Prenatal Care',
+            day_of_week: 'Every Monday & Thursday',
+            time_slot: '8:00 AM – 12:00 PM & 1:00 PM – 4:00 PM',
+            location: `Barangay ${currentBrgy} Health Center`,
+            bhw_in_charge: 'Nurse Maria Santos (Duty Nurse)',
+            barangay: currentBrgy,
+            slots_available: 20,
+            status: 'Active'
+          },
+          {
+            id: 2,
+            title: 'EPI Child Immunization & Growth Monitoring',
+            service_type: 'Child Immunization',
+            day_of_week: 'Every Wednesday',
+            time_slot: '8:00 AM – 12:00 PM',
+            location: `Barangay ${currentBrgy} Health Center`,
+            bhw_in_charge: 'Nurse Maria Santos (Duty Nurse)',
+            barangay: currentBrgy,
+            slots_available: 30,
+            status: 'Active'
+          },
+          {
+            id: 3,
+            title: 'General Primary Care & Hypertension Screening',
+            service_type: 'General Consultation',
+            day_of_week: 'Tuesday & Friday',
+            time_slot: '8:00 AM – 12:00 PM & 1:00 PM – 4:00 PM',
+            location: `Barangay ${currentBrgy} Health Center`,
+            bhw_in_charge: 'Nurse Maria Santos (Duty Nurse)',
+            barangay: currentBrgy,
+            slots_available: 25,
+            status: 'Active'
+          },
+          {
+            id: 4,
+            title: 'Family Planning, Counseling & Contraceptive Supply',
+            service_type: 'Family Planning',
+            day_of_week: 'Every 2nd & 4th Friday',
+            time_slot: '1:00 PM – 4:00 PM',
+            location: `Barangay ${currentBrgy} Health Center`,
+            bhw_in_charge: 'Nurse Maria Santos (Duty Nurse)',
+            barangay: currentBrgy,
+            slots_available: 15,
+            status: 'Active'
+          }
+        ]);
+      }
+
+      if (uEmail || uId || uName) {
+        const userApts = (apts || []).filter((a: HealthAppointment) => {
+          if (uId && a.resident_id && a.resident_id === uId) return true;
+          if (uEmail && a.resident_email && a.resident_email.toLowerCase() === uEmail) return true;
+          if (uName && a.resident_name && a.resident_name.toLowerCase().includes(uName)) return true;
+          return false;
+        });
+        setMyBookings(userApts);
+      } else {
+        setMyBookings([]);
+      }
 
       let myDocs: DocumentRequest[] = [];
       if (Array.isArray(data)) {
@@ -298,6 +450,52 @@ export default function BarangayPortal() {
     }
   };
 
+  const handleBookAppointment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSchedule) return;
+    if (!bookingDate) { toast.error('Please select a preferred date'); return; }
+    setIsBookingLoading(true);
+    try {
+      const apt = await apiService.createAppointment({
+        resident_name: user?.name || 'Resident',
+        resident_phone: user?.phone || user?.contact_number || '',
+        resident_email: user?.email || '',
+        barangay: userBarangay,
+        resident_id: user?.id,
+        service_type: selectedSchedule.service_type || selectedSchedule.title,
+        preferred_date: bookingDate,
+        preferred_time: selectedSchedule.time_slot || 'Morning (8:00 AM - 11:30 AM)',
+        resident_notes: bookingNotes,
+        status: 'Pending',
+      } as any);
+      setMyBookings(prev => [apt, ...prev]);
+      toast.success(`Appointment booked for ${bookingDate}! The health center will confirm your slot.`);
+      setIsBookingOpen(false);
+      setBookingDate('');
+      setBookingNotes('');
+      setSelectedSchedule(null);
+    } catch {
+      // Optimistic fallback
+      const fallbackApt: any = {
+        id: Date.now(),
+        appointment_code: `APT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+        resident_name: user?.name,
+        service_type: selectedSchedule.service_type || selectedSchedule.title,
+        preferred_date: bookingDate,
+        preferred_time: selectedSchedule.time_slot || 'Morning',
+        status: 'Pending',
+        resident_notes: bookingNotes
+      };
+      setMyBookings(prev => [fallbackApt, ...prev]);
+      toast.success('Appointment request submitted! The health center will confirm your slot.');
+      setIsBookingOpen(false);
+      setBookingDate('');
+      setBookingNotes('');
+      setSelectedSchedule(null);
+    } finally {
+      setIsBookingLoading(false);
+    }
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('barangay_user');
@@ -1026,6 +1224,151 @@ export default function BarangayPortal() {
           </CardContent>
         </Card>
 
+        {/* ─── Health Clinic Schedules & Appointment Booking ─── */}
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <CalendarCheck className="text-emerald-600" size={18} />
+                Barangay Health Center — Clinic Schedules &amp; Appointments
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Official weekly clinic programs posted by health center staff. Select a schedule below to book your appointment slot.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => {
+                  setSelectedSchedule(clinicSchedules[0] || null);
+                  setIsBookingOpen(true);
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 cursor-pointer rounded-xl font-bold shadow-xs"
+              >
+                <CalendarPlus size={14} /> Book Clinic Appointment
+              </Button>
+            </div>
+          </div>
+
+          {/* My Appointment Requests Tracker */}
+          {myBookings.length > 0 && (
+            <div className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-xs space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <CalendarPlus className="text-emerald-600" size={15} /> My Clinic Appointment Requests ({myBookings.length})
+                </span>
+                <span className="text-[10px] text-slate-400">Live Status from Health Station</span>
+              </div>
+              <div className="space-y-2">
+                {myBookings.slice(0, 5).map((b, i) => (
+                  <div key={b.id || i} className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800">{b.service_type}</span>
+                        {b.appointment_code && (
+                          <Badge variant="outline" className="text-[9px] font-mono border-slate-300">
+                            {b.appointment_code}
+                          </Badge>
+                        )}
+                      </div>
+                      <Badge className={`text-[10px] border-0 shrink-0 ${
+                        b.status === 'Approved' ? 'bg-emerald-100 text-emerald-800 font-bold' :
+                        b.status === 'Completed' ? 'bg-blue-100 text-blue-800 font-bold' :
+                        b.status === 'Cancelled' ? 'bg-rose-100 text-rose-800' :
+                        'bg-amber-100 text-amber-800 font-bold'
+                      }`}>
+                        {b.status === 'Approved' ? 'Confirmed Slot' : b.status || 'Pending Review'}
+                      </Badge>
+                    </div>
+
+                    <div className="text-slate-500 text-[11px] flex items-center gap-2">
+                      <span>Requested: <strong>{b.preferred_date || b.scheduled_date}</strong></span>
+                      {b.preferred_time && <span>• {b.preferred_time}</span>}
+                    </div>
+
+                    {b.status === 'Approved' && (b.scheduled_date || b.scheduled_time) && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-[11px] text-emerald-900 flex items-center justify-between flex-wrap gap-1">
+                        <span className="font-medium flex items-center gap-1.5">
+                          <Clock size={12} className="text-emerald-700" />
+                          Confirmed Schedule: <strong>{b.scheduled_date}</strong> at <strong>{b.scheduled_time || '09:00 AM'}</strong>
+                        </span>
+                        {b.attending_bhw && (
+                          <span className="text-[10px] text-emerald-700 font-semibold">
+                            Attending: {b.attending_bhw}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {b.bhw_notes && (
+                      <p className="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-slate-200/80 italic">
+                        Nurse Note: &ldquo;{b.bhw_notes}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Weekly Schedules Grid */}
+          {clinicSchedules.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2">
+              <Calendar className="mx-auto text-slate-300" size={32} />
+              <p className="font-semibold text-sm text-slate-600">No special clinic schedules posted yet</p>
+              <p className="text-xs text-slate-400">The Health Center is open Monday to Friday, 8:00 AM – 5:00 PM for walk-ins.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+              {clinicSchedules.map(sch => {
+                const Icon = getHealthServiceIcon(sch.service_type);
+                const colors = getHealthServiceColor(sch.service_type);
+                return (
+                  <div
+                    key={sch.id}
+                    className={`bg-white rounded-2xl border ${colors.border} shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between`}
+                  >
+                    <div className={`h-1.5 w-full bg-gradient-to-r ${colors.gradient}`} />
+                    <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className={`w-10 h-10 rounded-xl ${colors.iconBg} flex items-center justify-center shrink-0`}>
+                            <Icon size={20} />
+                          </div>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${colors.badge}`}>
+                            {sch.service_type || 'Health Service'}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900 leading-snug">{sch.title}</h4>
+                          <div className={`inline-flex items-center gap-1.5 mt-2 text-[11px] font-semibold ${colors.bg} px-2.5 py-1 rounded-lg border ${colors.border} text-slate-800`}>
+                            <Clock size={12} className="text-slate-500" />
+                            <span>{sch.day_of_week || 'Mon - Fri'} • {sch.time_slot}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                        <span className="flex items-center gap-1 text-[11px] truncate max-w-[180px]">
+                          <MapPin size={11} className="text-slate-400 shrink-0" />
+                          <span className="truncate">{sch.location || `Barangay ${userBarangay} Health Center`}</span>
+                        </span>
+                        <Button
+                          size="sm"
+                          onClick={() => { setSelectedSchedule(sch); setIsBookingOpen(true); }}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] h-7 px-2.5 rounded-lg font-semibold gap-1 cursor-pointer shrink-0 shadow-xs"
+                        >
+                          <CalendarPlus size={12} /> Reserve Slot
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Switch Portal CTA */}
         <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -1144,6 +1487,201 @@ export default function BarangayPortal() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Health Appointment Reservation Modal ─── */}
+      <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+        <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900 font-bold text-base">
+              <CalendarPlus className="text-emerald-600" size={20} />
+              Book Clinic Appointment
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Reserve your consultation slot based on Barangay {userBarangay} health center operating schedules.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleBookAppointment} className="space-y-4 pt-2">
+            {/* Target Clinic Program */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Health Program / Service</label>
+              {clinicSchedules.length > 0 ? (
+                <select
+                  value={selectedSchedule?.id || clinicSchedules[0]?.id || ''}
+                  onChange={(e) => {
+                    const found = clinicSchedules.find(s => String(s.id) === e.target.value);
+                    if (found) setSelectedSchedule(found);
+                  }}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                >
+                  {clinicSchedules.map(sched => (
+                    <option key={sched.id} value={sched.id}>
+                      {sched.service_type || sched.title} ({sched.day_of_week} • {sched.time_slot})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="p-2.5 bg-slate-100 rounded-xl text-xs text-slate-600">
+                  {selectedSchedule?.service_type || selectedSchedule?.title || 'General Consultation'}
+                </div>
+              )}
+            </div>
+
+            {/* Selected Schedule Details Card */}
+            {selectedSchedule && (
+              <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl text-xs space-y-1.5">
+                <div className="flex items-center justify-between text-emerald-900 font-semibold">
+                  <span className="flex items-center gap-1.5">
+                    <Clock size={13} className="text-emerald-600" />
+                    {selectedSchedule.day_of_week}s, {selectedSchedule.time_slot}
+                  </span>
+                  <Badge className="bg-emerald-600 text-white text-[10px]">
+                    Max {selectedSchedule.slots_available || selectedSchedule.max_slots || 30} slots
+                  </Badge>
+                </div>
+                {(selectedSchedule.location || selectedSchedule.room) && (
+                  <p className="text-[11px] text-emerald-700 flex items-center gap-1">
+                    <MapPin size={11} /> {selectedSchedule.location || selectedSchedule.room}
+                  </p>
+                )}
+                {(selectedSchedule.bhw_in_charge || selectedSchedule.assigned_staff) && (
+                  <p className="text-[11px] text-emerald-700">
+                    Assigned: <span className="font-medium">{selectedSchedule.bhw_in_charge || selectedSchedule.assigned_staff}</span>
+                  </p>
+                )}
+                {selectedSchedule.description && (
+                  <p className="text-[11px] text-slate-600 italic">
+                    {selectedSchedule.description}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Resident Info Preview */}
+            <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Patient Name</span>
+                <p className="font-bold text-slate-900 truncate">{user?.name || 'Resident'}</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Contact Phone</span>
+                <p className="font-bold text-slate-800 font-mono">{user?.phone || user?.contact_number || 'None provided'}</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Barangay</span>
+                <p className="font-medium text-slate-800">Brgy. {userBarangay}</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Purok</span>
+                <p className="font-medium text-slate-800">
+                  {user?.purok
+                    ? (String(user.purok).toLowerCase().startsWith('purok') ? user.purok : `Purok ${user.purok}`)
+                    : (user?.address?.match(/purok\s*([0-9A-Za-z]+)/i)?.[0] || 'Purok 1')}
+                </p>
+              </div>
+            </div>
+
+            {/* Preferred Date Strictly Filtered by Schedule's Operating Day */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                  Preferred Appointment Date <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  {formatOperatingDaysSummary(selectedSchedule?.day_of_week)} Only
+                </span>
+              </div>
+
+              {/* Operating Dates Dropdown */}
+              <select
+                required
+                value={bookingDate}
+                onChange={(e) => setBookingDate(e.target.value)}
+                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
+              >
+                {availableOperatingDates.map((d, i) => (
+                  <option key={d.dateStr} value={d.dateStr}>
+                    {d.label} {i === 0 ? '— (Next Available Operating Slot)' : ''}
+                  </option>
+                ))}
+              </select>
+
+              {/* Quick-Pick Date Pills */}
+              <div className="pt-0.5">
+                <span className="text-[10px] text-slate-400 block mb-1 font-medium">Quick Select Available Slot:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {availableOperatingDates.slice(0, 4).map(d => (
+                    <button
+                      key={d.dateStr}
+                      type="button"
+                      onClick={() => setBookingDate(d.dateStr)}
+                      className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium ${
+                        bookingDate === d.dateStr
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {d.formatted}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-400">
+                Operating schedule: <span className="font-semibold text-slate-600">{formatOperatingDaysSummary(selectedSchedule?.day_of_week)}</span> ({selectedSchedule?.time_slot || 'Regular Hours'}). Only available operating dates are shown.
+              </p>
+            </div>
+
+            {/* Reason / Notes */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">
+                Symptoms / Reason for Consultation (Optional)
+              </label>
+              <textarea
+                rows={3}
+                value={bookingNotes}
+                onChange={(e) => setBookingNotes(e.target.value)}
+                placeholder="Briefly state your concern, symptoms, or consultation requests..."
+                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden resize-none"
+              />
+            </div>
+
+            <p className="text-[10px] text-slate-400 text-center pt-1">
+              By booking an appointment, you agree to our{' '}
+              <button
+                type="button"
+                onClick={() => setIsTermsOpen(true)}
+                className="text-emerald-700 font-semibold underline cursor-pointer hover:text-emerald-800"
+              >
+                Data Privacy Policy &amp; Terms
+              </button>
+            </p>
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsBookingOpen(false)}
+                className="text-xs rounded-xl cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isBookingLoading || !bookingDate}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-1.5 rounded-xl cursor-pointer"
+              >
+                {isBookingLoading ? 'Submitting...' : 'Confirm Appointment'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <TermsAndPrivacyModal
+        isOpen={isTermsOpen}
+        onClose={() => setIsTermsOpen(false)}
+      />
 
       {/* Resident Profile Settings Modal */}
       <ProfileSettingsModal

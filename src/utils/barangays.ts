@@ -141,3 +141,49 @@ export function getBarangayInfo(barangayName?: string) {
     officeHours: 'Monday – Friday: 8:00 AM – 5:00 PM'
   };
 }
+
+/**
+ * Intelligently recognizes and normalizes any free-form, informal, or messy barangay spelling
+ * (e.g. "pianing", "PIANING", "brgy pianing", "Barangay Pianing", "pianing, butuan city")
+ * to its official canonical name in BUTUAN_BARANGAYS (e.g. "Pianing").
+ */
+export function normalizeBarangay(input?: string): string {
+  if (!input) return 'Pianing';
+  let cleaned = input
+    .trim()
+    .replace(/^barangay\s+/i, '')
+    .replace(/^brgy\.?\s+/i, '')
+    .replace(/,\s*butuan(\s+city)?/i, '')
+    .trim();
+  if (!cleaned) return 'Pianing';
+
+  // Check case-insensitive match against all 86 Butuan Barangays
+  const match = BUTUAN_BARANGAYS.find(
+    (b) => b.toLowerCase() === cleaned.toLowerCase()
+  );
+  if (match) return match;
+
+  // Title-case fallback if it's a valid outside barangay
+  return cleaned
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/**
+ * Dynamically formats a complete jurisdiction address string
+ */
+export function formatJurisdictionAddress(purok?: string, barangay?: string, city?: string): string {
+  const cleanBarangay = normalizeBarangay(barangay);
+  const cleanCity = (city || 'Butuan City').trim();
+  let cleanPurok = (purok || '').trim();
+  if (cleanPurok) {
+    cleanPurok = cleanPurok.toLowerCase().startsWith('purok')
+      ? cleanPurok.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+      : `Purok ${cleanPurok}`;
+  }
+  return cleanPurok
+    ? `${cleanPurok}, Barangay ${cleanBarangay}, ${cleanCity}`
+    : `Barangay ${cleanBarangay}, ${cleanCity}`;
+}
+

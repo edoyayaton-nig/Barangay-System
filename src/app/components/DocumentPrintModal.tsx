@@ -793,7 +793,10 @@ export default function DocumentPrintModal({ isOpen, onClose, document: docItem 
   const printFrameRef = useRef<HTMLIFrameElement | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
 
+  if (!isOpen || !docItem) return null;
+
   const handlePrint = () => {
+    if (!docItem) return;
     const originalTitle = window.document.title;
     window.document.title = ' ';
 

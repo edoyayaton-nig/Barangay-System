@@ -40,6 +40,28 @@ const getRoleBadge = (role: string) => {
 const getInitials = (name: string) =>
   name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'ST';
 
+const formatMessageTime = (rawTime?: string | number | Date) => {
+  if (!rawTime) return '';
+  const d = new Date(rawTime);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const isPast24Hours = diffMs > 24 * 60 * 60 * 1000;
+
+  const timePart = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (isPast24Hours) {
+    const datePart = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return `${datePart}, ${timePart}`;
+  }
+  return timePart;
+};
+
+const getChatStorageKey = (nameA?: string, nameB?: string) => {
+  const cleanA = (nameA || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '');
+  const cleanB = (nameB || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '');
+  return `chat_seen_${cleanA}_to_${cleanB}`;
+};
+
 const AVATAR_STORAGE_KEY = 'barangay_staff_avatars';
 
 const getStoredAvatars = (): Record<string, string> => {
@@ -211,24 +233,56 @@ export default function SystemMessenger({ currentUserRole, currentUserName, curr
     m.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const markContactAsSeen = (contactName: string) => {
+    if (!contactName || !currentUserName) return;
+    const key = getChatStorageKey(contactName, currentUserName);
+    const now = Date.now();
+    localStorage.setItem(key, String(now));
+    localStorage.setItem(`chat_last_seen_${contactName}_to_${currentUserName}`, String(now));
+  };
+
+  const isMessageUnread = (m: any, myName: string) => {
+    if (!m) return false;
+    const rClean = (m.recipient_name || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '');
+    const myClean = (myName || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '');
+    if (!rClean || !myClean) return false;
+    if (rClean !== myClean && !rClean.includes(myClean) && !myClean.includes(rClean)) return false;
+    
+    const sClean = (m.sender_name || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '');
+    if (sClean === myClean) return false; // Own message
+
+    const key = getChatStorageKey(m.sender_name, myName);
+    const lastSeenStr = localStorage.getItem(key);
+    const msgTime = new Date(m.timestamp || m.sent_at || 0).getTime();
+
+    if (!lastSeenStr) {
+      const legacyVal = parseInt(localStorage.getItem(`chat_last_seen_${m.sender_name}_to_${myName}`) || '0', 10);
+      if (legacyVal > 0) {
+        if (legacyVal > 1000000000000) return msgTime > legacyVal;
+        return (Number(m.id) || 0) > legacyVal;
+      }
+      // If no record exists at all, only mark as unread if the message arrived in the last 24 hours
+      const ageMs = Date.now() - msgTime;
+      return ageMs >= 0 && ageMs < 24 * 60 * 60 * 1000;
+    }
+
+    const lastSeenTime = parseInt(lastSeenStr, 10);
+    return msgTime > lastSeenTime;
+  };
+
+  // Automatically mark current active contact conversation as seen
+  useEffect(() => {
+    if (selectedContact) {
+      markContactAsSeen(selectedContact.name);
+    }
+  }, [selectedContact, allMessages]);
+
   // Total unread count across all 1-to-1 chats directed to current user
-  const totalUnreadCount = allMessages.filter(m => {
-    const rName = (m.recipient_name || '').toLowerCase().trim();
-    const myName = currentUserName.toLowerCase().trim();
-    const isToMe = rName === myName;
-    const lastSeenKey = `chat_last_seen_${m.sender_name}_to_${currentUserName}`;
-    const lastSeen = parseInt(localStorage.getItem(lastSeenKey) || '0', 10);
-    return isToMe && (m.id || 0) > lastSeen;
-  }).length;
+  const totalUnreadCount = allMessages.filter(m => isMessageUnread(m, currentUserName)).length;
 
   const handleSelectContact = (contact: any) => {
     setSelectedContact(contact);
-    // Mark messages from this contact as seen
-    const lastSeenKey = `chat_last_seen_${contact.name}_to_${currentUserName}`;
-    const latestMsg = getContactLastMessage(contact.name);
-    if (latestMsg?.id) {
-      localStorage.setItem(lastSeenKey, String(latestMsg.id));
-    }
+    markContactAsSeen(contact.name);
   };
 
   const handleSend = async (e: React.FormEvent) => {
@@ -384,13 +438,8 @@ export default function SystemMessenger({ currentUserRole, currentUserName, curr
                     const lastMsg = getContactLastMessage(member.name);
                     const av = avatars[member.name];
                     const { label: roleLabel, color: roleColor } = getRoleBadge(member.role);
-                    const lastSeenKey = `chat_last_seen_${member.name}_to_${currentUserName}`;
-                    const lastSeen = parseInt(localStorage.getItem(lastSeenKey) || '0', 10);
-                    const hasUnread = lastMsg && (lastMsg.sender_name || '').toLowerCase() === member.name.toLowerCase() && (lastMsg.id || 0) > lastSeen;
-
-                    const timeStr = lastMsg?.timestamp
-                      ? new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                      : '';
+                    const hasUnread = lastMsg && isMessageUnread(lastMsg, currentUserName);
+                    const timeStr = lastMsg ? formatMessageTime(lastMsg.timestamp || lastMsg.sent_at) : '';
 
                     return (
                       <button
@@ -482,9 +531,7 @@ export default function SystemMessenger({ currentUserRole, currentUserName, curr
                     const senderAvatar = isMe ? myAvatar : avatars[selectedContact.name];
                     const roleColor = isMe ? myRoleColor : getRoleBadge(selectedContact.role).color;
                     const initials = getInitials(msg.sender_name || 'S');
-                    const timeStr = msg.timestamp
-                      ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                      : 'now';
+                    const timeStr = formatMessageTime(msg.timestamp || msg.sent_at) || 'now';
 
                     return (
                       <div key={msg.id || idx} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>

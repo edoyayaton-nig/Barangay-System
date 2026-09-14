@@ -176,13 +176,12 @@ export default function ClinicalArchivesHub({
                 <TableHead className="text-xs">Date of Encounter</TableHead>
                 <TableHead className="text-xs">Clinical Summary / Details</TableHead>
                 <TableHead className="text-xs">Attending Personnel</TableHead>
-                <TableHead className="text-xs text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {activeCategory === 'consultations' && (
                 archivesData.consultations.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-12 text-xs text-slate-400">No archived consultations yet.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-12 text-xs text-slate-400">No archived consultations yet.</TableCell></TableRow>
                 ) : (
                   archivesData.consultations
                     .filter(c => !searchQuery || (c.patient_name || '').toLowerCase().includes(searchQuery.toLowerCase()))
@@ -205,16 +204,6 @@ export default function ClinicalArchivesHub({
                           <span className="text-slate-400 ml-1">({c.prescribed_meds || c.treatment || 'Advised'})</span>
                         </TableCell>
                         <TableCell className="text-slate-600">{c.attending_worker || 'Nurse'}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handlePrintCertificate(c)}
-                            className="text-xs h-7 gap-1 border-slate-200 hover:bg-teal-50 hover:text-teal-700 cursor-pointer"
-                          >
-                            <Printer size={12} /> Print Cert
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))
                 )
@@ -222,7 +211,7 @@ export default function ClinicalArchivesHub({
 
               {activeCategory === 'maternal' && (
                 archivesData.maternal.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-12 text-xs text-slate-400">No completed maternal records in archive.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-12 text-xs text-slate-400">No completed maternal records in archive.</TableCell></TableRow>
                 ) : (
                   archivesData.maternal
                     .filter(m => !searchQuery || (m.mother_name || '').toLowerCase().includes(searchQuery.toLowerCase()))
@@ -245,16 +234,6 @@ export default function ClinicalArchivesHub({
                           <span className="text-slate-400 ml-1">· FHR: {m.fetal_heart_rate || '140'} bpm</span>
                         </TableCell>
                         <TableCell className="text-slate-600">{m.attending_nurse || 'Nurse'}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handlePrintCertificate(m)}
-                            className="text-xs h-7 gap-1 border-slate-200 cursor-pointer"
-                          >
-                            <Printer size={12} /> Certificate
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))
                 )
@@ -262,7 +241,7 @@ export default function ClinicalArchivesHub({
 
               {activeCategory === 'immunizations' && (
                 archivesData.immunizations.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-12 text-xs text-slate-400">No fully completed immunizations archived.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-12 text-xs text-slate-400">No fully completed immunizations archived.</TableCell></TableRow>
                 ) : (
                   archivesData.immunizations
                     .filter(i => !searchQuery || (i.child_name || '').toLowerCase().includes(searchQuery.toLowerCase()))
@@ -286,16 +265,6 @@ export default function ClinicalArchivesHub({
                           </span>
                         </TableCell>
                         <TableCell className="text-slate-600">{i.administered_by || 'BHW'}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handlePrintCertificate(i)}
-                            className="text-xs h-7 gap-1 border-slate-200 cursor-pointer"
-                          >
-                            <Printer size={12} /> Baby Card
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))
                 )
@@ -303,7 +272,7 @@ export default function ClinicalArchivesHub({
 
               {activeCategory === 'schedules' && (
                 archivesData.schedules.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-12 text-xs text-slate-400">No past schedules found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-12 text-xs text-slate-400">No past schedules found.</TableCell></TableRow>
                 ) : (
                   archivesData.schedules.map((s, idx) => (
                     <TableRow key={idx} className="text-xs hover:bg-slate-50/70">
@@ -312,7 +281,6 @@ export default function ClinicalArchivesHub({
                       <TableCell className="font-mono text-slate-600">{s.day || 'Concluded'}</TableCell>
                       <TableCell className="text-slate-600">{s.location || 'Health Center'}</TableCell>
                       <TableCell className="text-slate-600">{s.assigned_bhw || 'Healthcare Team'}</TableCell>
-                      <TableCell className="text-right font-mono text-emerald-700 font-bold">Concluded</TableCell>
                     </TableRow>
                   ))
                 )

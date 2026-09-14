@@ -36,9 +36,12 @@ import {
   UserCheck,
   MessageSquare,
   Filter,
-  HeartHandshake
+  HeartHandshake,
+  Pill,
+  Trash2,
+  Package
 } from 'lucide-react';
-import { apiService, ImmunizationRecord, MaternalRecord, SmsNotification, DocumentRequest, HealthAppointment, ClinicSchedule } from '../../services/api';
+import { apiService, ImmunizationRecord, MaternalRecord, SmsNotification, DocumentRequest, HealthAppointment, ClinicSchedule, InventoryItem } from '../../services/api';
 import SystemMessenger from '../components/SystemMessenger';
 import ResidentProfileModal from '../components/ResidentProfileModal';
 import DocumentPrintModal from '../components/DocumentPrintModal';
@@ -82,6 +85,20 @@ export default function BhwDashboard() {
   // Clinical Intake & Profile Modal States
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Inventory State & Restock
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  const [isRestockOpen, setIsRestockOpen] = useState(false);
+  const [restockTargetItem, setRestockTargetItem] = useState<InventoryItem | null>(null);
+  const [restockQty, setRestockQty] = useState('20');
+  const [invName, setInvName] = useState('');
+  const [invCat, setInvCat] = useState('Vaccine (EPI)');
+  const [invStock, setInvStock] = useState('');
+  const [invUnit, setInvUnit] = useState('vials');
+  const [invExpiry, setInvExpiry] = useState('');
+  const [inventorySearch, setInventorySearch] = useState('');
+  const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState('all');
 
   // Appointments & Schedules Sub-View & Filters
   const [apptSearch, setApptSearch] = useState('');
@@ -239,14 +256,15 @@ export default function BhwDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [immData, matData, smsData, statsData, docsData, aptsData, schedulesData] = await Promise.all([
+      const [immData, matData, smsData, statsData, docsData, aptsData, schedulesData, invData] = await Promise.all([
         apiService.getImmunizations(),
         apiService.getMaternalRecords(),
         apiService.getNotifications(),
         apiService.getBhwStats(),
         apiService.getDocuments(),
         apiService.getAppointments(),
-        apiService.getClinicSchedules()
+        apiService.getClinicSchedules(),
+        apiService.getInventory(user?.barangay || 'Pianing')
       ]);
       setImmunizations(immData);
       setMaternalRecords(matData);
@@ -255,6 +273,9 @@ export default function BhwDashboard() {
       setDocuments(docsData || []);
       setAppointments(aptsData || []);
       setClinicSchedules(schedulesData || []);
+      if (invData && Array.isArray(invData)) {
+        setInventory(invData);
+      }
     } catch (err) {
       toast.error('Failed to load health monitoring data');
     } finally {
@@ -467,7 +488,20 @@ export default function BhwDashboard() {
       };
       setImmunizations(prev => [newRec, ...prev]);
 
-      toast.success(`Immunization for ${newChildName} saved & archived!`);
+      // Deduct vaccine from local inventory stock
+      setInventory(prev => prev.map(item => {
+        if (item.item_name.toLowerCase().includes(finalVaccine.toLowerCase()) || finalVaccine.toLowerCase().includes(item.item_name.toLowerCase())) {
+          const updatedStock = Math.max(0, item.stock - 1);
+          return {
+            ...item,
+            stock: updatedStock,
+            status: updatedStock === 0 ? 'Out of Stock' : updatedStock < 10 ? 'Low Stock' : 'In Stock'
+          };
+        }
+        return item;
+      }));
+
+      toast.success(`Immunization for ${newChildName} saved & archived! Vaccine stock updated.`);
       setIsAddImmOpen(false);
       setNewChildName('');
       setNewGuardianName('');
@@ -483,6 +517,64 @@ export default function BhwDashboard() {
     } catch (err) {
       toast.error('Could not create immunization record');
     }
+  };
+
+  const handleAddInventory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invName.trim()) { toast.error('Item name is required'); return; }
+    const qty = parseInt(invStock) || 0;
+    const payload: Partial<InventoryItem> = {
+      barangay: user?.barangay || 'Pianing',
+      item_name: invName.trim(),
+      category: invCat,
+      stock: qty,
+      unit: invUnit,
+      expiry_date: invExpiry,
+      status: qty === 0 ? 'Out of Stock' : qty < 10 ? 'Low Stock' : 'In Stock'
+    };
+    try {
+      const saved = await apiService.addInventoryItem(payload);
+      setInventory(prev => [saved, ...prev.filter(i => i.id !== saved.id)]);
+      toast.success(`${invName} saved to inventory!`);
+    } catch {
+      setInventory(prev => [{ id: Date.now(), ...payload } as any, ...prev]);
+      toast.success(`${invName} added to local inventory`);
+    }
+    setIsInventoryOpen(false);
+    setInvName(''); setInvCat('Vaccine (EPI)'); setInvStock(''); setInvUnit('vials'); setInvExpiry('');
+  };
+
+  const handleRestockSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restockTargetItem) return;
+    const addAmount = parseInt(restockQty) || 0;
+    if (addAmount <= 0) {
+      toast.error('Please enter a valid stock quantity to add');
+      return;
+    }
+    const newStock = restockTargetItem.stock + addAmount;
+    const newStatus = newStock === 0 ? 'Out of Stock' : newStock < 10 ? 'Low Stock' : 'In Stock';
+    try {
+      await apiService.updateInventoryItem(restockTargetItem.id, {
+        stock: newStock,
+        status: newStatus
+      });
+      setInventory(prev => prev.map(i => i.id === restockTargetItem.id ? { ...i, stock: newStock, status: newStatus } : i));
+      toast.success(`Successfully added +${addAmount} ${restockTargetItem.unit} to ${restockTargetItem.item_name}!`);
+    } catch {
+      setInventory(prev => prev.map(i => i.id === restockTargetItem.id ? { ...i, stock: newStock, status: newStatus } : i));
+      toast.info(`Stock updated (+${addAmount})`);
+    }
+    setIsRestockOpen(false);
+    setRestockTargetItem(null);
+  };
+
+  const handleDeleteInventory = async (id: number | string) => {
+    try {
+      await apiService.deleteInventoryItem(id);
+    } catch {}
+    setInventory(prev => prev.filter(i => i.id !== id));
+    toast.success('Inventory item removed');
   };
 
   const handleMarkImmunizationComplete = async (id: number) => {
@@ -536,6 +628,7 @@ export default function BhwDashboard() {
         next_visit: payload.next_visit,
         risk_level: payload.risk_level,
         attending_nurse: payload.attending_nurse,
+        bp: payload.blood_pressure || payload.bp,
         blood_pressure: payload.blood_pressure,
         barangay: user?.barangay || 'Pianing'
       };
@@ -584,7 +677,7 @@ export default function BhwDashboard() {
     const matchesSearch =
       i.child_name.toLowerCase().includes(immSearch.toLowerCase()) ||
       i.vaccine_name.toLowerCase().includes(immSearch.toLowerCase());
-    const doseStr = (i.dose_number || '').toLowerCase();
+    const doseStr = String(i.dose_number || '').toLowerCase();
     const matchesFilter =
       immFilter === 'all' ? true :
       immFilter === 'dose1' ? doseStr.includes('1') :
@@ -625,6 +718,8 @@ export default function BhwDashboard() {
         service: 'Child Immunization',
         detail: `${i.vaccine_name} (${i.dose_number})`,
         dueDate: i.due_date || 'Due Soon',
+        isOverdue: i.status === 'Overdue',
+        category: 'immunization' as const,
         status: (i.status === 'Overdue' ? 'Overdue' : 'Due Soon') as 'Overdue' | 'Due Soon'
       })),
     ...maternalRecords
@@ -636,6 +731,8 @@ export default function BhwDashboard() {
         service: 'Maternal Health',
         detail: (m as any).visit_type || m.pregnancy_status || 'Routine Visit',
         dueDate: m.next_visit || 'Upcoming',
+        isOverdue: m.risk_level === 'High',
+        category: 'maternal' as const,
         status: (m.risk_level === 'High' ? 'Overdue' : 'Due Soon') as 'Overdue' | 'Due Soon'
       }))
   ];
@@ -662,11 +759,20 @@ export default function BhwDashboard() {
     return matchesSearch && matchesStatus && matchesService;
   });
 
+  const filteredInventory = inventory.filter(item => {
+    const matchesSearch =
+      (item.item_name || '').toLowerCase().includes(inventorySearch.toLowerCase()) ||
+      (item.category || '').toLowerCase().includes(inventorySearch.toLowerCase());
+    const matchesCat = inventoryCategoryFilter === 'all' || item.category === inventoryCategoryFilter;
+    return matchesSearch && matchesCat;
+  });
+
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: Home },
     { id: 'appointments', label: 'Appointments & Schedules', icon: CalendarCheck },
     { id: 'immunization', label: 'Immunization Tracking', icon: Syringe },
     { id: 'maternal', label: 'Maternal Health', icon: Heart },
+    { id: 'inventory', label: 'Vaccines & Medicine Supply', icon: Pill },
     { id: 'archives', label: 'Clinical Archives & EHR', icon: Archive },
     { id: 'notifications', label: 'Gmail Notification Hub', icon: Bell },
     { id: 'reports', label: 'Health Reports', icon: BarChart },
@@ -788,61 +894,13 @@ export default function BhwDashboard() {
               )}
             </div>
 
-            {/* Primary Action: Add Patient / Clinical Intake */}
-            <Button
-              size="sm"
-              onClick={() => setIsIntakeOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 font-bold shadow-xs cursor-pointer h-8 px-2.5 sm:px-3 rounded-xl"
-            >
-              <PlusCircle size={14} />
-              <span className="hidden xs:inline sm:inline">+ Add Patient</span>
-              <span className="xs:hidden sm:hidden">Intake</span>
-            </Button>
-
-            {/* Profile Settings Tab Trigger */}
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`hidden md:inline-flex items-center gap-2 pl-2 pr-3 py-1 border rounded-full text-xs font-semibold cursor-pointer transition-colors ${
-                activeTab === 'profile'
-                  ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
-              }`}
-              title="Click to view and edit profile settings"
-            >
-              {user?.profile_photo ? (
-                <img
-                  src={user.profile_photo}
-                  alt={user?.name || 'BHW'}
-                  className="w-5 h-5 rounded-full object-cover border border-emerald-300 shrink-0"
-                />
-              ) : (
-                <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-bold border border-emerald-200 shrink-0">
-                  {user?.name ? user.name.charAt(0) : 'B'}
-                </div>
-              )}
-              <span>{user?.name || 'BHW Health Worker'}</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            </button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadData}
-              className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 border-slate-200 h-8"
-            >
-              <RefreshCcw size={14} className={loading ? "animate-spin" : ""} />
-              Refresh
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs bg-red-600 hover:bg-red-700 h-8 px-2 sm:px-3 cursor-pointer"
-            >
-              <LogOut size={14} />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              BHW Station Active
+            </span>
           </div>
+        </div>
         </div>
       </header>
 
@@ -996,9 +1054,16 @@ export default function BhwDashboard() {
                   <p className="text-xs text-slate-500">Maternal care, infant immunization tracking, and resident health alert dispatch.</p>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    onClick={() => setIsIntakeOpen(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 shadow-sm rounded-xl cursor-pointer"
+                  >
+                    <PlusCircle size={15} />
+                    <span>+ Add Patient (Intake)</span>
+                  </Button>
                   <Dialog open={isAddImmOpen} onOpenChange={setIsAddImmOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 shadow-sm">
+                      <Button className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 shadow-sm rounded-xl cursor-pointer">
                         <Syringe size={15} />
                         Record Vaccination
                       </Button>
@@ -1214,43 +1279,6 @@ export default function BhwDashboard() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <Button
-                  onClick={() => {
-                    downloadOfficialPdf({
-                      title: 'Health Center Appointments Schedule Report',
-                      subtitle: `Barangay Pianing Health Center — ${new Date().toLocaleDateString()}`,
-                      filename: `Health_Appointments_${new Date().toISOString().slice(0, 10)}`,
-                      preparedBy: user?.name || 'BHW Health Worker',
-                      preparedByTitle: 'Barangay Health Worker',
-                      department: 'Barangay Health Center',
-                      stats: [
-                        { label: 'Total Appointments', value: appointments.length },
-                        { label: 'Confirmed', value: appointments.filter(a => a.status === 'Approved').length },
-                        { label: 'Completed', value: appointments.filter(a => a.status === 'Completed').length }
-                      ],
-                      tables: [{
-                        title: 'Health Appointments Registry',
-                        headers: ['Ref Code', 'Resident Name', 'Phone', 'Service', 'Confirmed Date', 'Time', 'Status'],
-                        rows: appointments.map(a => [
-                          a.appointment_code ?? '',
-                          a.resident_name ?? '',
-                          a.resident_phone ?? 'N/A',
-                          a.service_type ?? '',
-                          a.scheduled_date ?? a.preferred_date ?? 'TBD',
-                          a.scheduled_time ?? a.preferred_time ?? '',
-                          a.status ?? ''
-                        ])
-                      }]
-                    });
-                    toast.success('Health appointments PDF downloaded');
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs gap-1.5 h-9 border-slate-300 hover:bg-slate-50"
-                >
-                  <Download size={14} /> Download PDF
-                </Button>
               </div>
 
               {/* Appointments Table */}
@@ -1985,7 +2013,7 @@ export default function BhwDashboard() {
                           </TableRow>
                         ) : (
                           filteredImmunizations.map(imm => {
-                            const isDose2 = (imm.dose_number || '').includes('2');
+                            const isDose2 = String(imm.dose_number || '').includes('2');
                             return (
                               <TableRow key={imm.id} className="text-xs hover:bg-slate-50/70 transition-colors">
                                 <TableCell>
@@ -2053,7 +2081,7 @@ export default function BhwDashboard() {
                                         variant="outline"
                                         onClick={() => {
                                           setSmsRecipientName(imm.guardian_name || imm.child_name);
-                                          setSmsPhone(imm.parent_phone);
+                                          setSmsPhone(imm.parent_phone || '');
                                           setSmsMessage(`Reminder: Baby ${imm.child_name} is scheduled for ${imm.vaccine_name} (${imm.dose_number}) at Barangay Pianing Health Center. Due: ${imm.due_date || 'this week'}.`);
                                           setIsSendSmsOpen(true);
                                         }}
@@ -2530,6 +2558,111 @@ export default function BhwDashboard() {
             </div>
           )}
 
+          {/* TAB: VACCINES & MEDICINE SUPPLY */}
+          {activeTab === 'inventory' && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Pill className="text-emerald-600" size={20} /> Vaccines &amp; Medicine Supply Inventory
+                  </h2>
+                  <p className="text-xs text-slate-500">Live stock tracking for maternal vitamins, EPI child vaccines, and clinic medications</p>
+                </div>
+                <Button onClick={() => setIsInventoryOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 cursor-pointer rounded-xl font-semibold shadow-xs">
+                  <PlusCircle size={14} /> Add Supply Item
+                </Button>
+              </div>
+
+              {/* Search and Filters */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
+                  <Input
+                    value={inventorySearch}
+                    onChange={e => setInventorySearch(e.target.value)}
+                    placeholder="Search medicines, vaccines, or category..."
+                    className="h-9 text-xs pl-8 bg-slate-50 border-slate-200"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={inventoryCategoryFilter} onValueChange={setInventoryCategoryFilter}>
+                    <SelectTrigger className="h-9 text-xs w-44">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="Vaccine (EPI)">Vaccine (EPI)</SelectItem>
+                      <SelectItem value="Maternal Vitamin">Maternal Vitamin</SelectItem>
+                      <SelectItem value="Essential Medicine">Essential Medicine</SelectItem>
+                      <SelectItem value="Pediatric Supply">Pediatric Supply</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50 dark:bg-slate-800/60">
+                      <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Item Name</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Category</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Stock on Hand</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Expiration</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Status</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInventory.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-xs text-slate-400">
+                          No supply items found. Click "+ Add Supply Item" to record stocks.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredInventory.map(item => (
+                        <TableRow key={item.id} className="text-xs hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                          <TableCell className="font-bold text-slate-900 dark:text-white">{item.item_name}</TableCell>
+                          <TableCell><Badge variant="outline" className="text-[10px]">{item.category}</Badge></TableCell>
+                          <TableCell className="font-bold font-mono text-slate-900 dark:text-slate-100">{item.stock} {item.unit}</TableCell>
+                          <TableCell className="font-mono text-slate-500">{item.expiry_date || 'N/A'}</TableCell>
+                          <TableCell>
+                            <Badge className={`text-[10px] border-0 ${item.status === 'In Stock' ? 'bg-emerald-100 text-emerald-800' : item.status === 'Low Stock' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'}`}>
+                              {item.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setRestockTargetItem(item);
+                                  setRestockQty('20');
+                                  setIsRestockOpen(true);
+                                }}
+                                className="h-7 text-[11px] px-2 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-200 cursor-pointer rounded-lg font-medium flex items-center gap-1"
+                              >
+                                <PlusCircle size={12} /> Restock
+                              </Button>
+                              <button
+                                onClick={() => handleDeleteInventory(item.id)}
+                                className="p-1 text-slate-400 hover:text-red-600 cursor-pointer transition-colors"
+                                title="Remove item"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+
           {/* TAB 4: CLINICAL ARCHIVES & EHR */}
           {activeTab === 'archives' && (
             <ClinicalArchivesHub
@@ -2908,6 +3041,8 @@ export default function BhwDashboard() {
         onClose={() => setIsBatchSmsOpen(false)}
         initialService={batchSmsInitialService}
         duePatients={dueSmsItems}
+        barangay={user?.barangay || 'Pianing'}
+        attendingName={user?.name || 'BHW Health Worker'}
         onBatchSent={() => {
           loadData();
         }}
@@ -2978,6 +3113,125 @@ export default function BhwDashboard() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Supply Inventory Modal */}
+      <Dialog open={isInventoryOpen} onOpenChange={setIsInventoryOpen}>
+        <DialogContent className="bg-white dark:bg-slate-900 max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+              <Package className="text-emerald-600" size={18} /> Add Supply Item
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Register vaccines, maternal vitamins, or clinic supplies into inventory.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddInventory} className="space-y-3 py-2">
+            <div>
+              <Label className="text-xs font-semibold">Item Name <span className="text-red-500">*</span></Label>
+              <Input
+                value={invName}
+                onChange={e => setInvName(e.target.value)}
+                placeholder="e.g. Pentavalent Vaccine"
+                required
+                className="h-9 text-xs mt-1 rounded-xl"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs font-semibold">Category</Label>
+                <Select value={invCat} onValueChange={setInvCat}>
+                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['Vaccine (EPI)', 'Maternal Vitamin', 'Essential Medicine', 'Pediatric Supply', 'Family Planning', 'TB-DOTS Supply', 'Other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Unit</Label>
+                <Select value={invUnit} onValueChange={setInvUnit}>
+                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['vials', 'tablets', 'capsules', 'packets', 'bottles', 'ampoules', 'units'].map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs font-semibold">Stock Quantity <span className="text-red-500">*</span></Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={invStock}
+                  onChange={e => setInvStock(e.target.value)}
+                  placeholder="e.g. 50"
+                  required
+                  className="h-9 text-xs mt-1 rounded-xl font-mono"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Expiry Date</Label>
+                <Input
+                  type="date"
+                  value={invExpiry}
+                  onChange={e => setInvExpiry(e.target.value)}
+                  className="h-9 text-xs mt-1 rounded-xl"
+                />
+              </div>
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsInventoryOpen(false)} className="text-xs rounded-xl">Cancel</Button>
+              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1 font-bold cursor-pointer rounded-xl">
+                <Check size={13} /> Save Item
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Restock Inventory Modal */}
+      <Dialog open={isRestockOpen} onOpenChange={setIsRestockOpen}>
+        <DialogContent className="bg-white dark:bg-slate-900 max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+              <PlusCircle className="text-emerald-600" size={18} /> Restock Item
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Add new stock received from RHU or DOH supply allocation.
+            </DialogDescription>
+          </DialogHeader>
+          {restockTargetItem && (
+            <form onSubmit={handleRestockSubmit} className="space-y-3 py-2">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-1">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{restockTargetItem.item_name}</p>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Current Stock:</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">{restockTargetItem.stock} {restockTargetItem.unit}</span>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Quantity to Add ({restockTargetItem.unit}) <span className="text-red-500">*</span></Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={restockQty}
+                  onChange={e => setRestockQty(e.target.value)}
+                  placeholder="e.g. 20"
+                  required
+                  className="h-9 text-xs mt-1 rounded-xl font-mono"
+                  autoFocus
+                />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsRestockOpen(false)} className="text-xs rounded-xl">Cancel</Button>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1 font-bold cursor-pointer rounded-xl">
+                  <Check size={13} /> Confirm Restock
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

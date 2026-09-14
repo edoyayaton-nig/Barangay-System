@@ -5,7 +5,8 @@ import {
   CheckCircle2, PlusCircle, RefreshCcw, LogOut, MapPin, Pill,
   Syringe, Calendar, Check, X, Menu, Phone, Edit2, Trash2, Bell,
   AlertTriangle, Send, Package, ClipboardList, UserPlus, Save, Archive, Eye, User,
-  Sparkles, Filter, ShieldCheck, UserCheck, ChevronRight, UserCircle, Plus
+  Sparkles, Filter, ShieldCheck, UserCheck, ChevronRight, UserCircle, Plus,
+  Search, CalendarPlus
 } from 'lucide-react';
 import {
   apiService, ImmunizationRecord, MaternalRecord,
@@ -160,6 +161,18 @@ export default function NurseDashboard() {
 
   // API Data States
   const [appointments, setAppointments] = useState<HealthAppointment[]>([]);
+
+  // Appointments Management State
+  const [apptSearch, setApptSearch] = useState('');
+  const [apptStatusFilter, setApptStatusFilter] = useState<'all' | 'Pending' | 'Approved' | 'Completed' | 'Cancelled'>('all');
+  const [apptServiceFilter, setApptServiceFilter] = useState<string>('all');
+  const [isApptModalOpen, setIsApptModalOpen] = useState(false);
+  const [selectedAppt, setSelectedAppt] = useState<HealthAppointment | null>(null);
+  const [schedDate, setSchedDate] = useState('');
+  const [schedTime, setSchedTime] = useState('09:00 AM');
+  const [schedNotes, setSchedNotes] = useState('');
+  const [isSchedulingLoading, setIsSchedulingLoading] = useState(false);
+  const [apptToCompleteId, setApptToCompleteId] = useState<number | null>(null);
 
   // Clinical Intake, Notifications & Profile Modal States
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
@@ -468,6 +481,12 @@ export default function NurseDashboard() {
 
   // ══ Consult Form State ══
   const [cName, setCName] = useState('');
+  const [cNameSearchResults, setCNameSearchResults] = useState<any[]>([]);
+  const [showCNameSuggestions, setShowCNameSuggestions] = useState(false);
+  const [isCNameSearching, setIsCNameSearching] = useState(false);
+  const [isRestockOpen, setIsRestockOpen] = useState(false);
+  const [restockTargetItem, setRestockTargetItem] = useState<InventoryItem | null>(null);
+  const [restockQty, setRestockQty] = useState('20');
   const [cPhone, setCPhone] = useState('');
   const [cAge, setCAge] = useState('');
   const [cGender, setCGender] = useState<'Male'|'Female'>('Female');
@@ -547,6 +566,7 @@ export default function NurseDashboard() {
   const [invStock, setInvStock] = useState('');
   const [invUnit, setInvUnit] = useState('vials');
   const [invExpiry, setInvExpiry] = useState('');
+  const [invFilter, setInvFilter] = useState<'all' | 'vaccine' | 'medicine'>('all');
   const [sTitle, setSTitle] = useState('');
   const [sService, setSService] = useState('Prenatal Care');
   const [sDay, setSDay] = useState('Every Monday');
@@ -588,16 +608,20 @@ export default function NurseDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [apts, schedules, notifs, liveCons, liveMat, liveImm] = await Promise.all([
+      const [apts, schedules, notifs, liveCons, liveMat, liveImm, liveInv] = await Promise.all([
         apiService.getAppointments({ barangay: nurseBarangay }).catch(() => []),
         apiService.getClinicSchedules(nurseBarangay).catch(() => []),
         apiService.getNotifications().catch(() => []),
         apiService.getConsultations(nurseBarangay).catch(() => []),
         apiService.getMaternalRecords().catch(() => []),
-        apiService.getImmunizations().catch(() => [])
+        apiService.getImmunizations().catch(() => []),
+        apiService.getInventory(nurseBarangay).catch(() => [])
       ]);
       setAppointments(apts);
       setNotifications(notifs);
+      if (liveInv && Array.isArray(liveInv) && liveInv.length > 0) {
+        setInventory(liveInv);
+      }
 
       if (liveCons && liveCons.length > 0) {
         setConsultations(liveCons.map((c: any) => ({
@@ -894,14 +918,51 @@ export default function NurseDashboard() {
         diagnosis: finalDiagnosis || 'Assessment Complete',
         treatment: finalTreatment,
         prescribed_meds: formattedRx,
+        prescriptions: cPrescriptions,
         attending_nurse: nurseName,
         consultation_date: new Date().toISOString().split('T')[0],
         status: 'Completed'
-      });
+      } as any);
 
-      toast.success('Consultation recorded & saved to Patient Registry!');
+      // Locally decrement stock for each prescribed item
+      if (cPrescriptions.length > 0) {
+        setInventory(prev => prev.map(invItem => {
+          const match = cPrescriptions.find(p => p.name.toLowerCase().includes(invItem.item_name.toLowerCase()) || invItem.item_name.toLowerCase().includes(p.name.toLowerCase()));
+          if (match) {
+            const newStock = Math.max(0, invItem.stock - 1);
+            return {
+              ...invItem,
+              stock: newStock,
+              status: newStock === 0 ? 'Out of Stock' : newStock < 10 ? 'Low Stock' : 'In Stock'
+            };
+          }
+          return invItem;
+        }));
+      }
+
+      toast.success('Consultation recorded & medicine deducted from stock!');
       setIsNewConsultOpen(false);
       setCName(''); setCPhone(''); setCAge(''); setCComplaint(''); setCDiagnosis(''); setCPrescriptions([]);
+
+      if (apptToCompleteId) {
+        try {
+          await apiService.updateAppointment(apptToCompleteId, {
+            status: 'Completed',
+            bhw_notes: `Consultation completed by ${nurseName}. Assessment: ${finalDiagnosis || 'Assessment Complete'}. Treatment: ${finalTreatment}`,
+            user_name: nurseName,
+            user_role: 'nurse'
+          });
+          setAppointments(prev => prev.map(a => a.id === apptToCompleteId ? {
+            ...a,
+            status: 'Completed',
+            bhw_notes: `Consultation completed by ${nurseName}. Assessment: ${finalDiagnosis || 'Assessment Complete'}. Treatment: ${finalTreatment}`
+          } : a));
+        } catch (e) {
+          console.warn('Auto-completing appointment failed:', e);
+        }
+        setApptToCompleteId(null);
+      }
+
       loadData();
     } catch {
       toast.error('Could not save to remote server (cached locally)');
@@ -1036,7 +1097,20 @@ export default function NurseDashboard() {
         status: iDateGiven ? 'Completed' : 'Scheduled'
       });
 
-      toast.success(`Immunization for ${iChild} recorded & archived!`);
+      // Deduct vaccine from local inventory stock
+      setInventory(prev => prev.map(item => {
+        if (item.item_name.toLowerCase().includes(activeVaccine.toLowerCase()) || activeVaccine.toLowerCase().includes(item.item_name.toLowerCase())) {
+          const updatedStock = Math.max(0, item.stock - 1);
+          return {
+            ...item,
+            stock: updatedStock,
+            status: updatedStock === 0 ? 'Out of Stock' : updatedStock < 10 ? 'Low Stock' : 'In Stock'
+          };
+        }
+        return item;
+      }));
+
+      toast.success(`Immunization for ${iChild} recorded & archived! Vaccine stock updated.`);
       setIsNewImmunOpen(false);
       setIChild(''); setIPhone(''); setIAge(''); setIGuardian('');
       setICustomVaccine(''); setINextDue('');
@@ -1046,33 +1120,76 @@ export default function NurseDashboard() {
     }
   };
 
-  const handleAddInventory = (e: React.FormEvent) => {
+  const handleAddInventory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!invName.trim()) { toast.error('Item name is required'); return; }
     const qty = parseInt(invStock) || 0;
-    setInventory(prev => [{
-      id: Date.now(), item_name: invName.trim(), category: invCat,
-      stock: qty, unit: invUnit, expiry_date: invExpiry,
+    const payload: Partial<InventoryItem> = {
+      barangay: nurseBarangay,
+      item_name: invName.trim(),
+      category: invCat,
+      stock: qty,
+      unit: invUnit,
+      expiry_date: invExpiry,
       status: qty === 0 ? 'Out of Stock' : qty < 10 ? 'Low Stock' : 'In Stock'
-    }, ...prev]);
-    toast.success(`${invName} added to inventory!`);
+    };
+    try {
+      const saved = await apiService.addInventoryItem(payload);
+      setInventory(prev => [saved, ...prev.filter(i => i.id !== saved.id)]);
+      toast.success(`${invName} saved to inventory!`);
+    } catch {
+      setInventory(prev => [{ id: Date.now(), ...payload } as any, ...prev]);
+      toast.success(`${invName} added to local inventory`);
+    }
     setIsInventoryOpen(false);
     setInvName(''); setInvCat('Vaccine (EPI)'); setInvStock(''); setInvUnit('vials'); setInvExpiry('');
   };
 
-  const handleUpdateInventory = (e: React.FormEvent) => {
+  const handleRestockSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restockTargetItem) return;
+    const addAmount = parseInt(restockQty) || 0;
+    if (addAmount <= 0) {
+      toast.error('Please enter a valid stock quantity to add');
+      return;
+    }
+    const newStock = restockTargetItem.stock + addAmount;
+    const newStatus = newStock === 0 ? 'Out of Stock' : newStock < 10 ? 'Low Stock' : 'In Stock';
+    try {
+      await apiService.updateInventoryItem(restockTargetItem.id, {
+        stock: newStock,
+        status: newStatus
+      });
+      setInventory(prev => prev.map(i => i.id === restockTargetItem.id ? { ...i, stock: newStock, status: newStatus } : i));
+      toast.success(`Successfully added +${addAmount} ${restockTargetItem.unit} to ${restockTargetItem.item_name}!`);
+    } catch {
+      setInventory(prev => prev.map(i => i.id === restockTargetItem.id ? { ...i, stock: newStock, status: newStatus } : i));
+      toast.info(`Stock updated (+${addAmount})`);
+    }
+    setIsRestockOpen(false);
+    setRestockTargetItem(null);
+  };
+
+  const handleUpdateInventory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
     const qty = editingItem.stock;
+    const status = qty === 0 ? 'Out of Stock' : qty < 10 ? 'Low Stock' : 'In Stock';
+    try {
+      await apiService.updateInventoryItem(editingItem.id, { ...editingItem, status });
+    } catch {}
     setInventory(prev => prev.map(i => i.id === editingItem.id ? {
       ...editingItem,
-      status: qty === 0 ? 'Out of Stock' : qty < 10 ? 'Low Stock' : 'In Stock'
+      status
     } : i));
     toast.success('Inventory item updated!');
     setIsEditInventoryOpen(false); setEditingItem(null);
   };
 
-  const handleDeleteInventory = (id: number | string) => {
+  const handleDeleteInventory = async (id: number | string) => {
+    try {
+      await apiService.deleteInventoryItem(id);
+    } catch {}
     setInventory(prev => prev.filter(i => i.id !== id));
     toast.success('Inventory item removed');
   };
@@ -1160,12 +1277,112 @@ export default function NurseDashboard() {
     }
   };
 
+  // ═══ Appointment Handlers ══════════════════════════════════════════════
+  const handleOpenApptModal = (apt: HealthAppointment) => {
+    setSelectedAppt(apt);
+    const rawDate = apt.scheduled_date || apt.preferred_date || new Date().toISOString().slice(0, 10);
+    setSchedDate(typeof rawDate === 'string' ? rawDate.split('T')[0] : new Date(rawDate).toISOString().slice(0, 10));
+    setSchedTime(apt.scheduled_time || '09:00 AM');
+    setSchedNotes(apt.bhw_notes || `Confirmed slot for ${apt.service_type}. Please bring a valid ID and yellow card.`);
+    setIsApptModalOpen(true);
+  };
+
+  const handleConfirmAppt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAppt) return;
+    setIsSchedulingLoading(true);
+    try {
+      await apiService.updateAppointment(selectedAppt.id, {
+        status: 'Approved',
+        scheduled_date: schedDate,
+        scheduled_time: schedTime,
+        bhw_notes: schedNotes,
+        attending_bhw: `${nurseName} (RN)`,
+        user_name: nurseName,
+        user_role: 'nurse'
+      });
+      toast.success('Appointment Confirmed & Scheduled!', {
+        description: `Auto-notification sent to ${selectedAppt.resident_name} for ${schedDate} at ${schedTime}.`
+      });
+      setIsApptModalOpen(false);
+      setSelectedAppt(null);
+      loadData();
+    } catch {
+      toast.error('Failed to update appointment schedule');
+    } finally {
+      setIsSchedulingLoading(false);
+    }
+  };
+
+  const handleUpdateApptStatus = async (id: number, newStatus: 'Completed' | 'Cancelled') => {
+    try {
+      await apiService.updateAppointment(id, {
+        status: newStatus,
+        attending_bhw: `${nurseName} (RN)`,
+        user_name: nurseName,
+        user_role: 'nurse'
+      });
+      toast.success(`Appointment marked as ${newStatus}`);
+      loadData();
+    } catch {
+      toast.error(`Failed to update appointment status to ${newStatus}`);
+    }
+  };
+
+  const handleStartConsultationFromAppt = async (apt: HealthAppointment) => {
+    setApptToCompleteId(apt.id);
+    setCName(apt.resident_name);
+    setCPhone(apt.resident_phone || '');
+    setCComplaint(`Booked Appointment (${apt.service_type})${apt.resident_notes ? `: ${apt.resident_notes}` : ''}`);
+    setCBpSys('120');
+    setCBpDia('80');
+    setCTemp('36.5');
+    setCHR('75');
+
+    // Auto-fill Age & Gender from patient / resident registry
+    try {
+      const res = await apiService.searchPatients(apt.resident_name);
+      const match = res?.patients?.find((p: any) => 
+        p.name.toLowerCase().includes(apt.resident_name.toLowerCase()) || 
+        apt.resident_name.toLowerCase().includes(p.name.toLowerCase())
+      ) || res?.patients?.[0];
+
+      if (match) {
+        if (match.phone && !apt.resident_phone) setCPhone(match.phone);
+        if (match.gender) setCGender(match.gender === 'Male' ? 'Male' : 'Female');
+        if (match.age !== undefined && match.age !== null && match.age !== '') {
+          setCAge(String(match.age));
+        } else if (match.date_of_birth) {
+          const calculatedAge = Math.floor((Date.now() - new Date(match.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+          setCAge(String(calculatedAge));
+        }
+      }
+    } catch {}
+
+    // Map service_type to appropriate Consultation Program
+    const s = (apt.service_type || '').toLowerCase();
+    if (s.includes('adolescent')) {
+      setCProgram('Adolescent Health');
+    } else if (s.includes('family') || s.includes('planning')) {
+      setCProgram('Family Planning');
+    } else if (s.includes('tb') || s.includes('dots')) {
+      setCProgram('NTP (TB-DOTS)');
+    } else if (s.includes('teen') || s.includes('pregnancy')) {
+      setCProgram('Teenage Pregnancy Prevention');
+    } else {
+      setCProgram('General Consultation');
+    }
+
+    setIsNewConsultOpen(true);
+  };
+
   const menuItems = [
     { id: 'overview', label: 'Clinical Overview', icon: Activity },
     { id: 'consultations', label: 'Patient Consultations', icon: Stethoscope },
     { id: 'maternal', label: 'Prenatal & Maternal', icon: Heart },
     { id: 'immunizations', label: 'EPI Immunizations', icon: Baby },
     { id: 'schedule', label: 'Weekly Schedule', icon: CalendarCheck },
+    { id: 'appointments', label: 'Resident Appointments', icon: CalendarCheck, badge: appointments.filter(a => a.status === 'Pending').length || undefined, badgeColor: 'bg-violet-600 text-white' },
     { id: 'inventory', label: 'Vaccines & Medicine Supply', icon: Pill },
     { id: 'archives', label: 'Clinical Archives & EHR', icon: Archive },
     { id: 'sms', label: 'Gmail Notification Hub', icon: Bell },
@@ -1213,6 +1430,20 @@ export default function NurseDashboard() {
     });
   }, [immunRecords, search, immunFilterDose]);
 
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter(a => {
+      const q = apptSearch.toLowerCase().trim();
+      const matchSearch = !q ||
+        (a.resident_name || '').toLowerCase().includes(q) ||
+        (a.appointment_code || '').toLowerCase().includes(q) ||
+        (a.service_type || '').toLowerCase().includes(q) ||
+        (a.resident_phone || '').includes(q);
+      const matchStatus = apptStatusFilter === 'all' || a.status === apptStatusFilter;
+      const matchService = apptServiceFilter === 'all' || (a.service_type || '').toLowerCase().includes(apptServiceFilter.toLowerCase());
+      return matchSearch && matchStatus && matchService;
+    });
+  }, [appointments, apptSearch, apptStatusFilter, apptServiceFilter]);
+
   const cBpStatus = getBpCategory(cBpSys, cBpDia);
   const pBpStatus = getBpCategory(pBpSys, pBpDia);
 
@@ -1246,49 +1477,10 @@ export default function NurseDashboard() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Primary Action: + Add Patient (Smart Clinical Intake) */}
-            <Button
-              size="sm"
-              onClick={() => setIsIntakeOpen(true)}
-              className="bg-teal-700 hover:bg-teal-800 text-white text-xs gap-1.5 font-bold shadow-md cursor-pointer h-8 px-3.5 rounded-xl transition-all hover:shadow-teal-100"
-            >
-              <PlusCircle size={14} />
-              <span>+ Add Patient</span>
-            </Button>
-
-            {/* Profile Settings Tab Trigger */}
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`hidden md:inline-flex items-center gap-2 pl-2 pr-3 py-1 border rounded-full text-xs font-semibold cursor-pointer transition-colors ${
-                activeTab === 'profile'
-                  ? 'bg-teal-50 text-teal-900 border-teal-300'
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
-              }`}
-              title="Click to view and edit profile settings"
-            >
-              {user?.profile_photo ? (
-                <img
-                  src={user.profile_photo}
-                  alt={nurseName}
-                  className="w-5 h-5 rounded-full object-cover border border-teal-300 shrink-0"
-                />
-              ) : (
-                <div className="w-5 h-5 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center text-[10px] font-bold border border-teal-200 shrink-0">
-                  {nurseName ? nurseName.charAt(0) : 'N'}
-                </div>
-              )}
-              <span>{nurseName}</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            </button>
-
-            <Button variant="outline" size="sm" onClick={loadData} className="text-xs gap-1.5 border-slate-200 cursor-pointer h-8 px-2 sm:px-3 rounded-xl">
-              <RefreshCcw size={13} className={loading ? 'animate-spin text-teal-600' : ''} />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
-
-            <Button variant="destructive" size="sm" onClick={() => { localStorage.removeItem('barangay_user'); navigate('/login'); }} className="text-xs gap-1 bg-red-600 hover:bg-red-700 cursor-pointer h-8 px-2 sm:px-3 rounded-xl">
-              <LogOut size={13} /> <span className="hidden sm:inline">Logout</span>
-            </Button>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-semibold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Nurse Station Active
+            </span>
           </div>
         </div>
       </header>
@@ -1349,6 +1541,11 @@ export default function NurseDashboard() {
                   <item.icon size={17} className={`shrink-0 ${isActive ? 'text-teal-700' : 'text-slate-500'}`} />
                   <span>{item.label}</span>
                 </div>
+                {(item as any).badge !== undefined && (
+                  <span className={`${(item as any).badgeColor || 'bg-violet-600 text-white'} text-[10px] font-extrabold px-1.5 py-0.2 rounded-full`}>
+                    {(item as any).badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -1404,6 +1601,11 @@ export default function NurseDashboard() {
                   {item.id === 'immunizations' && overdueImmun.length > 0 && (
                     <span className="bg-amber-100 text-amber-700 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
                       {overdueImmun.length}
+                    </span>
+                  )}
+                  {(item as any).badge !== undefined && (
+                    <span className={`${(item as any).badgeColor || 'bg-violet-600 text-white'} text-[10px] font-extrabold px-1.5 py-0.2 rounded-full`}>
+                      {(item as any).badge}
                     </span>
                   )}
                 </button>
@@ -2144,6 +2346,273 @@ export default function NurseDashboard() {
             </div>
           )}
 
+          {/* ═══ RESIDENT APPOINTMENTS TAB ═════════════════════════════════ */}
+          {activeTab === 'appointments' && (
+            <div className="space-y-5">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <CalendarCheck className="text-violet-600" size={20} /> Resident Appointment Requests &amp; Reservations
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Review and confirm resident appointment requests for consultations, prenatal care, immunizations, and family planning.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={loadData}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs gap-1.5 h-8 border-slate-300 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <RefreshCcw size={13} /> Refresh
+                  </Button>
+                </div>
+              </div>
+
+              {/* Quick Stat Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Pending Review</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-2xl font-black text-amber-600">
+                      {appointments.filter(a => a.status === 'Pending').length}
+                    </span>
+                    <span className="text-[11px] text-slate-400">awaiting schedule</span>
+                  </div>
+                </div>
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Confirmed Slots</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-2xl font-black text-emerald-600">
+                      {appointments.filter(a => a.status === 'Approved').length}
+                    </span>
+                    <span className="text-[11px] text-slate-400">ready for visit</span>
+                  </div>
+                </div>
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Completed Visits</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-2xl font-black text-blue-600">
+                      {appointments.filter(a => a.status === 'Completed').length}
+                    </span>
+                    <span className="text-[11px] text-slate-400">consultations done</span>
+                  </div>
+                </div>
+                <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total Bookings</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-2xl font-black text-violet-600">
+                      {appointments.length}
+                    </span>
+                    <span className="text-[11px] text-slate-400">all-time requests</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="flex flex-col sm:flex-row gap-2 justify-between items-stretch sm:items-center bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
+                <div className="relative flex-1 min-w-[200px] max-w-sm">
+                  <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                  <Input
+                    placeholder="Search resident name, ref code, service..."
+                    value={apptSearch}
+                    onChange={e => setApptSearch(e.target.value)}
+                    className="pl-9 h-9 text-xs bg-slate-50 border-slate-200 rounded-xl"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={apptServiceFilter} onValueChange={setApptServiceFilter}>
+                    <SelectTrigger className="w-[180px] h-9 text-xs bg-slate-50 border-slate-200 rounded-xl">
+                      <SelectValue placeholder="All Services" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Services</SelectItem>
+                      <SelectItem value="Prenatal">Prenatal Check-up</SelectItem>
+                      <SelectItem value="Immunization">EPI Immunization</SelectItem>
+                      <SelectItem value="General Consultation">General Consultation</SelectItem>
+                      <SelectItem value="Family Planning">Family Planning</SelectItem>
+                      <SelectItem value="Adolescent">Adolescent Health</SelectItem>
+                      <SelectItem value="TB-DOTS">NTP (TB-DOTS)</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={apptStatusFilter} onValueChange={v => setApptStatusFilter(v as any)}>
+                    <SelectTrigger className="w-[130px] h-9 text-xs bg-slate-50 border-slate-200 rounded-xl">
+                      <SelectValue placeholder="All Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Approved">Approved</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Appointments Registry Table */}
+              <Card className="border-slate-200 bg-white rounded-2xl shadow-xs overflow-hidden">
+                <CardHeader className="pb-3 border-b border-slate-100">
+                  <CardTitle className="text-sm font-bold text-slate-900 flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <CalendarCheck className="text-violet-600" size={16} />
+                      Incoming Resident Appointments ({filteredAppointments.length})
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/80">
+                          <TableHead className="text-xs">Ref Code</TableHead>
+                          <TableHead className="text-xs">Resident Details</TableHead>
+                          <TableHead className="text-xs">Service Requested</TableHead>
+                          <TableHead className="text-xs">Requested Window</TableHead>
+                          <TableHead className="text-xs">Confirmed Slot</TableHead>
+                          <TableHead className="text-xs">Status</TableHead>
+                          <TableHead className="text-xs text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAppointments.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center text-xs py-12 text-slate-400">
+                              <CalendarCheck className="mx-auto mb-2 text-slate-300" size={28} />
+                              <p className="font-semibold">No appointment records found</p>
+                              <p className="text-[11px] mt-1 text-slate-400">Residents can book slots from the Resident Portal clinic schedule.</p>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredAppointments.map(apt => (
+                            <TableRow key={apt.id} className="text-xs hover:bg-slate-50/60 transition-colors">
+                              <TableCell className="font-mono font-bold text-violet-700">
+                                {apt.appointment_code}
+                              </TableCell>
+                              <TableCell>
+                                <div className="font-semibold text-slate-900">{apt.resident_name}</div>
+                                <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
+                                  <Phone size={10} /> {apt.resident_phone || 'No phone provided'}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="font-semibold text-slate-800">{apt.service_type}</div>
+                                {apt.resident_notes && (
+                                  <div className="text-[11px] text-slate-500 italic max-w-xs truncate mt-0.5" title={apt.resident_notes}>
+                                    Note: &ldquo;{apt.resident_notes}&rdquo;
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-slate-600">
+                                <div className="flex items-center gap-1 font-medium">
+                                  <Calendar size={12} className="text-slate-400" />
+                                  {apt.preferred_date}
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                  {apt.preferred_time || 'Morning'}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {apt.scheduled_date ? (
+                                  <div className="space-y-0.5">
+                                    <div className="font-bold text-emerald-800 flex items-center gap-1">
+                                      <Calendar size={12} className="text-emerald-600" />
+                                      {apt.scheduled_date}
+                                    </div>
+                                    <div className="text-[11px] text-emerald-700 font-mono flex items-center gap-1">
+                                      <Clock size={11} className="text-emerald-600" />
+                                      {apt.scheduled_time || '09:00 AM'}
+                                    </div>
+                                    {apt.bhw_notes && (
+                                      <div className="text-[10px] text-slate-500 italic max-w-[200px] truncate" title={apt.bhw_notes}>
+                                        Inst: {apt.bhw_notes}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                                    <Clock size={10} /> Needs Scheduling
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={
+                                  apt.status === 'Approved' ? 'bg-emerald-100 text-emerald-800 border-0' :
+                                  apt.status === 'Completed' ? 'bg-blue-100 text-blue-800 border-0' :
+                                  apt.status === 'Cancelled' ? 'bg-rose-100 text-rose-800 border-0' :
+                                  'bg-amber-100 text-amber-800 border-0'
+                                }>
+                                  {apt.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                  {apt.status === 'Pending' && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleOpenApptModal(apt)}
+                                      className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white gap-1 rounded-lg cursor-pointer font-semibold shadow-xs"
+                                    >
+                                      <Check size={12} /> Confirm Slot
+                                    </Button>
+                                  )}
+
+                                  {apt.status === 'Approved' && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleOpenApptModal(apt)}
+                                        className="h-7 text-[11px] border-violet-200 text-violet-700 hover:bg-violet-50 gap-1 rounded-lg cursor-pointer"
+                                        title="Edit slot date & time"
+                                      >
+                                        <Edit2 size={11} /> Edit
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleStartConsultationFromAppt(apt)}
+                                        className="h-7 text-[11px] bg-teal-600 hover:bg-teal-700 text-white gap-1 rounded-lg cursor-pointer shadow-xs"
+                                        title="Open consultation form pre-filled with resident info"
+                                      >
+                                        <Stethoscope size={11} /> Consult
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleUpdateApptStatus(apt.id, 'Completed')}
+                                        className="h-7 text-[11px] bg-blue-600 hover:bg-blue-700 text-white gap-1 rounded-lg cursor-pointer shadow-xs"
+                                      >
+                                        <CheckCircle2 size={11} /> Complete
+                                      </Button>
+                                    </>
+                                  )}
+
+                                  {apt.status !== 'Cancelled' && apt.status !== 'Completed' && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleUpdateApptStatus(apt.id, 'Cancelled')}
+                                      className="h-7 text-[11px] text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                    >
+                                      Cancel
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* ═══ INVENTORY TAB ═══════════════════════════════════════════════ */}
           {activeTab === 'inventory' && (
             <div className="space-y-4">
@@ -2159,6 +2628,39 @@ export default function NurseDashboard() {
                 </Button>
               </div>
 
+              {/* Filter Pills */}
+              <div className="flex gap-2 flex-wrap">
+                {(['all', 'vaccine', 'medicine'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setInvFilter(f)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                      invFilter === f
+                        ? f === 'vaccine'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : f === 'medicine'
+                          ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                          : 'bg-slate-800 text-white border-slate-800 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                    }`}
+                  >
+                    {f === 'all' ? '🗂 All Items' : f === 'vaccine' ? '💉 Vaccines' : '💊 Medicine'}
+                  </button>
+                ))}
+                <span className="text-xs text-slate-400 self-center ml-1">
+                  {(() => {
+                    const filtered = inventory.filter(i =>
+                      invFilter === 'vaccine'
+                        ? i.category === 'Vaccine (EPI)' || i.category === 'Pediatric Supply'
+                        : invFilter === 'medicine'
+                        ? ['Essential Medicine', 'Maternal Vitamin', 'Family Planning', 'TB-DOTS Supply', 'Other'].includes(i.category)
+                        : true
+                    );
+                    return `${filtered.length} item${filtered.length !== 1 ? 's' : ''}`;
+                  })()}
+                </span>
+              </div>
+
               <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -2172,7 +2674,15 @@ export default function NurseDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {inventory.map(item => (
+                    {inventory
+                      .filter(i =>
+                        invFilter === 'vaccine'
+                          ? i.category === 'Vaccine (EPI)' || i.category === 'Pediatric Supply'
+                          : invFilter === 'medicine'
+                          ? ['Essential Medicine', 'Maternal Vitamin', 'Family Planning', 'TB-DOTS Supply', 'Other'].includes(i.category)
+                          : true
+                      )
+                      .map(item => (
                       <TableRow key={item.id} className="text-xs hover:bg-slate-50/70">
                         <TableCell className="font-bold text-slate-900">{item.item_name}</TableCell>
                         <TableCell><Badge variant="outline" className="text-[10px]">{item.category}</Badge></TableCell>
@@ -2184,9 +2694,23 @@ export default function NurseDashboard() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <button onClick={() => handleDeleteInventory(item.id)} className="p-1 text-slate-400 hover:text-red-600 cursor-pointer">
-                            <Trash2 size={13} />
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setRestockTargetItem(item);
+                                setRestockQty('20');
+                                setIsRestockOpen(true);
+                              }}
+                              className="h-7 text-[11px] px-2 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-200 cursor-pointer rounded-lg font-medium flex items-center gap-1"
+                            >
+                              <PlusCircle size={12} /> Restock
+                            </Button>
+                            <button onClick={() => handleDeleteInventory(item.id)} className="p-1 text-slate-400 hover:text-red-600 cursor-pointer transition-colors" title="Delete item">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -2295,9 +2819,87 @@ export default function NurseDashboard() {
           <form onSubmit={handleCreateConsultation} className="p-6 space-y-4">
             {/* Patient Demographics */}
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="col-span-2">
+              <div className="col-span-2 relative">
                 <Label className="text-xs font-semibold text-slate-700">Patient Name <span className="text-red-500">*</span></Label>
-                <Input value={cName} onChange={e => setCName(e.target.value)} placeholder="Full legal name" required className="h-9 text-xs mt-1 rounded-xl border-slate-200 focus:border-teal-500" />
+                <div className="relative">
+                  <Input
+                    value={cName}
+                    onChange={e => {
+                      const clean = e.target.value.replace(/[0-9]/g, '');
+                      setCName(clean);
+                      if (clean.trim().length >= 2) {
+                        setIsCNameSearching(true);
+                        apiService.searchPatients(clean)
+                          .then(res => {
+                            setCNameSearchResults(res.patients || []);
+                            setShowCNameSuggestions(true);
+                          })
+                          .catch(() => setCNameSearchResults([]))
+                          .finally(() => setIsCNameSearching(false));
+                      } else {
+                        setCNameSearchResults([]);
+                        setShowCNameSuggestions(false);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (cNameSearchResults.length > 0) setShowCNameSuggestions(true);
+                    }}
+                    placeholder="Type name (matches database automatically, numbers blocked)"
+                    required
+                    className="h-9 text-xs mt-1 rounded-xl border-slate-200 focus:border-teal-500"
+                  />
+                  {isCNameSearching && (
+                    <span className="absolute right-2.5 top-3 text-[10px] text-teal-600 font-semibold animate-pulse">
+                      Searching...
+                    </span>
+                  )}
+                </div>
+
+                {/* Auto-suggest dropdown beneath patient name */}
+                {showCNameSuggestions && cNameSearchResults.length > 0 && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-teal-200 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
+                    <div className="p-1.5 bg-teal-50/80 text-[10px] font-bold text-teal-800 flex items-center justify-between px-3">
+                      <span>Found in Registry ({cNameSearchResults.length})</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCNameSuggestions(false)}
+                        className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {cNameSearchResults.map((p: any) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setCName(p.name);
+                          if (p.phone) setCPhone(p.phone);
+                          if (p.gender) setCGender(p.gender as any);
+                          if (p.age !== undefined && p.age !== null && p.age !== '') {
+                            setCAge(String(p.age));
+                          } else if (p.date_of_birth) {
+                            const calculatedAge = Math.floor((Date.now() - new Date(p.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                            setCAge(String(calculatedAge));
+                          }
+                          setShowCNameSuggestions(false);
+                          toast.success(`Loaded details for ${p.name}`);
+                        }}
+                        className="w-full text-left p-2.5 hover:bg-teal-50/60 transition-colors flex items-center justify-between text-xs cursor-pointer group"
+                      >
+                        <div>
+                          <span className="font-bold text-slate-800 group-hover:text-teal-700 block">{p.name}</span>
+                          <span className="text-[10px] text-slate-500 block">
+                            {p.gender} · {p.purok || 'Pianing'} · {p.phone || 'No phone'}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-[9px] bg-white border-teal-300 text-teal-700 shrink-0">
+                          Auto-Fill
+                        </Badge>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <Label className="text-xs font-semibold text-slate-700">Contact Mobile Phone <span className="text-red-500">*</span></Label>
@@ -2405,7 +3007,25 @@ export default function NurseDashboard() {
 
                   <div className="grid grid-cols-3 gap-2">
                     <div className="col-span-2">
-                      <Input value={medName} onChange={e => setMedName(e.target.value)} placeholder="Medication name..." className="h-8 text-xs bg-white rounded-lg" />
+                      <Select value={medName} onValueChange={setMedName}>
+                        <SelectTrigger className="h-8 text-xs bg-white rounded-lg border-slate-200">
+                          <SelectValue placeholder={medName || "Select medicine from stock..."} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-56">
+                          {inventory
+                            .filter(i => i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin')
+                            .map(med => (
+                              <SelectItem key={med.id} value={med.item_name} disabled={med.stock <= 0}>
+                                <div className="flex items-center justify-between gap-2 w-full text-xs">
+                                  <span>{med.item_name}</span>
+                                  <span className={`text-[10px] font-mono font-bold ${med.stock <= 0 ? 'text-red-500' : med.stock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                    ({med.stock} {med.unit})
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <Button type="button" onClick={handleAddMedToRx} size="sm" className="w-full bg-teal-600 hover:bg-teal-700 text-white text-xs h-8 rounded-lg cursor-pointer gap-1">
@@ -2878,14 +3498,32 @@ export default function NurseDashboard() {
                   <Select value={iVaccine} onValueChange={setIVaccine}>
                     <SelectTrigger className="h-9 text-xs bg-white rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="BCG (Birth)">BCG (Birth)</SelectItem>
-                      <SelectItem value="Hepatitis B (Birth)">Hepatitis B (Birth)</SelectItem>
-                      <SelectItem value="Pentavalent (DPT-HepB-Hib)">Pentavalent (DPT-HepB-Hib)</SelectItem>
-                      <SelectItem value="Oral Polio Vaccine (OPV)">OPV (Oral Polio)</SelectItem>
-                      <SelectItem value="Inactivated Polio (IPV)">IPV (Inactivated Polio)</SelectItem>
-                      <SelectItem value="Pneumococcal Conjugate (PCV13)">PCV13 Conjugate</SelectItem>
-                      <SelectItem value="Measles, Mumps, Rubella (MMR)">MMR Vaccine</SelectItem>
-                      <SelectItem value="Rotavirus">Rotavirus</SelectItem>
+                      {/* Dynamic vaccines from live inventory */}
+                      {inventory
+                        .filter(i => i.category === 'Vaccine (EPI)' || i.category === 'Pediatric Supply')
+                        .map(v => (
+                          <SelectItem key={v.id} value={v.item_name} disabled={v.stock <= 0}>
+                            <div className="flex items-center justify-between gap-3 w-full text-xs">
+                              <span>{v.item_name}</span>
+                              <span className={`text-[10px] font-mono font-bold ${v.stock <= 0 ? 'text-red-500' : v.stock < 5 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                ({v.stock} {v.unit})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      {/* Fallback standard vaccines if inventory is empty */}
+                      {inventory.filter(i => i.category === 'Vaccine (EPI)' || i.category === 'Pediatric Supply').length === 0 && (
+                        <>
+                          <SelectItem value="BCG (Birth)">BCG (Birth)</SelectItem>
+                          <SelectItem value="Hepatitis B (Birth)">Hepatitis B (Birth)</SelectItem>
+                          <SelectItem value="Pentavalent (DPT-HepB-Hib)">Pentavalent (DPT-HepB-Hib)</SelectItem>
+                          <SelectItem value="Oral Polio Vaccine (OPV)">OPV (Oral Polio)</SelectItem>
+                          <SelectItem value="Inactivated Polio (IPV)">IPV (Inactivated Polio)</SelectItem>
+                          <SelectItem value="Pneumococcal Conjugate (PCV13)">PCV13 Conjugate</SelectItem>
+                          <SelectItem value="Measles, Mumps, Rubella (MMR)">MMR Vaccine</SelectItem>
+                          <SelectItem value="Rotavirus">Rotavirus</SelectItem>
+                        </>
+                      )}
                       <SelectItem value="Other">Other / Custom Vaccine</SelectItem>
                     </SelectContent>
                   </Select>
@@ -3002,6 +3640,50 @@ export default function NurseDashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Restock Inventory Modal */}
+      <Dialog open={isRestockOpen} onOpenChange={setIsRestockOpen}>
+        <DialogContent className="bg-white max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900">
+              <PlusCircle className="text-emerald-600" size={18} /> Restock Item
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Add new stock received from RHU or DOH supply allocation.
+            </DialogDescription>
+          </DialogHeader>
+          {restockTargetItem && (
+            <form onSubmit={handleRestockSubmit} className="space-y-3 py-2">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                <p className="text-xs font-bold text-slate-800">{restockTargetItem.item_name}</p>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Current Stock:</span>
+                  <span className="font-mono font-bold text-slate-900">{restockTargetItem.stock} {restockTargetItem.unit}</span>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Quantity to Add ({restockTargetItem.unit}) <span className="text-red-500">*</span></Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={restockQty}
+                  onChange={e => setRestockQty(e.target.value)}
+                  placeholder="e.g. 20"
+                  required
+                  className="h-9 text-xs mt-1 rounded-xl font-mono"
+                  autoFocus
+                />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsRestockOpen(false)} className="text-xs rounded-xl">Cancel</Button>
+                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1 font-bold cursor-pointer rounded-xl">
+                  <Check size={13} /> Confirm Restock
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Post Weekly Schedule Modal */}
       <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
         <DialogContent className="bg-white max-w-md rounded-2xl">
@@ -3086,6 +3768,103 @@ export default function NurseDashboard() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm & Schedule Appointment Modal */}
+      <Dialog open={isApptModalOpen} onOpenChange={setIsApptModalOpen}>
+        <DialogContent className="bg-white max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900">
+              <CalendarCheck className="text-violet-600" size={20} />
+              Confirm &amp; Schedule Resident Appointment
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Set the confirmed date, time slot, and preparation notes. The resident will receive automated notifications.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedAppt && (
+            <form onSubmit={handleConfirmAppt} className="space-y-3.5 py-2">
+              <div className="p-3 bg-violet-50/70 border border-violet-200/80 rounded-xl space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-violet-950 text-sm">{selectedAppt.resident_name}</span>
+                  <Badge className="bg-violet-200 text-violet-900 border-0 font-mono text-[10px]">
+                    {selectedAppt.appointment_code}
+                  </Badge>
+                </div>
+                <p className="text-slate-600 flex items-center gap-1.5 font-medium">
+                  <Stethoscope size={13} className="text-violet-600" /> {selectedAppt.service_type}
+                </p>
+                {selectedAppt.resident_phone && (
+                  <p className="text-slate-500 font-mono text-[11px] flex items-center gap-1.5">
+                    <Phone size={12} className="text-violet-600" /> {selectedAppt.resident_phone}
+                  </p>
+                )}
+                <p className="text-slate-500 text-[11px]">
+                  <strong>Requested Window:</strong> 📅 {selectedAppt.preferred_date} {selectedAppt.preferred_time ? `(${selectedAppt.preferred_time})` : ''}
+                </p>
+                {selectedAppt.resident_notes && (
+                  <p className="text-[11px] text-slate-600 bg-white/80 p-2 rounded-lg border border-violet-100 italic">
+                    &ldquo;{selectedAppt.resident_notes}&rdquo;
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Confirmed Date <span className="text-red-500">*</span></Label>
+                  <Input
+                    type="date"
+                    value={schedDate}
+                    onChange={e => setSchedDate(e.target.value)}
+                    required
+                    className="h-9 text-xs mt-1 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Confirmed Time Slot <span className="text-red-500">*</span></Label>
+                  <Select value={schedTime} onValueChange={setSchedTime}>
+                    <SelectTrigger className="h-9 text-xs mt-1 rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="08:00 AM">08:00 AM - Morning First Batch</SelectItem>
+                      <SelectItem value="09:00 AM">09:00 AM - Morning Regular</SelectItem>
+                      <SelectItem value="10:00 AM">10:00 AM - Mid Morning</SelectItem>
+                      <SelectItem value="11:00 AM">11:00 AM - Late Morning</SelectItem>
+                      <SelectItem value="01:30 PM">01:30 PM - Afternoon Session</SelectItem>
+                      <SelectItem value="02:30 PM">02:30 PM - Mid Afternoon</SelectItem>
+                      <SelectItem value="03:30 PM">03:30 PM - Late Afternoon</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Nurse Instructions / Prep Notes for Resident</Label>
+                <textarea
+                  value={schedNotes}
+                  onChange={e => setSchedNotes(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. Please bring valid ID, PhilHealth card, and maternal booklet if applicable. Fasting required for lab work."
+                  className="w-full mt-1 border border-slate-200 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-violet-500 outline-none"
+                />
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsApptModalOpen(false)} className="text-xs rounded-xl">
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSchedulingLoading}
+                  className="bg-violet-600 hover:bg-violet-700 text-white text-xs gap-1.5 font-bold cursor-pointer rounded-xl"
+                >
+                  <Check size={14} /> {isSchedulingLoading ? 'Saving...' : 'Confirm Slot & Notify'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>

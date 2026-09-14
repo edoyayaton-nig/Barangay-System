@@ -36,7 +36,7 @@ import {
   Trash2,
   ShieldCheck
 } from 'lucide-react';
-import { apiService } from '../../services/api';
+import { apiService, InventoryItem } from '../../services/api';
 import { toast } from 'sonner';
 
 interface SmartClinicalIntakeModalProps {
@@ -68,9 +68,19 @@ export default function SmartClinicalIntakeModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showNameSuggestions, setShowNameSuggestions] = useState(false);
+  const [availableInventory, setAvailableInventory] = useState<InventoryItem[]>([]);
   const [matchedPatient, setMatchedPatient] = useState<any | null>(null);
   const [isVerifiedSame, setIsVerifiedSame] = useState<boolean | null>(null);
   const [previousEncounter, setPreviousEncounter] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      apiService.getInventory(barangay)
+        .then(res => setAvailableInventory(Array.isArray(res) ? res : []))
+        .catch(() => setAvailableInventory([]));
+    }
+  }, [isOpen, barangay]);
 
   // Demographics
   const [patientName, setPatientName] = useState('');
@@ -504,15 +514,68 @@ export default function SmartClinicalIntakeModal({
               1. Patient Demographics &amp; Contact
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-2 relative">
                 <Label className="text-xs font-semibold text-slate-700">Full Patient Name <span className="text-red-500">*</span></Label>
-                <Input
-                  value={patientName}
-                  onChange={e => setPatientName(e.target.value)}
-                  placeholder="e.g. Maria Clara Santos"
-                  required
-                  className="h-9 text-xs mt-1 bg-white rounded-xl border-slate-200"
-                />
+                <div className="relative">
+                  <Input
+                    value={patientName}
+                    onChange={e => {
+                      const clean = e.target.value.replace(/[0-9]/g, '');
+                      setPatientName(clean);
+                      setSearchQuery(clean);
+                      setShowNameSuggestions(true);
+                    }}
+                    onFocus={() => {
+                      if (searchResults.length > 0) setShowNameSuggestions(true);
+                    }}
+                    placeholder="Type name (matches database automatically)"
+                    required
+                    className="h-9 text-xs mt-1 bg-white rounded-xl border-slate-200"
+                  />
+                  {isSearching && (
+                    <span className="absolute right-2.5 top-3 text-[10px] text-teal-600 font-semibold animate-pulse">
+                      Searching...
+                    </span>
+                  )}
+                </div>
+
+                {/* Auto-suggest dropdown beneath patient name */}
+                {showNameSuggestions && searchResults.length > 0 && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-teal-200 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
+                    <div className="p-1.5 bg-teal-50/80 text-[10px] font-bold text-teal-800 flex items-center justify-between px-3">
+                      <span>Found in Registry ({searchResults.length})</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowNameSuggestions(false)}
+                        className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {searchResults.map((p: any) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          selectMatchedPatient(p);
+                          setShowNameSuggestions(false);
+                          toast.success(`Loaded details for ${p.name}`);
+                        }}
+                        className="w-full text-left p-2.5 hover:bg-teal-50/60 transition-colors flex items-center justify-between text-xs cursor-pointer group"
+                      >
+                        <div>
+                          <span className="font-bold text-slate-800 group-hover:text-teal-700 block">{p.name}</span>
+                          <span className="text-[10px] text-slate-500 block">
+                            {p.gender} · {p.purok || 'Pianing'} · {p.phone || 'No phone'}
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="text-[9px] bg-white border-teal-300 text-teal-700 shrink-0">
+                          Auto-Fill
+                        </Badge>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <Label className="text-xs font-semibold text-slate-700">Gender <span className="text-red-500">*</span></Label>
@@ -899,12 +962,34 @@ export default function SmartClinicalIntakeModal({
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1">
                     <div className="sm:col-span-2">
-                      <Input
+                      <Select
                         value={medInputName}
-                        onChange={e => setMedInputName(e.target.value)}
-                        placeholder="Medication name..."
-                        className="h-8 text-xs bg-white rounded-lg border-slate-200"
-                      />
+                        onValueChange={(val) => setMedInputName(val)}
+                      >
+                        <SelectTrigger className="h-8 text-xs bg-white rounded-lg border-slate-200">
+                          <SelectValue placeholder={medInputName || "Choose medicine from inventory..."} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-56">
+                          {availableInventory.length > 0 ? (
+                            availableInventory
+                              .filter(i => i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin')
+                              .map(med => (
+                                <SelectItem key={med.id} value={med.item_name} disabled={med.stock <= 0}>
+                                  <div className="flex items-center justify-between gap-2 w-full text-xs">
+                                    <span>{med.item_name}</span>
+                                    <span className={`text-[10px] font-mono font-bold ${med.stock <= 0 ? 'text-red-500' : med.stock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                      ({med.stock} {med.unit})
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                          ) : (
+                            ['Amoxicillin 500mg', 'Paracetamol 500mg', 'Mefenamic Acid 500mg', 'Cetirizine 10mg', 'Salbutamol Nebule 2.5mg', 'Oral Rehydration Salts (ORS)', 'Ferrous Sulfate + Folic Acid'].map(m => (
+                              <SelectItem key={m} value={m}>{m}</SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <Input
@@ -1062,13 +1147,27 @@ export default function SmartClinicalIntakeModal({
                     <Select value={vaccineName} onValueChange={setVaccineName}>
                       <SelectTrigger className="h-9 text-xs mt-1 bg-white rounded-xl"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="BCG (Birth)">BCG (Tuberculosis - Birth)</SelectItem>
-                        <SelectItem value="Hepatitis B (Birth)">Hepatitis B (Birth Dose)</SelectItem>
-                        <SelectItem value="Pentavalent (DPT-HepB-Hib)">Pentavalent (DPT-HepB-Hib)</SelectItem>
-                        <SelectItem value="Oral Polio Vaccine (OPV)">Oral Polio Vaccine (OPV)</SelectItem>
-                        <SelectItem value="Inactivated Polio (IPV)">Inactivated Polio (IPV)</SelectItem>
-                        <SelectItem value="Pneumococcal Conjugate (PCV)">Pneumococcal Conjugate (PCV)</SelectItem>
-                        <SelectItem value="Measles, Mumps, Rubella (MMR)">Measles, Mumps, Rubella (MMR)</SelectItem>
+                        <SelectItem value="BCG (Birth)">
+                          BCG {availableInventory.find(i => i.item_name.toLowerCase().includes('bcg')) ? `(Stock: ${availableInventory.find(i => i.item_name.toLowerCase().includes('bcg'))?.stock} vials)` : ''}
+                        </SelectItem>
+                        <SelectItem value="Hepatitis B (Birth)">
+                          Hepatitis B {availableInventory.find(i => i.item_name.toLowerCase().includes('hepatitis')) ? `(Stock: ${availableInventory.find(i => i.item_name.toLowerCase().includes('hepatitis'))?.stock} vials)` : ''}
+                        </SelectItem>
+                        <SelectItem value="Pentavalent (DPT-HepB-Hib)">
+                          Pentavalent {availableInventory.find(i => i.item_name.toLowerCase().includes('pentavalent')) ? `(Stock: ${availableInventory.find(i => i.item_name.toLowerCase().includes('pentavalent'))?.stock} vials)` : ''}
+                        </SelectItem>
+                        <SelectItem value="Oral Polio Vaccine (OPV)">
+                          Oral Polio (OPV) {availableInventory.find(i => i.item_name.toLowerCase().includes('polio')) ? `(Stock: ${availableInventory.find(i => i.item_name.toLowerCase().includes('polio'))?.stock} vials)` : ''}
+                        </SelectItem>
+                        <SelectItem value="Inactivated Polio (IPV)">
+                          Inactivated Polio (IPV)
+                        </SelectItem>
+                        <SelectItem value="Pneumococcal Conjugate (PCV)">
+                          PCV 13 {availableInventory.find(i => i.item_name.toLowerCase().includes('pcv')) ? `(Stock: ${availableInventory.find(i => i.item_name.toLowerCase().includes('pcv'))?.stock} vials)` : ''}
+                        </SelectItem>
+                        <SelectItem value="Measles, Mumps, Rubella (MMR)">
+                          Measles-Rubella (MR) {availableInventory.find(i => i.item_name.toLowerCase().includes('measles')) ? `(Stock: ${availableInventory.find(i => i.item_name.toLowerCase().includes('measles'))?.stock} vials)` : ''}
+                        </SelectItem>
                         <SelectItem value="Other">Other / Custom Vaccine</SelectItem>
                       </SelectContent>
                     </Select>

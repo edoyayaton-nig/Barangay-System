@@ -78,6 +78,25 @@ function validatePasswordComplexity(password) {
   return { isValid: true };
 }
 
+function toTitleCase(str) {
+  if (!str) return '';
+  return str.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+function normalizeBarangayName(str) {
+  if (!str) return 'Pianing';
+  let clean = str.trim()
+    .replace(/^barangay\s+/i, '')
+    .replace(/^brgy\.?\s+/i, '')
+    .replace(/,\s*butuan(\s+city)?/i, '')
+    .trim();
+  if (!clean) return 'Pianing';
+  if (clean.toLowerCase() === 'pianing') return 'Pianing';
+  if (clean.toLowerCase() === 'anticala') return 'Anticala';
+  if (clean.toLowerCase() === 'bit-os' || clean.toLowerCase() === 'bitos') return 'Bit-os';
+  return toTitleCase(clean);
+}
+
 // Serve compiled Vite frontend in production mode
 const distPath = path.resolve(__dirname, '../dist');
 if (fs.existsSync(distPath)) {
@@ -127,6 +146,22 @@ let mockData = {
     { topic: 'Hours', keywords: ['hours', 'open', 'schedule', 'time', 'health center', 'clinic'], response: 'The Barangay Health Center is open Monday to Friday, from 8:00 AM to 5:00 PM.' },
     { topic: 'Vaccine', keywords: ['vaccine', 'immunization', 'baby', 'infant', 'bcg', 'polio', 'mmr'], response: 'Free infant immunization is available at the Barangay Health Center. Please bring your Mother-Baby Handbook.' },
     { topic: 'Business Permit', keywords: ['business', 'permit', 'store', 'sari-sari'], response: 'Barangay Business Clearance requirements: DTI Registration, Lease/Property agreement, and Owner Valid ID.' }
+  ],
+  inventory: [
+    { id: 1, barangay: 'Pianing', item_name: 'Pentavalent Vaccine (DPT-HepB-Hib)', category: 'Vaccine (EPI)', stock: 45, unit: 'vials', expiry_date: '2026-06-30', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 2, barangay: 'Pianing', item_name: 'PCV 13 (Pneumococcal Conjugate)', category: 'Vaccine (EPI)', stock: 32, unit: 'vials', expiry_date: '2026-09-30', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 3, barangay: 'Pianing', item_name: 'Measles-Rubella (MR) Vaccine', category: 'Vaccine (EPI)', stock: 8, unit: 'vials', expiry_date: '2026-03-15', status: 'Low Stock', updated_at: '2026-09-01' },
+    { id: 4, barangay: 'Pianing', item_name: 'BCG Vaccine', category: 'Vaccine (EPI)', stock: 25, unit: 'vials', expiry_date: '2026-08-20', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 5, barangay: 'Pianing', item_name: 'Hepatitis B Vaccine', category: 'Vaccine (EPI)', stock: 30, unit: 'vials', expiry_date: '2026-11-15', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 6, barangay: 'Pianing', item_name: 'Oral Polio Vaccine (OPV)', category: 'Vaccine (EPI)', stock: 40, unit: 'vials', expiry_date: '2026-10-10', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 7, barangay: 'Pianing', item_name: 'Ferrous Sulfate + Folic Acid', category: 'Maternal Vitamin', stock: 1200, unit: 'tablets', expiry_date: '2027-01-01', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 8, barangay: 'Pianing', item_name: 'Calcium Carbonate 500mg', category: 'Maternal Vitamin', stock: 850, unit: 'tablets', expiry_date: '2026-12-31', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 9, barangay: 'Pianing', item_name: 'Amoxicillin 500mg', category: 'Essential Medicine', stock: 500, unit: 'capsules', expiry_date: '2027-04-15', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 10, barangay: 'Pianing', item_name: 'Paracetamol 500mg', category: 'Essential Medicine', stock: 800, unit: 'tablets', expiry_date: '2027-05-30', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 11, barangay: 'Pianing', item_name: 'Cetirizine 10mg', category: 'Essential Medicine', stock: 300, unit: 'tablets', expiry_date: '2026-12-15', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 12, barangay: 'Pianing', item_name: 'Mefenamic Acid 500mg', category: 'Essential Medicine', stock: 250, unit: 'capsules', expiry_date: '2026-11-20', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 13, barangay: 'Pianing', item_name: 'Salbutamol Nebule 2.5mg', category: 'Essential Medicine', stock: 60, unit: 'nebules', expiry_date: '2026-10-01', status: 'In Stock', updated_at: '2026-09-01' },
+    { id: 14, barangay: 'Pianing', item_name: 'Oral Rehydration Salts (ORS)', category: 'Essential Medicine', stock: 150, unit: 'sachets', expiry_date: '2027-08-01', status: 'In Stock', updated_at: '2026-09-01' }
   ]
 };
 
@@ -227,6 +262,8 @@ async function migrateDatabase() {
       `);
       await safeAddColumn(pool, 'messages', 'recipient_name', "VARCHAR(100) DEFAULT ''");
       await safeAddColumn(pool, 'messages', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
+      await safeAddColumn(pool, 'messages', 'sent_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
+      await safeAddColumn(pool, 'messages', 'timestamp', "DATETIME DEFAULT CURRENT_TIMESTAMP");
       await pool.query("ALTER TABLE messages MODIFY COLUMN recipient_role VARCHAR(100) DEFAULT 'all'");
     } catch {}
 
@@ -465,8 +502,34 @@ async function migrateDatabase() {
         )
       `);
       await pool.query("ALTER TABLE clinical_encounters MODIFY COLUMN program_type VARCHAR(100) DEFAULT 'General Consultation'");
+
+      // Inventory Table for Medicines & Vaccines
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS inventory (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          barangay VARCHAR(100) NOT NULL DEFAULT 'Pianing',
+          item_name VARCHAR(150) NOT NULL,
+          category VARCHAR(100) NOT NULL DEFAULT 'Essential Medicine',
+          stock INT NOT NULL DEFAULT 0,
+          unit VARCHAR(50) NOT NULL DEFAULT 'units',
+          expiry_date VARCHAR(50) NULL,
+          status VARCHAR(50) NOT NULL DEFAULT 'In Stock',
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Seed default inventory items if table is empty
+      const [invCount] = await pool.query("SELECT COUNT(*) AS total FROM inventory");
+      if (invCount[0]?.total === 0 && mockData.inventory) {
+        for (const item of mockData.inventory) {
+          await pool.query(
+            "INSERT INTO inventory (barangay, item_name, category, stock, unit, expiry_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [item.barangay || 'Pianing', item.item_name, item.category, item.stock, item.unit, item.expiry_date, item.status]
+          );
+        }
+      }
     } catch (e) {
-      console.warn('clinical_encounters migration warning:', e.message);
+      console.warn('clinical_encounters / inventory migration warning:', e.message);
     }
   }
 }
@@ -800,6 +863,11 @@ app.post('/api/auth/login', async (req, res) => {
         if (resRows.length > 0) {
           user.phone = resRows[0].phone || '';
           user.address = resRows[0].address || '';
+          user.purok = resRows[0].purok || '';
+          if (!user.purok && (user.address || resRows[0].address)) {
+            const pMatch = (user.address || resRows[0].address || '').match(/purok\s*([0-9A-Za-z]+)/i);
+            if (pMatch) user.purok = pMatch[1];
+          }
           user.first_name = resRows[0].first_name || '';
           user.middle_name = resRows[0].middle_name || '';
           user.last_name = resRows[0].last_name || '';
@@ -856,11 +924,16 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid password. Please check your credentials.' });
     }
     user.last_login = new Date().toLocaleString();
-    // Merge phone from mockData residents
+    // Merge phone and purok from mockData residents
     const res_rec = mockData.residents.find(r => r.email && r.email.toLowerCase() === user.email.toLowerCase());
     if (res_rec) {
       user.phone = res_rec.phone || '';
       user.address = res_rec.address || '';
+      user.purok = res_rec.purok || '';
+      if (!user.purok && (user.address || res_rec.address)) {
+        const pMatch = (user.address || res_rec.address || '').match(/purok\s*([0-9A-Za-z]+)/i);
+        if (pMatch) user.purok = pMatch[1];
+      }
     }
     const safeUser = { ...user };
     delete safeUser.password_hash;
@@ -922,10 +995,15 @@ app.post('/api/auth/register', async (req, res) => {
   const userRole = role || 'resident';
   
   // DYNAMIC LOCATION ROUTING: Read resident's selected barangay (defaults to Pianing)
-  const userBarangay = (req.body.barangay || 'Pianing').trim();
-  let residentAddress = address || `Purok 1, Barangay ${userBarangay}, Butuan City`;
+  const userBarangay = normalizeBarangayName(req.body.barangay || 'Pianing');
+  const userCity = (req.body.city || 'Butuan City').trim();
+  const rawPurok = (req.body.purok || '').toString().trim();
+  const cleanPurokNum = rawPurok.replace(/purok\s*/i, '').trim();
+  const formattedPurok = cleanPurokNum ? `Purok ${cleanPurokNum}` : (rawPurok || 'Purok 1');
+
+  let residentAddress = address || `${formattedPurok}, Barangay ${userBarangay}, ${userCity}`;
   if (!residentAddress.toLowerCase().includes(userBarangay.toLowerCase())) {
-    residentAddress = `${residentAddress.split(',')[0].trim()}, Barangay ${userBarangay}, Butuan City`;
+    residentAddress = `${residentAddress.split(',')[0].trim()}, Barangay ${userBarangay}, ${userCity}`;
   }
 
   const pool = getPool();
@@ -944,10 +1022,20 @@ app.post('/api/auth/register', async (req, res) => {
       }
 
       // 2. CIVIC TRIAD DE-DUPLICATION & AUTO-MERGING:
-      // Match by First Name + Last Name + Date of Birth + Barangay
+      // Match by First Name + Last Name + Date of Birth + Barangay (tolerant of any casing/spelling of Pianing)
       const [matchedResidents] = await pool.query(
-        "SELECT id, first_name, last_name, date_of_birth, barangay, email, phone, verification_status, linked_user_id FROM residents WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(?)) AND LOWER(TRIM(last_name)) = LOWER(TRIM(?)) AND date_of_birth = ? AND LOWER(TRIM(barangay)) = LOWER(TRIM(?)) LIMIT 1",
-        [firstName, lastName, dob, userBarangay]
+        `SELECT id, first_name, last_name, date_of_birth, barangay, email, phone, verification_status, linked_user_id 
+         FROM residents 
+         WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(?)) 
+           AND LOWER(TRIM(last_name)) = LOWER(TRIM(?)) 
+           AND date_of_birth = ? 
+           AND (
+             LOWER(TRIM(barangay)) = LOWER(TRIM(?))
+             OR LOWER(REPLACE(REPLACE(TRIM(barangay), 'barangay ', ''), 'brgy. ', '')) = LOWER(?)
+             OR LOWER(TRIM(barangay)) LIKE CONCAT('%', LOWER(?), '%')
+           ) 
+         LIMIT 1`,
+        [firstName, lastName, dob, userBarangay, userBarangay, userBarangay]
       );
 
       let residentIdToUse;
@@ -1002,7 +1090,7 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(201).json({
           success: true,
           is_claimed: true,
-          user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, barangay: userBarangay, years_of_residency: years_of_residency || '' },
+          user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, purok: existingRec.purok || cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
           message: 'Existing resident profile linked successfully! Your submitted ID is under review by the Barangay Admin.'
         });
       }
@@ -1015,8 +1103,8 @@ app.post('/api/auth/register', async (req, res) => {
       const newUserId = userResult.insertId;
 
       const [resResult] = await pool.query(
-        "INSERT INTO residents (first_name, middle_name, last_name, date_of_birth, gender, civil_status, employment_status, address, barangay, phone, email, verification_status, submitted_id, id_type, submitted_at, linked_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Review', ?, ?, NOW(), ?)",
-        [firstName, middleName, lastName, dob, userGender, userCivilStatus, userEmployment, residentAddress, userBarangay, phone || '', cleanEmail, submitted_id, req.body.id_type || 'Government ID', newUserId]
+        "INSERT INTO residents (first_name, middle_name, last_name, date_of_birth, gender, civil_status, employment_status, address, purok, barangay, phone, email, verification_status, submitted_id, id_type, submitted_at, linked_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Review', ?, ?, NOW(), ?)",
+        [firstName, middleName, lastName, dob, userGender, userCivilStatus, userEmployment, residentAddress, cleanPurokNum || '1', userBarangay, phone || '', cleanEmail, submitted_id, req.body.id_type || 'Government ID', newUserId]
       );
       residentIdToUse = resResult.insertId;
 
@@ -1038,7 +1126,7 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(201).json({
         success: true,
         is_claimed: false,
-        user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, barangay: userBarangay, years_of_residency: years_of_residency || '' },
+        user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, purok: cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
         message: 'Account created! Your submitted ID is under review by the Barangay Admin.'
       });
     } catch (err) {
@@ -1101,7 +1189,7 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(201).json({
       success: true,
       is_claimed: true,
-      user: { id: matchedMock.id, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, barangay: userBarangay },
+      user: { id: matchedMock.id, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, purok: matchedMock.purok || cleanPurokNum || '1', barangay: userBarangay },
       message: 'Existing resident profile linked successfully! Your submitted ID is under review by the Barangay Admin.'
     });
   }
@@ -1119,6 +1207,7 @@ app.post('/api/auth/register', async (req, res) => {
     email: email.toLowerCase(),
     phone: phone || '',
     address: residentAddress,
+    purok: cleanPurokNum || '1',
     barangay: userBarangay,
     submitted_id: submitted_id || null,
     submitted_at: new Date().toLocaleString(),
@@ -1146,6 +1235,7 @@ app.post('/api/auth/register', async (req, res) => {
     civil_status: userCivilStatus,
     employment_status: userEmployment,
     address: residentAddress,
+    purok: cleanPurokNum || '1',
     barangay: userBarangay,
     phone: phone || '',
     email: email.toLowerCase(),
@@ -1164,7 +1254,7 @@ app.post('/api/auth/register', async (req, res) => {
 
   res.status(201).json({
     success: true,
-    user: { id: newPending.id, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, email, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, barangay: userBarangay },
+    user: { id: newPending.id, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, purok: cleanPurokNum || '1', barangay: userBarangay },
     message: 'Account created! Your submitted ID is under review by the Barangay Admin.'
   });
 
@@ -1178,11 +1268,15 @@ app.get('/api/auth/check-status', async (req, res) => {
   if (pool && getStatus().connected) {
     try {
       const [rows] = await pool.query(
-        "SELECT id, CONCAT(first_name, ' ', last_name) AS name, first_name, middle_name, last_name, date_of_birth, TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) as age, civil_status, gender, email, phone, address, barangay, verification_status, rejection_reason, submitted_id FROM residents WHERE LOWER(email) = LOWER(?) LIMIT 1",
+        "SELECT id, CONCAT(first_name, ' ', last_name) AS name, first_name, middle_name, last_name, date_of_birth, TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) as age, civil_status, gender, email, phone, address, purok, barangay, verification_status, rejection_reason, submitted_id FROM residents WHERE LOWER(email) = LOWER(?) LIMIT 1",
         [email]
       );
       if (rows.length > 0) {
         const r = rows[0];
+        if (!r.purok && r.address) {
+          const pMatch = r.address.match(/purok\s*([0-9A-Za-z]+)/i);
+          if (pMatch) r.purok = pMatch[1];
+        }
         if (r.date_of_birth) {
           try {
             const d = new Date(r.date_of_birth);
@@ -1593,9 +1687,9 @@ app.delete('/api/residents/:id/purge', async (req, res) => {
   res.json({ success: true, message: 'Registration record permanently purged.' });
 });
 
-// PUT /api/users/profile - Profile Settings (name, phone, photo, password, address, civil_status)
+// PUT /api/users/profile - Profile Settings (name, phone, photo, password, address, civil_status, purok)
 app.put('/api/users/profile', async (req, res) => {
-  const { id, email, password, phone, address, name, first_name, middle_name, last_name, date_of_birth, gender, civil_status, submitted_id, profile_photo } = req.body;
+  const { id, email, password, phone, address, name, first_name, middle_name, last_name, date_of_birth, gender, civil_status, submitted_id, profile_photo, purok } = req.body;
   const fullName = name || (first_name ? `${first_name} ${middle_name ? middle_name + ' ' : ''}${last_name || ''}`.trim() : undefined);
   
   if (password) {
@@ -1631,6 +1725,7 @@ app.put('/api/users/profile', async (req, res) => {
       if (gender) { updates.push('gender = ?'); params.push(gender); }
       if (civil_status) { updates.push('civil_status = ?'); params.push(civil_status); }
       if (phone) { updates.push('phone = ?'); params.push(phone); }
+      if (purok) { updates.push('purok = ?'); params.push(purok); }
       if (address) { updates.push('address = ?'); params.push(address); }
       if (profile_photo !== undefined) { updates.push('profile_photo = ?'); params.push(profile_photo || null); }
       // Handle submitted_id: only update when explicitly provided in payload
@@ -1659,6 +1754,8 @@ app.put('/api/users/profile', async (req, res) => {
         date_of_birth,
         gender,
         civil_status,
+        purok,
+        address,
         age: date_of_birth ? Math.floor((Date.now() - new Date(date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365.25)) : undefined
       });
     } catch (err) {
@@ -1672,6 +1769,10 @@ app.put('/api/users/profile', async (req, res) => {
     if (password) user.password_hash = password;
     if (fullName) user.name = fullName;
     if (phone) user.phone = phone;
+    if (purok) user.purok = purok;
+    if (address) user.address = address;
+    if (gender) user.gender = gender;
+    if (civil_status) user.civil_status = civil_status;
     if (date_of_birth) user.date_of_birth = date_of_birth;
     if ('submitted_id' in req.body) user.submitted_id = submitted_id;
     if (profile_photo !== undefined) user.profile_photo = profile_photo || null;
@@ -1682,7 +1783,10 @@ app.put('/api/users/profile', async (req, res) => {
     if (middle_name !== undefined) resident.middle_name = middle_name;
     if (last_name) resident.last_name = last_name;
     if (date_of_birth) resident.date_of_birth = date_of_birth;
+    if (gender) resident.gender = gender;
+    if (civil_status) resident.civil_status = civil_status;
     if (phone) resident.phone = phone;
+    if (purok) resident.purok = purok;
     if (address) resident.address = address;
     if ('submitted_id' in req.body) resident.submitted_id = submitted_id;
     if (profile_photo !== undefined) resident.profile_photo = profile_photo || null;
@@ -2091,21 +2195,17 @@ app.get('/api/messages', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      // Ensure messages table exists
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS messages (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          sender_name VARCHAR(100) DEFAULT 'Staff',
-          sender_role VARCHAR(50) DEFAULT 'staff',
-          recipient_name VARCHAR(100) DEFAULT '',
-          recipient_role VARCHAR(50) DEFAULT 'all',
-          barangay VARCHAR(100) DEFAULT 'Pianing',
-          message TEXT,
-          sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // Ensure messages table exists and has all required columns
+      await safeAddColumn(pool, 'messages', 'sent_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
+      await safeAddColumn(pool, 'messages', 'timestamp', "DATETIME DEFAULT CURRENT_TIMESTAMP");
+      await safeAddColumn(pool, 'messages', 'recipient_name', "VARCHAR(100) DEFAULT ''");
+      await safeAddColumn(pool, 'messages', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
       const [rows] = await pool.query("SELECT * FROM messages ORDER BY id ASC");
-      return res.json(rows || []);
+      const formatted = (rows || []).map(r => ({
+        ...r,
+        timestamp: r.timestamp || r.sent_at || new Date().toISOString()
+      }));
+      return res.json(formatted);
     } catch (err) {
       console.warn('MySQL messages fetch error:', err.message);
     }
@@ -2241,6 +2341,11 @@ app.get('/api/auth/check-status', async (req, res) => {
         if (resRows.length > 0) {
           user.phone = resRows[0].phone || '';
           user.address = resRows[0].address || '';
+          user.purok = resRows[0].purok || '';
+          if (!user.purok && (user.address || resRows[0].address)) {
+            const pMatch = (user.address || resRows[0].address || '').match(/purok\s*([0-9A-Za-z]+)/i);
+            if (pMatch) user.purok = pMatch[1];
+          }
           user.first_name = resRows[0].first_name || '';
           user.middle_name = resRows[0].middle_name || '';
           user.last_name = resRows[0].last_name || '';
@@ -2273,6 +2378,11 @@ app.get('/api/auth/check-status', async (req, res) => {
     if (res_rec) {
       combined.phone = res_rec.phone || '';
       combined.address = res_rec.address || '';
+      combined.purok = res_rec.purok || '';
+      if (!combined.purok && (combined.address || res_rec.address)) {
+        const pMatch = (combined.address || res_rec.address || '').match(/purok\s*([0-9A-Za-z]+)/i);
+        if (pMatch) combined.purok = pMatch[1];
+      }
       if (res_rec.verification_status === 'Verified' || combined.verification_status === 'Verified') {
         combined.verification_status = 'Verified';
         if (user) user.verification_status = 'Verified';
@@ -3250,6 +3360,48 @@ app.get('/api/immunizations', async (req, res) => {
   res.json(mockData.immunizations);
 });
 
+// Helper to automatically dispense and reduce inventory stock on hand
+async function dispenseInventoryItem(itemName, qty = 1, brgy = 'Pianing') {
+  if (!itemName) return;
+  const pool = getPool();
+  const cleanName = itemName.trim();
+  const quantity = Math.max(1, parseInt(qty) || 1);
+
+  if (pool && getStatus().connected) {
+    try {
+      // Find closest matching inventory item in this barangay
+      const [rows] = await pool.query(
+        "SELECT id, item_name, stock FROM inventory WHERE barangay = ? AND (LOWER(item_name) LIKE LOWER(?) OR LOWER(?) LIKE CONCAT('%', LOWER(item_name), '%')) LIMIT 1",
+        [brgy, `%${cleanName}%`, cleanName]
+      );
+      if (rows && rows.length > 0) {
+        const item = rows[0];
+        const newStock = Math.max(0, item.stock - quantity);
+        const newStatus = newStock === 0 ? 'Out of Stock' : newStock < 10 ? 'Low Stock' : 'In Stock';
+        await pool.query(
+          "UPDATE inventory SET stock = ?, status = ? WHERE id = ?",
+          [newStock, newStatus, item.id]
+        );
+      }
+    } catch (e) {
+      console.warn('DB dispense error:', e.message);
+    }
+  }
+
+  // Also update in-memory mockData store
+  if (mockData.inventory) {
+    const item = mockData.inventory.find(i =>
+      (i.barangay === brgy || !i.barangay) &&
+      (i.item_name.toLowerCase().includes(cleanName.toLowerCase()) || cleanName.toLowerCase().includes(i.item_name.toLowerCase()))
+    );
+    if (item) {
+      item.stock = Math.max(0, item.stock - quantity);
+      item.status = item.stock === 0 ? 'Out of Stock' : item.stock < 10 ? 'Low Stock' : 'In Stock';
+      item.updated_at = new Date().toISOString().split('T')[0];
+    }
+  }
+}
+
 app.post('/api/immunizations', async (req, res) => {
   const {
     child_name,
@@ -3385,6 +3537,11 @@ app.post('/api/immunizations', async (req, res) => {
       if (!mockData.immunizations) mockData.immunizations = [];
       mockData.immunizations.unshift(created);
 
+      // Auto-deduct 1 unit of vaccine from inventory stock
+      if (immStatus === 'Completed' || givenDate) {
+        dispenseInventoryItem(vaccineName, 1, brgy).catch(e => console.warn('Vaccine dispense error:', e.message));
+      }
+
       return res.status(201).json(created);
     } catch (err) {
       console.warn('MySQL immunization insert error:', err.message);
@@ -3413,6 +3570,12 @@ app.post('/api/immunizations', async (req, res) => {
   };
   if (!mockData.immunizations) mockData.immunizations = [];
   mockData.immunizations.unshift(newImm);
+
+  // Auto-deduct 1 unit of vaccine from inventory stock
+  if (immStatus === 'Completed' || givenDate) {
+    dispenseInventoryItem(vaccineName, 1, brgy).catch(e => console.warn('Vaccine dispense error:', e.message));
+  }
+
   res.status(201).json(newImm);
 });
 
@@ -3816,7 +3979,150 @@ app.post('/api/consultations', async (req, res) => {
   if (!mockData.consultations) mockData.consultations = [];
   mockData.consultations.unshift(newRecord);
 
+  // Auto-deduct any prescribed medications from inventory
+  if (req.body.prescriptions && Array.isArray(req.body.prescriptions)) {
+    for (const rx of req.body.prescriptions) {
+      if (rx && rx.name) {
+        dispenseInventoryItem(rx.name, rx.quantity || rx.qty || 1, brgy).catch(e => console.warn('Consultation dispense error:', e.message));
+      }
+    }
+  } else if (prescribed_meds) {
+    const medsList = prescribed_meds.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+    for (const medStr of medsList) {
+      dispenseInventoryItem(medStr, 1, brgy).catch(e => console.warn('Consultation dispense error:', e.message));
+    }
+  }
+
   return res.status(201).json(newRecord);
+});
+
+// -------------------------------------------------------------
+// Inventory Management Endpoints (Medicines & Vaccines for Nurse & BHW)
+// -------------------------------------------------------------
+app.get('/api/inventory', async (req, res) => {
+  const brgy = req.query.barangay || 'Pianing';
+  const pool = getPool();
+  if (pool && getStatus().connected) {
+    try {
+      const [rows] = await pool.query('SELECT * FROM inventory WHERE barangay = ? ORDER BY category, item_name', [brgy]);
+      if (rows && rows.length > 0) return res.json(rows);
+    } catch (e) {
+      console.warn('Inventory fetch warning:', e.message);
+    }
+  }
+  const items = (mockData.inventory || []).filter(i => !i.barangay || i.barangay === brgy);
+  res.json(items);
+});
+
+app.post('/api/inventory', async (req, res) => {
+  const { item_name, category, stock, unit, expiry_date, barangay } = req.body;
+  const name = (item_name || '').trim();
+  if (!name) return res.status(400).json({ error: 'Item name is required' });
+  const brgy = barangay || 'Pianing';
+  const qty = parseInt(stock) || 0;
+  const cat = category || 'Essential Medicine';
+  const u = unit || 'units';
+  const exp = expiry_date || '';
+  const stat = qty === 0 ? 'Out of Stock' : qty < 10 ? 'Low Stock' : 'In Stock';
+
+  const pool = getPool();
+  let createdId = Date.now();
+  if (pool && getStatus().connected) {
+    try {
+      const [existing] = await pool.query('SELECT id, stock FROM inventory WHERE barangay = ? AND LOWER(item_name) = LOWER(?)', [brgy, name]);
+      if (existing && existing.length > 0) {
+        const newStock = existing[0].stock + qty;
+        const newStat = newStock === 0 ? 'Out of Stock' : newStock < 10 ? 'Low Stock' : 'In Stock';
+        await pool.query('UPDATE inventory SET stock = ?, status = ?, expiry_date = COALESCE(?, expiry_date) WHERE id = ?', [newStock, newStat, exp || null, existing[0].id]);
+        return res.json({ message: 'Item restocked successfully', id: existing[0].id, item_name: name, stock: newStock, status: newStat });
+      }
+      const [result] = await pool.query(
+        'INSERT INTO inventory (barangay, item_name, category, stock, unit, expiry_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [brgy, name, cat, qty, u, exp, stat]
+      );
+      createdId = result.insertId;
+    } catch (e) {
+      console.warn('DB inventory insert warning:', e.message);
+    }
+  }
+
+  if (!mockData.inventory) mockData.inventory = [];
+  const existingMock = mockData.inventory.find(i => (i.barangay === brgy || !i.barangay) && i.item_name.toLowerCase() === name.toLowerCase());
+  if (existingMock) {
+    existingMock.stock += qty;
+    existingMock.status = existingMock.stock === 0 ? 'Out of Stock' : existingMock.stock < 10 ? 'Low Stock' : 'In Stock';
+    if (exp) existingMock.expiry_date = exp;
+    return res.json({ message: 'Item restocked successfully', ...existingMock });
+  }
+
+  const newItem = {
+    id: createdId,
+    barangay: brgy,
+    item_name: name,
+    category: cat,
+    stock: qty,
+    unit: u,
+    expiry_date: exp,
+    status: stat,
+    updated_at: new Date().toISOString().split('T')[0]
+  };
+  mockData.inventory.unshift(newItem);
+  res.status(201).json(newItem);
+});
+
+app.put('/api/inventory/:id', async (req, res) => {
+  const id = req.params.id;
+  const { stock, item_name, category, unit, expiry_date, status } = req.body;
+  const qty = parseInt(stock);
+  const pool = getPool();
+  if (pool && getStatus().connected) {
+    try {
+      await pool.query(
+        'UPDATE inventory SET stock = COALESCE(?, stock), status = COALESCE(?, status), expiry_date = COALESCE(?, expiry_date) WHERE id = ?',
+        [isNaN(qty) ? null : qty, status || null, expiry_date || null, id]
+      );
+    } catch (e) {
+      console.warn('DB inventory update warning:', e.message);
+    }
+  }
+  if (mockData.inventory) {
+    const item = mockData.inventory.find(i => String(i.id) === String(id));
+    if (item) {
+      if (!isNaN(qty)) item.stock = qty;
+      if (status) item.status = status;
+      else if (!isNaN(qty)) item.status = qty === 0 ? 'Out of Stock' : qty < 10 ? 'Low Stock' : 'In Stock';
+      if (expiry_date) item.expiry_date = expiry_date;
+      if (item_name) item.item_name = item_name;
+      if (category) item.category = category;
+      if (unit) item.unit = unit;
+      return res.json(item);
+    }
+  }
+  res.json({ success: true });
+});
+
+app.delete('/api/inventory/:id', async (req, res) => {
+  const id = req.params.id;
+  const pool = getPool();
+  if (pool && getStatus().connected) {
+    try {
+      await pool.query('DELETE FROM inventory WHERE id = ?', [id]);
+    } catch (e) {
+      console.warn('DB inventory delete warning:', e.message);
+    }
+  }
+  if (mockData.inventory) {
+    mockData.inventory = mockData.inventory.filter(i => String(i.id) !== String(id));
+  }
+  res.json({ success: true, message: 'Item deleted' });
+});
+
+app.post('/api/inventory/dispense', async (req, res) => {
+  const { item_name, quantity, barangay } = req.body;
+  const qty = parseInt(quantity) || 1;
+  const brgy = barangay || 'Pianing';
+  await dispenseInventoryItem(item_name, qty, brgy);
+  res.json({ success: true, message: `Dispensed ${qty} unit(s) of ${item_name}` });
 });
 
 // -------------------------------------------------------------
@@ -3849,7 +4155,12 @@ app.get('/api/appointments', async (req, res) => {
 
       query += " ORDER BY id DESC";
       const [rows] = await pool.query(query, params);
-      return res.json(rows);
+      const cleanRows = rows.map(r => ({
+        ...r,
+        preferred_date: r.preferred_date ? (typeof r.preferred_date === 'string' ? r.preferred_date.split('T')[0] : `${r.preferred_date.getFullYear()}-${String(r.preferred_date.getMonth() + 1).padStart(2, '0')}-${String(r.preferred_date.getDate()).padStart(2, '0')}`) : null,
+        scheduled_date: r.scheduled_date ? (typeof r.scheduled_date === 'string' ? r.scheduled_date.split('T')[0] : `${r.scheduled_date.getFullYear()}-${String(r.scheduled_date.getMonth() + 1).padStart(2, '0')}-${String(r.scheduled_date.getDate()).padStart(2, '0')}`) : null
+      }));
+      return res.json(cleanRows);
     } catch (err) {
       console.warn('MySQL appointments fetch error:', err.message);
     }
@@ -3883,72 +4194,83 @@ app.post('/api/appointments', async (req, res) => {
     service_type,
     preferred_date,
     preferred_time,
-    resident_notes
+    resident_notes,
+    status
   } = req.body;
-
-  const appointmentCode = `APT-${new Date().getFullYear()}-${String(Math.floor(100 + Math.random() * 900))}`;
-  const bgy = barangay || 'Pianing';
 
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
+      const aptCode = `APT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+      const cleanPrefDate = preferred_date ? preferred_date.split('T')[0] : null;
+
       const [result] = await pool.query(
         `INSERT INTO health_appointments 
-         (appointment_code, resident_id, resident_name, resident_phone, resident_email, barangay, service_type, preferred_date, preferred_time, status, resident_notes) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?)`,
-        [appointmentCode, resident_id || null, resident_name, resident_phone || '', resident_email || '', bgy, service_type, preferred_date, preferred_time || 'Morning (8:00 AM - 11:30 AM)', resident_notes || '']
+         (appointment_code, resident_id, resident_name, resident_phone, resident_email, barangay, service_type, preferred_date, preferred_time, resident_notes, status, scheduled_date, scheduled_time)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          aptCode,
+          resident_id || null,
+          resident_name,
+          resident_phone || '',
+          resident_email || '',
+          barangay || 'Pianing',
+          service_type,
+          cleanPrefDate,
+          preferred_time || 'Morning',
+          resident_notes || '',
+          status || 'Pending',
+          cleanPrefDate,
+          preferred_time || '09:00 AM'
+        ]
       );
 
-      // Activity log
-      logActivity({
-        userName: resident_name || 'Resident',
-        userRole: 'resident',
-        action: `Booked Health Appointment (${service_type})`,
-        actionType: 'Health',
-        barangay: bgy,
-        details: `Submitted appointment request for ${service_type} on ${preferred_date}. Ref: ${appointmentCode}`
-      });
-
-      // SMS acknowledgement
-      if (resident_phone) {
-        const smsMsg = `Barangay Health Center: Received your appointment request for ${service_type} (Ref: ${appointmentCode}). Our BHW team will confirm your schedule soon.`;
-        sendLiveSms(resident_phone, smsMsg).catch(() => {});
+      const [rows] = await pool.query("SELECT * FROM health_appointments WHERE id = ?", [result.insertId]);
+      const created = rows[0] || {
+        id: result.insertId,
+        appointment_code: aptCode,
+        resident_name,
+        service_type,
+        preferred_date: cleanPrefDate,
+        scheduled_date: cleanPrefDate,
+        status: status || 'Pending'
+      };
+      if (created.preferred_date && typeof created.preferred_date !== 'string') {
+        created.preferred_date = `${created.preferred_date.getFullYear()}-${String(created.preferred_date.getMonth() + 1).padStart(2, '0')}-${String(created.preferred_date.getDate()).padStart(2, '0')}`;
+      }
+      if (created.scheduled_date && typeof created.scheduled_date !== 'string') {
+        created.scheduled_date = `${created.scheduled_date.getFullYear()}-${String(created.scheduled_date.getMonth() + 1).padStart(2, '0')}-${String(created.scheduled_date.getDate()).padStart(2, '0')}`;
       }
 
-      return res.status(201).json({
-        id: result.insertId,
-        appointment_code: appointmentCode,
-        status: 'Pending',
-        ...req.body
-      });
+      return res.status(201).json(created);
     } catch (err) {
-      console.warn('MySQL appointment insert error:', err.message);
+      console.warn('MySQL appointment create error:', err.message);
     }
   }
 
+  // Fallback in memory
+  const aptCode = `APT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
   const newApt = {
     id: (mockData.appointments?.length || 0) + 1,
-    appointment_code: appointmentCode,
+    appointment_code: aptCode,
     resident_id: resident_id || null,
     resident_name,
     resident_phone: resident_phone || '',
     resident_email: resident_email || '',
-    barangay: bgy,
+    barangay: barangay || 'Pianing',
     service_type,
-    preferred_date,
-    preferred_time: preferred_time || 'Morning (8:00 AM - 11:30 AM)',
-    scheduled_date: null,
-    scheduled_time: null,
-    status: 'Pending',
-    bhw_notes: '',
+    preferred_date: preferred_date ? preferred_date.split('T')[0] : null,
+    preferred_time: preferred_time || 'Morning',
+    scheduled_date: preferred_date ? preferred_date.split('T')[0] : null,
+    scheduled_time: preferred_time || '09:00 AM',
     resident_notes: resident_notes || '',
-    attending_bhw: '',
-    created_at: new Date().toLocaleString()
+    status: status || 'Pending',
+    attending_bhw: 'Nurse Maria Santos (RN)',
+    created_at: new Date().toISOString()
   };
-
   mockData.appointments = mockData.appointments || [];
   mockData.appointments.unshift(newApt);
-  res.status(201).json(newApt);
+  res.json(newApt);
 });
 
 app.put('/api/appointments/:id', async (req, res) => {
@@ -3968,6 +4290,7 @@ app.put('/api/appointments/:id', async (req, res) => {
     try {
       const [existingRows] = await pool.query("SELECT * FROM health_appointments WHERE id = ?", [id]);
       const apt = existingRows[0];
+      const cleanSchedDate = scheduled_date ? (typeof scheduled_date === 'string' ? scheduled_date.split('T')[0] : scheduled_date) : null;
 
       await pool.query(
         `UPDATE health_appointments 
@@ -3977,12 +4300,12 @@ app.put('/api/appointments/:id', async (req, res) => {
              bhw_notes = COALESCE(?, bhw_notes),
              attending_bhw = COALESCE(?, attending_bhw)
          WHERE id = ?`,
-        [status, scheduled_date || null, scheduled_time || null, bhw_notes, attending_bhw, id]
+        [status, cleanSchedDate, scheduled_time || null, bhw_notes, attending_bhw, id]
       );
 
       if (apt) {
         const finalStatus = status || apt.status;
-        const finalDate = scheduled_date || apt.scheduled_date || apt.preferred_date;
+        const finalDate = cleanSchedDate || apt.scheduled_date || apt.preferred_date;
         const finalTime = scheduled_time || apt.scheduled_time || apt.preferred_time;
 
         // Auto-dispatch SMS & Email notifications on confirmation / status change
@@ -4019,7 +4342,16 @@ app.put('/api/appointments/:id', async (req, res) => {
         });
       }
 
-      return res.json({ success: true, message: 'Appointment updated successfully.' });
+      const [updatedRows] = await pool.query("SELECT * FROM health_appointments WHERE id = ?", [id]);
+      const updatedApt = updatedRows[0] || {};
+      if (updatedApt.preferred_date && typeof updatedApt.preferred_date !== 'string') {
+        updatedApt.preferred_date = `${updatedApt.preferred_date.getFullYear()}-${String(updatedApt.preferred_date.getMonth() + 1).padStart(2, '0')}-${String(updatedApt.preferred_date.getDate()).padStart(2, '0')}`;
+      }
+      if (updatedApt.scheduled_date && typeof updatedApt.scheduled_date !== 'string') {
+        updatedApt.scheduled_date = `${updatedApt.scheduled_date.getFullYear()}-${String(updatedApt.scheduled_date.getMonth() + 1).padStart(2, '0')}-${String(updatedApt.scheduled_date.getDate()).padStart(2, '0')}`;
+      }
+
+      return res.json({ success: true, message: 'Appointment updated successfully.', ...updatedApt, appointment: updatedApt });
     } catch (err) {
       console.warn('MySQL appointment update error:', err.message);
     }
@@ -5404,6 +5736,21 @@ app.post('/api/patients/intake', async (req, res) => {
       if (!mockData.consultations) mockData.consultations = [];
       mockData.consultations.unshift(newConsultationRecord);
 
+      // Auto-dispense medications / vaccines from inventory
+      if (vaccine_name) {
+        dispenseInventoryItem(vaccine_name, 1, brgy).catch(() => {});
+      }
+      if (req.body.prescriptions && Array.isArray(req.body.prescriptions)) {
+        for (const rx of req.body.prescriptions) {
+          if (rx?.name) dispenseInventoryItem(rx.name, rx.quantity || 1, brgy).catch(() => {});
+        }
+      } else if (prescribed_meds) {
+        const medsList = prescribed_meds.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+        for (const medStr of medsList) {
+          dispenseInventoryItem(medStr, 1, brgy).catch(() => {});
+        }
+      }
+
       return res.status(201).json({
         success: true,
         encounterId,
@@ -5493,6 +5840,21 @@ app.post('/api/patients/intake', async (req, res) => {
     });
   }
 
+  // Auto-dispense medications / vaccines from inventory
+  if (vaccine_name) {
+    dispenseInventoryItem(vaccine_name, 1, brgy).catch(() => {});
+  }
+  if (req.body.prescriptions && Array.isArray(req.body.prescriptions)) {
+    for (const rx of req.body.prescriptions) {
+      if (rx?.name) dispenseInventoryItem(rx.name, rx.quantity || 1, brgy).catch(() => {});
+    }
+  } else if (prescribed_meds) {
+    const medsList = prescribed_meds.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+    for (const medStr of medsList) {
+      dispenseInventoryItem(medStr, 1, brgy).catch(() => {});
+    }
+  }
+
   res.status(201).json({
     success: true,
     encounterId: intakeFallbackEncounter.id,
@@ -5541,6 +5903,9 @@ app.post('/api/scheduler/run-1day-reminders', async (req, res) => {
   const result = await runOneDayAdvanceScheduler();
   res.json({ success: true, ...result });
 });
+
+// Serve static assets from Vite production build
+app.use(express.static(path.resolve(__dirname, '../dist')));
 
 // Handle React SPA wildcard routing in production
 app.get('*', (req, res, next) => {

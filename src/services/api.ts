@@ -228,6 +228,7 @@ export interface MaternalRecord {
   para?: string | number;
   aog_weeks?: string | number;
   bp?: string;
+  blood_pressure?: string;
   weight?: string;
   temp?: string;
   fetal_heart_rate?: string;
@@ -265,6 +266,18 @@ export interface ClinicalConsultationRecord {
   encounter_date?: string;
   next_visit_date?: string;
   status?: string;
+}
+
+export interface InventoryItem {
+  id: number;
+  barangay?: string;
+  item_name: string;
+  category: string;
+  stock: number;
+  unit: string;
+  expiry_date?: string;
+  status: 'In Stock' | 'Low Stock' | 'Out of Stock' | string;
+  updated_at?: string;
 }
 
 export interface SmsNotification {
@@ -312,6 +325,10 @@ export interface ClinicSchedule {
   barangay?: string;
   created_by?: string;
   created_at?: string;
+  max_slots?: number;
+  room?: string;
+  assigned_staff?: string;
+  description?: string;
 }
 
 const API_BASE = '/api';
@@ -537,6 +554,47 @@ export const apiService = {
     return await res.json();
   },
 
+  // Inventory Management
+  async getInventory(barangay?: string): Promise<InventoryItem[]> {
+    const query = barangay ? `?barangay=${encodeURIComponent(barangay)}` : '';
+    const res = await fetch(`${API_BASE}/inventory${query}`);
+    return await res.json();
+  },
+
+  async addInventoryItem(data: Partial<InventoryItem>): Promise<InventoryItem> {
+    const res = await fetch(`${API_BASE}/inventory`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return await res.json();
+  },
+
+  async updateInventoryItem(id: number | string, data: Partial<InventoryItem>): Promise<InventoryItem> {
+    const res = await fetch(`${API_BASE}/inventory/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return await res.json();
+  },
+
+  async deleteInventoryItem(id: number | string): Promise<{ success: boolean; message?: string }> {
+    const res = await fetch(`${API_BASE}/inventory/${id}`, {
+      method: 'DELETE'
+    });
+    return await res.json();
+  },
+
+  async dispenseInventoryItem(item_name: string, quantity = 1, barangay?: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_BASE}/inventory/dispense`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_name, quantity, barangay })
+    });
+    return await res.json();
+  },
+
   // SMS Notifications
   async getNotifications(): Promise<SmsNotification[]> {
     const res = await fetch(`${API_BASE}/notifications`);
@@ -573,7 +631,7 @@ export const apiService = {
   },
 
   // Auth Registration
-  async register(data: { name?: string; first_name?: string; middle_name?: string; last_name?: string; date_of_birth?: string; gender?: string; civil_status?: string; employment_status?: string; email: string; password?: string; role?: string; address?: string; phone?: string; submitted_id?: string; id_type?: string; years_of_residency?: string; barangay?: string }) {
+  async register(data: { name?: string; first_name?: string; middle_name?: string; last_name?: string; date_of_birth?: string; gender?: string; civil_status?: string; employment_status?: string; email: string; password?: string; role?: string; address?: string; phone?: string; submitted_id?: string; id_type?: string; years_of_residency?: string; barangay?: string; city?: string; purok?: string }) {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -586,8 +644,8 @@ export const apiService = {
     return json;
   },
 
-  // Update Profile (password, phone, name, address, date_of_birth, profile_photo)
-  async updateProfile(data: { id?: number; email?: string; password?: string; phone?: string; name?: string; address?: string; date_of_birth?: string; profile_photo?: string; avatar?: string }) {
+  // Update Profile (password, phone, name, address, date_of_birth, profile_photo, purok, gender, civil_status)
+  async updateProfile(data: { id?: number; email?: string; password?: string; phone?: string; name?: string; address?: string; date_of_birth?: string; profile_photo?: string; avatar?: string; purok?: string; gender?: string; civil_status?: string }) {
     const res = await fetch(`${API_BASE}/users/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

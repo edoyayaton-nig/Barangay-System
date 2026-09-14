@@ -28,7 +28,8 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { FloatingInput, FloatingSelect } from '../components/ui/floating-input';
-import { BUTUAN_BARANGAYS } from '../../utils/barangays';
+import { BUTUAN_BARANGAYS, normalizeBarangay, formatJurisdictionAddress } from '../../utils/barangays';
+import TermsAndPrivacyModal from '../components/TermsAndPrivacyModal';
 import { toast } from 'sonner';
 
 const ID_TYPES = [
@@ -39,13 +40,14 @@ const ID_TYPES = [
   'TIN ID',
   "Voter's ID / Certificate",
   'Postal ID',
-  'Barangay ID',
-  'Philippine Passport',
   'Senior Citizen ID',
-  'PRC License',
-  'Student ID',
   'PWD ID',
-  'Other Official Government ID'
+  'Barangay ID',
+  'Passport',
+  'Student ID (School-issued)',
+  'PRC License',
+  'OFW / OWWA ID',
+  'Government Office / Employee ID'
 ];
 
 export default function LoginPage() {
@@ -74,20 +76,22 @@ export default function LoginPage() {
   const [regMiddleName, setRegMiddleName] = useState('');
   const [regLastName, setRegLastName] = useState('');
   const [regDob, setRegDob] = useState('');
-  const [regGender, setRegGender] = useState<'Male' | 'Female' | ''>('');
-  const [regCivilStatus, setRegCivilStatus] = useState<'Single' | 'Married' | 'Widowed' | 'Separated' | ''>('');
+  const [regGender, setRegGender] = useState<'Male' | 'Female' | 'Other' | ''>('');
+  const [regCivilStatus, setRegCivilStatus] = useState<'Single' | 'Married' | 'Widowed' | 'Separated' | 'Live-In' | ''>('');
   const [regResidencyYears, setRegResidencyYears] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPurok, setRegPurok] = useState('');
-  const [regBarangay, setRegBarangay] = useState('Pianing');
-  const [regCity, setRegCity] = useState('Butuan City');
+  const [regBarangay, setRegBarangay] = useState('');
+  const [regCity, setRegCity] = useState('');
   const [regEmployment, setRegEmployment] = useState('Employed');
   const [regIdType, setRegIdType] = useState('');
   const [regIdPhoto, setRegIdPhoto] = useState<string | null>(null);
   const [regIdFileName, setRegIdFileName] = useState<string>('');
   const [regStep, setRegStep] = useState<1 | 2>(1);
+  const [regTermsAgreed, setRegTermsAgreed] = useState(true);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
@@ -108,8 +112,8 @@ export default function LoginPage() {
     setRegPassword('');
     setRegPhone('');
     setRegPurok('');
-    setRegBarangay('Pianing');
-    setRegCity('Butuan City');
+    setRegBarangay('');
+    setRegCity('');
     setRegIdType('');
     setRegIdPhoto(null);
     setRegIdFileName('');
@@ -251,6 +255,16 @@ export default function LoginPage() {
       return;
     }
 
+    if (!regBarangay.trim()) {
+      toast.error('Barangay required', { description: 'Please enter your Barangay.' });
+      return;
+    }
+
+    if (!regCity.trim()) {
+      toast.error('City / Municipality required', { description: 'Please enter your City or Municipality.' });
+      return;
+    }
+
     if (!regIdType) {
       toast.error('Government ID Type Required', { description: 'Please select a valid Government ID type to continue registration.' });
       return;
@@ -261,16 +275,22 @@ export default function LoginPage() {
       return;
     }
 
+    if (!regTermsAgreed) {
+      toast.error('Terms Agreement Required', { description: 'Please agree to the Terms & Conditions and Privacy Policy.' });
+      return;
+    }
+
     const toTitleCase = (str: string) =>
       str ? str.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : '';
 
     const formattedFirstName = toTitleCase(regFirstName);
     const formattedMiddleName = toTitleCase(regMiddleName);
     const formattedLastName = toTitleCase(regLastName);
-    const formattedPurok = regPurok.trim().toLowerCase().startsWith('purok')
-      ? toTitleCase(regPurok)
-      : `Purok ${regPurok.trim()}`;
-    const fullAddress = `${formattedPurok}, Barangay ${regBarangay.trim()}, Butuan City`;
+    const canonicalBarangay = normalizeBarangay(regBarangay);
+    const canonicalCity = (regCity || 'Butuan City').trim();
+    const cleanPurokNum = regPurok.replace(/purok\s*/i, '').trim();
+    const formattedPurok = cleanPurokNum ? `Purok ${cleanPurokNum}` : (regPurok.trim() || 'Purok 1');
+    const fullAddress = `${formattedPurok}, Barangay ${canonicalBarangay}, ${canonicalCity}`;
     const fullName = `${formattedFirstName}${formattedMiddleName ? ' ' + formattedMiddleName : ''} ${formattedLastName}`;
 
     setLoading(true);
@@ -291,7 +311,9 @@ export default function LoginPage() {
         role: 'resident',
         submitted_id: regIdPhoto,
         id_type: regIdType,
-        barangay: regBarangay.trim()
+        barangay: canonicalBarangay,
+        city: canonicalCity,
+        purok: cleanPurokNum || regPurok.trim()
       });
 
       const user = {
@@ -307,9 +329,9 @@ export default function LoginPage() {
         email: regEmail.trim().toLowerCase(),
         phone: cleanPhone,
         address: fullAddress,
-        barangay: regBarangay.trim(),
-        city: 'Butuan City',
-        purok: regPurok.trim(),
+        barangay: canonicalBarangay,
+        city: canonicalCity,
+        purok: cleanPurokNum || regPurok.trim(),
         role: 'resident',
         verification_status: 'Pending_Review',
         submitted_id: regIdPhoto,
@@ -338,6 +360,9 @@ export default function LoginPage() {
     setPassword('');
     setRegEmail('');
     setRegPassword('');
+    setRegPurok('');
+    setRegBarangay('');
+    setRegCity('');
   }, []);
 
   return (
@@ -477,7 +502,7 @@ export default function LoginPage() {
                   <input
                     type="text"
                     value={regFirstName}
-                    onChange={(e) => setRegFirstName(e.target.value)}
+                    onChange={(e) => setRegFirstName(e.target.value.replace(/[0-9]/g, ''))}
                     placeholder="e.g. Maria"
                     required
                     className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
@@ -491,7 +516,7 @@ export default function LoginPage() {
                   <input
                     type="text"
                     value={regMiddleName}
-                    onChange={(e) => setRegMiddleName(e.target.value)}
+                    onChange={(e) => setRegMiddleName(e.target.value.replace(/[0-9]/g, ''))}
                     placeholder="e.g. Clara"
                     className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
                   />
@@ -504,7 +529,7 @@ export default function LoginPage() {
                   <input
                     type="text"
                     value={regLastName}
-                    onChange={(e) => setRegLastName(e.target.value)}
+                    onChange={(e) => setRegLastName(e.target.value.replace(/[0-9]/g, ''))}
                     placeholder="e.g. Santos"
                     required
                     className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
@@ -554,7 +579,54 @@ export default function LoginPage() {
                       {showRegPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
+                  <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 font-medium">
+                    <Shield size={11} className="text-blue-600 shrink-0" />
+                    Must contain 8+ chars: uppercase, number &amp; special symbol.
+                  </p>
                 </div>
+
+                {/* Real-time Password Complexity Indicator - shown only while typing */}
+                {regPassword.length > 0 && (
+                  <div className="col-span-1 sm:col-span-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                        <Shield size={12} className="text-blue-600" />
+                        Password Requirements
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-semibold font-mono">
+                        {[
+                          regPassword.length >= 8,
+                          /[A-Z]/.test(regPassword),
+                          /[a-z]/.test(regPassword),
+                          /[0-9]/.test(regPassword),
+                          /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(regPassword)
+                        ].filter(Boolean).length} / 5 met
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
+                      <div className={`flex items-center gap-1.5 ${regPassword.length >= 8 ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
+                        <CheckCircle2 size={12} className={regPassword.length >= 8 ? 'text-emerald-600' : 'text-slate-300'} />
+                        <span>8+ characters</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(regPassword) ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
+                        <CheckCircle2 size={12} className={/[A-Z]/.test(regPassword) ? 'text-emerald-600' : 'text-slate-300'} />
+                        <span>Uppercase (A-Z)</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${/[a-z]/.test(regPassword) ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
+                        <CheckCircle2 size={12} className={/[a-z]/.test(regPassword) ? 'text-emerald-600' : 'text-slate-300'} />
+                        <span>Lowercase (a-z)</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${/[0-9]/.test(regPassword) ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
+                        <CheckCircle2 size={12} className={/[0-9]/.test(regPassword) ? 'text-emerald-600' : 'text-slate-300'} />
+                        <span>Number (0-9)</span>
+                      </div>
+                      <div className={`col-span-2 flex items-center gap-1.5 ${/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(regPassword) ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
+                        <CheckCircle2 size={12} className={/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(regPassword) ? 'text-emerald-600' : 'text-slate-300'} />
+                        <span>Special char (!@#$%^&amp;* etc.)</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Row 3: Contact Number, Birthday, Gender (3 cols) */}
@@ -612,45 +684,24 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Row 4: Civil Status & Employment Status (2 cols) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    Civil Status <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <select
-                    value={regCivilStatus}
-                    onChange={(e) => setRegCivilStatus(e.target.value as any)}
-                    required
-                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer"
-                  >
-                    <option value="" disabled hidden>Select Civil Status</option>
-                    <option value="Single">Single</option>
-                    <option value="Married">Married</option>
-                    <option value="Widowed">Widowed</option>
-                    <option value="Separated">Separated</option>
-                    <option value="Live-In">Live-In / Common Law</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    Employment Status <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <select
-                    value={regEmployment}
-                    onChange={(e) => setRegEmployment(e.target.value)}
-                    required
-                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer font-medium"
-                  >
-                    <option value="Employed">Employed (Have Work)</option>
-                    <option value="Self-Employed">Self-Employed / Business Owner</option>
-                    <option value="Unemployed">Unemployed (Looking for work)</option>
-                    <option value="Student">Student / In School</option>
-                    <option value="Retired">Retired / Pensioner</option>
-                    <option value="Minor">Dependent Minor</option>
-                  </select>
-                </div>
+              {/* Row 4: Civil Status (1 col) */}
+              <div>
+                <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                  Civil Status <span className="text-red-500 font-bold">*</span>
+                </label>
+                <select
+                  value={regCivilStatus}
+                  onChange={(e) => setRegCivilStatus(e.target.value as any)}
+                  required
+                  className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer font-medium"
+                >
+                  <option value="" disabled hidden>Select Civil Status</option>
+                  <option value="Single">Single</option>
+                  <option value="Married">Married</option>
+                  <option value="Widowed">Widowed</option>
+                  <option value="Separated">Separated</option>
+                  <option value="Live-In">Live-In / Common Law</option>
+                </select>
               </div>
 
               {/* Row 5: Years of Residency in the Barangay (1 col) */}
@@ -659,27 +710,40 @@ export default function LoginPage() {
                   Years of Residency in the Barangay <span className="text-slate-400 font-normal">(for Certificate of Residency)</span>
                 </label>
                 <input
-                  type="text"
+                  type="number"
+                  min="0"
+                  max="100"
                   value={regResidencyYears}
-                  onChange={(e) => setRegResidencyYears(e.target.value)}
-                  placeholder="e.g. 5 years or since 2018"
+                  onChange={(e) => setRegResidencyYears(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="e.g. 5"
                   className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
                 />
-                <p className="text-[10px] text-slate-400 mt-0.5">Used for official Barangay Certificates &amp; Residency verification.</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Enter number of years only (e.g. 5). Used for official Barangay Certificates &amp; Residency verification.</p>
               </div>
 
-              {/* Row 6: Residential Address (Section with 3 separated cols) */}
+              {/* Row 6: Residential Address */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold text-slate-700 block">
                   Residential Address <span className="text-red-500 font-bold">*</span>
                 </label>
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {/* Col 1: Purok / Street */}
                   <div>
-                    <span className="text-[10px] text-slate-500 block mb-0.5">Purok / Street <span className="text-red-500">*</span></span>
+                    <span className="text-[10px] text-slate-500 block mb-0.5 font-medium">
+                      Purok / Street <span className="text-red-500">*</span>
+                    </span>
                     <input
                       type="text"
                       value={regPurok}
-                      onChange={(e) => setRegPurok(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setRegPurok(val);
+                        // Auto-detect if user typed barangay name inside purok field (e.g. "Purok 1, Pianing")
+                        if (val.toLowerCase().includes('pianing') && regBarangay.toLowerCase() !== 'pianing') {
+                          setRegBarangay('Pianing');
+                        }
+                      }}
                       list="reg-purok-suggestions"
                       placeholder="e.g. Purok 1"
                       required
@@ -695,31 +759,56 @@ export default function LoginPage() {
                     </datalist>
                   </div>
 
+                  {/* Col 2: Barangay (Tolerant & Recognized) */}
                   <div>
-                    <span className="text-[10px] text-slate-500 block mb-0.5">Barangay <span className="text-red-500">*</span></span>
-                    <select
-                      value={regBarangay}
-                      onChange={(e) => setRegBarangay(e.target.value)}
-                      required
-                      className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer font-medium"
-                    >
-                      {BUTUAN_BARANGAYS.map((b) => (
-                        <option key={b} value={b}>Barangay {b}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] text-slate-500 block mb-0.5">City / Municipality</span>
-                    <div className="w-full h-9 px-3 bg-slate-100/90 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 flex items-center select-none shadow-xs">
-                      Butuan City
+                    <span className="text-[10px] text-slate-500 block mb-0.5 font-medium">
+                      Barangay <span className="text-red-500">*</span>
+                    </span>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={regBarangay}
+                        onChange={(e) => setRegBarangay(e.target.value)}
+                        onBlur={() => {
+                          if (regBarangay.trim()) {
+                            setRegBarangay(normalizeBarangay(regBarangay));
+                          }
+                        }}
+                        list="reg-barangay-suggestions"
+                        placeholder="e.g. Pianing"
+                        required
+                        className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all font-medium"
+                      />
+                      <datalist id="reg-barangay-suggestions">
+                        {BUTUAN_BARANGAYS.map((b) => (
+                          <option key={b} value={b}>Barangay {b}</option>
+                        ))}
+                      </datalist>
                     </div>
                   </div>
-                </div>
-                <div className="px-2.5 py-1 bg-blue-50/70 border border-blue-200/60 rounded-md flex items-center gap-1.5 text-[10px] text-blue-700">
-                  <MapPin size={11} className="shrink-0 text-blue-600" />
-                  <span className="font-semibold">Registered Jurisdiction:</span>
-                  <span className="truncate">{regPurok.trim() || 'Purok'}, Barangay {regBarangay}, Butuan City</span>
+
+                  {/* Col 3: City / Municipality (Fully Dynamic) */}
+                  <div>
+                    <span className="text-[10px] text-slate-500 block mb-0.5 font-medium">
+                      City / Municipality <span className="text-red-500">*</span>
+                    </span>
+                    <input
+                      type="text"
+                      value={regCity}
+                      onChange={(e) => setRegCity(e.target.value)}
+                      list="reg-city-suggestions"
+                      placeholder="e.g. Butuan City"
+                      required
+                      className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all font-medium"
+                    />
+                    <datalist id="reg-city-suggestions">
+                      <option value="Butuan City" />
+                      <option value="Cabadbaran City" />
+                      <option value="Bayugan City" />
+                      <option value="Surigao City" />
+                      <option value="Cagayan de Oro City" />
+                    </datalist>
+                  </div>
                 </div>
               </div>
 
@@ -804,10 +893,41 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {/* Data Privacy Act & Terms Agreement Checkbox */}
+              <div className="pt-2 flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  id="reg-terms-agree"
+                  required
+                  checked={regTermsAgreed}
+                  onChange={(e) => setRegTermsAgreed(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <label htmlFor="reg-terms-agree" className="text-[11px] text-slate-600 leading-tight select-none">
+                  I agree to the{' '}
+                  <button
+                    type="button"
+                    onClick={() => setIsTermsOpen(true)}
+                    className="text-blue-600 font-semibold underline hover:text-blue-800 cursor-pointer"
+                  >
+                    Terms &amp; Conditions
+                  </button>{' '}
+                  and{' '}
+                  <button
+                    type="button"
+                    onClick={() => setIsTermsOpen(true)}
+                    className="text-blue-600 font-semibold underline hover:text-blue-800 cursor-pointer"
+                  >
+                    Data Privacy Policy
+                  </button>{' '}
+                  under Republic Act No. 10173 (Data Privacy Act of 2012).
+                </label>
+              </div>
+
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !regTermsAgreed}
                 className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-all rounded-lg mt-3 cursor-pointer"
               >
                 {loading ? 'Creating Account...' : 'Create Account'}
@@ -860,9 +980,23 @@ export default function LoginPage() {
         </DialogContent>
       </Dialog>
 
+      <TermsAndPrivacyModal
+        isOpen={isTermsOpen}
+        onClose={() => setIsTermsOpen(false)}
+      />
+
       {/* Footer */}
-      <footer className="text-center text-xs text-slate-400 dark:text-slate-500 py-2">
-        &copy; 2026 Smart Barangay Administrative &amp; Health Management Ecosystem.
+      <footer className="text-center text-xs text-slate-400 dark:text-slate-500 py-3 space-y-1">
+        <p>&copy; 2026 Smart Barangay Administrative &amp; Health Management Ecosystem.</p>
+        <p className="text-[11px] text-slate-500">
+          <button
+            type="button"
+            onClick={() => setIsTermsOpen(true)}
+            className="text-blue-600 hover:underline font-medium cursor-pointer"
+          >
+            Privacy Policy &amp; Terms of Service (RA 10173)
+          </button>
+        </p>
       </footer>
     </div>
   );
