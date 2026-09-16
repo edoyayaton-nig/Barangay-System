@@ -90,7 +90,8 @@ export default function LoginPage() {
   const [regIdPhoto, setRegIdPhoto] = useState<string | null>(null);
   const [regIdFileName, setRegIdFileName] = useState<string>('');
   const [regStep, setRegStep] = useState<1 | 2>(1);
-  const [regTermsAgreed, setRegTermsAgreed] = useState(true);
+  const [regTermsAgreed, setRegTermsAgreed] = useState(false);
+  const [termsModalTab, setTermsModalTab] = useState<'privacy' | 'terms'>('privacy');
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
@@ -118,6 +119,7 @@ export default function LoginPage() {
     setRegIdPhoto(null);
     setRegIdFileName('');
     setRegStep(1);
+    setRegTermsAgreed(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -276,7 +278,11 @@ export default function LoginPage() {
     }
 
     if (!regTermsAgreed) {
-      toast.error('Terms Agreement Required', { description: 'Please agree to the Terms & Conditions and Privacy Policy.' });
+      toast.error('Terms & Privacy Agreement Required', {
+        description: 'You must review and accept the Terms & Conditions and Data Privacy Policy to create an account.'
+      });
+      setTermsModalTab('privacy');
+      setIsTermsOpen(true);
       return;
     }
 
@@ -894,43 +900,88 @@ export default function LoginPage() {
               </div>
 
               {/* Data Privacy Act & Terms Agreement Checkbox */}
-              <div className="pt-2 flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  id="reg-terms-agree"
-                  required
-                  checked={regTermsAgreed}
-                  onChange={(e) => setRegTermsAgreed(e.target.checked)}
-                  className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                />
-                <label htmlFor="reg-terms-agree" className="text-[11px] text-slate-600 leading-tight select-none">
-                  I agree to the{' '}
-                  <button
-                    type="button"
-                    onClick={() => setIsTermsOpen(true)}
-                    className="text-blue-600 font-semibold underline hover:text-blue-800 cursor-pointer"
-                  >
-                    Terms &amp; Conditions
-                  </button>{' '}
-                  and{' '}
-                  <button
-                    type="button"
-                    onClick={() => setIsTermsOpen(true)}
-                    className="text-blue-600 font-semibold underline hover:text-blue-800 cursor-pointer"
-                  >
-                    Data Privacy Policy
-                  </button>{' '}
-                  under Republic Act No. 10173 (Data Privacy Act of 2012).
-                </label>
+              <div
+                className={`p-3.5 rounded-2xl border transition-all ${
+                  regTermsAgreed
+                    ? 'bg-emerald-50/70 border-emerald-300/80 shadow-2xs'
+                    : 'bg-slate-50 border-slate-200/90 hover:border-blue-300'
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="reg-terms-agree"
+                    required
+                    checked={regTermsAgreed}
+                    onChange={(e) => setRegTermsAgreed(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600 shrink-0"
+                  />
+                  <div className="flex-1 text-[11px] text-slate-700 leading-relaxed select-none">
+                    <label htmlFor="reg-terms-agree" className="cursor-pointer">
+                      I have read and agree to the{' '}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTermsModalTab('terms');
+                        setIsTermsOpen(true);
+                      }}
+                      className="text-blue-700 font-bold underline hover:text-blue-900 cursor-pointer"
+                    >
+                      Terms &amp; Conditions
+                    </button>{' '}
+                    and{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTermsModalTab('privacy');
+                        setIsTermsOpen(true);
+                      }}
+                      className="text-blue-700 font-bold underline hover:text-blue-900 cursor-pointer"
+                    >
+                      Data Privacy Policy
+                    </button>{' '}
+                    under Republic Act No. 10173 (Data Privacy Act of 2012).
+                  </div>
+                  {regTermsAgreed ? (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 border border-emerald-300/60">
+                      <CheckCircle2 size={11} /> Accepted
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTermsModalTab('privacy');
+                        setIsTermsOpen(true);
+                      }}
+                      className="text-[10px] font-semibold text-blue-700 bg-blue-100/70 hover:bg-blue-100 px-2.5 py-0.5 rounded-full shrink-0 cursor-pointer border border-blue-200 transition-colors"
+                    >
+                      Read &amp; Accept
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Submit Button */}
               <Button
                 type="submit"
                 disabled={loading || !regTermsAgreed}
-                className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-all rounded-lg mt-3 cursor-pointer"
+                className={`w-full h-10 font-bold text-xs shadow-xs transition-all rounded-xl mt-3 flex items-center justify-center gap-2 ${
+                  !regTermsAgreed
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200 hover:bg-slate-200 shadow-none'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer hover:shadow-md'
+                }`}
               >
-                {loading ? 'Creating Account...' : 'Create Account'}
+                {loading ? (
+                  'Creating Account...'
+                ) : !regTermsAgreed ? (
+                  <>
+                    <Lock size={13} className="opacity-60" />
+                    Accept Terms &amp; Privacy Policy to Proceed
+                  </>
+                ) : (
+                  'Create Account'
+                )}
               </Button>
             </form>
           )}
@@ -983,6 +1034,13 @@ export default function LoginPage() {
       <TermsAndPrivacyModal
         isOpen={isTermsOpen}
         onClose={() => setIsTermsOpen(false)}
+        initialTab={termsModalTab}
+        onAgree={() => {
+          setRegTermsAgreed(true);
+          toast.success('Terms & Data Privacy Policy Accepted', {
+            description: 'You have agreed to Republic Act No. 10173 and Citizen Terms of Service.'
+          });
+        }}
       />
 
       {/* Footer */}
@@ -991,7 +1049,10 @@ export default function LoginPage() {
         <p className="text-[11px] text-slate-500">
           <button
             type="button"
-            onClick={() => setIsTermsOpen(true)}
+            onClick={() => {
+              setTermsModalTab('privacy');
+              setIsTermsOpen(true);
+            }}
             className="text-blue-600 hover:underline font-medium cursor-pointer"
           >
             Privacy Policy &amp; Terms of Service (RA 10173)

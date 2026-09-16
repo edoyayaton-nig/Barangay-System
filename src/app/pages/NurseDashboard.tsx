@@ -6,7 +6,7 @@ import {
   Syringe, Calendar, Check, X, Menu, Phone, Edit2, Trash2, Bell,
   AlertTriangle, Send, Package, ClipboardList, UserPlus, Save, Archive, Eye, User,
   Sparkles, Filter, ShieldCheck, UserCheck, ChevronRight, UserCircle, Plus,
-  Search, CalendarPlus
+  Search, CalendarPlus, XCircle
 } from 'lucide-react';
 import {
   apiService, ImmunizationRecord, MaternalRecord,
@@ -122,13 +122,15 @@ interface PrescribedMedItem {
   frequency: string;
   duration: string;
   instructions: string;
+  quantity?: number;
+  unit?: string;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function NurseDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'consultations' | 'maternal' | 'immunizations' | 'schedule' | 'inventory' | 'archives' | 'sms' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'consultations' | 'maternal' | 'immunizations' | 'schedule' | 'appointments' | 'inventory' | 'records' | 'archives' | 'sms' | 'profile'>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -195,278 +197,23 @@ export default function NurseDashboard() {
   const [selectedPatientModal, setSelectedPatientModal] = useState<PatientRecordData | null>(null);
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
 
-  // Clinical Consultations State (with rich baseline records)
-  const [consultations, setConsultations] = useState<ClinicalConsultation[]>([
-    {
-      id: 101,
-      patient_name: 'Elena Ramos-Santos',
-      contact_number: '09171234567',
-      age: 28,
-      gender: 'Female',
-      barangay: nurseBarangay,
-      service_type: 'General Consultation',
-      program_type: 'General Consultation',
-      bp: '118/76 mmHg',
-      temp: '36.5 °C',
-      weight: '56.4 kg',
-      heart_rate: '78 bpm',
-      chief_complaint: 'Mild headache and fatigue for 2 days',
-      diagnosis: 'Tension headache, mild physical strain',
-      treatment: 'Paracetamol 500mg TID PRN; Adequate rest and hydration',
-      prescribed_meds: 'Paracetamol 500mg TID',
-      attending_nurse: nurseName,
-      consultation_date: '2026-03-02',
-      status: 'Completed'
-    },
-    {
-      id: 102,
-      patient_name: 'Joshua Kyle Dela Cruz',
-      contact_number: '09182345678',
-      age: 16,
-      gender: 'Male',
-      barangay: nurseBarangay,
-      service_type: 'Adolescent Health',
-      program_type: 'Adolescent Health',
-      bp: '112/74 mmHg',
-      temp: '36.6 °C',
-      weight: '52.0 kg',
-      heart_rate: '74 bpm',
-      chief_complaint: 'Routine youth health assessment & pubertal guidance',
-      diagnosis: 'Normal adolescent development, mild exam anxiety',
-      treatment: 'Adolescent lifestyle counseling, stress management education',
-      prescribed_meds: 'Multivitamins with Zinc 1 tab OD',
-      attending_nurse: nurseName,
-      consultation_date: '2026-03-03',
-      status: 'Completed'
-    },
-    {
-      id: 103,
-      patient_name: 'Clarisse Anne Mendoza',
-      contact_number: '09193456789',
-      age: 26,
-      gender: 'Female',
-      barangay: nurseBarangay,
-      service_type: 'Family Planning',
-      program_type: 'Family Planning',
-      bp: '115/75 mmHg',
-      temp: '36.4 °C',
-      weight: '51.5 kg',
-      heart_rate: '76 bpm',
-      chief_complaint: 'Family planning consultation and Depo resupply',
-      diagnosis: 'Current user, tolerated DMPA injectable without side effects',
-      treatment: 'DMPA 150mg/mL IM right deltoid; return for next injection on schedule',
-      prescribed_meds: 'DMPA Injectable (Depo-Provera)',
-      attending_nurse: nurseName,
-      consultation_date: '2026-03-04',
-      status: 'Completed'
-    },
-    {
-      id: 104,
-      patient_name: 'Angelica Rose Bautista',
-      contact_number: '09204567890',
-      age: 17,
-      gender: 'Female',
-      barangay: nurseBarangay,
-      service_type: 'Teenage Pregnancy Prevention',
-      program_type: 'Teenage Pregnancy Prevention',
-      bp: '110/70 mmHg',
-      temp: '36.5 °C',
-      weight: '48.0 kg',
-      heart_rate: '72 bpm',
-      chief_complaint: 'Adolescent reproductive health counseling',
-      diagnosis: 'Adolescent reproductive health assessment, healthy youth markers',
-      treatment: 'Comprehensive sexual health education, abstinence & protection counseling',
-      prescribed_meds: 'Iron + Folic Acid supplement 1 tab OD',
-      attending_nurse: nurseName,
-      consultation_date: '2026-03-04',
-      status: 'Completed'
-    },
-    {
-      id: 105,
-      patient_name: 'Danilo C. Ocampo',
-      contact_number: '09215678901',
-      age: 52,
-      gender: 'Male',
-      barangay: nurseBarangay,
-      service_type: 'NTP (TB-DOTS)',
-      program_type: 'NTP (TB-DOTS)',
-      bp: '124/82 mmHg',
-      temp: '36.7 °C',
-      weight: '58.0 kg',
-      heart_rate: '80 bpm',
-      chief_complaint: 'Persistent cough for 3 weeks, low grade afternoon fever',
-      diagnosis: 'Presumptive Pulmonary Tuberculosis - GeneXpert pending',
-      treatment: 'Sputum collected for GeneXpert test; Infection control counseling',
-      prescribed_meds: 'Cough expectorant, awaiting GeneXpert confirmation',
-      attending_nurse: nurseName,
-      consultation_date: '2026-03-05',
-      status: 'Completed'
-    }
-  ]);
+  // Clinical Consultations State (Starts from zero, populated live from API)
+  const [consultations, setConsultations] = useState<ClinicalConsultation[]>([]);
 
-  // Prenatal Records State (with 2nd Visit tracking)
-  const [prenatalRecords, setPrenatalRecords] = useState<PrenatalRecord[]>([
-    {
-      id: 201,
-      patient_name: 'Elena Ramos-Santos',
-      contact_number: '09171234567',
-      age: 28,
-      barangay: nurseBarangay,
-      gravida: 'G2',
-      para: 'P1',
-      lmp: '2025-10-15',
-      edd: '2026-07-22',
-      aog_weeks: '20',
-      bp: '116/74',
-      weight: '58.2',
-      temp: '36.5',
-      fetal_heart_rate: '146 bpm',
-      fundic_height: '20 cm',
-      next_visit_date: '2026-03-12',
-      next_visit_note: '2nd Trimester Follow-up Ultrasound Review',
-      prescribed_meds: 'FeSO4 60mg + Folic Acid 400mcg daily',
-      attending_nurse: nurseName,
-      visit_date: '2026-02-12',
-      visit_number: 2,
-      sms_sent: false
-    },
-    {
-      id: 202,
-      patient_name: 'Maricel Gomez-Tolentino',
-      contact_number: '09278901234',
-      age: 24,
-      barangay: nurseBarangay,
-      gravida: 'G1',
-      para: 'P0',
-      lmp: '2025-11-20',
-      edd: '2026-08-27',
-      aog_weeks: '15',
-      bp: '110/70',
-      weight: '53.0',
-      temp: '36.6',
-      fetal_heart_rate: '152 bpm',
-      fundic_height: '15 cm',
-      next_visit_date: '2026-03-06',
-      next_visit_note: 'Routine 2nd Visit Maternal Check-up',
-      prescribed_meds: 'Calcium Carbonate 500mg + FeSO4',
-      attending_nurse: nurseName,
-      visit_date: '2026-02-06',
-      visit_number: 2,
-      sms_sent: false
-    },
-    {
-      id: 203,
-      patient_name: 'Jessica Alcantara',
-      contact_number: '09187654321',
-      age: 31,
-      barangay: nurseBarangay,
-      gravida: 'G3',
-      para: 'P2',
-      lmp: '2025-08-01',
-      edd: '2026-05-08',
-      aog_weeks: '30',
-      bp: '135/88',
-      weight: '64.5',
-      temp: '36.7',
-      fetal_heart_rate: '140 bpm',
-      fundic_height: '30 cm',
-      next_visit_date: '2026-03-01', // Overdue
-      next_visit_note: '3rd Trimester Gestational BP & Fundic Growth',
-      prescribed_meds: 'Methyldopa 250mg BID, FeSO4',
-      attending_nurse: nurseName,
-      visit_date: '2026-02-15',
-      visit_number: 3,
-      sms_sent: false
-    }
-  ]);
+  // Prenatal Records State (Starts from zero)
+  const [prenatalRecords, setPrenatalRecords] = useState<PrenatalRecord[]>([]);
 
-  // Immunization Records State (with Dose 2 tracking)
-  const [immunRecords, setImmunRecords] = useState<ImmunRecord[]>([
-    {
-      id: 301,
-      child_name: 'Baby Liam Kenneth Diaz',
-      contact_number: '09151234567',
-      age_months: '4',
-      gender: 'Male',
-      guardian: 'Maria Diaz',
-      barangay: nurseBarangay,
-      weight: '6.9 kg',
-      height: '63 cm',
-      temp: '36.6 °C',
-      vaccine_given: 'Pentavalent (DPT-HepB-Hib)',
-      dose_number: 'Dose 2',
-      batch_number: 'LOT-2026-P2',
-      date_given: '2026-02-15',
-      next_due_date: '2026-03-15',
-      remarks: 'Tolerated Dose 2 well, mild local erythema subsided',
-      attending_nurse: nurseName,
-      sms_sent: false
-    },
-    {
-      id: 302,
-      child_name: 'Baby Sofia Grace Reyes',
-      contact_number: '09281234567',
-      age_months: '2',
-      gender: 'Female',
-      guardian: 'Lyn Reyes',
-      barangay: nurseBarangay,
-      weight: '4.8 kg',
-      height: '56 cm',
-      temp: '36.5 °C',
-      vaccine_given: 'Oral Polio Vaccine (OPV)',
-      dose_number: 'Dose 1',
-      batch_number: 'LOT-2026-OPV1',
-      date_given: '2026-02-10',
-      next_due_date: '2026-03-10',
-      remarks: 'Cleared for routine vaccination, no adverse reactions',
-      attending_nurse: nurseName,
-      sms_sent: false
-    },
-    {
-      id: 303,
-      child_name: 'Baby Ethan Joshua Ramos',
-      contact_number: '09179876543',
-      age_months: '4',
-      gender: 'Male',
-      guardian: 'Claire Ramos',
-      barangay: nurseBarangay,
-      weight: '7.1 kg',
-      height: '64 cm',
-      temp: '36.5 °C',
-      vaccine_given: 'Pneumococcal Conjugate (PCV13)',
-      dose_number: 'Dose 2',
-      batch_number: 'LOT-2026-PCV2',
-      date_given: '2026-01-28',
-      next_due_date: '2026-02-28', // Overdue
-      remarks: 'Dose 2 scheduled; mother notified of catch-up day',
-      attending_nurse: nurseName,
-      sms_sent: false
-    }
-  ]);
+  // Child Immunization Registry State (Starts from zero)
+  const [immunRecords, setImmunRecords] = useState<ImmunRecord[]>([]);
 
-  // Inventory State
-  const [inventory, setInventory] = useState<InventoryItem[]>([
-    { id: 1, item_name: 'Pentavalent Vaccine (DPT-HepB-Hib)', category: 'Vaccine (EPI)', stock: 45, unit: 'vials', expiry_date: '2026-06-30', status: 'In Stock' },
-    { id: 2, item_name: 'PCV 13 (Pneumococcal Conjugate)', category: 'Vaccine (EPI)', stock: 32, unit: 'vials', expiry_date: '2026-09-30', status: 'In Stock' },
-    { id: 3, item_name: 'Measles-Rubella (MR) Vaccine', category: 'Vaccine (EPI)', stock: 8, unit: 'vials', expiry_date: '2026-03-15', status: 'Low Stock' },
-    { id: 4, item_name: 'Ferrous Sulfate + Folic Acid', category: 'Maternal Vitamin', stock: 1200, unit: 'tablets', expiry_date: '2027-01-01', status: 'In Stock' },
-    { id: 5, item_name: 'Calcium Carbonate 500mg', category: 'Maternal Vitamin', stock: 850, unit: 'tablets', expiry_date: '2026-12-31', status: 'In Stock' },
-    { id: 6, item_name: 'Paracetamol 500mg Tablet', category: 'Essential Medicine', stock: 600, unit: 'tablets', expiry_date: '2027-06-30', status: 'In Stock' },
-    { id: 7, item_name: 'Oral Rehydration Salts (ORS)', category: 'Pediatric Supply', stock: 0, unit: 'packets', expiry_date: '2026-08-01', status: 'Out of Stock' },
-  ]);
+  // Inventory State (Starts from zero)
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
-  // Weekly Schedule State
-  const [weeklySchedules, setWeeklySchedules] = useState<WeeklySchedule[]>([
-    { id: 1, title: 'Prenatal & Maternal Care Clinic', service_type: 'Prenatal Care', day: 'Every Monday & Thursday', time_slot: '8:00 AM – 12:00 PM & 1:00 PM – 4:00 PM', location: `Barangay ${nurseBarangay} Health Center`, assigned_to: nurseName, posted_date: '2026-03-01' },
-    { id: 2, title: 'EPI Child Immunization Day', service_type: 'Child Immunization', day: 'Every Wednesday', time_slot: '8:00 AM – 12:00 PM', location: `Barangay ${nurseBarangay} Health Center`, assigned_to: nurseName, posted_date: '2026-03-01' },
-    { id: 3, title: 'Adolescent Health & General Consultation', service_type: 'General Consultation', day: 'Every Tuesday & Friday', time_slot: '8:00 AM – 12:00 PM & 1:00 PM – 4:00 PM', location: `Barangay ${nurseBarangay} Health Center`, assigned_to: nurseName, posted_date: '2026-03-01' },
-  ]);
+  // Weekly Schedule State (Starts from zero)
+  const [weeklySchedules, setWeeklySchedules] = useState<WeeklySchedule[]>([]);
 
-  // Encounters Archive Log
-  const [archives, setArchives] = useState<EncounterArchive[]>([
-    { id: 1, patient_name: 'Elena Ramos-Santos', contact_number: '09171234567', encounter_type: 'Prenatal Consultation', details: 'AOG 20 Wks. FeSO4 prescribed.', date: '2026-03-02', attending: nurseName },
-    { id: 2, patient_name: 'Baby Liam Kenneth Diaz', contact_number: '09151234567', encounter_type: 'Immunization (Pentavalent-2)', details: 'Dose 2 administered successfully.', date: '2026-02-15', attending: nurseName },
-  ]);
+  // Encounters Archive Log (Starts from zero)
+  const [archives, setArchives] = useState<EncounterArchive[]>([]);
 
   // Modals state
   const [isNewConsultOpen, setIsNewConsultOpen] = useState(false);
@@ -503,9 +250,11 @@ export default function NurseDashboard() {
   const [cPrescriptions, setCPrescriptions] = useState<PrescribedMedItem[]>([]);
   const [medName, setMedName] = useState('');
   const [medDose, setMedDose] = useState('500mg');
+  const [medQty, setMedQty] = useState('1'); // Starting from 1 with unrestricted freedom
   const [medFreq, setMedFreq] = useState('3x daily after meals');
   const [medDuration, setMedDuration] = useState('7 days');
   const [medInst, setMedInst] = useState('Take with plenty of water');
+  const [patientModalTab, setPatientModalTab] = useState<'overview' | 'consultations' | 'maternal' | 'immunizations'>('overview');
   // Specialized Program Fields
   const [cAdolescentStage, setCAdolescentStage] = useState('Mid Adolescent (15-17 yrs)');
   const [cAdolescentFocus, setCAdolescentFocus] = useState('Pubertal Guidance & Mental Wellness');
@@ -543,6 +292,7 @@ export default function NurseDashboard() {
   const [pNextDate, setPNextDate] = useState('');
   const [pNextNote, setPNextNote] = useState('');
   const [pMeds, setPMeds] = useState('FeSO4 + Folic Acid 400mcg daily');
+  const [pMedQty, setPMedQty] = useState('30'); // Freedom to start from 1 unit
 
   // ══ Immunization Form State ══
   const [iChild, setIChild] = useState('');
@@ -554,6 +304,7 @@ export default function NurseDashboard() {
   const [iHeight, setIHeight] = useState('');
   const [iVaccine, setIVaccine] = useState('Pentavalent (DPT-HepB-Hib)');
   const [iCustomVaccine, setICustomVaccine] = useState('');
+  const [iVaccineQty, setIVaccineQty] = useState('1'); // Starting from 1 with full freedom
   const [iDose, setIDose] = useState('Dose 2'); // Highlighted 2nd dose
   const [iBatch, setIBatch] = useState('');
   const [iDateGiven, setIDateGiven] = useState(new Date().toISOString().split('T')[0]);
@@ -585,10 +336,48 @@ export default function NurseDashboard() {
     return { label: 'Normal BP', color: 'bg-emerald-100 text-emerald-800 font-semibold' };
   };
 
-  // Add medicine to prescription
+  // Find currently selected medicine in live inventory
+  const selectedInventoryItem = useMemo(() => {
+    if (!medName) return null;
+    const lower = medName.toLowerCase().trim();
+    return inventory.find(i => i.item_name.toLowerCase() === lower) ||
+      inventory.find(i => i.item_name.toLowerCase().includes(lower) || lower.includes(i.item_name.toLowerCase())) ||
+      null;
+  }, [medName, inventory]);
+
+  // Find currently selected prenatal vitamin in inventory (exact item match)
+  const selectedPrenatalInvItem = useMemo(() => {
+    if (!pMeds) return null;
+    const lower = pMeds.toLowerCase().trim();
+    const exact = inventory.find(i =>
+      i.item_name.toLowerCase() === lower ||
+      lower.includes(i.item_name.toLowerCase()) ||
+      i.item_name.toLowerCase().includes(lower)
+    );
+    if (exact) return exact;
+
+    if (lower.includes('calcium')) {
+      return inventory.find(i => i.item_name.toLowerCase().includes('calcium')) || null;
+    }
+    if (lower.includes('folic') || lower.includes('feso4') || lower.includes('iron') || lower.includes('ferrous')) {
+      return inventory.find(i => i.item_name.toLowerCase().includes('ferrous') || i.item_name.toLowerCase().includes('folic')) || null;
+    }
+    return null;
+  }, [pMeds, inventory]);
+
+  // Add medicine to prescription with unrestricted quantity (starting from 1) & stock validation
   const handleAddMedToRx = () => {
     if (!medName.trim()) {
-      toast.error('Enter medication name');
+      toast.error('Please select or enter medication name');
+      return;
+    }
+    const qtyNum = parseInt(medQty, 10);
+    if (isNaN(qtyNum) || qtyNum < 1) {
+      toast.error('Please enter a valid quantity of at least 1 unit');
+      return;
+    }
+    if (selectedInventoryItem && selectedInventoryItem.stock < qtyNum) {
+      toast.error(`Stock limit exceeded: only ${selectedInventoryItem.stock} ${selectedInventoryItem.unit || 'units'} available in inventory`);
       return;
     }
     const item: PrescribedMedItem = {
@@ -597,16 +386,20 @@ export default function NurseDashboard() {
       dosage: medDose.trim(),
       frequency: medFreq.trim(),
       duration: medDuration.trim(),
-      instructions: medInst.trim()
+      instructions: medInst.trim(),
+      quantity: qtyNum,
+      unit: selectedInventoryItem?.unit || 'units'
     };
     setCPrescriptions(prev => [...prev, item]);
     setMedName('');
-    toast.success(`Added ${item.name} to prescription`);
+    setMedQty('1');
+    toast.success(`Added ${qtyNum}x ${item.name} to prescription`);
   };
 
   // Load API data dynamically from backend
-  const loadData = async () => {
-    setLoading(true);
+  // Load API data dynamically from backend with silent real-time synchronization
+  const loadData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const [apts, schedules, notifs, liveCons, liveMat, liveImm, liveInv] = await Promise.all([
         apiService.getAppointments({ barangay: nurseBarangay }).catch(() => []),
@@ -617,11 +410,9 @@ export default function NurseDashboard() {
         apiService.getImmunizations().catch(() => []),
         apiService.getInventory(nurseBarangay).catch(() => [])
       ]);
-      setAppointments(apts);
-      setNotifications(notifs);
-      if (liveInv && Array.isArray(liveInv) && liveInv.length > 0) {
-        setInventory(liveInv);
-      }
+      setAppointments(apts || []);
+      setNotifications(notifs || []);
+      setInventory(liveInv || []);
 
       if (liveCons && liveCons.length > 0) {
         setConsultations(liveCons.map((c: any) => ({
@@ -645,6 +436,8 @@ export default function NurseDashboard() {
           consultation_date: c.consultation_date ? String(c.consultation_date).split('T')[0] : (c.encounter_date ? String(c.encounter_date).split('T')[0] : new Date().toISOString().split('T')[0]),
           status: c.status || 'Completed'
         })));
+      } else {
+        setConsultations([]);
       }
 
       if (liveMat && liveMat.length > 0) {
@@ -672,6 +465,8 @@ export default function NurseDashboard() {
           visit_number: m.visit_number || (String(m.notes || '').includes('2nd') ? 2 : 1),
           sms_sent: Boolean(m.sms_sent)
         })));
+      } else {
+        setPrenatalRecords([]);
       }
 
       if (liveImm && liveImm.length > 0) {
@@ -695,6 +490,8 @@ export default function NurseDashboard() {
           attending_nurse: i.administered_by || i.attending_nurse || nurseName,
           sms_sent: Boolean(i.sms_sent)
         })));
+      } else {
+        setImmunRecords([]);
       }
 
       if (schedules && schedules.length > 0) {
@@ -708,10 +505,38 @@ export default function NurseDashboard() {
           assigned_to: s.bhw_in_charge || s.assigned_to || nurseName,
           posted_date: s.posted_date || new Date().toISOString().split('T')[0]
         })));
+      } else {
+        setWeeklySchedules([]);
       }
-    } catch { toast.error('Failed to refresh records'); } finally { setLoading(false); }
+    } catch { 
+      if (showLoading) toast.error('Failed to refresh records'); 
+    } finally { 
+      if (showLoading) setLoading(false); 
+    }
   };
-  useEffect(() => { loadData(); }, []);
+
+  useEffect(() => { 
+    loadData(); 
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('barangay_health_sync');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'HEALTH_DATA_SYNC') {
+          loadData(false);
+        }
+      };
+    } catch {}
+
+    const interval = setInterval(() => {
+      loadData(false);
+    }, 4000);
+
+    return () => {
+      if (channel) channel.close();
+      clearInterval(interval);
+    };
+  }, [nurseBarangay]);
 
   // Due alerts calculation
   const overduePrenatal = useMemo(() =>
@@ -792,8 +617,8 @@ export default function NurseDashboard() {
     return list;
   }, [overduePrenatal, upcomingPrenatal, overdueImmun, upcomingImmun]);
 
-  // Open 360 Patient Profile Modal
-  const openPatient360 = (name: string, phone: string, barangay?: string) => {
+  // Open 360 Patient Profile Modal with intelligent tab focus
+  const openPatient360 = (name: string, phone: string, barangay?: string, preferredTab?: 'overview' | 'consultations' | 'maternal' | 'immunizations') => {
     const patientCons = consultations.filter(c => c.patient_name.toLowerCase() === name.toLowerCase()).map(c => ({
       id: c.id, date: c.consultation_date, service_type: c.service_type, vitals: `BP: ${c.bp}, Temp: ${c.temp}`,
       complaint: c.chief_complaint, diagnosis: c.diagnosis, treatment: c.treatment, attending: c.attending_nurse
@@ -801,12 +626,13 @@ export default function NurseDashboard() {
 
     const patientPrenatal = prenatalRecords.filter(p => p.patient_name.toLowerCase() === name.toLowerCase()).map(p => ({
       id: p.id, date: p.visit_date, gravida: p.gravida, para: p.para, lmp: p.lmp, edd: p.edd, aog: p.aog_weeks,
-      bp: p.bp, fhr: p.fetal_heart_rate, next_visit: p.next_visit_date, meds: p.prescribed_meds, attending: p.attending_nurse
+      bp: p.bp, fhr: p.fetal_heart_rate, next_visit: p.next_visit_date, meds: p.prescribed_meds, attending: p.attending_nurse,
+      visit_number: p.visit_number
     }));
 
     const patientImmun = immunRecords.filter(i => i.child_name.toLowerCase() === name.toLowerCase()).map(i => ({
       id: i.id, vaccine: i.vaccine_given, dose: i.dose_number, date_given: i.date_given, next_due: i.next_due_date,
-      batch_number: i.batch_number, attending: i.attending_nurse
+      batch_number: i.batch_number, attending: i.attending_nurse, guardian: i.guardian, age_months: i.age_months
     }));
 
     setSelectedPatientModal({
@@ -818,10 +644,79 @@ export default function NurseDashboard() {
       prenatal: patientPrenatal,
       immunizations: patientImmun
     });
+
+    if (preferredTab) {
+      setPatientModalTab(preferredTab);
+    } else if (patientPrenatal.length > 0 && patientCons.length === 0) {
+      setPatientModalTab('maternal');
+    } else if (patientImmun.length > 0 && patientCons.length === 0) {
+      setPatientModalTab('immunizations');
+    } else {
+      setPatientModalTab('overview');
+    }
+
     setIsPatientModalOpen(true);
   };
 
-  const handleLogReturnVisitFromModal = (pData: PatientRecordData) => {
+  // Context-Aware Return Visit Handler: Auto-routes directly to Prenatal or Immunization or Consultation
+  const handleLogReturnVisitFromModal = (pData: PatientRecordData, contextType?: 'consultation' | 'prenatal' | 'immunization') => {
+    const isPrenatal = contextType === 'prenatal' || (contextType !== 'consultation' && pData.prenatal && pData.prenatal.length > 0);
+    const isImmun = contextType === 'immunization' || (contextType !== 'consultation' && !isPrenatal && pData.immunizations && pData.immunizations.length > 0);
+
+    // 1. ROUTE TO PRENATAL IF ORIGINATING FROM PRENATAL CARE
+    if (isPrenatal) {
+      setPName(pData.name);
+      setPPhone(pData.contact_number || '');
+      setPAge(pData.age ? String(pData.age) : '24');
+
+      const prevVisits = pData.prenatal || [];
+      if (prevVisits.length > 0) {
+        const latest = prevVisits[0];
+        setPGravida(latest.gravida ? String(latest.gravida) : 'G1');
+        setPPara(latest.para ? String(latest.para) : 'P0');
+        setPLmp(latest.lmp || '');
+        setPEdd(latest.edd || '');
+        setPAog(latest.aog ? String(latest.aog) : '');
+        if (latest.bp) {
+          const parts = latest.bp.split('/');
+          setPBpSys(parts[0]?.replace(/\D/g, '') || '120');
+          setPBpDia(parts[1]?.replace(/\D/g, '') || '80');
+        }
+        setPVisitNum(String(prevVisits.length + 1));
+      } else {
+        setPVisitNum('2');
+      }
+
+      setIsPatientModalOpen(false);
+      setIsNewPrenatalOpen(true);
+      toast.info(`Pre-filled Prenatal Revisit (Visit #${pData.prenatal?.length ? pData.prenatal.length + 1 : 2}) for ${pData.name}`);
+      return;
+    }
+
+    // 2. ROUTE TO CHILD IMMUNIZATION IF ORIGINATING FROM VACCINES
+    if (isImmun) {
+      setIChild(pData.name);
+      setIPhone(pData.contact_number || '');
+      setIGuardian(pData.guardian || '');
+      const prevDoses = pData.immunizations || [];
+      if (prevDoses.length > 0) {
+        const latest = prevDoses[0];
+        setIVaccine(latest.vaccine || 'Pentavalent (DPT-HepB-Hib)');
+        setIAge(latest.age_months ? String(latest.age_months) : '6');
+        const doseStr = latest.dose || '';
+        if (doseStr.includes('1')) setIDose('Dose 2');
+        else if (doseStr.includes('2')) setIDose('Dose 3');
+        else setIDose('Booster 1');
+      } else {
+        setIDose('Dose 2');
+      }
+      setIsPatientModalOpen(false);
+      setIsNewImmunOpen(true);
+      toast.info(`Pre-filled Child Vaccine Record for ${pData.name}`);
+      return;
+    }
+
+    // 3. ROUTE TO GENERAL CONSULTATION / FOLLOW-UP
     setCName(pData.name);
     setCPhone(pData.contact_number || '');
     setCAge(pData.age ? String(pData.age) : '');
@@ -851,7 +746,7 @@ export default function NurseDashboard() {
     const bpString = `${cleanSys}/${cleanDia} mmHg`;
 
     const formattedRx = cPrescriptions.length > 0
-      ? cPrescriptions.map(m => `${m.name} ${m.dosage} (${m.frequency}, ${m.duration}) - ${m.instructions}`).join('; ')
+      ? cPrescriptions.map(m => `${m.name} ${m.dosage} (Qty: ${m.quantity || 1} ${m.unit || 'units'}) [${m.frequency}, ${m.duration}] - ${m.instructions}`).join('; ')
       : 'Health counseling advised.';
 
     let finalComplaint = cComplaint;
@@ -918,18 +813,22 @@ export default function NurseDashboard() {
         diagnosis: finalDiagnosis || 'Assessment Complete',
         treatment: finalTreatment,
         prescribed_meds: formattedRx,
-        prescriptions: cPrescriptions,
+        prescriptions: cPrescriptions.map(p => ({
+          ...p,
+          quantity: p.quantity || 1
+        })),
         attending_nurse: nurseName,
         consultation_date: new Date().toISOString().split('T')[0],
         status: 'Completed'
       } as any);
 
-      // Locally decrement stock for each prescribed item
+      // Locally decrement stock for each prescribed item with EXACT quantity
       if (cPrescriptions.length > 0) {
         setInventory(prev => prev.map(invItem => {
           const match = cPrescriptions.find(p => p.name.toLowerCase().includes(invItem.item_name.toLowerCase()) || invItem.item_name.toLowerCase().includes(p.name.toLowerCase()));
           if (match) {
-            const newStock = Math.max(0, invItem.stock - 1);
+            const qtyToDeduct = match.quantity || 1;
+            const newStock = Math.max(0, invItem.stock - qtyToDeduct);
             return {
               ...invItem,
               stock: newStock,
@@ -980,6 +879,9 @@ export default function NurseDashboard() {
     const cleanDia = pBpDia.replace(/\D/g, '') || '80';
     const bpString = `${cleanSys}/${cleanDia}`;
 
+    const pMedQtyNum = parseInt(pMedQty, 10) || 1;
+    const finalPMeds = pMeds.trim() ? `${pMeds.trim()} (Qty: ${pMedQtyNum} ${selectedPrenatalInvItem?.unit || 'tablets'})` : '';
+
     const optimisticRecord: PrenatalRecord = {
       id: Date.now(),
       patient_name: pName.trim(),
@@ -998,15 +900,24 @@ export default function NurseDashboard() {
       fundic_height: pFh ? `${pFh} cm` : '18 cm',
       next_visit_date: pNextDate,
       next_visit_note: pNextNote || `Visit #${pVisitNum} Follow-up`,
-      prescribed_meds: pMeds,
+      prescribed_meds: finalPMeds,
       attending_nurse: nurseName,
       visit_date: new Date().toISOString().split('T')[0],
       visit_number: Number(pVisitNum) || 2,
       sms_sent: false
     };
 
-    // Immediate UI update
+    // Immediate UI update & local inventory deduction
     setPrenatalRecords(prev => [optimisticRecord, ...prev]);
+
+    if (selectedPrenatalInvItem) {
+      setInventory(prev => prev.map(item => {
+        if (item.id === selectedPrenatalInvItem.id) {
+          return { ...item, stock: Math.max(0, item.stock - pMedQtyNum) };
+        }
+        return item;
+      }));
+    }
 
     try {
       await apiService.createMaternalRecord({
@@ -1027,11 +938,12 @@ export default function NurseDashboard() {
         next_visit: pNextDate,
         next_visit_date: pNextDate,
         notes: `Visit #${pVisitNum}. ${pNextNote || ''}`,
-        prescribed_meds: pMeds,
+        prescribed_meds: finalPMeds,
+        med_quantity: pMedQtyNum,
         attending_nurse: nurseName
-      });
+      } as any);
 
-      toast.success(`Prenatal record for ${pName} saved & archived!`);
+      toast.success(`Prenatal record for ${pName} saved & archived! Dispensed ${pMedQtyNum}x vitamins.`);
       setIsNewPrenatalOpen(false);
       setPName(''); setPPhone(''); setPAge(''); setPLmp(''); setPEdd(''); setPAog('');
       setPBpSys('120'); setPBpDia('80'); setPWeight(''); setPFhr(''); setPFh('');
@@ -1094,13 +1006,16 @@ export default function NurseDashboard() {
         next_due_date: iNextDue,
         remarks: iRemarks || 'Cleared for routine vaccination',
         administered_by: nurseName,
-        status: iDateGiven ? 'Completed' : 'Scheduled'
+        status: iDateGiven ? 'Completed' : 'Scheduled',
+        dose_count: parseInt(iVaccineQty, 10) || 1,
+        quantity: parseInt(iVaccineQty, 10) || 1
       });
 
-      // Deduct vaccine from local inventory stock
+      // Deduct vaccine from local inventory stock with exact quantity
+      const vaccineDeductQty = parseInt(iVaccineQty, 10) || 1;
       setInventory(prev => prev.map(item => {
         if (item.item_name.toLowerCase().includes(activeVaccine.toLowerCase()) || activeVaccine.toLowerCase().includes(item.item_name.toLowerCase())) {
-          const updatedStock = Math.max(0, item.stock - 1);
+          const updatedStock = Math.max(0, item.stock - vaccineDeductQty);
           return {
             ...item,
             stock: updatedStock,
@@ -1110,14 +1025,22 @@ export default function NurseDashboard() {
         return item;
       }));
 
-      toast.success(`Immunization for ${iChild} recorded & archived! Vaccine stock updated.`);
+      toast.success(`Immunization for ${iChild} recorded & archived! (${vaccineDeductQty}x ${activeVaccine} deducted)`);
       setIsNewImmunOpen(false);
       setIChild(''); setIPhone(''); setIAge(''); setIGuardian('');
-      setICustomVaccine(''); setINextDue('');
+      setICustomVaccine(''); setINextDue(''); setIVaccineQty('1');
       loadData();
     } catch {
       toast.error('Saved to local view (server offline)');
     }
+  };
+
+  const triggerHealthSync = () => {
+    try {
+      const ch = new BroadcastChannel('barangay_health_sync');
+      ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
+      ch.close();
+    } catch {}
   };
 
   const handleAddInventory = async (e: React.FormEvent) => {
@@ -1137,9 +1060,11 @@ export default function NurseDashboard() {
       const saved = await apiService.addInventoryItem(payload);
       setInventory(prev => [saved, ...prev.filter(i => i.id !== saved.id)]);
       toast.success(`${invName} saved to inventory!`);
+      triggerHealthSync();
     } catch {
       setInventory(prev => [{ id: Date.now(), ...payload } as any, ...prev]);
       toast.success(`${invName} added to local inventory`);
+      triggerHealthSync();
     }
     setIsInventoryOpen(false);
     setInvName(''); setInvCat('Vaccine (EPI)'); setInvStock(''); setInvUnit('vials'); setInvExpiry('');
@@ -1168,6 +1093,7 @@ export default function NurseDashboard() {
     }
     setIsRestockOpen(false);
     setRestockTargetItem(null);
+    triggerHealthSync();
   };
 
   const handleUpdateInventory = async (e: React.FormEvent) => {
@@ -1184,6 +1110,7 @@ export default function NurseDashboard() {
     } : i));
     toast.success('Inventory item updated!');
     setIsEditInventoryOpen(false); setEditingItem(null);
+    triggerHealthSync();
   };
 
   const handleDeleteInventory = async (id: number | string) => {
@@ -1192,6 +1119,7 @@ export default function NurseDashboard() {
     } catch {}
     setInventory(prev => prev.filter(i => i.id !== id));
     toast.success('Inventory item removed');
+    triggerHealthSync();
   };
 
   const handlePostSchedule = async (e: React.FormEvent) => {
@@ -1221,6 +1149,7 @@ export default function NurseDashboard() {
     toast.success('Weekly clinic schedule posted!');
     setIsScheduleOpen(false);
     setSTitle('');
+    triggerHealthSync();
   };
 
   const handleUpdateSchedule = async (e: React.FormEvent) => {
@@ -1242,6 +1171,7 @@ export default function NurseDashboard() {
     } catch {}
     toast.success('Schedule updated!');
     setIsEditScheduleOpen(false); setEditingSchedule(null);
+    triggerHealthSync();
   };
 
   const handleDeleteSchedule = async (id: number | string) => {
@@ -1252,6 +1182,7 @@ export default function NurseDashboard() {
       }
     } catch {}
     toast.success('Schedule removed');
+    triggerHealthSync();
   };
 
   const handleSendCustomSms = async (e: React.FormEvent) => {
@@ -1307,6 +1238,7 @@ export default function NurseDashboard() {
       setIsApptModalOpen(false);
       setSelectedAppt(null);
       loadData();
+      triggerHealthSync();
     } catch {
       toast.error('Failed to update appointment schedule');
     } finally {
@@ -1314,15 +1246,20 @@ export default function NurseDashboard() {
     }
   };
 
-  const handleUpdateApptStatus = async (id: number, newStatus: 'Completed' | 'Cancelled') => {
+  const handleUpdateApptStatus = async (id: number, newStatus: 'Completed' | 'Cancelled', notes?: string) => {
     try {
       await apiService.updateAppointment(id, {
         status: newStatus,
         attending_bhw: `${nurseName} (RN)`,
         user_name: nurseName,
-        user_role: 'nurse'
+        user_role: 'nurse',
+        bhw_notes: notes || (newStatus === 'Cancelled' ? 'Patient did not return for scheduled appointment' : 'Consultation encounter completed')
       });
-      toast.success(`Appointment marked as ${newStatus}`);
+      if (newStatus === 'Cancelled') {
+        toast.info('Appointment marked as Did Not Return / Cancelled. Record saved to Records Hub.');
+      } else {
+        toast.success('Appointment marked as Completed. Record saved to Records Hub.');
+      }
       loadData();
     } catch {
       toast.error(`Failed to update appointment status to ${newStatus}`);
@@ -1382,9 +1319,9 @@ export default function NurseDashboard() {
     { id: 'maternal', label: 'Prenatal & Maternal', icon: Heart },
     { id: 'immunizations', label: 'EPI Immunizations', icon: Baby },
     { id: 'schedule', label: 'Weekly Schedule', icon: CalendarCheck },
-    { id: 'appointments', label: 'Resident Appointments', icon: CalendarCheck, badge: appointments.filter(a => a.status === 'Pending').length || undefined, badgeColor: 'bg-violet-600 text-white' },
+    { id: 'appointments', label: 'Resident Appointments', icon: CalendarCheck, badge: appointments.filter(a => a.status === 'Pending').length || undefined, badgeColor: 'bg-red-600 text-white' },
     { id: 'inventory', label: 'Vaccines & Medicine Supply', icon: Pill },
-    { id: 'archives', label: 'Clinical Archives & EHR', icon: Archive },
+    { id: 'records', label: 'Records', icon: ClipboardList },
     { id: 'sms', label: 'Gmail Notification Hub', icon: Bell },
     { id: 'profile', label: 'Profile Settings', icon: UserCircle },
   ];
@@ -1542,7 +1479,7 @@ export default function NurseDashboard() {
                   <span>{item.label}</span>
                 </div>
                 {(item as any).badge !== undefined && (
-                  <span className={`${(item as any).badgeColor || 'bg-violet-600 text-white'} text-[10px] font-extrabold px-1.5 py-0.2 rounded-full`}>
+                  <span className="ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                     {(item as any).badge}
                   </span>
                 )}
@@ -1594,17 +1531,17 @@ export default function NurseDashboard() {
                     <span>{item.label}</span>
                   </div>
                   {item.id === 'maternal' && overduePrenatal.length > 0 && (
-                    <span className="bg-rose-100 text-rose-700 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
+                    <span className="ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                       {overduePrenatal.length}
                     </span>
                   )}
                   {item.id === 'immunizations' && overdueImmun.length > 0 && (
-                    <span className="bg-amber-100 text-amber-700 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
+                    <span className="ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                       {overdueImmun.length}
                     </span>
                   )}
                   {(item as any).badge !== undefined && (
-                    <span className={`${(item as any).badgeColor || 'bg-violet-600 text-white'} text-[10px] font-extrabold px-1.5 py-0.2 rounded-full`}>
+                    <span className="ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                       {(item as any).badge}
                     </span>
                   )}
@@ -1829,13 +1766,6 @@ export default function NurseDashboard() {
 
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={() => setIsIntakeOpen(true)}
-                    variant="outline"
-                    className="border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold gap-1.5 rounded-xl cursor-pointer"
-                  >
-                    <UserPlus size={14} className="text-slate-500" /> + Add Patient
-                  </Button>
-                  <Button
                     onClick={() => setIsNewConsultOpen(true)}
                     className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold gap-1.5 shadow-xs cursor-pointer rounded-xl h-9 px-4"
                   >
@@ -1910,7 +1840,7 @@ export default function NurseDashboard() {
                         <TableRow key={`cons-${c.id}-${idx}`} className="text-xs hover:bg-slate-50/70 transition-colors">
                           <TableCell>
                             <button
-                              onClick={() => openPatient360(c.patient_name, c.contact_number, c.barangay)}
+                              onClick={() => openPatient360(c.patient_name, c.contact_number, c.barangay, 'consultations')}
                               className="font-bold text-slate-900 hover:text-teal-700 text-left cursor-pointer flex items-center gap-1.5"
                             >
                               <User size={13} className="text-teal-600" />
@@ -1951,10 +1881,10 @@ export default function NurseDashboard() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => openPatient360(c.patient_name, c.contact_number, c.barangay)}
+                              onClick={() => openPatient360(c.patient_name, c.contact_number, c.barangay, 'consultations')}
                               className="text-[10px] h-7 px-2 border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer rounded-lg"
                             >
-                              View 360°
+                              Record Details
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -2070,7 +2000,7 @@ export default function NurseDashboard() {
                         <TableRow key={`prn-${r.id}-${idx}`} className={`text-xs hover:bg-slate-50/70 transition-colors ${isOverdue ? 'bg-red-50/40' : isDueSoon ? 'bg-amber-50/40' : ''}`}>
                           <TableCell>
                             <button
-                              onClick={() => openPatient360(r.patient_name, r.contact_number, r.barangay)}
+                              onClick={() => openPatient360(r.patient_name, r.contact_number, r.barangay, 'maternal')}
                               className="font-bold text-slate-900 hover:text-pink-700 text-left cursor-pointer flex items-center gap-1.5"
                             >
                               <Heart size={13} className="text-pink-600" />
@@ -2115,10 +2045,10 @@ export default function NurseDashboard() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => openPatient360(r.patient_name, r.contact_number, r.barangay)}
+                                onClick={() => openPatient360(r.patient_name, r.contact_number, r.barangay, 'maternal')}
                                 className="text-[10px] h-7 px-2 border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer rounded-lg"
                               >
-                                360° Profile
+                                Record Details
                               </Button>
                             </div>
                           </TableCell>
@@ -2235,7 +2165,7 @@ export default function NurseDashboard() {
                         <TableRow key={`imm-${r.id}-${idx}`} className={`text-xs hover:bg-slate-50/70 transition-colors ${isOverdue ? 'bg-red-50/40' : isDueSoon ? 'bg-amber-50/40' : ''}`}>
                           <TableCell>
                             <button
-                              onClick={() => openPatient360(r.child_name, r.contact_number, r.barangay)}
+                              onClick={() => openPatient360(r.child_name, r.contact_number, r.barangay, 'immunizations')}
                               className="font-bold text-slate-900 hover:text-blue-700 text-left cursor-pointer flex items-center gap-1.5"
                             >
                               <Baby size={13} className="text-blue-600" />
@@ -2278,10 +2208,10 @@ export default function NurseDashboard() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => openPatient360(r.child_name, r.contact_number, r.barangay)}
+                              onClick={() => openPatient360(r.child_name, r.contact_number, r.barangay, 'immunizations')}
                               className="text-[10px] h-7 px-2 border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer rounded-lg"
                             >
-                              360° Profile
+                              Record Details
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -2582,6 +2512,15 @@ export default function NurseDashboard() {
                                       </Button>
                                       <Button
                                         size="sm"
+                                        variant="outline"
+                                        onClick={() => handleUpdateApptStatus(apt.id, 'Cancelled', 'Patient did not return for scheduled slot')}
+                                        className="h-7 text-[11px] border-rose-200 text-rose-700 hover:bg-rose-50 gap-1 rounded-lg cursor-pointer font-medium"
+                                        title="Mark as Did Not Return / Cancel and move to Records"
+                                      >
+                                        <XCircle size={11} /> Did Not Return
+                                      </Button>
+                                      <Button
+                                        size="sm"
                                         onClick={() => handleUpdateApptStatus(apt.id, 'Completed')}
                                         className="h-7 text-[11px] bg-blue-600 hover:bg-blue-700 text-white gap-1 rounded-lg cursor-pointer shadow-xs"
                                       >
@@ -2720,8 +2659,8 @@ export default function NurseDashboard() {
             </div>
           )}
 
-          {/* ═══ HISTORICAL ARCHIVES ═════════════════════════════════════════ */}
-          {activeTab === 'archives' && (
+          {/* ═══ CLINICAL & PATIENT RECORDS ═════════════════════════════════ */}
+          {(activeTab === 'records' || activeTab === 'archives') && (
             <ClinicalArchivesHub
               barangay={nurseBarangay}
               onSelectPatient={(name, phone) => openPatient360(name, phone || '')}
@@ -2772,6 +2711,7 @@ export default function NurseDashboard() {
         isOpen={isPatientModalOpen}
         onClose={() => setIsPatientModalOpen(false)}
         patient={selectedPatientModal}
+        initialTab={patientModalTab}
         onSendSmsSuccess={() => toast.success('SMS notification sent to patient')}
         onLogReturnVisit={handleLogReturnVisitFromModal}
       />
@@ -2780,6 +2720,7 @@ export default function NurseDashboard() {
       <SmartClinicalIntakeModal
         isOpen={isIntakeOpen}
         onClose={() => setIsIntakeOpen(false)}
+        availableInventory={inventory}
         onSuccess={(created) => {
           if (created) {
             setConsultations(prev => [created, ...prev]);
@@ -2806,7 +2747,7 @@ export default function NurseDashboard() {
               <span className="bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                 Clinical Encounter
               </span>
-              <span className="text-xs text-slate-400 font-medium">Brgy. {nurseBarangay}</span>
+              <span className="text-xs text-slate-400 font-medium mr-6">Brgy. {nurseBarangay}</span>
             </div>
             <DialogTitle className="text-lg font-bold text-slate-900 mt-1.5 flex items-center gap-2">
               <Stethoscope className="text-teal-600" size={18} /> Record Patient Consultation
@@ -2992,58 +2933,163 @@ export default function NurseDashboard() {
                     <span className="text-[10px] text-slate-400">Add multiple meds</span>
                   </div>
 
-                  <div className="flex flex-wrap gap-1">
-                    {['Paracetamol 500mg', 'Amoxicillin 500mg', 'Mefenamic Acid 500mg', 'Cetirizine 10mg', 'Salbutamol', 'ORS'].map(m => (
-                      <button
-                        type="button"
-                        key={m}
-                        onClick={() => setMedName(m)}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-white hover:bg-teal-50 text-slate-700 border border-slate-200 cursor-pointer"
-                      >
-                        + {m}
-                      </button>
-                    ))}
+                  {/* Step 1: Choose Medicine from Inventory */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-teal-600 text-white text-[10px] flex items-center justify-center font-bold">1</span>
+                        Choose Medicine:
+                      </Label>
+                      {selectedInventoryItem ? (
+                        <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
+                          selectedInventoryItem.stock <= 0
+                            ? 'bg-rose-100 text-rose-700'
+                            : selectedInventoryItem.stock < 10
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {selectedInventoryItem.stock <= 0 ? 'Out of Stock' : `In Stock: ${selectedInventoryItem.stock} ${selectedInventoryItem.unit}`}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">Select medicine to check stock</span>
+                      )}
+                    </div>
+                    <Select value={medName} onValueChange={val => { setMedName(val); setMedQty('1'); }}>
+                      <SelectTrigger className="h-9 text-xs bg-white rounded-xl border-slate-200 shadow-2xs">
+                        <SelectValue placeholder="Select medicine from inventory stock..." />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-56">
+                        {inventory
+                          .filter(i => i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin')
+                          .map(med => (
+                            <SelectItem key={med.id} value={med.item_name} disabled={med.stock <= 0}>
+                              <div className="flex items-center justify-between gap-2 w-full text-xs">
+                                <span>{med.item_name}</span>
+                                <span className={`text-[10px] font-mono font-bold ${med.stock <= 0 ? 'text-red-500' : med.stock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                  ({med.stock} {med.unit})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="col-span-2">
-                      <Select value={medName} onValueChange={setMedName}>
-                        <SelectTrigger className="h-8 text-xs bg-white rounded-lg border-slate-200">
-                          <SelectValue placeholder={medName || "Select medicine from stock..."} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-56">
-                          {inventory
-                            .filter(i => i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin')
-                            .map(med => (
-                              <SelectItem key={med.id} value={med.item_name} disabled={med.stock <= 0}>
-                                <div className="flex items-center justify-between gap-2 w-full text-xs">
-                                  <span>{med.item_name}</span>
-                                  <span className={`text-[10px] font-mono font-bold ${med.stock <= 0 ? 'text-red-500' : med.stock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                    ({med.stock} {med.unit})
-                                  </span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+                  {/* Step 2: Choose Quantity (Freedom to start from 1) */}
+                  <div className="bg-white border border-teal-100 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <Label className="font-bold text-slate-700 flex items-center gap-1.5">
+                        <span className="w-4 h-4 rounded-full bg-teal-600 text-white text-[10px] flex items-center justify-center font-bold">2</span>
+                        Quantity to Dispense (Start from 1):
+                      </Label>
+                      {selectedInventoryItem ? (
+                        <span className="text-[10px] font-semibold text-slate-500">
+                          Max available: {selectedInventoryItem.stock} {selectedInventoryItem.unit}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">Choose a med above to check stock</span>
+                      )}
                     </div>
-                    <div>
-                      <Button type="button" onClick={handleAddMedToRx} size="sm" className="w-full bg-teal-600 hover:bg-teal-700 text-white text-xs h-8 rounded-lg cursor-pointer gap-1">
-                        <Plus size={12} /> Add Med
-                      </Button>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="w-24">
+                        <Input
+                          type="number"
+                          min="1"
+                          max={selectedInventoryItem ? selectedInventoryItem.stock : undefined}
+                          value={medQty}
+                          onChange={e => setMedQty(e.target.value)}
+                          placeholder="1"
+                          className="h-8 text-xs bg-slate-50 rounded-lg border-teal-300 font-mono font-bold text-center focus:bg-white"
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {['1', '2', '5', '10', '14', '20', '30'].map(q => (
+                          <button
+                            type="button"
+                            key={q}
+                            onClick={() => setMedQty(q)}
+                            className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-semibold ${
+                              medQty === q
+                                ? 'bg-teal-600 text-white border-teal-600 font-bold shadow-xs'
+                                : 'bg-slate-50 hover:bg-teal-50 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                        {selectedInventoryItem && selectedInventoryItem.stock > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setMedQty(String(selectedInventoryItem.stock))}
+                            className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold cursor-pointer"
+                          >
+                            Max ({selectedInventoryItem.stock})
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Dosage & Duration Notes */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <Input
+                        value={medDose}
+                        onChange={e => setMedDose(e.target.value)}
+                        placeholder="Dosage (e.g. 500mg, 1 tablet)"
+                        className="h-7.5 text-xs bg-slate-50 rounded-lg border-slate-200"
+                      />
+                      <Input
+                        value={medFreq}
+                        onChange={e => setMedFreq(e.target.value)}
+                        placeholder="Frequency (e.g. 3x daily after meals)"
+                        className="h-7.5 text-xs bg-slate-50 rounded-lg border-slate-200"
+                      />
                     </div>
                   </div>
 
+                  {/* Step 3: Continue ("then continue") */}
+                  <div>
+                    <Button
+                      type="button"
+                      onClick={handleAddMedToRx}
+                      disabled={!medName.trim()}
+                      className={`w-full text-xs h-9 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all ${
+                        medName.trim()
+                          ? 'bg-teal-600 hover:bg-teal-700 text-white'
+                          : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                      }`}
+                    >
+                      <Plus size={14} />
+                      {medName.trim()
+                        ? `Continue (Add ${medQty || 1}x ${medName}) →`
+                        : 'Choose a medicine above, then set quantity & continue'}
+                    </Button>
+                  </div>
+
+                  {/* Prescribed Items Table */}
                   {cPrescriptions.length > 0 && (
-                    <div className="space-y-1 pt-1">
+                    <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                      <p className="text-[11px] font-bold text-slate-700">Prescribed for this Consultation ({cPrescriptions.length}):</p>
                       {cPrescriptions.map((item, i) => (
-                        <div key={item.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+                        <div key={item.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs shadow-xs">
                           <div>
-                            <span className="font-bold text-slate-800">{i + 1}. {item.name} {item.dosage}</span>
-                            <span className="text-[11px] text-slate-500 block">{item.frequency} for {item.duration}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-800">{i + 1}. {item.name} {item.dosage}</span>
+                              <Badge className="bg-teal-100 text-teal-900 border border-teal-300 text-[10px] font-mono font-bold px-2 py-0.5">
+                                Qty: {item.quantity || 1} {item.unit || ''}
+                              </Badge>
+                            </div>
+                            <span className="text-[11px] text-slate-500 block mt-0.5">
+                              {item.frequency || 'Take as directed'} {item.duration ? `· ${item.duration}` : ''}
+                            </span>
                           </div>
-                          <button type="button" onClick={() => setCPrescriptions(prev => prev.filter(p => p.id !== item.id))} className="text-red-500 hover:text-red-700 cursor-pointer p-1">
-                            <Trash2 size={12} />
+                          <button
+                            type="button"
+                            onClick={() => setCPrescriptions(prev => prev.filter(p => p.id !== item.id))}
+                            className="text-red-500 hover:text-red-700 cursor-pointer p-1.5 hover:bg-red-50 rounded-md transition-colors"
+                            title="Remove medicine"
+                          >
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       ))}
@@ -3060,7 +3106,6 @@ export default function NurseDashboard() {
                   <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <Heart size={14} className="text-teal-600" /> Family Planning &amp; Reproductive Care
                   </span>
-                  <Badge className="bg-teal-50 text-teal-800 border-teal-200 text-[10px]">DOH Program</Badge>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
@@ -3330,7 +3375,7 @@ export default function NurseDashboard() {
               <span className="bg-pink-50 text-pink-800 border border-pink-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                 Maternal Care
               </span>
-              <span className="text-xs text-slate-400 font-medium">Brgy. {nurseBarangay}</span>
+              <span className="text-xs text-slate-400 font-medium mr-6">Brgy. {nurseBarangay}</span>
             </div>
             <DialogTitle className="text-lg font-bold text-slate-900 mt-1.5 flex items-center gap-2">
               <Heart className="text-pink-600" size={18} /> New Prenatal / Maternal Record (2nd Visit Tracking)
@@ -3412,9 +3457,116 @@ export default function NurseDashboard() {
               </div>
             </div>
 
-            <div>
-              <Label className="text-xs font-semibold">Prescribed Medicines &amp; Supplements</Label>
-              <Input value={pMeds} onChange={e => setPMeds(e.target.value)} placeholder="e.g. FeSO4 60mg + Folic Acid 400mcg daily" className="h-9 text-xs mt-1 rounded-xl" />
+            {/* Prenatal Medicines & Supplements Dispensing Flow */}
+            <div className="bg-pink-50/40 border border-pink-200 rounded-xl p-3 space-y-2.5">
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-pink-600 text-white text-[10px] flex items-center justify-center font-bold">1</span>
+                    Choose Maternal Vitamins / Supplements:
+                  </Label>
+                  {selectedPrenatalInvItem ? (
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                      selectedPrenatalInvItem.stock <= 0
+                        ? 'bg-rose-100 text-rose-700'
+                        : selectedPrenatalInvItem.stock < 30
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {selectedPrenatalInvItem.stock <= 0 ? 'Out of Stock' : `In Stock: ${selectedPrenatalInvItem.stock} ${selectedPrenatalInvItem.unit}`}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400">Select vitamin to check stock</span>
+                  )}
+                </div>
+
+                <div className="pt-1.5">
+                  <Select
+                    value={pMeds}
+                    onValueChange={(val) => {
+                      setPMeds(val);
+                      setPMedQty('1');
+                    }}
+                  >
+                    <SelectTrigger className="h-9 text-xs bg-white rounded-xl border-slate-200 shadow-xs">
+                      <SelectValue placeholder="Select prenatal vitamin from inventory..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-56">
+                      {inventory
+                        .filter(i => i.category === 'Maternal Vitamin' || i.item_name.toLowerCase().includes('folic') || i.item_name.toLowerCase().includes('calcium'))
+                        .map(med => (
+                          <SelectItem key={med.id} value={med.item_name} disabled={med.stock <= 0}>
+                            <div className="flex items-center justify-between gap-3 w-full text-xs">
+                              <span className="font-medium text-slate-800">{med.item_name}</span>
+                              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                                med.stock <= 0
+                                  ? 'bg-red-50 text-red-600'
+                                  : med.stock < 30
+                                  ? 'bg-amber-50 text-amber-700'
+                                  : 'bg-emerald-50 text-emerald-700'
+                              }`}>
+                                {med.stock <= 0 ? 'Out of Stock' : `${med.stock} ${med.unit || 'tablets'} available`}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Quantity to Dispense */}
+              <div className="bg-white border border-pink-100 rounded-lg p-2.5 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <Label className="font-bold text-slate-700 flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-pink-600 text-white text-[10px] flex items-center justify-center font-bold">2</span>
+                    Quantity to Dispense (Freedom to start from 1):
+                  </Label>
+                  {selectedPrenatalInvItem && (
+                    <span className="text-[10px] text-slate-500">
+                      Max in stock: {selectedPrenatalInvItem.stock} {selectedPrenatalInvItem.unit}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="w-24">
+                    <Input
+                      type="number"
+                      min="1"
+                      max={selectedPrenatalInvItem ? selectedPrenatalInvItem.stock : undefined}
+                      value={pMedQty}
+                      onChange={e => setPMedQty(e.target.value)}
+                      placeholder="1"
+                      className="h-8 text-xs bg-slate-50 rounded-lg border-pink-300 font-mono font-bold text-center focus:bg-white"
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {['1', '15', '30', '60', '90'].map(q => (
+                      <button
+                        type="button"
+                        key={q}
+                        onClick={() => setPMedQty(q)}
+                        className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-semibold ${
+                          pMedQty === q
+                            ? 'bg-pink-600 text-white border-pink-600 font-bold shadow-xs'
+                            : 'bg-slate-50 hover:bg-pink-50 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                    {selectedPrenatalInvItem && selectedPrenatalInvItem.stock > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setPMedQty(String(selectedPrenatalInvItem.stock))}
+                        className="text-[10px] px-2.5 py-1 rounded-lg bg-pink-50 hover:bg-pink-100 text-pink-900 border border-pink-300 font-bold cursor-pointer"
+                      >
+                        Max ({selectedPrenatalInvItem.stock})
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
@@ -3446,10 +3598,10 @@ export default function NurseDashboard() {
               <span className="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                 Child Immunization (EPI)
               </span>
-              <span className="text-xs text-slate-400 font-medium">Brgy. {nurseBarangay}</span>
+              <span className="text-xs text-slate-400 font-medium mr-6">Brgy. {nurseBarangay}</span>
             </div>
             <DialogTitle className="text-lg font-bold text-slate-900 mt-1.5 flex items-center gap-2">
-              <Baby className="text-blue-600" size={18} /> Record Child Immunization (DOH Standard)
+              <Baby className="text-blue-600" size={18} /> Record Child Immunization
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 mt-0.5">
               Dynamic vaccine selection, batch recording, dose 2 tracking, and automated reminder alerts.
@@ -3539,6 +3691,36 @@ export default function NurseDashboard() {
                       <SelectItem value="Single Dose">Single Dose</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              {/* Vaccine Dose / Vials to Dispense (Freedom from 1) */}
+              <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between flex-wrap gap-2">
+                <span className="text-[11px] font-semibold text-slate-700">Vials / Doses to Dispense:</span>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={iVaccineQty}
+                    onChange={e => setIVaccineQty(e.target.value)}
+                    className="h-7 w-20 text-xs text-center bg-white rounded-md border-slate-300 font-mono font-bold"
+                  />
+                  <div className="flex items-center gap-1">
+                    {['1', '2', '3'].map(q => (
+                      <button
+                        type="button"
+                        key={q}
+                        onClick={() => setIVaccineQty(q)}
+                        className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer font-medium ${
+                          iVaccineQty === q
+                            ? 'bg-blue-600 text-white border-blue-600 font-bold'
+                            : 'bg-white hover:bg-blue-50 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        {q} vial{q !== '1' ? 's' : ''}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

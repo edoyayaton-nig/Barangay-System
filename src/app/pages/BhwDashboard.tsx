@@ -39,7 +39,9 @@ import {
   HeartHandshake,
   Pill,
   Trash2,
-  Package
+  Package,
+  ClipboardList,
+  XCircle
 } from 'lucide-react';
 import { apiService, ImmunizationRecord, MaternalRecord, SmsNotification, DocumentRequest, HealthAppointment, ClinicSchedule, InventoryItem } from '../../services/api';
 import SystemMessenger from '../components/SystemMessenger';
@@ -121,10 +123,10 @@ export default function BhwDashboard() {
   const [newScheduleBhw, setNewScheduleBhw] = useState('Nurse Maria Santos');
 
   const [stats, setStats] = useState({
-    childrenMonitored: 245,
-    maternalRecords: 89,
-    vaccinationsMonth: 156,
-    overdueImmunizations: 12
+    childrenMonitored: 0,
+    maternalRecords: 0,
+    vaccinationsMonth: 0,
+    overdueImmunizations: 0
   });
 
   // Document Info Modal State
@@ -252,24 +254,32 @@ export default function BhwDashboard() {
   const [smsType, setSmsType] = useState('Immunization Reminder');
   const [smsMessage, setSmsMessage] = useState('');
 
-  // Load Data
-  const loadData = async () => {
-    setLoading(true);
+  const triggerHealthSync = () => {
+    try {
+      const ch = new BroadcastChannel('barangay_health_sync');
+      ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
+      ch.close();
+    } catch {}
+  };
+
+  // Load Data with silent real-time background sync support
+  const loadData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const [immData, matData, smsData, statsData, docsData, aptsData, schedulesData, invData] = await Promise.all([
-        apiService.getImmunizations(),
-        apiService.getMaternalRecords(),
-        apiService.getNotifications(),
-        apiService.getBhwStats(),
-        apiService.getDocuments(),
-        apiService.getAppointments(),
-        apiService.getClinicSchedules(),
-        apiService.getInventory(user?.barangay || 'Pianing')
+        apiService.getImmunizations().catch(() => []),
+        apiService.getMaternalRecords().catch(() => []),
+        apiService.getNotifications().catch(() => []),
+        apiService.getBhwStats().catch(() => null),
+        apiService.getDocuments().catch(() => []),
+        apiService.getAppointments().catch(() => []),
+        apiService.getClinicSchedules().catch(() => []),
+        apiService.getInventory(user?.barangay || 'Pianing').catch(() => [])
       ]);
-      setImmunizations(immData);
-      setMaternalRecords(matData);
-      setNotifications(smsData);
-      setStats(statsData);
+      setImmunizations(immData || []);
+      setMaternalRecords(matData || []);
+      setNotifications(smsData || []);
+      if (statsData) setStats(statsData);
       setDocuments(docsData || []);
       setAppointments(aptsData || []);
       setClinicSchedules(schedulesData || []);
@@ -277,9 +287,9 @@ export default function BhwDashboard() {
         setInventory(invData);
       }
     } catch (err) {
-      toast.error('Failed to load health monitoring data');
+      if (showLoading) toast.error('Failed to load health monitoring data');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -313,22 +323,25 @@ export default function BhwDashboard() {
       setIsScheduleModalOpen(false);
       setSelectedApptToSchedule(null);
       loadData();
+      triggerHealthSync();
     } catch (err) {
       toast.error('Failed to update appointment schedule');
     }
   };
 
-  const handleUpdateApptStatus = async (id: number, newStatus: 'Completed' | 'Cancelled') => {
+  const handleUpdateApptStatus = async (id: number, newStatus: 'Completed' | 'Cancelled', notes?: string) => {
     const apt = appointments.find(a => a.id === id);
     try {
       await apiService.updateAppointment(id, {
         status: newStatus,
+        bhw_notes: notes || apt?.bhw_notes || (newStatus === 'Cancelled' ? 'Patient did not return for scheduled slot' : 'Visit completed successfully'),
         attending_bhw: user?.name || 'Nurse Maria Santos (BHW)',
         user_name: user?.name,
         user_role: user?.role
       });
-      toast.success(`Appointment marked as ${newStatus}`);
+      toast.success(newStatus === 'Cancelled' ? 'Appointment marked as Did Not Return / Cancelled & moved to Records' : `Appointment marked as ${newStatus}`);
       loadData();
+      triggerHealthSync();
     } catch {
       toast.error(`Failed to mark appointment as ${newStatus}`);
     }
@@ -361,6 +374,7 @@ export default function BhwDashboard() {
       setIsPostScheduleOpen(false);
       setNewScheduleTitle('');
       loadData();
+      triggerHealthSync();
     } catch {
       toast.error('Failed to post clinic schedule');
     }
@@ -372,6 +386,7 @@ export default function BhwDashboard() {
       await apiService.deleteClinicSchedule(id);
       toast.success('Clinic schedule removed.');
       loadData();
+      triggerHealthSync();
     } catch {
       toast.error('Failed to remove schedule');
     }
@@ -432,6 +447,25 @@ export default function BhwDashboard() {
       return;
     }
     loadData();
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('barangay_health_sync');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'HEALTH_DATA_SYNC') {
+          loadData(false);
+        }
+      };
+    } catch {}
+
+    const interval = setInterval(() => {
+      loadData(false);
+    }, 4000);
+
+    return () => {
+      if (channel) channel.close();
+      clearInterval(interval);
+    };
   }, [navigate]);
 
   // Handlers
@@ -536,9 +570,11 @@ export default function BhwDashboard() {
       const saved = await apiService.addInventoryItem(payload);
       setInventory(prev => [saved, ...prev.filter(i => i.id !== saved.id)]);
       toast.success(`${invName} saved to inventory!`);
+      triggerHealthSync();
     } catch {
       setInventory(prev => [{ id: Date.now(), ...payload } as any, ...prev]);
       toast.success(`${invName} added to local inventory`);
+      triggerHealthSync();
     }
     setIsInventoryOpen(false);
     setInvName(''); setInvCat('Vaccine (EPI)'); setInvStock(''); setInvUnit('vials'); setInvExpiry('');
@@ -561,9 +597,11 @@ export default function BhwDashboard() {
       });
       setInventory(prev => prev.map(i => i.id === restockTargetItem.id ? { ...i, stock: newStock, status: newStatus } : i));
       toast.success(`Successfully added +${addAmount} ${restockTargetItem.unit} to ${restockTargetItem.item_name}!`);
+      triggerHealthSync();
     } catch {
       setInventory(prev => prev.map(i => i.id === restockTargetItem.id ? { ...i, stock: newStock, status: newStatus } : i));
       toast.info(`Stock updated (+${addAmount})`);
+      triggerHealthSync();
     }
     setIsRestockOpen(false);
     setRestockTargetItem(null);
@@ -575,6 +613,7 @@ export default function BhwDashboard() {
     } catch {}
     setInventory(prev => prev.filter(i => i.id !== id));
     toast.success('Inventory item removed');
+    triggerHealthSync();
   };
 
   const handleMarkImmunizationComplete = async (id: number) => {
@@ -773,7 +812,7 @@ export default function BhwDashboard() {
     { id: 'immunization', label: 'Immunization Tracking', icon: Syringe },
     { id: 'maternal', label: 'Maternal Health', icon: Heart },
     { id: 'inventory', label: 'Vaccines & Medicine Supply', icon: Pill },
-    { id: 'archives', label: 'Clinical Archives & EHR', icon: Archive },
+    { id: 'records', label: 'Records', icon: ClipboardList },
     { id: 'notifications', label: 'Gmail Notification Hub', icon: Bell },
     { id: 'reports', label: 'Health Reports', icon: BarChart },
     { id: 'profile', label: 'Profile Settings', icon: UserCheck },
@@ -1371,7 +1410,7 @@ export default function BhwDashboard() {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => handleOpenScheduleModal(apt)}
-                                      className="h-7 text-[11px] border-emerald-300 text-emerald-700 hover:bg-emerald-50 gap-1"
+                                      className="h-7 text-[11px] border-emerald-300 text-emerald-700 hover:bg-emerald-50 gap-1 rounded-lg cursor-pointer"
                                       title="Reschedule / Edit instructions"
                                     >
                                       Edit Slot
@@ -1379,9 +1418,18 @@ export default function BhwDashboard() {
                                     <Button
                                       size="sm"
                                       onClick={() => handleUpdateApptStatus(apt.id, 'Completed')}
-                                      className="h-7 text-[11px] bg-blue-600 hover:bg-blue-700 text-white gap-1"
+                                      className="h-7 text-[11px] bg-blue-600 hover:bg-blue-700 text-white gap-1 rounded-lg cursor-pointer shadow-xs"
                                     >
                                       <CheckCircle2 size={12} /> Mark Completed
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleUpdateApptStatus(apt.id, 'Cancelled', 'Patient did not return for scheduled slot')}
+                                      className="h-7 text-[11px] border-rose-200 text-rose-700 hover:bg-rose-50 gap-1 rounded-lg cursor-pointer font-medium"
+                                      title="Mark as Did Not Return / Cancel and move to Records"
+                                    >
+                                      <XCircle size={11} /> Did Not Return
                                     </Button>
                                   </>
                                 )}
@@ -1390,8 +1438,9 @@ export default function BhwDashboard() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    onClick={() => handleUpdateApptStatus(apt.id, 'Cancelled')}
-                                    className="h-7 text-[11px] text-red-600 hover:bg-red-50"
+                                    onClick={() => handleUpdateApptStatus(apt.id, 'Cancelled', 'Patient did not return for scheduled slot')}
+                                    className="h-7 text-[11px] text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-lg cursor-pointer"
+                                    title="Cancel and move to Records"
                                   >
                                     Cancel
                                   </Button>
@@ -2663,8 +2712,8 @@ export default function BhwDashboard() {
             </div>
           )}
 
-          {/* TAB 4: CLINICAL ARCHIVES & EHR */}
-          {activeTab === 'archives' && (
+          {/* TAB 4: CLINICAL & PATIENT RECORDS */}
+          {(activeTab === 'records' || activeTab === 'archives') && (
             <ClinicalArchivesHub
               barangay={user?.barangay || 'Pianing'}
             />
@@ -3029,6 +3078,7 @@ export default function BhwDashboard() {
       <SmartClinicalIntakeModal
         isOpen={isIntakeOpen}
         onClose={() => setIsIntakeOpen(false)}
+        availableInventory={inventory}
         onSuccess={loadData}
         barangay={user?.barangay || 'Pianing'}
         attendingWorker={user?.name || 'Barangay Health Worker'}

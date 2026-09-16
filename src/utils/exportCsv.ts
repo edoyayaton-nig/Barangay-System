@@ -163,7 +163,6 @@ export function buildReportBodyHtml(options: OfficialReportOptions): string {
 
     <div class="report-meta-bar">
       <div><strong>DATE GENERATED:</strong> ${nowFormatted}</div>
-      <div><strong>RECORD CUSTODIAN:</strong> ${preparedBy} (${preparedByTitle})</div>
     </div>
 
     ${statsHtml}
@@ -171,17 +170,12 @@ export function buildReportBodyHtml(options: OfficialReportOptions): string {
 
     <div class="signatures">
       <div class="sig-block">
-        <div class="sig-label">Prepared &amp; Certified By:</div>
+        <div class="sig-label">Prepared By:</div>
         <div class="sig-line">${preparedBy}</div>
         <div class="sig-title">${preparedByTitle}</div>
       </div>
-      <div class="seal-circle">
-        <span>OFFICIAL SEAL</span>
-        <span style="font-size: 4.5pt; color: #475569; margin-top: 2px;">BARANGAY ${brgyUpper}</span>
-        <span style="font-size: 4.5pt; color: #475569;">BUTUAN CITY</span>
-      </div>
       <div class="sig-block">
-        <div class="sig-label">Attested &amp; Approved By:</div>
+        <div class="sig-label">Approved By:</div>
         <div class="sig-line">HON. VIRGENIA S. GOLANDRINA</div>
         <div class="sig-title">Punong Barangay</div>
       </div>

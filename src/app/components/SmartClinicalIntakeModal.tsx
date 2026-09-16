@@ -55,6 +55,8 @@ interface PrescribedItem {
   frequency: string;
   duration: string;
   instructions: string;
+  quantity?: number;
+  unit?: string;
 }
 
 export default function SmartClinicalIntakeModal({
@@ -115,9 +117,30 @@ export default function SmartClinicalIntakeModal({
   const [prescribedList, setPrescribedList] = useState<PrescribedItem[]>([]);
   const [medInputName, setMedInputName] = useState('');
   const [medInputDosage, setMedInputDosage] = useState('500mg');
+  const [medInputQty, setMedInputQty] = useState('1'); // Starting from 1 with full freedom
   const [medInputFreq, setMedInputFreq] = useState('3x daily after meals');
   const [medInputDuration, setMedInputDuration] = useState('7 days');
   const [medInputInstructions, setMedInputInstructions] = useState('Take with a full glass of water');
+
+  const defaultInventory: InventoryItem[] = [
+    { id: 1, item_name: 'Paracetamol 500mg', category: 'Essential Medicine', stock: 800, unit: 'tablets', expiry_date: '2027-05-30', status: 'In Stock' },
+    { id: 2, item_name: 'Amoxicillin 500mg', category: 'Essential Medicine', stock: 500, unit: 'capsules', expiry_date: '2027-04-15', status: 'In Stock' },
+    { id: 3, item_name: 'Mefenamic Acid 500mg', category: 'Essential Medicine', stock: 250, unit: 'capsules', expiry_date: '2026-11-20', status: 'In Stock' },
+    { id: 4, item_name: 'Cetirizine 10mg', category: 'Essential Medicine', stock: 300, unit: 'tablets', expiry_date: '2026-12-15', status: 'In Stock' },
+    { id: 5, item_name: 'Salbutamol Nebule 2.5mg', category: 'Essential Medicine', stock: 60, unit: 'nebules', expiry_date: '2026-10-01', status: 'In Stock' },
+    { id: 6, item_name: 'Oral Rehydration Salts (ORS)', category: 'Essential Medicine', stock: 150, unit: 'sachets', expiry_date: '2027-08-01', status: 'In Stock' },
+    { id: 7, item_name: 'Ferrous Sulfate + Folic Acid', category: 'Maternal Vitamin', stock: 1200, unit: 'tablets', expiry_date: '2027-01-01', status: 'In Stock' },
+    { id: 8, item_name: 'Calcium Carbonate 500mg', category: 'Maternal Vitamin', stock: 850, unit: 'tablets', expiry_date: '2026-12-31', status: 'In Stock' },
+  ];
+
+  const activeCatalog = availableInventory && availableInventory.length > 0 ? availableInventory : defaultInventory;
+  const selectedIntakeInvItem = useMemo(() => {
+    if (!medInputName) return null;
+    const lower = medInputName.trim().toLowerCase();
+    return activeCatalog.find(i => i.item_name.trim().toLowerCase() === lower) ||
+      activeCatalog.find(i => i.item_name.toLowerCase().includes(lower) || lower.includes(i.item_name.toLowerCase())) ||
+      null;
+  }, [medInputName, activeCatalog]);
 
   // Adolescent Health Consultation fields
   const [adolescentStage, setAdolescentStage] = useState('Mid Adolescent (15-17 yrs)');
@@ -233,17 +256,29 @@ export default function SmartClinicalIntakeModal({
       toast.error('Please enter or select medication name');
       return;
     }
+    const qtyNum = parseInt(medInputQty, 10);
+    if (isNaN(qtyNum) || qtyNum < 1) {
+      toast.error('Please enter a valid quantity of at least 1 unit');
+      return;
+    }
+    if (selectedIntakeInvItem && selectedIntakeInvItem.stock < qtyNum) {
+      toast.error(`Stock limit exceeded: only ${selectedIntakeInvItem.stock} ${selectedIntakeInvItem.unit || 'units'} available in inventory`);
+      return;
+    }
     const item: PrescribedItem = {
       id: String(Date.now()),
       name: medInputName.trim(),
       dosage: medInputDosage.trim(),
       frequency: medInputFreq.trim(),
       duration: medInputDuration.trim(),
-      instructions: medInputInstructions.trim()
+      instructions: medInputInstructions.trim(),
+      quantity: qtyNum,
+      unit: selectedIntakeInvItem?.unit || 'units'
     };
     setPrescribedList(prev => [...prev, item]);
     setMedInputName('');
-    toast.success(`Added ${item.name} to prescription`);
+    setMedInputQty('1');
+    toast.success(`Added ${qtyNum}x ${item.name} to prescription`);
   };
 
   const removePrescriptionItem = (id: string) => {
@@ -267,7 +302,7 @@ export default function SmartClinicalIntakeModal({
       const actualProgram = selectedProgram === 'Consultation' ? consultProgram : selectedProgram;
 
       const formattedRx = prescribedList.length > 0
-        ? prescribedList.map(m => `${m.name} ${m.dosage} (${m.frequency}, ${m.duration})${m.instructions ? ` - ${m.instructions}` : ''}`).join('; ')
+        ? prescribedList.map(m => `${m.name} ${m.dosage} (Qty: ${m.quantity || 1} ${m.unit || 'units'}) [${m.frequency}, ${m.duration}]${m.instructions ? ` - ${m.instructions}` : ''}`).join('; ')
         : treatment;
 
       let finalChiefComplaint = chiefComplaint;
@@ -288,8 +323,8 @@ export default function SmartClinicalIntakeModal({
         finalTreatment = treatment || `Regimen: ${tbPhase}. Treatment Partner: ${tbAdherencePartner}`;
       } else if (actualProgram === 'Family Planning') {
         finalChiefComplaint = chiefComplaint || `Family Planning Service (${fpMethod})`;
-        finalDiagnosis = diagnosis || `FP Client Status: ${fpClientType}`;
-        finalTreatment = treatment || `Dispensed/Administered: ${fpMethod}. Next Resupply: ${fpNextSupply || nextVisitDate || 'Scheduled'}`;
+        finalDiagnosis = diagnosis || `Family Planning Method: ${fpMethod} (${fpClientType})`;
+        finalTreatment = treatment || `Provided: ${fpMethod}. Next Resupply: ${fpNextSupply || 'Scheduled'}`;
       }
 
       const activeVaccine = customVaccine.trim() || vaccineName;
@@ -297,22 +332,28 @@ export default function SmartClinicalIntakeModal({
       const payload = {
         patient_name: patientName.trim(),
         contact_number: phone.trim(),
-        age: age || '—',
+        email: email.trim() || undefined,
         gender,
+        date_of_birth: birthday || undefined,
+        age: age ? String(age) : undefined,
         civil_status: civilStatus,
         purok,
         barangay,
-        email: email.trim(),
-        bp: bpValue,
-        temp,
-        weight: weight ? `${weight} kg` : '',
-        height: height ? `${height} cm` : '',
-        heart_rate: heartRate ? `${heartRate} bpm` : '',
+        service_type: actualProgram,
         program_type: actualProgram,
+        bp: bpValue,
+        temp: `${temp} °C`,
+        weight: weight ? `${weight} kg` : undefined,
+        height: height ? `${height} cm` : undefined,
+        heart_rate: heartRate ? `${heartRate} bpm` : '75 bpm',
         chief_complaint: finalChiefComplaint || 'Routine Health Visit',
         diagnosis: finalDiagnosis || 'Assessment Complete',
-        treatment: finalTreatment || 'Routine health counseling advised.',
+        treatment: finalTreatment,
         prescribed_meds: formattedRx || finalTreatment,
+        prescriptions: prescribedList.map(p => ({
+          ...p,
+          quantity: p.quantity || 1
+        })),
         lmp: lmp || undefined,
         edd: edd || undefined,
         aog_weeks: aogWeeks || undefined,
@@ -354,6 +395,12 @@ export default function SmartClinicalIntakeModal({
       toast.success(`Clinical intake for ${patientName} saved successfully!`, {
         description: `Program: ${actualProgram} | Instant sync to Health Registry`
       });
+
+      try {
+        const ch = new BroadcastChannel('barangay_health_sync');
+        ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
+        ch.close();
+      } catch {}
 
       if (onSuccess) onSuccess(createdRecord);
       handleReset();
@@ -946,69 +993,147 @@ export default function SmartClinicalIntakeModal({
                     <span className="text-[10px] text-slate-400">Add multiple medications</span>
                   </div>
 
-                  {/* Quick Select Pills */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {['Amoxicillin 500mg', 'Paracetamol 500mg', 'Mefenamic Acid 500mg', 'Cetirizine 10mg', 'Salbutamol', 'ORS Solution', 'Ferrous Sulfate'].map(med => (
-                      <button
-                        type="button"
-                        key={med}
-                        onClick={() => setMedInputName(med)}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 hover:bg-teal-100 text-slate-700 hover:text-teal-800 border border-slate-200 cursor-pointer transition-colors"
-                      >
-                        + {med}
-                      </button>
-                    ))}
+                  {/* Step 1: Select Medicine from Inventory */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-teal-600 text-white text-[11px] flex items-center justify-center font-bold">1</span>
+                        Choose Medicine:
+                      </Label>
+                      {selectedIntakeInvItem ? (
+                        <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md ${
+                          selectedIntakeInvItem.stock <= 0
+                            ? 'bg-rose-100 text-rose-700'
+                            : selectedIntakeInvItem.stock <= 20
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {selectedIntakeInvItem.stock <= 0 ? 'Out of Stock' : `In Stock: ${selectedIntakeInvItem.stock} ${selectedIntakeInvItem.unit || 'units'}`}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">Select medicine to verify stock</span>
+                      )}
+                    </div>
+
+                    <Select
+                      value={medInputName}
+                      onValueChange={(val) => {
+                        setMedInputName(val);
+                        setMedInputQty('1');
+                      }}
+                    >
+                      <SelectTrigger className="h-9.5 text-xs bg-white rounded-xl border-slate-200 shadow-xs focus:ring-2 focus:ring-teal-500">
+                        <SelectValue placeholder="Select medication from inventory..." />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {activeCatalog
+                          .filter(i => i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin')
+                          .map(med => (
+                            <SelectItem key={med.id} value={med.item_name} disabled={med.stock <= 0}>
+                              <div className="flex items-center justify-between gap-3 w-full text-xs py-1">
+                                <span className="font-semibold text-slate-800">{med.item_name}</span>
+                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                                  med.stock <= 0
+                                    ? 'bg-red-50 text-red-600'
+                                    : med.stock <= 20
+                                    ? 'bg-amber-50 text-amber-700'
+                                    : 'bg-emerald-50 text-emerald-700'
+                                }`}>
+                                  {med.stock <= 0 ? '0 (Out)' : `${med.stock} ${med.unit || 'units'}`}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1">
-                    <div className="sm:col-span-2">
-                      <Select
-                        value={medInputName}
-                        onValueChange={(val) => setMedInputName(val)}
-                      >
-                        <SelectTrigger className="h-8 text-xs bg-white rounded-lg border-slate-200">
-                          <SelectValue placeholder={medInputName || "Choose medicine from inventory..."} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-56">
-                          {availableInventory.length > 0 ? (
-                            availableInventory
-                              .filter(i => i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin')
-                              .map(med => (
-                                <SelectItem key={med.id} value={med.item_name} disabled={med.stock <= 0}>
-                                  <div className="flex items-center justify-between gap-2 w-full text-xs">
-                                    <span>{med.item_name}</span>
-                                    <span className={`text-[10px] font-mono font-bold ${med.stock <= 0 ? 'text-red-500' : med.stock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                      ({med.stock} {med.unit})
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ))
-                          ) : (
-                            ['Amoxicillin 500mg', 'Paracetamol 500mg', 'Mefenamic Acid 500mg', 'Cetirizine 10mg', 'Salbutamol Nebule 2.5mg', 'Oral Rehydration Salts (ORS)', 'Ferrous Sulfate + Folic Acid'].map(m => (
-                              <SelectItem key={m} value={m}>{m}</SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                  {/* Step 2: Choose Quantity (Dynamic limit based on selected medicine) */}
+                  <div className={`border rounded-xl p-3 space-y-2.5 transition-all ${
+                    selectedIntakeInvItem ? 'bg-teal-50/40 border-teal-200' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between text-xs">
+                      <Label className="font-bold text-slate-700 flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-teal-600 text-white text-[11px] flex items-center justify-center font-bold">2</span>
+                        Quantity to Dispense:
+                      </Label>
+                      {selectedIntakeInvItem && (
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          Available: <strong className="text-teal-700 font-mono">{selectedIntakeInvItem.stock}</strong> {selectedIntakeInvItem.unit || 'units'}
+                        </span>
+                      )}
                     </div>
-                    <div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="w-24">
+                        <Input
+                          type="number"
+                          min="1"
+                          max={selectedIntakeInvItem ? selectedIntakeInvItem.stock : undefined}
+                          value={medInputQty}
+                          onChange={e => setMedInputQty(e.target.value)}
+                          placeholder="1"
+                          disabled={!selectedIntakeInvItem || selectedIntakeInvItem.stock <= 0}
+                          className="h-8.5 text-xs bg-white rounded-lg border-teal-300 font-mono font-bold text-center shadow-2xs focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {['1', '2', '5', '10', '14', '20', '30'].map(q => (
+                          <button
+                            type="button"
+                            key={q}
+                            disabled={!selectedIntakeInvItem || (selectedIntakeInvItem.stock < parseInt(q, 10))}
+                            onClick={() => setMedInputQty(q)}
+                            className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all font-semibold ${
+                              !selectedIntakeInvItem || (selectedIntakeInvItem.stock < parseInt(q, 10))
+                                ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                                : medInputQty === q
+                                ? 'bg-teal-600 text-white border-teal-600 font-bold shadow-xs cursor-pointer'
+                                : 'bg-white hover:bg-teal-50 text-slate-700 border-slate-200 cursor-pointer'
+                            }`}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                        {selectedIntakeInvItem && selectedIntakeInvItem.stock > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setMedInputQty(String(selectedIntakeInvItem.stock))}
+                            className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold cursor-pointer transition-colors"
+                          >
+                            Max ({selectedIntakeInvItem.stock})
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-1">
                       <Input
                         value={medInputDosage}
                         onChange={e => setMedInputDosage(e.target.value)}
-                        placeholder="Dosage (500mg)"
-                        className="h-8 text-xs bg-white rounded-lg border-slate-200"
+                        placeholder="Dosage & instructions (e.g. 500mg, 1 tablet 3x daily after meals)"
+                        className="h-8 text-xs bg-white rounded-lg border-slate-200 shadow-2xs"
                       />
                     </div>
-                    <div>
-                      <Button
-                        type="button"
-                        onClick={addPrescriptionItem}
-                        size="sm"
-                        className="w-full bg-teal-600 hover:bg-teal-700 text-white text-xs h-8 rounded-lg cursor-pointer gap-1"
-                      >
-                        <Plus size={12} /> Add Med
-                      </Button>
-                    </div>
+                  </div>
+
+                  {/* Step 3: Continue ("then continue") */}
+                  <div>
+                    <Button
+                      type="button"
+                      onClick={addPrescriptionItem}
+                      disabled={!medInputName.trim()}
+                      className={`w-full text-xs h-9 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all ${
+                        medInputName.trim()
+                          ? 'bg-teal-600 hover:bg-teal-700 text-white'
+                          : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                      }`}
+                    >
+                      <Plus size={14} />
+                      {medInputName.trim()
+                        ? `Continue (Add ${medInputQty || 1}x ${medInputName}) →`
+                        : 'Choose a medicine above, then set quantity & continue'}
+                    </Button>
                   </div>
 
                   {/* Prescribed Items Table */}
@@ -1017,7 +1142,12 @@ export default function SmartClinicalIntakeModal({
                       {prescribedList.map((item, idx) => (
                         <div key={item.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
                           <div>
-                            <span className="font-bold text-slate-800">{idx + 1}. {item.name} {item.dosage}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-800">{idx + 1}. {item.name} {item.dosage}</span>
+                              <Badge className="bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-mono font-bold px-1.5 py-0">
+                                Qty: {item.quantity || 1} {item.unit || ''}
+                              </Badge>
+                            </div>
                             <span className="text-slate-500 text-[11px] block">{item.frequency} for {item.duration}</span>
                           </div>
                           <button

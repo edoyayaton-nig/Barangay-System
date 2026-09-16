@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, FileText, Syringe, Heart, Phone, MapPin, ShieldCheck, Building2, Send, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { User, FileText, Syringe, Heart, Phone, MapPin, ShieldCheck, Building2, Send, MessageSquare, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
 import { apiService, Resident, DocumentRequest, MaternalRecord, ImmunizationRecord } from '../../services/api';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Badge } from './ui/badge';
@@ -15,10 +15,21 @@ interface ResidentProfileModalProps {
   residentId: number | null;
   isOpen: boolean;
   onClose: () => void;
+  canVerify?: boolean;
+  onStatusUpdated?: () => void;
+  currentUserName?: string;
 }
 
-export default function ResidentProfileModal({ residentId, isOpen, onClose }: ResidentProfileModalProps) {
+export default function ResidentProfileModal({
+  residentId,
+  isOpen,
+  onClose,
+  canVerify = false,
+  onStatusUpdated,
+  currentUserName
+}: ResidentProfileModalProps) {
   const [loading, setLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [resident, setResident] = useState<Resident | null>(null);
   const [documents, setDocuments] = useState<DocumentRequest[]>([]);
   const [maternal, setMaternal] = useState<MaternalRecord[]>([]);
@@ -69,87 +80,187 @@ export default function ResidentProfileModal({ residentId, isOpen, onClose }: Re
     }
   };
 
+  const handleApproveResident = async () => {
+    if (!resident) return;
+    setIsVerifying(true);
+    try {
+      await apiService.approveResident(resident.id, currentUserName || 'Barangay Admin');
+      toast.success(`Resident ${resident.first_name} ${resident.last_name} is now VERIFIED!`);
+      setResident(prev => prev ? { ...prev, verification_status: 'Verified' } : null);
+      if (onStatusUpdated) onStatusUpdated();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to verify resident');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleUnverifyResident = async () => {
+    if (!resident) return;
+    if (!confirm(`Are you sure you want to unverify ${resident.first_name} ${resident.last_name}?`)) return;
+    setIsVerifying(true);
+    try {
+      await apiService.unverifyResident(resident.id, 'Unverified');
+      toast.warning(`Resident ${resident.first_name} ${resident.last_name} set to Unverified.`);
+      setResident(prev => prev ? { ...prev, verification_status: 'Unverified' } : null);
+      if (onStatusUpdated) onStatusUpdated();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to unverify resident');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const [selectedIdPreview, setSelectedIdPreview] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const residentFullName = resident ? `${resident.first_name} ${resident.middle_name ? resident.middle_name + ' ' : ''}${resident.last_name}` : 'Resident Profile';
 
-  // Compute age from date_of_birth
-  const calculateAge = (dob?: string) => {
-    if (!dob) return null;
-    const birth = new Date(dob);
-    if (isNaN(birth.getTime())) return null;
-    const diff = Date.now() - birth.getTime();
-    const ageDate = new Date(diff);
-    return Math.abs(ageDate.getUTCFullYear() - 1970);
+  // Clean date of birth formatting without raw ISO timestamp artifacts
+  const formatDob = (dateStr?: string) => {
+    if (!dateStr) return 'N/A';
+    const clean = String(dateStr).split('T')[0];
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      const yr = parseInt(parts[0], 10);
+      const mo = parseInt(parts[1], 10) - 1;
+      const da = parseInt(parts[2], 10);
+      const d = new Date(yr, mo, da);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    }
+    return clean;
   };
 
-  const computedAge = resident?.age || calculateAge(resident?.date_of_birth);
+  // Compute age accurately from date_of_birth
+  const calculateAge = (dob?: string) => {
+    if (!dob) return null;
+    const clean = String(dob).split('T')[0];
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      const birth = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      if (!isNaN(birth.getTime())) {
+        const now = new Date();
+        let age = now.getFullYear() - birth.getFullYear();
+        const m = now.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+        return Math.max(0, age);
+      }
+    }
+    return null;
+  };
+
+  const computedAge = resident?.age !== undefined && resident?.age !== null && resident?.age !== ''
+    ? resident.age
+    : calculateAge(resident?.date_of_birth);
 
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
         onPointerDownOutside={(e) => e.preventDefault()}
-        className="w-[96vw] max-w-7xl h-[90vh] max-h-[95vh] bg-white p-6 overflow-y-auto rounded-2xl border-0 shadow-2xl"
+        className="w-[92vw] max-w-3xl max-h-[85vh] bg-white p-4 sm:p-5 overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-200 shadow-2xl"
       >
-        <DialogHeader className="border-b pb-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div className="flex items-center gap-3.5">
-              <div className="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0 overflow-hidden border border-blue-200 shadow-xs">
+        <DialogHeader className="border-b border-slate-100 pb-3">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden border border-blue-200 shadow-xs">
                 {resident?.profile_photo ? (
                   <img src={resident.profile_photo} alt={residentFullName} className="w-full h-full object-cover" />
                 ) : resident ? (
                   `${(resident.first_name?.[0] || '').toUpperCase()}${(resident.last_name?.[0] || '').toUpperCase() || 'R'}`
                 ) : (
-                  <User size={24} />
+                  <User size={20} />
                 )}
               </div>
-              <div>
-                <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                  {residentFullName}
-                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-300">
-                    <ShieldCheck size={12} className="mr-1" />
-                    Verified Resident
-                  </Badge>
+              <div className="min-w-0">
+                <DialogTitle className="text-base font-bold text-slate-900 flex items-center flex-wrap gap-2">
+                  <span>{residentFullName}</span>
+                  {resident?.verification_status === 'Verified' ? (
+                    <Badge variant="outline" className="text-[11px] bg-emerald-50 text-emerald-700 border-emerald-300 shrink-0 py-0 px-2 font-semibold">
+                      <ShieldCheck size={11} className="mr-1 text-emerald-600" />
+                      Verified Resident
+                    </Badge>
+                  ) : resident?.verification_status === 'Pending_Review' || resident?.verification_status === 'Pending' ? (
+                    <Badge variant="outline" className="text-[11px] bg-amber-50 text-amber-700 border-amber-300 shrink-0 py-0 px-2 font-semibold">
+                      <Clock size={11} className="mr-1 text-amber-600" />
+                      Pending Review
+                    </Badge>
+                  ) : resident?.verification_status === 'Rejected' ? (
+                    <Badge variant="outline" className="text-[11px] bg-rose-50 text-rose-700 border-rose-300 shrink-0 py-0 px-2 font-semibold">
+                      <XCircle size={11} className="mr-1 text-rose-600" />
+                      Application Rejected
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[11px] bg-slate-100 text-slate-700 border-slate-300 shrink-0 py-0 px-2 font-semibold">
+                      <AlertCircle size={11} className="mr-1 text-slate-500" />
+                      Unverified Account
+                    </Badge>
+                  )}
                   {resident?.is_senior && (
-                    <Badge className="bg-amber-100 text-amber-800 text-[10px] font-bold">
+                    <Badge className="bg-amber-100 text-amber-800 text-[9.5px] font-bold shrink-0 py-0 px-1.5">
                       Senior Citizen
                     </Badge>
                   )}
                   {resident?.is_child && (
-                    <Badge className="bg-sky-100 text-sky-800 text-[10px] font-bold">
+                    <Badge className="bg-sky-100 text-sky-800 text-[9.5px] font-bold shrink-0 py-0 px-1.5">
                       Child / Minor
                     </Badge>
                   )}
                 </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 flex flex-wrap items-center gap-3 mt-1">
-                  <span className="flex items-center gap-1"><MapPin size={12} /> {resident?.address || (resident?.purok ? `Purok ${resident.purok}` : 'Barangay Pianing')}</span>
-                  <span className="flex items-center gap-1 font-mono"><Phone size={12} /> {resident?.phone || '09171234567'}</span>
+                <DialogDescription className="text-[11px] text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                  <span className="flex items-center gap-1"><MapPin size={11} className="text-slate-400" /> {resident?.address || (resident?.purok ? `Purok ${resident.purok}, Barangay Pianing` : 'Barangay Pianing')}</span>
+                  <span className="flex items-center gap-1 font-mono text-slate-700"><Phone size={11} className="text-slate-400" /> {resident?.phone || '09171234567'}</span>
                   {resident?.email && <span className="text-slate-400 font-mono">({resident.email})</span>}
                 </DialogDescription>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 self-end md:self-auto flex-wrap">
+              {canVerify && resident && (
+                resident.verification_status === 'Verified' ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isVerifying}
+                    onClick={handleUnverifyResident}
+                    className="border-slate-300 text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 text-xs h-8 px-2.5 rounded-xl cursor-pointer font-medium"
+                    title="Revoke verification status"
+                  >
+                    Unverify
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={isVerifying}
+                    onClick={handleApproveResident}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 px-3 gap-1.5 rounded-xl cursor-pointer shadow-xs font-semibold"
+                    title="Approve and verify resident"
+                  >
+                    <CheckCircle2 size={13} />
+                    Verify Resident
+                  </Button>
+                )
+              )}
               {resident?.submitted_id && (
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setSelectedIdPreview(resident.submitted_id || null)}
-                  className="border-blue-200 text-blue-700 hover:bg-blue-50 text-xs h-9 px-3 gap-1.5"
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50 text-xs h-8 px-3 gap-1.5 rounded-xl cursor-pointer whitespace-nowrap font-medium"
                 >
-                  <FileText size={14} />
+                  <FileText size={13} />
                   View Gov ID
                 </Button>
               )}
               <Button
                 size="sm"
                 onClick={() => setActiveTab('sms')}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-9 px-3 gap-1.5"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 px-3 gap-1.5 rounded-xl cursor-pointer shadow-xs whitespace-nowrap font-medium"
               >
-                <MessageSquare size={14} />
+                <MessageSquare size={13} />
                 Send Direct SMS
               </Button>
             </div>
@@ -159,62 +270,64 @@ export default function ResidentProfileModal({ residentId, isOpen, onClose }: Re
         {loading ? (
           <div className="py-12 text-center text-xs text-slate-400">Loading full resident record...</div>
         ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-            <TabsList className="grid grid-cols-4 bg-slate-100 p-1 rounded-xl">
-              <TabsTrigger value="overview" className="text-xs font-semibold">Civil Info</TabsTrigger>
-              <TabsTrigger value="maternal" className="text-xs font-semibold">Maternal Care</TabsTrigger>
-              <TabsTrigger value="immunization" className="text-xs font-semibold">Child Vaccines</TabsTrigger>
-              <TabsTrigger value="sms" className="text-xs font-semibold text-indigo-700">Send SMS</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-3">
+            <TabsList className="grid grid-cols-4 bg-slate-100 p-1 rounded-xl h-auto">
+              <TabsTrigger value="overview" className="text-xs font-semibold py-1.5 cursor-pointer">Civil Info</TabsTrigger>
+              <TabsTrigger value="maternal" className="text-xs font-semibold py-1.5 cursor-pointer">Maternal Care</TabsTrigger>
+              <TabsTrigger value="immunization" className="text-xs font-semibold py-1.5 cursor-pointer">Child Vaccines</TabsTrigger>
+              <TabsTrigger value="sms" className="text-xs font-semibold text-indigo-700 py-1.5 cursor-pointer">Send SMS</TabsTrigger>
             </TabsList>
 
             {/* TAB 1: OVERVIEW & CLEARANCE HISTORY */}
-            <TabsContent value="overview" className="space-y-4 mt-4">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <div>
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold block">Full Legal Name:</span>
-                  <p className="font-bold text-slate-900 mt-0.5">{residentFullName}</p>
+            <TabsContent value="overview" className="space-y-4 mt-3.5">
+              <div className="bg-slate-50/80 p-3.5 sm:p-4 rounded-2xl border border-slate-200 grid grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
+                  <span className="text-[9.5px] text-slate-400 uppercase tracking-wider font-bold block">Full Legal Name</span>
+                  <p className="font-bold text-slate-900 mt-0.5 truncate text-xs" title={residentFullName}>{residentFullName}</p>
                 </div>
-                <div>
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold block">Gender & Civil Status:</span>
-                  <p className="font-semibold text-slate-900 mt-0.5">{resident?.gender || 'N/A'} • {resident?.civil_status || 'Single'}</p>
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
+                  <span className="text-[9.5px] text-slate-400 uppercase tracking-wider font-bold block">Gender &amp; Civil Status</span>
+                  <p className="font-semibold text-slate-900 mt-0.5 text-xs truncate">{resident?.gender || 'N/A'} • {resident?.civil_status || 'Single'}</p>
                 </div>
-                <div>
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold block">Date of Birth:</span>
-                  <p className="font-semibold text-indigo-700 mt-0.5">
-                    {resident?.date_of_birth || '2000-01-01'}
-                    {computedAge && <span className="text-slate-500 font-normal"> ({computedAge} yrs old)</span>}
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
+                  <span className="text-[9.5px] text-slate-400 uppercase tracking-wider font-bold block">Date of Birth</span>
+                  <p className="font-semibold text-indigo-700 mt-0.5 text-xs truncate">
+                    {formatDob(resident?.date_of_birth)}
+                    {computedAge !== null && <span className="text-slate-500 font-normal"> ({computedAge} yrs old)</span>}
                   </p>
                 </div>
-                <div>
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold block">Contact Mobile:</span>
-                  <p className="font-mono font-semibold text-slate-800 mt-0.5">{resident?.phone || '09171234567'}</p>
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
+                  <span className="text-[9.5px] text-slate-400 uppercase tracking-wider font-bold block">Contact Mobile</span>
+                  <p className="font-mono font-semibold text-slate-800 mt-0.5 truncate text-xs">{resident?.phone || '09171234567'}</p>
                 </div>
 
-                <div>
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold block">Jurisdiction:</span>
-                  <p className="font-semibold text-slate-800 mt-0.5">Barangay {resident?.barangay || 'Pianing'}</p>
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
+                  <span className="text-[9.5px] text-slate-400 uppercase tracking-wider font-bold block">Jurisdiction</span>
+                  <p className="font-semibold text-slate-800 mt-0.5 text-xs truncate">Barangay {resident?.barangay || 'Pianing'}</p>
                 </div>
-                <div>
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold block">Purok Assignment:</span>
-                  <p className="font-semibold text-slate-800 mt-0.5">{resident?.purok ? (resident.purok.startsWith('Purok') ? resident.purok : `Purok ${resident.purok}`) : 'Purok 1'}</p>
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
+                  <span className="text-[9.5px] text-slate-400 uppercase tracking-wider font-bold block">Purok Assignment</span>
+                  <p className="font-semibold text-slate-800 mt-0.5 text-xs truncate">{resident?.purok ? (resident.purok.startsWith('Purok') ? resident.purok : `Purok ${resident.purok}`) : 'Purok 1'}</p>
                 </div>
-                <div>
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold block">Household & Family:</span>
-                  <p className="font-mono text-slate-800 font-medium mt-0.5">{resident?.household_number || `HH-P${resident?.purok || '1'}-${resident?.id || 1}`} ({resident?.family_name || resident?.last_name})</p>
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
+                  <span className="text-[9.5px] text-slate-400 uppercase tracking-wider font-bold block">Household &amp; Family</span>
+                  <p className="font-mono text-slate-800 font-medium mt-0.5 truncate text-xs" title={`${resident?.household_number || `HH-P${resident?.purok || '1'}-${resident?.id || 1}`} (${resident?.family_name || resident?.last_name || 'Resident'})`}>
+                    {resident?.household_number || `HH-P${resident?.purok || '1'}-${resident?.id || 1}`} ({resident?.family_name || resident?.last_name || 'Resident'})
+                  </p>
                 </div>
-                <div>
-                  <span className="text-[11px] text-slate-400 uppercase font-semibold block">Employment Status:</span>
-                  <p className="mt-0.5">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
+                  <span className="text-[9.5px] text-slate-400 uppercase tracking-wider font-bold block">Employment Status</span>
+                  <div className="mt-0.5">
+                    <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-block">
                       {resident?.employment_status || 'Employed'}
                     </span>
-                  </p>
+                  </div>
                 </div>
               </div>
 
               <div>
                 <h4 className="text-xs font-bold text-slate-900 mb-2 flex items-center gap-1.5">
-                  <FileText size={15} className="text-indigo-600" />
+                  <FileText size={14} className="text-indigo-600" />
                   Barangay Document Clearance History ({documents.length})
                 </h4>
                 {documents.length === 0 ? (
@@ -222,7 +335,7 @@ export default function ResidentProfileModal({ residentId, isOpen, onClose }: Re
                 ) : (
                   <div className="space-y-2">
                     {documents.map(doc => (
-                      <div key={doc.id} className="p-3 bg-white border rounded-xl flex justify-between items-center text-xs">
+                      <div key={doc.id} className="p-2.5 bg-white border rounded-xl flex justify-between items-center text-xs">
                         <div>
                           <span className="font-mono font-semibold text-indigo-600 block">{doc.request_code}</span>
                           <span className="font-medium text-slate-800">{doc.document_type}</span>
@@ -340,9 +453,9 @@ export default function ResidentProfileModal({ residentId, isOpen, onClose }: Re
       isOpen={!!selectedIdPreview}
       onClose={() => setSelectedIdPreview(null)}
       imageUrl={selectedIdPreview}
-      title="Submitted Resident Government ID"
-      subtitle="Official Philippine Government ID / Cedula Verification Document"
-      fileName="resident-submitted-id.png"
+      title={`Submitted Government ID — ${residentFullName}`}
+      subtitle={`Official Philippine Government ID / Accreditation Document • ${resident?.id_type || 'Valid ID'}`}
+      fileName={`${residentFullName.replace(/\s+/g, '-').toLowerCase()}-submitted-id.png`}
     />
     </>
   );

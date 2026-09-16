@@ -45,11 +45,32 @@ async function simulateSingleService({
   console.log(`\n\x1b[45;37m === [SERVICE ${serviceIndex}/4]: ${serviceTitle.toUpperCase()} === \x1b[0m`);
   let errors = 0;
 
+  // 0. Ensure resident is registered & verified in Barangay Census/System
+  const regRes = await request('/residents', {
+    method: 'POST',
+    body: JSON.stringify({
+      first_name: resident.name.split(' ')[0] || 'Maria',
+      last_name: resident.name.split(' ').slice(1).join(' ') || 'Resident',
+      email: resident.email,
+      phone: resident.phone,
+      date_of_birth: '1995-05-14',
+      gender: resident.gender || 'Female',
+      barangay: resident.barangay || 'Pianing',
+      purok: '1',
+      civil_status: 'Single'
+    })
+  });
+  const residentId = regRes.data?.id || regRes.data?.resident?.id || null;
+  if (residentId) {
+    await request(`/residents/${residentId}/approve`, { method: 'PUT' });
+  }
+
   // 1. Resident Books Appointment
   console.log(`\n\x1b[1m[Step 1: Resident POV - Booking from Health Center / Resident Portal]\x1b[0m`);
   const bookRes = await request('/appointments', {
     method: 'POST',
     body: JSON.stringify({
+      resident_id: residentId,
       resident_name: resident.name,
       resident_phone: resident.phone,
       resident_email: resident.email,

@@ -569,7 +569,7 @@ app.post('/api/categories', async (req, res) => {
   }
 
   const cleanName = name.trim();
-  const cleanDept = 'Barangay';
+  const cleanDept = (department || 'Barangay').trim();
   const cleanDesc = (description || '').trim();
 
   const pool = getPool();
@@ -896,6 +896,9 @@ app.post('/api/auth/login', async (req, res) => {
         }
         // Never expose password hash to client
         delete user.password_hash;
+        if (user.permissions && typeof user.permissions === 'string') {
+          try { user.permissions = JSON.parse(user.permissions); } catch {}
+        }
         logActivity({
           user_name: user.name || user.email,
           user_role: user.role || 'resident',
@@ -1687,6 +1690,42 @@ app.delete('/api/residents/:id/purge', async (req, res) => {
   res.json({ success: true, message: 'Registration record permanently purged.' });
 });
 
+// Update resident details (email, phone, verification_status, household_number, purok, etc.)
+app.put('/api/residents/:id', async (req, res) => {
+  const { id } = req.params;
+  const { email, phone, verification_status, household_number, purok, civil_status, gender, date_of_birth, address } = req.body;
+  const pool = getPool();
+  if (pool && getStatus().connected) {
+    try {
+      const updates = [];
+      const params = [];
+      if (email !== undefined) { updates.push('email = ?'); params.push(email); }
+      if (phone !== undefined) { updates.push('phone = ?'); params.push(phone); }
+      if (verification_status !== undefined) { updates.push('verification_status = ?'); params.push(verification_status); }
+      if (household_number !== undefined) { updates.push('household_number = ?'); params.push(household_number); }
+      if (purok !== undefined) { updates.push('purok = ?'); params.push(purok); }
+      if (civil_status !== undefined) { updates.push('civil_status = ?'); params.push(civil_status); }
+      if (gender !== undefined) { updates.push('gender = ?'); params.push(gender); }
+      if (date_of_birth !== undefined) { updates.push('date_of_birth = ?'); params.push(date_of_birth); }
+      if (address !== undefined) { updates.push('address = ?'); params.push(address); }
+
+      if (updates.length > 0) {
+        params.push(id);
+        await pool.query(`UPDATE residents SET ${updates.join(', ')} WHERE id = ?`, params);
+      }
+      return res.json({ success: true, message: 'Resident updated successfully.' });
+    } catch (err) {
+      console.warn('MySQL update resident error:', err.message);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+  const r = (mockData.residents || []).find(x => String(x.id) === String(id));
+  if (r) {
+    Object.assign(r, req.body);
+  }
+  res.json({ success: true, message: 'Resident updated successfully.' });
+});
+
 // PUT /api/users/profile - Profile Settings (name, phone, photo, password, address, civil_status, purok)
 app.put('/api/users/profile', async (req, res) => {
   const { id, email, password, phone, address, name, first_name, middle_name, last_name, date_of_birth, gender, civil_status, submitted_id, profile_photo, purok } = req.body;
@@ -1807,9 +1846,10 @@ app.get('/api/users', async (req, res) => {
       await safeAddColumn(pool, 'users', 'last_login', "DATETIME NULL");
       await safeAddColumn(pool, 'users', 'employee_id', "VARCHAR(50) DEFAULT NULL");
       await safeAddColumn(pool, 'users', 'job_title', "VARCHAR(100) DEFAULT NULL");
+      await safeAddColumn(pool, 'users', 'permissions', "TEXT NULL");
 
       const [rows] = await pool.query(`
-        SELECT u.id, u.name, u.email, u.role, u.status, u.barangay, u.phone, u.employee_id, u.job_title, u.last_login, u.created_at,
+        SELECT u.id, u.name, u.email, u.role, u.status, u.barangay, u.phone, u.employee_id, u.job_title, u.last_login, u.created_at, u.permissions,
                COALESCE(u.profile_photo, r.profile_photo) AS profile_photo,
                COALESCE(r.verification_status, u.verification_status, 'Verified') AS verification_status,
                r.first_name, r.last_name, r.middle_name, r.address, r.date_of_birth,
@@ -1818,7 +1858,14 @@ app.get('/api/users', async (req, res) => {
         LEFT JOIN residents r ON LOWER(u.email) = LOWER(r.email)
         ORDER BY u.id ASC
       `);
-      return res.json(rows || []);
+      const formatted = (rows || []).map(r => {
+        let perms = r.permissions;
+        if (perms && typeof perms === 'string') {
+          try { perms = JSON.parse(perms); } catch {}
+        }
+        return { ...r, permissions: perms || null };
+      });
+      return res.json(formatted);
     } catch (err) {
       console.warn('MySQL users fetch error:', err.message);
     }
@@ -1850,7 +1897,8 @@ app.get('/api/users', async (req, res) => {
       purok: r?.purok || '',
       household_number: r?.household_number || '',
       submitted_id: r?.submitted_id || null,
-      years_of_residency: r?.years_of_residency || ''
+      years_of_residency: r?.years_of_residency || '',
+      permissions: u.permissions || null
     };
   });
   return res.json(sanitized);
@@ -1923,17 +1971,52 @@ app.post('/api/users', async (req, res) => {
         [name.trim(), cleanEmail, hashedPassword, userRole, userBarangay, userPhone, userStatus, userEmployeeId, userJobTitle]
       );
 
-      // If resident role, also insert into residents table
+      // If resident role, link with existing census record or insert new resident
       if (userRole === 'resident') {
         const nameParts = name.trim().split(' ');
-        const firstName = nameParts[0] || name.trim();
-        const lastName = nameParts.slice(1).join(' ') || 'Resident';
+        const firstName = req.body.first_name || nameParts[0] || name.trim();
+        const lastName = req.body.last_name || nameParts.slice(1).join(' ') || 'Resident';
+        const householdNum = req.body.household_number || null;
+        const purokVal = req.body.purok ? String(req.body.purok) : null;
+        const genderVal = req.body.gender || null;
+        const civilStatusVal = req.body.civil_status || null;
+        const dobVal = req.body.date_of_birth || null;
+        const residentId = req.body.resident_id || null;
+
         try {
-          await pool.query(
-            "INSERT INTO residents (first_name, last_name, email, phone, address, barangay, verification_status) VALUES (?, ?, ?, ?, ?, ?, 'Verified')",
-            [firstName, lastName, cleanEmail, userPhone, `Barangay ${userBarangay}`, userBarangay]
-          );
-        } catch {}
+          let targetResId = residentId;
+          if (!targetResId) {
+            const [existingRes] = await pool.query(
+              "SELECT id FROM residents WHERE (LOWER(first_name) = LOWER(?) AND LOWER(last_name) = LOWER(?)) OR LOWER(email) = LOWER(?) LIMIT 1",
+              [firstName, lastName, cleanEmail]
+            );
+            if (existingRes && existingRes.length > 0) {
+              targetResId = existingRes[0].id;
+            }
+          }
+
+          if (targetResId) {
+            await pool.query(
+              `UPDATE residents SET 
+                email = ?, 
+                phone = COALESCE(NULLIF(phone, ''), ?), 
+                verification_status = 'Verified',
+                household_number = COALESCE(household_number, ?),
+                purok = COALESCE(purok, ?)
+              WHERE id = ?`,
+              [cleanEmail, userPhone, householdNum, purokVal, targetResId]
+            );
+          } else {
+            await pool.query(
+              `INSERT INTO residents 
+                (first_name, last_name, email, phone, address, barangay, verification_status, household_number, purok, gender, civil_status, date_of_birth) 
+              VALUES (?, ?, ?, ?, ?, ?, 'Verified', ?, ?, ?, ?, ?)`,
+              [firstName, lastName, cleanEmail, userPhone, `Barangay ${userBarangay}`, userBarangay, householdNum, purokVal, genderVal, civilStatusVal, dobVal]
+            );
+          }
+        } catch (e) {
+          console.warn('Resident census link error:', e.message);
+        }
       }
 
       logActivity({
@@ -2004,7 +2087,7 @@ app.post('/api/users', async (req, res) => {
 
 app.put('/api/users/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, email, role, barangay, phone, status, verification_status, password, employee_id, job_title, profile_photo } = req.body;
+  const { name, email, role, barangay, phone, status, verification_status, password, employee_id, job_title, profile_photo, permissions } = req.body;
 
   if (password) {
     const passCheck = validatePasswordComplexity(password);
@@ -2016,6 +2099,7 @@ app.put('/api/users/:id', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
+      await safeAddColumn(pool, 'users', 'permissions', "TEXT NULL");
       const updates = [];
       const params = [];
       if (name) { updates.push('name = ?'); params.push(name.trim()); }
@@ -2028,6 +2112,10 @@ app.put('/api/users/:id', async (req, res) => {
       if (employee_id !== undefined) { updates.push('employee_id = ?'); params.push(employee_id); }
       if (job_title !== undefined) { updates.push('job_title = ?'); params.push(job_title); }
       if (profile_photo !== undefined) { updates.push('profile_photo = ?'); params.push(profile_photo); }
+      if (permissions !== undefined) {
+        updates.push('permissions = ?');
+        params.push(permissions ? JSON.stringify(permissions) : null);
+      }
       if (password) {
         const hashedPassword = await hashPassword(password);
         updates.push('password_hash = ?');
@@ -2085,6 +2173,7 @@ app.put('/api/users/:id', async (req, res) => {
     if (employee_id !== undefined) user.employee_id = employee_id;
     if (job_title !== undefined) user.job_title = job_title;
     if (profile_photo !== undefined) user.profile_photo = profile_photo;
+    if (permissions !== undefined) user.permissions = permissions;
 
     // Sync to resident mock data
     if (user.email) {
@@ -2413,7 +2502,8 @@ app.get('/api/stats/admin', async (req, res) => {
 
       const [[pendingDocs]] = await pool.query(`SELECT COUNT(*) as count FROM document_requests WHERE status = 'Pending'${docWhere}`, params);
       const [[processedDocs]] = await pool.query(`SELECT COUNT(*) as count FROM document_requests WHERE status = 'Completed' AND DATE(processed_at) = CURDATE()${docWhere}`, params);
-      const [[totalResidents]] = await pool.query(`SELECT COUNT(*) as count FROM residents${resWhere}`, resWhere ? [barangay.trim(), `%${barangay.trim()}%`] : []);
+      const verifiedClause = resWhere ? `${resWhere} AND LOWER(COALESCE(verification_status, 'verified')) = 'verified'` : ` WHERE LOWER(COALESCE(verification_status, 'verified')) = 'verified'`;
+      const [[totalResidents]] = await pool.query(`SELECT COUNT(*) as count FROM residents${verifiedClause}`, resWhere ? [barangay.trim(), `%${barangay.trim()}%`] : []);
       const [[activeRecords]] = await pool.query(`SELECT COUNT(*) as count FROM document_requests WHERE 1=1${docWhere}`, params);
       return res.json({
         pendingDocs: pendingDocs.count,
@@ -2860,6 +2950,10 @@ app.get('/api/residents', async (req, res) => {
         const cleanP = purok.toString().replace(/purok\s*/i, '').trim();
         whereClauses.push(`(r.purok = ? OR r.purok = ? OR LOWER(r.address) LIKE ?)`);
         params.push(cleanP, `Purok ${cleanP}`, `%purok ${cleanP}%`);
+      }
+      const cleanIncludePending = req.query.include_pending === 'true';
+      if (!cleanIncludePending) {
+        whereClauses.push(`LOWER(COALESCE(r.verification_status, 'verified')) = 'verified'`);
       }
       if (whereClauses.length > 0) {
         query += ` WHERE ${whereClauses.join(' AND ')}`;
@@ -3537,9 +3631,10 @@ app.post('/api/immunizations', async (req, res) => {
       if (!mockData.immunizations) mockData.immunizations = [];
       mockData.immunizations.unshift(created);
 
-      // Auto-deduct 1 unit of vaccine from inventory stock
+      // Auto-deduct vaccine units from inventory stock
       if (immStatus === 'Completed' || givenDate) {
-        dispenseInventoryItem(vaccineName, 1, brgy).catch(e => console.warn('Vaccine dispense error:', e.message));
+        const vaccineQty = parseInt(req.body.dose_count || req.body.quantity || 1, 10) || 1;
+        dispenseInventoryItem(vaccineName, vaccineQty, brgy).catch(e => console.warn('Vaccine dispense error:', e.message));
       }
 
       return res.status(201).json(created);
@@ -3571,9 +3666,10 @@ app.post('/api/immunizations', async (req, res) => {
   if (!mockData.immunizations) mockData.immunizations = [];
   mockData.immunizations.unshift(newImm);
 
-  // Auto-deduct 1 unit of vaccine from inventory stock
+  // Auto-deduct vaccine units from inventory stock
   if (immStatus === 'Completed' || givenDate) {
-    dispenseInventoryItem(vaccineName, 1, brgy).catch(e => console.warn('Vaccine dispense error:', e.message));
+    const vaccineQty = parseInt(req.body.dose_count || req.body.quantity || 1, 10) || 1;
+    dispenseInventoryItem(vaccineName, vaccineQty, brgy).catch(e => console.warn('Vaccine dispense error:', e.message));
   }
 
   res.status(201).json(newImm);
@@ -3744,16 +3840,31 @@ app.post('/api/maternal', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
+      let resId = req.body.resident_id;
+      if (!resId && momName) {
+        const [matched] = await pool.query(
+          "SELECT id FROM residents WHERE LOWER(CONCAT(first_name, ' ', last_name)) = LOWER(?) OR LOWER(first_name) = LOWER(?) LIMIT 1",
+          [momName, momName]
+        );
+        resId = matched[0]?.id;
+      }
+      if (!resId) {
+        const [anyRes] = await pool.query("SELECT id FROM residents ORDER BY id ASC LIMIT 1");
+        resId = anyRes[0]?.id || 2;
+      }
+
+      const validNextVisit = nextVisit || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+
       const [result] = await pool.query(
         `INSERT INTO maternal_records 
          (resident_id, mother_name, age, pregnancy_status, expected_due_date, last_visit, next_visit, risk_level, notes, contact_number, barangay, gravida, para, lmp, edd, aog_weeks, bp, weight, temp, fetal_heart_rate, fundic_height, prescribed_meds, attending_nurse, next_visit_date) 
-         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          momName, Number(age) || 25, pregnancy_status || '1st Trimester', expected_due_date || edd || null,
-          lastVisit, nextVisit, risk_level || 'Low', notes || `AOG: ${aog_weeks || '—'} wks. Meds: ${prescribed_meds || 'Vitamins'}`,
+          resId, momName, Number(age) || 25, pregnancy_status || '1st Trimester', expected_due_date || edd || null,
+          lastVisit, validNextVisit, risk_level || 'Low', notes || `AOG: ${aog_weeks || '—'} wks. Meds: ${prescribed_meds || 'Vitamins'}`,
           phone, brgy, Number(gravida) || 1, Number(para) || 0, lmp || null, edd || null,
           aog_weeks || '', bp || '120/80', weight || '', temp || '36.5',
-          fetal_heart_rate || '', fundic_height || '', prescribed_meds || '', nurse, nextVisit
+          fetal_heart_rate || '', fundic_height || '', prescribed_meds || '', nurse, validNextVisit
         ]
       );
 
@@ -3783,6 +3894,12 @@ app.post('/api/maternal', async (req, res) => {
           riskLevel:       risk_level || 'Low',
           notes:           scheduleInfo?.recommendation || notes || '',
         }).catch(e => console.warn('[Email] Maternal reminder email error:', e.message));
+      }
+
+      // Auto-dispense maternal medicine / vitamins from inventory
+      if (prescribed_meds) {
+        const pQty = parseInt(req.body.med_quantity || req.body.quantity || 30, 10) || 1;
+        dispenseInventoryItem(prescribed_meds, pQty, brgy).catch(e => console.warn('Maternal dispense error:', e.message));
       }
 
       const created = {
@@ -3929,6 +4046,16 @@ app.post('/api/consultations', async (req, res) => {
   const stat = status || 'Completed';
   const progType = program_type || service_type || 'General Consultation';
 
+  let formattedMeds = prescribed_meds || '';
+  if (!formattedMeds && Array.isArray(req.body.prescriptions) && req.body.prescriptions.length > 0) {
+    formattedMeds = req.body.prescriptions.map(p => {
+      const qStr = `(Qty: ${p.quantity || 1} ${p.unit || 'units'})`;
+      const freq = p.frequency ? ` - ${p.frequency}` : '';
+      const dur = p.duration ? ` x ${p.duration}` : '';
+      return `${p.name} ${p.dosage || ''}${freq}${dur} ${qStr}`.trim();
+    }).join('; ');
+  }
+
   const newRecord = {
     id: Date.now(),
     patient_name: name,
@@ -3948,7 +4075,7 @@ app.post('/api/consultations', async (req, res) => {
     chief_complaint: chief_complaint || 'Routine Health Visit',
     diagnosis: diagnosis || 'Assessment Complete',
     treatment: treatment || 'Health counseling advised.',
-    prescribed_meds: prescribed_meds || '',
+    prescribed_meds: formattedMeds,
     attending_nurse: worker,
     attending_worker: worker,
     consultation_date: encDate,
@@ -3968,7 +4095,7 @@ app.post('/api/consultations', async (req, res) => {
         name, phoneNum, age || '—', gender || 'Female', civil_status || 'Single',
         brgy, purok || 'Purok 1', progType, bp || '120/80', temp || '36.5', weight || '', height || '', heart_rate || '',
         chief_complaint || 'Routine Health Visit', diagnosis || 'Assessment Complete', treatment || 'Health counseling advised.',
-        prescribed_meds || '', worker, encDate, next_visit_date || null, stat
+        formattedMeds || '', worker, encDate, next_visit_date || null, stat
       ]);
       newRecord.id = result.insertId;
     } catch (err) {
@@ -4198,9 +4325,74 @@ app.post('/api/appointments', async (req, res) => {
     status
   } = req.body;
 
+  // Identification requirement: resident_id or resident_email must be present
+  const cleanEmail = (resident_email || '').trim().toLowerCase();
+  if (!resident_id && !cleanEmail) {
+    return res.status(400).json({
+      success: false,
+      message: 'Resident identification (ID or email) is required to schedule an appointment.'
+    });
+  }
+
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
+      // ─── STRICT RESIDENT VERIFICATION ENFORCEMENT ───
+      // Online clinic appointment booking is strictly restricted to verified residents of the Barangay.
+      let residentRecord = null;
+
+      if (resident_id) {
+        const [rRows] = await pool.query(
+          "SELECT id, verification_status, email FROM residents WHERE id = ? LIMIT 1",
+          [resident_id]
+        );
+        if (rRows.length > 0) {
+          residentRecord = rRows[0];
+        } else {
+          const [uRows] = await pool.query(
+            "SELECT id, verification_status, email FROM users WHERE id = ? LIMIT 1",
+            [resident_id]
+          );
+          if (uRows.length > 0) residentRecord = uRows[0];
+        }
+      }
+
+      if (!residentRecord && cleanEmail) {
+        const [rRows] = await pool.query(
+          "SELECT id, verification_status, email FROM residents WHERE LOWER(email) = ? LIMIT 1",
+          [cleanEmail]
+        );
+        if (rRows.length > 0) {
+          residentRecord = rRows[0];
+        } else {
+          const [uRows] = await pool.query(
+            "SELECT id, verification_status, email FROM users WHERE LOWER(email) = ? LIMIT 1",
+            [cleanEmail]
+          );
+          if (uRows.length > 0) residentRecord = uRows[0];
+        }
+      }
+
+      if (!residentRecord) {
+        return res.status(403).json({
+          success: false,
+          message: 'Account verification required. No registered resident account was found for this identification. Please register and submit your Barangay ID for verification before booking clinic appointments.'
+        });
+      }
+
+      const vStatus = residentRecord.verification_status;
+      if (vStatus !== 'Verified') {
+        const readableStatus = (vStatus === 'Pending_Review' || vStatus === 'Pending')
+          ? 'pending review by Barangay Officials'
+          : vStatus === 'Rejected'
+          ? 'rejected due to invalid or illegible ID'
+          : 'unverified';
+        return res.status(403).json({
+          success: false,
+          message: `Residency verification required. Your resident account is currently ${readableStatus}. Only residents verified by Barangay Officials can schedule health center appointments.`
+        });
+      }
+
       const aptCode = `APT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
       const cleanPrefDate = preferred_date ? preferred_date.split('T')[0] : null;
 
@@ -4210,10 +4402,10 @@ app.post('/api/appointments', async (req, res) => {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           aptCode,
-          resident_id || null,
+          resident_id || residentRecord.id || null,
           resident_name,
           resident_phone || '',
-          resident_email || '',
+          cleanEmail,
           barangay || 'Pianing',
           service_type,
           cleanPrefDate,
@@ -4248,15 +4440,34 @@ app.post('/api/appointments', async (req, res) => {
     }
   }
 
-  // Fallback in memory
+  // Fallback in memory verification check
+  const memUser = (mockData.users || []).find(u => (resident_id && u.id === resident_id) || (cleanEmail && (u.email || '').toLowerCase() === cleanEmail));
+  const memRes = (mockData.residents || []).find(r => (resident_id && r.id === resident_id) || (cleanEmail && (r.email || '').toLowerCase() === cleanEmail));
+  const memPending = (mockData.pendingRegistrations || []).find(p => (resident_id && p.id === resident_id) || (cleanEmail && (p.email || '').toLowerCase() === cleanEmail));
+  const memRecord = memRes || memUser || memPending;
+
+  if (!memRecord) {
+    return res.status(403).json({
+      success: false,
+      message: 'Account verification required. Please register and submit your Barangay ID for verification before booking clinic appointments.'
+    });
+  }
+
+  if (memRecord.verification_status !== 'Verified') {
+    return res.status(403).json({
+      success: false,
+      message: 'Residency verification required. Your account is not verified. Only residents verified by Barangay Officials can schedule health center appointments.'
+    });
+  }
+
   const aptCode = `APT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
   const newApt = {
     id: (mockData.appointments?.length || 0) + 1,
     appointment_code: aptCode,
-    resident_id: resident_id || null,
+    resident_id: resident_id || memRecord.id || null,
     resident_name,
     resident_phone: resident_phone || '',
-    resident_email: resident_email || '',
+    resident_email: cleanEmail,
     barangay: barangay || 'Pianing',
     service_type,
     preferred_date: preferred_date ? preferred_date.split('T')[0] : null,
@@ -4270,7 +4481,7 @@ app.post('/api/appointments', async (req, res) => {
   };
   mockData.appointments = mockData.appointments || [];
   mockData.appointments.unshift(newApt);
-  res.json(newApt);
+  res.status(201).json(newApt);
 });
 
 app.put('/api/appointments/:id', async (req, res) => {
@@ -5870,31 +6081,59 @@ app.post('/api/patients/intake', async (req, res) => {
 // -------------------------------------------------------------
 app.get('/api/archives/clinical', async (req, res) => {
   const pool = getPool();
+  const { barangay } = req.query;
+  const brgy = barangay ? String(barangay).trim().toLowerCase() : null;
+
   if (pool && getStatus().connected) {
     try {
-      const [consultations] = await pool.query(
-        "SELECT * FROM clinical_encounters ORDER BY encounter_date DESC, id DESC LIMIT 100"
-      );
-      const [maternal] = await pool.query(
-        "SELECT * FROM maternal_records ORDER BY id DESC LIMIT 100"
-      );
-      const [immunizations] = await pool.query(
-        "SELECT * FROM immunizations WHERE status = 'Completed' ORDER BY id DESC LIMIT 100"
-      );
-      const [schedules] = await pool.query(
-        "SELECT * FROM clinic_schedules ORDER BY id DESC LIMIT 50"
-      );
-      return res.json({ consultations, maternal, immunizations, schedules });
+      let consultQuery = "SELECT * FROM clinical_encounters WHERE 1=1";
+      let maternalQuery = "SELECT * FROM maternal_records WHERE 1=1";
+      let immQuery = "SELECT * FROM immunizations WHERE status = 'Completed'";
+      let schedQuery = "SELECT * FROM clinic_schedules WHERE 1=1";
+      let apptQuery = "SELECT * FROM health_appointments WHERE status IN ('Completed', 'Cancelled', 'No Show')";
+      const params = [];
+
+      if (brgy) {
+        consultQuery += " AND LOWER(COALESCE(barangay, 'pianing')) LIKE ?";
+        maternalQuery += " AND LOWER(COALESCE(barangay, 'pianing')) LIKE ?";
+        immQuery += " AND LOWER(COALESCE(barangay, 'pianing')) LIKE ?";
+        schedQuery += " AND LOWER(COALESCE(barangay, 'pianing')) LIKE ?";
+        apptQuery += " AND LOWER(COALESCE(barangay, 'pianing')) LIKE ?";
+        params.push(`%${brgy}%`);
+      }
+
+      const [consultations] = await pool.query(`${consultQuery} ORDER BY encounter_date DESC, id DESC LIMIT 100`, params);
+      const [maternal] = await pool.query(`${maternalQuery} ORDER BY id DESC LIMIT 100`, params);
+      const [immunizations] = await pool.query(`${immQuery} ORDER BY id DESC LIMIT 100`, params);
+      const [schedules] = await pool.query(`${schedQuery} ORDER BY id DESC LIMIT 50`, params);
+      const [appointments] = await pool.query(`${apptQuery} ORDER BY id DESC LIMIT 100`, params);
+
+      return res.json({ consultations, maternal, immunizations, schedules, appointments });
     } catch (err) {
       console.warn('MySQL clinical archives fetch error:', err.message);
     }
   }
 
+  let mockApts = (mockData.appointments || []).filter(a => a.status === 'Completed' || a.status === 'Cancelled' || a.status === 'No Show');
+  let mockImm = (mockData.immunizations || []).filter(i => i.status === 'Completed');
+  let mockMat = mockData.maternal || [];
+  let mockSched = mockData.clinicSchedules || [];
+  let mockConsult = mockData.consultations || [];
+
+  if (brgy) {
+    mockApts = mockApts.filter(a => (a.barangay || 'pianing').toLowerCase().includes(brgy));
+    mockImm = mockImm.filter(i => (i.barangay || 'pianing').toLowerCase().includes(brgy));
+    mockMat = mockMat.filter(m => (m.barangay || 'pianing').toLowerCase().includes(brgy));
+    mockSched = mockSched.filter(s => (s.barangay || 'pianing').toLowerCase().includes(brgy));
+    mockConsult = mockConsult.filter(c => (c.barangay || 'pianing').toLowerCase().includes(brgy));
+  }
+
   res.json({
-    consultations: [],
-    maternal: mockData.maternal || [],
-    immunizations: (mockData.immunizations || []).filter(i => i.status === 'Completed'),
-    schedules: mockData.clinicSchedules || []
+    consultations: mockConsult,
+    maternal: mockMat,
+    immunizations: mockImm,
+    schedules: mockSched,
+    appointments: mockApts
   });
 });
 

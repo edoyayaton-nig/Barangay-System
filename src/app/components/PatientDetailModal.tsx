@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   User, Phone, MapPin, Calendar, Heart, Syringe, Stethoscope,
   Send, Clock, FileText, CheckCircle2, ShieldCheck, Activity, X, Plus
@@ -66,17 +66,35 @@ interface PatientDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   patient: PatientRecordData | null;
+  initialTab?: 'overview' | 'consultations' | 'maternal' | 'immunizations';
   onSendSmsSuccess?: () => void;
-  onLogReturnVisit?: (patient: PatientRecordData) => void;
+  onLogReturnVisit?: (patient: PatientRecordData, contextType: 'consultation' | 'prenatal' | 'immunization') => void;
 }
 
-export default function PatientDetailModal({ isOpen, onClose, patient, onSendSmsSuccess, onLogReturnVisit }: PatientDetailModalProps) {
-  const [activeTab, setActiveTab] = useState('overview');
+export default function PatientDetailModal({ isOpen, onClose, patient, initialTab, onSendSmsSuccess, onLogReturnVisit }: PatientDetailModalProps) {
+  const [activeTab, setActiveTab] = useState(initialTab || 'overview');
   const [smsType, setSmsType] = useState('Health Center Notice');
   const [smsMessage, setSmsMessage] = useState('');
   const [smsSending, setSmsSending] = useState(false);
 
+  // Sync tab whenever modal opens or initialTab changes
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab || 'overview');
+    }
+  }, [isOpen, initialTab]);
+
   if (!patient) return null;
+
+  // Determine intelligent context based on current view or patient profile
+  const resolvedContext: 'consultation' | 'prenatal' | 'immunization' = (() => {
+    if (activeTab === 'maternal' || initialTab === 'maternal') return 'prenatal';
+    if (activeTab === 'immunizations' || initialTab === 'immunizations') return 'immunization';
+    if (activeTab === 'consultations' || initialTab === 'consultations') return 'consultation';
+    if (patient.prenatal && patient.prenatal.length > 0) return 'prenatal';
+    if (patient.immunizations && patient.immunizations.length > 0) return 'immunization';
+    return 'consultation';
+  })();
 
   const handleSendSms = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,13 +132,13 @@ export default function PatientDetailModal({ isOpen, onClose, patient, onSendSms
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
         onPointerDownOutside={(e) => e.preventDefault()}
-        className="bg-white w-[96vw] max-w-7xl h-[92vh] max-h-[95vh] overflow-y-auto p-0 rounded-2xl border-0 shadow-2xl"
+        className="bg-white w-[92vw] max-w-3xl max-h-[85vh] overflow-y-auto p-0 rounded-2xl border border-slate-200 shadow-2xl"
       >
-        {/* Header - Clean, Soft & Eye-Friendly */}
-        <div className="bg-white border-b border-slate-200 text-slate-900 p-6 relative rounded-t-2xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800 font-bold text-xl shadow-xs shrink-0 overflow-hidden">
+        {/* Header - Clean, Soft & Compact */}
+        <div className="bg-white border-b border-slate-100 text-slate-900 p-4 sm:p-5 relative rounded-t-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800 font-bold text-base shadow-xs shrink-0 overflow-hidden">
                 {patient.profile_photo ? (
                   <img src={patient.profile_photo} alt={patient.name} className="w-full h-full object-cover" />
                 ) : (
@@ -129,24 +147,24 @@ export default function PatientDetailModal({ isOpen, onClose, patient, onSendSms
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-slate-900">{patient.name}</h2>
+                  <h2 className="text-base font-bold text-slate-900">{patient.name}</h2>
                   {patient.gender && (
                     <Badge className="bg-teal-50 text-teal-800 border border-teal-200 text-[10px]">
                       {patient.gender}
                     </Badge>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 mt-1 font-mono">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 mt-0.5 font-mono">
                   {patient.age && <span>Age: <strong className="text-slate-700">{patient.age}</strong></span>}
                   {patient.contact_number && (
                     <span className="flex items-center gap-1">
-                      <Phone size={12} className="text-teal-600" />
+                      <Phone size={11} className="text-teal-600" />
                       <strong className="text-slate-700">{patient.contact_number}</strong>
                     </span>
                   )}
                   {patient.barangay && (
                     <span className="flex items-center gap-1">
-                      <MapPin size={12} className="text-teal-600" />
+                      <MapPin size={11} className="text-teal-600" />
                       Barangay {patient.barangay}
                     </span>
                   )}
@@ -154,25 +172,45 @@ export default function PatientDetailModal({ isOpen, onClose, patient, onSendSms
               </div>
             </div>
 
-            {/* Return Visit Action Button */}
+            {/* Context-Aware Return Visit Action Button */}
             {onLogReturnVisit && (
               <Button
                 type="button"
                 onClick={() => {
                   onClose();
-                  onLogReturnVisit(patient);
+                  onLogReturnVisit(patient, resolvedContext);
                 }}
-                className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                className={`text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors ${
+                  resolvedContext === 'prenatal'
+                    ? 'bg-pink-600 hover:bg-pink-700'
+                    : resolvedContext === 'immunization'
+                    ? 'bg-blue-600 hover:bg-blue-700'
+                    : 'bg-teal-600 hover:bg-teal-700'
+                }`}
               >
-                <Stethoscope size={15} />
-                + Log Return Visit
+                {resolvedContext === 'prenatal' ? (
+                  <>
+                    <Heart size={14} />
+                    + Log Prenatal Revisit
+                  </>
+                ) : resolvedContext === 'immunization' ? (
+                  <>
+                    <Syringe size={14} />
+                    + Log Vaccine Dose
+                  </>
+                ) : (
+                  <>
+                    <Stethoscope size={14} />
+                    + Log Return Visit
+                  </>
+                )}
               </Button>
             )}
           </div>
         </div>
 
         {/* Content Tabs */}
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-5 space-y-3">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="bg-slate-100 p-1 rounded-xl grid grid-cols-4 gap-1 text-xs">
               <TabsTrigger value="overview" className="rounded-lg font-semibold cursor-pointer">Overview</TabsTrigger>
@@ -182,33 +220,33 @@ export default function PatientDetailModal({ isOpen, onClose, patient, onSendSms
             </TabsList>
 
             {/* Overview */}
-            <TabsContent value="overview" className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <TabsContent value="overview" className="space-y-3 mt-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase">Contact Number</p>
-                  <p className="text-sm font-bold text-slate-800 font-mono mt-0.5">{patient.contact_number || 'Not Registered'}</p>
+                  <p className="text-xs font-bold text-slate-800 font-mono mt-0.5">{patient.contact_number || 'Not Registered'}</p>
                 </div>
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase">Guardian / Next of Kin</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">{patient.guardian || 'N/A (Self)'}</p>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5">{patient.guardian || 'N/A (Self)'}</p>
                 </div>
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase">Barangay Address</p>
-                  <p className="text-sm font-bold text-slate-800 mt-0.5">{patient.barangay || 'Pianing'}</p>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5">{patient.barangay || 'Pianing'}</p>
                 </div>
               </div>
 
               {/* Send Quick or Dynamic SMS */}
-              <div className="bg-teal-50/70 border border-teal-200 rounded-xl p-4 space-y-3">
+              <div className="bg-teal-50/70 border border-teal-200 rounded-xl p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
-                    <Send size={14} className="text-teal-700" /> Dispatch Direct SMS to Patient (Static Template & Dynamic Custom)
+                    <Send size={13} className="text-teal-700" /> Dispatch Direct SMS to Patient
                   </h3>
                   <span className="text-[10px] font-medium text-teal-700">
                     {smsMessage.length} chars
                   </span>
                 </div>
-                <form onSubmit={handleSendSms} className="space-y-3">
+                <form onSubmit={handleSendSms} className="space-y-2.5">
                   <div>
                     <Label className="text-[10px] text-teal-800 font-semibold mb-1 block">SMS Category</Label>
                     <select
@@ -261,7 +299,7 @@ export default function PatientDetailModal({ isOpen, onClose, patient, onSendSms
                   <div>
                     <Label className="text-[10px] text-teal-800 font-semibold mb-1 block">Dynamic Custom SMS Message (Free-will text entry)</Label>
                     <textarea
-                      rows={3}
+                      rows={2}
                       value={smsMessage}
                       onChange={e => setSmsMessage(e.target.value)}
                       placeholder="Type custom SMS message here with specific instructions, doctor notes, or appointment details..."

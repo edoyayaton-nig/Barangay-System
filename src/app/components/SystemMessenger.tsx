@@ -330,21 +330,21 @@ export default function SystemMessenger({ currentUserRole, currentUserName, curr
 
   return (
     <>
-      {/* Floating Chat Button */}
+      {/* Floating Staff Messenger Trigger */}
       <button
         onClick={() => { setIsOpen(o => !o); if (!isOpen) { fetchMessages(); fetchMembers(); } }}
-        className="fixed bottom-5 right-5 z-40 bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-700 hover:to-blue-800 text-white p-3.5 rounded-full shadow-2xl flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95"
-        title={`Barangay ${myBarangay} Chat`}
+        className="fixed bottom-5 right-5 z-40 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-full shadow-lg border border-slate-700/60 flex items-center gap-2.5 cursor-pointer transition-all hover:shadow-xl active:scale-95"
+        title={`Barangay ${myBarangay} Staff Communications`}
       >
         <div className="relative flex items-center justify-center">
-          <MessageSquare size={22} />
+          <MessageSquare size={16} className="text-slate-200" />
           {totalUnreadCount > 0 && (
-            <span className="absolute -top-3 -right-3 bg-red-500 text-white text-[10px] font-extrabold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shadow border-2 border-white animate-pulse">
+            <span className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center shadow border-2 border-slate-900">
               {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
             </span>
           )}
         </div>
-        <span className="text-xs font-bold hidden sm:inline">Chat</span>
+        <span className="text-xs font-semibold tracking-wide">Staff Chat</span>
       </button>
 
       {/* Chat Popup Window */}

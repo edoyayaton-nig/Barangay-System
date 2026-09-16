@@ -19,7 +19,8 @@ import {
   CalendarPlus,
   Calendar,
   MapPin,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 import { getBarangayContact, getBarangayEmail } from '../../utils/barangays';
 import { apiService, DocumentRequest, ClinicSchedule } from '../../services/api';
@@ -210,6 +211,12 @@ export default function ResidentPortal() {
 
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isVerified) {
+      toast.error('Residency Verification Required', {
+        description: 'Only verified residents can book health center appointments. Your residency account is currently awaiting verification by Barangay Officials.'
+      });
+      return;
+    }
     if (!selectedSchedule) return;
     if (!bookingDate) { toast.error('Please select a preferred date'); return; }
     setIsBookingLoading(true);
@@ -231,14 +238,8 @@ export default function ResidentPortal() {
       setBookingDate('');
       setBookingNotes('');
       setSelectedSchedule(null);
-    } catch {
-      // Optimistic fallback — still show the booking locally
-      setMyBookings(prev => [{ id: Date.now(), resident_name: user?.name, service_type: selectedSchedule.service_type || selectedSchedule.title, preferred_date: bookingDate, status: 'Pending' }, ...prev]);
-      toast.success('Appointment request submitted! The nurse will confirm your slot.');
-      setIsBookingOpen(false);
-      setBookingDate('');
-      setBookingNotes('');
-      setSelectedSchedule(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to book appointment. Please verify your resident account status.');
     } finally {
       setIsBookingLoading(false);
     }
@@ -549,10 +550,26 @@ export default function ResidentPortal() {
                     </div>
                     <Button
                       size="sm"
-                      onClick={() => { setSelectedSchedule(sch); setIsBookingOpen(true); }}
-                      className="shrink-0 bg-violet-600 hover:bg-violet-700 text-white text-[11px] h-8 px-3 rounded-lg font-semibold gap-1"
+                      disabled={!isVerified}
+                      onClick={() => {
+                        if (!isVerified) {
+                          toast.error('Residency verification required', {
+                            description: 'Only verified residents can reserve health center appointment slots.'
+                          });
+                          return;
+                        }
+                        setSelectedSchedule(sch);
+                        setIsBookingOpen(true);
+                      }}
+                      className={`shrink-0 text-[11px] h-8 px-3 rounded-lg font-semibold gap-1 ${
+                        !isVerified
+                          ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                          : 'bg-violet-600 hover:bg-violet-700 text-white cursor-pointer'
+                      }`}
+                      title={!isVerified ? 'Residency verification required by Barangay Officials' : 'Reserve appointment slot'}
                     >
-                      <CalendarPlus size={13} /> Reserve
+                      {!isVerified ? <Lock size={12} /> : <CalendarPlus size={13} />}
+                      {!isVerified ? 'Verification Required' : 'Reserve'}
                     </Button>
                   </div>
                 ))}
@@ -700,6 +717,17 @@ export default function ResidentPortal() {
               </div>
             </div>
             <form onSubmit={handleBookAppointment} className="p-5 space-y-4">
+              {!isVerified && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-900">
+                  <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Residency Verification Required</p>
+                    <p className="text-[11px] text-amber-700 mt-0.5">
+                      Your resident profile is awaiting Barangay Admin approval. Appointment booking unlocks once your residency is verified.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 text-xs space-y-1.5">
                 <p className="font-bold text-violet-900">{selectedSchedule.title || selectedSchedule.service_type}</p>
                 <p className="text-slate-600 flex items-center gap-1.5"><Clock size={12} /> {selectedSchedule.day_of_week || (selectedSchedule as any).day} · {selectedSchedule.time_slot}</p>
@@ -803,8 +831,8 @@ export default function ResidentPortal() {
 
               <div className="flex gap-2 pt-1">
                 <Button type="button" variant="outline" onClick={() => setIsBookingOpen(false)} className="flex-1 text-xs rounded-xl cursor-pointer">Cancel</Button>
-                <Button type="submit" disabled={isBookingLoading || !bookingDate} className="flex-1 bg-violet-600 hover:bg-violet-700 text-white text-xs rounded-xl font-semibold gap-1.5 cursor-pointer">
-                  {isBookingLoading ? 'Booking...' : <><CalendarPlus size={14} /> Confirm Reservation</>}
+                <Button type="submit" disabled={isBookingLoading || !bookingDate || !isVerified} className={`flex-1 text-xs rounded-xl font-semibold gap-1.5 ${!isVerified ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700 text-white cursor-pointer'}`}>
+                  {isBookingLoading ? 'Booking...' : !isVerified ? <><Lock size={14} /> Verification Required</> : <><CalendarPlus size={14} /> Confirm Reservation</>}
                 </Button>
               </div>
             </form>

@@ -101,6 +101,20 @@ export interface CensusAnalytics {
   }[];
 }
 
+export interface UserPermissions {
+  can_create_document?: boolean;    // "New Document Request" / Issue Clearance Form
+  can_process_documents?: boolean;  // Document Processing Desk
+  can_manage_categories?: boolean;  // Category Manager (Super Admin delegable)
+  can_verify_residents?: boolean;   // Citizen Identity Verification Desk
+  can_manage_residents?: boolean;   // Resident Directory & Records
+  can_access_health?: boolean;      // Health Center / Clinic & Consultations
+  can_view_census?: boolean;        // Census & Demographics Analytics
+  can_generate_reports?: boolean;   // System Reports & Official PDF/CSV Exports
+  can_view_logs?: boolean;          // Security & Activity Audit Streams
+  can_manage_users?: boolean;       // Staff Account Management
+  can_access_system?: boolean;      // System Diagnostics & Backup
+}
+
 export interface SystemUser {
   id: number;
   name: string;
@@ -127,7 +141,55 @@ export interface SystemUser {
   created_at?: string;
   verification_status?: string;
   profile_photo?: string | null;
+  permissions?: UserPermissions | null;
 }
+
+/**
+ * Checks whether a user has a specific permission.
+ * - Superadmin ALWAYS returns true (unrestricted freedom).
+ * - Custom explicit permissions override role defaults.
+ * - If not explicitly set, falls back to safe role-based defaults.
+ */
+export function hasUserPermission(currentUser: SystemUser | null, permissionKey: keyof UserPermissions): boolean {
+  if (!currentUser) return false;
+  // Super Admin has complete freedom from all restrictions
+  if (currentUser.role === 'superadmin') return true;
+
+  // If custom permission is explicitly set by Super Admin, use it
+  if (currentUser.permissions && currentUser.permissions[permissionKey] !== undefined) {
+    return Boolean(currentUser.permissions[permissionKey]);
+  }
+
+  // Otherwise, role-based defaults
+  const role = currentUser.role;
+  switch (permissionKey) {
+    case 'can_create_document':
+      return role === 'admin' || role === 'staff';
+    case 'can_process_documents':
+      return role === 'admin' || role === 'staff';
+    case 'can_verify_residents':
+      return role === 'admin' || role === 'staff';
+    case 'can_manage_residents':
+      return role === 'admin' || role === 'staff';
+    case 'can_view_census':
+      return role === 'admin';
+    case 'can_generate_reports':
+      return role === 'admin';
+    case 'can_manage_users':
+      return role === 'admin';
+    case 'can_manage_categories':
+      return false; // Delegable by Super Admin
+    case 'can_view_logs':
+      return false; // Delegable by Super Admin
+    case 'can_access_system':
+      return false; // Delegable by Super Admin
+    case 'can_access_health':
+      return role === 'bhw' || role === 'nurse' || role === 'admin';
+    default:
+      return false;
+  }
+}
+
 
 export interface PendingResident {
   id: number;
@@ -455,6 +517,15 @@ export const apiService = {
   async createResident(data: Partial<Resident>): Promise<Resident> {
     const res = await fetch(`${API_BASE}/residents`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return await res.json();
+  },
+
+  async updateResident(id: number, data: Partial<Resident>): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_BASE}/residents/${id}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
@@ -946,7 +1017,10 @@ export const apiService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to create appointment');
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || 'Failed to create appointment');
+    }
     return await res.json();
   },
 
@@ -1073,10 +1147,19 @@ export const apiService = {
     return await res.json();
   },
 
-  async getClinicalArchives(): Promise<{ consultations: any[]; maternal: any[]; immunizations: any[]; schedules: any[] }> {
-    const res = await fetch(`${API_BASE}/archives/clinical`);
-    if (!res.ok) throw new Error('Failed to fetch clinical archives');
+  async getClinicalArchives(barangay?: string): Promise<{ consultations: any[]; maternal: any[]; immunizations: any[]; schedules: any[]; appointments?: any[] }> {
+    const q = barangay ? `?barangay=${encodeURIComponent(barangay)}` : '';
+    const res = await fetch(`${API_BASE}/archives/clinical${q}`);
+    if (!res.ok) throw new Error('Failed to fetch clinical records');
     return await res.json();
+  },
+
+  async cancelAppointment(id: number, reason?: string, attending_bhw?: string): Promise<HealthAppointment> {
+    return this.updateAppointment(id, {
+      status: 'Cancelled',
+      bhw_notes: reason || 'Patient cancelled or did not show up',
+      attending_bhw: attending_bhw || 'Attending Staff'
+    });
   },
 
   async runOneDayScheduler(): Promise<any> {

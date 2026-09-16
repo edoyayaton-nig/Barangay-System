@@ -452,6 +452,12 @@ export default function BarangayPortal() {
 
   const handleBookAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isVerified) {
+      toast.error('Residency Verification Required', {
+        description: 'Only verified residents can book health center appointments. Your residency account is currently awaiting verification by Barangay Officials.'
+      });
+      return;
+    }
     if (!selectedSchedule) return;
     if (!bookingDate) { toast.error('Please select a preferred date'); return; }
     setIsBookingLoading(true);
@@ -474,24 +480,8 @@ export default function BarangayPortal() {
       setBookingDate('');
       setBookingNotes('');
       setSelectedSchedule(null);
-    } catch {
-      // Optimistic fallback
-      const fallbackApt: any = {
-        id: Date.now(),
-        appointment_code: `APT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-        resident_name: user?.name,
-        service_type: selectedSchedule.service_type || selectedSchedule.title,
-        preferred_date: bookingDate,
-        preferred_time: selectedSchedule.time_slot || 'Morning',
-        status: 'Pending',
-        resident_notes: bookingNotes
-      };
-      setMyBookings(prev => [fallbackApt, ...prev]);
-      toast.success('Appointment request submitted! The health center will confirm your slot.');
-      setIsBookingOpen(false);
-      setBookingDate('');
-      setBookingNotes('');
-      setSelectedSchedule(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to book appointment. Please verify your account status.');
     } finally {
       setIsBookingLoading(false);
     }
@@ -1238,13 +1228,25 @@ export default function BarangayPortal() {
             </div>
             <div className="flex items-center gap-2">
               <Button
+                disabled={!isVerified}
                 onClick={() => {
+                  if (!isVerified) {
+                    toast.error('Residency verification required', {
+                      description: 'Only verified residents can book health center clinic appointments.'
+                    });
+                    return;
+                  }
                   setSelectedSchedule(clinicSchedules[0] || null);
                   setIsBookingOpen(true);
                 }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 cursor-pointer rounded-xl font-bold shadow-xs"
+                className={`text-xs gap-1.5 rounded-xl font-bold shadow-xs ${
+                  !isVerified
+                    ? 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                }`}
               >
-                <CalendarPlus size={14} /> Book Clinic Appointment
+                {!isVerified ? <Lock size={14} /> : <CalendarPlus size={14} />}
+                {!isVerified ? 'Verification Required' : 'Book Clinic Appointment'}
               </Button>
             </div>
           </div>
@@ -1355,10 +1357,24 @@ export default function BarangayPortal() {
                         </span>
                         <Button
                           size="sm"
-                          onClick={() => { setSelectedSchedule(sch); setIsBookingOpen(true); }}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] h-7 px-2.5 rounded-lg font-semibold gap-1 cursor-pointer shrink-0 shadow-xs"
+                          disabled={!isVerified}
+                          onClick={() => {
+                            if (!isVerified) {
+                              toast.error('Residency verification required to reserve slots');
+                              return;
+                            }
+                            setSelectedSchedule(sch);
+                            setIsBookingOpen(true);
+                          }}
+                          className={`text-[11px] h-7 px-2.5 rounded-lg font-semibold gap-1 shrink-0 shadow-xs ${
+                            !isVerified
+                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                          }`}
+                          title={!isVerified ? 'Residency verification required' : 'Reserve appointment slot'}
                         >
-                          <CalendarPlus size={12} /> Reserve Slot
+                          {!isVerified ? <Lock size={12} /> : <CalendarPlus size={12} />}
+                          {!isVerified ? 'Locked' : 'Reserve Slot'}
                         </Button>
                       </div>
                     </div>
@@ -1502,6 +1518,17 @@ export default function BarangayPortal() {
           </DialogHeader>
 
           <form onSubmit={handleBookAppointment} className="space-y-4 pt-2">
+            {!isVerified && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-900">
+                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Residency Verification Required</p>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    Your resident profile is awaiting Barangay Admin verification. Online appointment bookings unlock once approved.
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Target Clinic Program */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-700">Health Program / Service</label>
@@ -1668,10 +1695,14 @@ export default function BarangayPortal() {
               </Button>
               <Button
                 type="submit"
-                disabled={isBookingLoading || !bookingDate}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-1.5 rounded-xl cursor-pointer"
+                disabled={isBookingLoading || !bookingDate || !isVerified}
+                className={`text-xs font-bold gap-1.5 rounded-xl ${
+                  !isVerified
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                }`}
               >
-                {isBookingLoading ? 'Submitting...' : 'Confirm Appointment'}
+                {isBookingLoading ? 'Submitting...' : !isVerified ? <><Lock size={14} /> Verification Required</> : 'Confirm Appointment'}
               </Button>
             </DialogFooter>
           </form>

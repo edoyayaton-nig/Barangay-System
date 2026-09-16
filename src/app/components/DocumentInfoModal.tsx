@@ -69,7 +69,7 @@ export default function DocumentInfoModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-white dark:bg-slate-900 w-[96vw] max-w-7xl h-[90vh] max-h-[95vh] overflow-y-auto shadow-2xl border border-slate-200 dark:border-slate-800 rounded-2xl">
+      <DialogContent className="bg-white dark:bg-slate-900 w-[92vw] max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5">
         <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
