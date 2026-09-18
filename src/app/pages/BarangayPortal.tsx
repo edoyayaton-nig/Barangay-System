@@ -476,6 +476,11 @@ export default function BarangayPortal() {
       } as any);
       setMyBookings(prev => [apt, ...prev]);
       toast.success(`Appointment booked for ${bookingDate}! The health center will confirm your slot.`);
+      try {
+        const ch = new BroadcastChannel('barangay_health_sync');
+        ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
+        ch.close();
+      } catch {}
       setIsBookingOpen(false);
       setBookingDate('');
       setBookingNotes('');
@@ -579,10 +584,9 @@ export default function BarangayPortal() {
   const handleRequestDocument = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isVerified) {
-      toast.error('Document requests locked!', {
-        description: 'Your account must be verified by Barangay Admin first.',
+      toast.info('Verification In Progress', {
+        description: 'Your document request is being submitted and will be verified by Barangay Officials.',
       });
-      return;
     }
 
     // --- Duplicate detection: check if resident already has a pending/processing request ---

@@ -21,7 +21,7 @@ DROP TABLE IF EXISTS `residents`;
 DROP TABLE IF EXISTS `users`;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- 1. System Users (Super Admin, Barangay Admin, Barangay Staff, BHW, Resident)
+-- 1. System Users (Super Mega Admin, Super Admin, Barangay Admin, Barangay Staff, Nurse, BHW, Resident)
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(100) NOT NULL,

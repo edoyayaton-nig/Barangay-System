@@ -89,6 +89,28 @@ export default function GmailNotificationHub({
   // Filtered List
   const filteredList = useMemo(() => {
     return notifications.filter(n => {
+      // Exclude administrative barangay office notifications for health workers (BHW, Nurse)
+      if (currentUserRole === 'nurse' || currentUserRole === 'bhw') {
+        const type = (n.type || '').toLowerCase();
+        const msg = (n.message || '').toLowerCase();
+        if (
+          type.includes('account verified') ||
+          type.includes('id correction') ||
+          type.includes('verification') ||
+          type.includes('clearance') ||
+          type.includes('permit') ||
+          type.includes('document ready') ||
+          type.includes('pickup') ||
+          msg.includes('resident account application') ||
+          msg.includes('clearances, business permits') ||
+          msg.includes('resubmit your valid id') ||
+          msg.includes('application has been verified') ||
+          msg.includes('application has been rejected')
+        ) {
+          return false;
+        }
+      }
+
       // 1. Folder filter
       if (activeFolder === 'unread' && n.is_read) return false;
       if (activeFolder === 'starred' && !starredIds.includes(n.id)) return false;
@@ -109,9 +131,33 @@ export default function GmailNotificationHub({
 
       return true;
     });
-  }, [notifications, activeFolder, starredIds, searchQuery]);
+  }, [notifications, activeFolder, starredIds, searchQuery, currentUserRole]);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = useMemo(() => {
+    return notifications.filter(n => {
+      if (currentUserRole === 'nurse' || currentUserRole === 'bhw') {
+        const type = (n.type || '').toLowerCase();
+        const msg = (n.message || '').toLowerCase();
+        if (
+          type.includes('account verified') ||
+          type.includes('id correction') ||
+          type.includes('verification') ||
+          type.includes('clearance') ||
+          type.includes('permit') ||
+          type.includes('document ready') ||
+          type.includes('pickup') ||
+          msg.includes('resident account application') ||
+          msg.includes('clearances, business permits') ||
+          msg.includes('resubmit your valid id') ||
+          msg.includes('application has been verified') ||
+          msg.includes('application has been rejected')
+        ) {
+          return false;
+        }
+      }
+      return !n.is_read;
+    }).length;
+  }, [notifications, currentUserRole]);
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden flex flex-col">

@@ -139,7 +139,7 @@ export default function PatientDetailModal({ isOpen, onClose, patient, initialTa
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800 font-bold text-base shadow-xs shrink-0 overflow-hidden">
-                {patient.profile_photo ? (
+                {patient.profile_photo && typeof patient.profile_photo === 'string' && patient.profile_photo.trim().length > 0 && patient.profile_photo !== 'null' && patient.profile_photo !== 'undefined' ? (
                   <img src={patient.profile_photo} alt={patient.name} className="w-full h-full object-cover" />
                 ) : (
                   patient.name?.charAt(0) || 'P'
@@ -211,7 +211,7 @@ export default function PatientDetailModal({ isOpen, onClose, patient, initialTa
 
         {/* Content Tabs */}
         <div className="p-4 sm:p-5 space-y-3">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
             <TabsList className="bg-slate-100 p-1 rounded-xl grid grid-cols-4 gap-1 text-xs">
               <TabsTrigger value="overview" className="rounded-lg font-semibold cursor-pointer">Overview</TabsTrigger>
               <TabsTrigger value="consultations" className="rounded-lg font-semibold cursor-pointer">Consultations ({patient.consultations?.length || 0})</TabsTrigger>

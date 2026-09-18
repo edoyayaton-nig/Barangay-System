@@ -1,6 +1,18 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartsTooltip,
+  BarChart as RechartsBarChart,
+  Bar as RechartsBar,
+  XAxis,
+  YAxis,
+  CartesianGrid
+} from 'recharts';
+import {
   FileText,
   Users,
   FolderOpen,
@@ -77,6 +89,7 @@ import PendingApplicantReviewModal from '../components/PendingApplicantReviewMod
 import UserPermissionsModal from '../components/UserPermissionsModal';
 import ImageViewerModal from '../components/ImageViewerModal';
 import ProfileSettingsView from '../components/ProfileSettingsView';
+import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import { exportToCsv, printOfficialReport, downloadOfficialPdf } from '../../utils/exportCsv';
 import { BUTUAN_BARANGAYS, getBarangayContact, getBarangayEmail } from '../../utils/barangays';
 import { PIANING_LOGO_BASE64, BUTUAN_LOGO_BASE64 } from '../components/officialLogos';
@@ -134,8 +147,10 @@ export default function AdminDashboard() {
   // Barangay isolation & role helpers
   const userBarangay = user?.barangay || (user?.email?.toLowerCase().includes('anticala') ? 'Anticala' : user?.address?.toLowerCase().includes('anticala') ? 'Anticala' : 'Pianing');
   const currentAdminBarangay = (user?.barangay || (user?.email?.toLowerCase().includes('anticala') ? 'Anticala' : user?.address?.toLowerCase().includes('anticala') ? 'Anticala' : 'Pianing')).toLowerCase().trim();
-  const isSuperAdmin = user?.role === 'superadmin' || user?.role?.toLowerCase() === 'superadmin' || user?.email?.toLowerCase().includes('superadmin');
+  const isSuperAdmin = user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
+
 
   const getGreetingTime = () => {
     const hour = new Date().getHours();
@@ -298,18 +313,67 @@ export default function AdminDashboard() {
   const [resAccMiddleName, setResAccMiddleName] = useState('');
   const [resAccLastName, setResAccLastName] = useState('');
   const [resAccEmail, setResAccEmail] = useState('');
-  const [resAccPassword, setResAccPassword] = useState('Resident123!');
+  const [resAccPassword, setResAccPassword] = useState('');
   const [resAccShowPassword, setResAccShowPassword] = useState(false);
   const [resAccPhone, setResAccPhone] = useState('');
   const [resAccDOB, setResAccDOB] = useState('');
   const [resAccGender, setResAccGender] = useState<'Male' | 'Female'>('Male');
   const [resAccCivilStatus, setResAccCivilStatus] = useState('Single');
+  const [resAccEmployment, setResAccEmployment] = useState('Employed');
+  const [resAccResidencyYears, setResAccResidencyYears] = useState('');
   const [resAccPurok, setResAccPurok] = useState('1');
+  const [resAccCity, setResAccCity] = useState('Butuan City');
   const [resAccHouseholdNum, setResAccHouseholdNum] = useState('');
   const [resAccBarangay, setResAccBarangay] = useState<string>(user?.barangay || 'Pianing');
+  const [resAccIdType, setResAccIdType] = useState('Philippine National ID (PhilSys)');
+  const [resAccIdPhoto, setResAccIdPhoto] = useState<string | null>(null);
+  const [resAccIdFileName, setResAccIdFileName] = useState('');
   const [resAccLinkedCensusId, setResAccLinkedCensusId] = useState<number | null>(null);
   const [resAccCensusMatch, setResAccCensusMatch] = useState<Resident | null>(null);
   const [isCreatingResAccount, setIsCreatingResAccount] = useState(false);
+  const resAccFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const getDynamicAge = (dobString: string): number | null => {
+    if (!dobString) return null;
+    const dob = new Date(dobString);
+    if (isNaN(dob.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age >= 0 ? age : null;
+  };
+
+  const handleResAccFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Invalid file type', { description: 'Please upload an image (PNG, JPG, JPEG).' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File too large', { description: 'Max image size is 5MB.' });
+      return;
+    }
+
+    setResAccIdFileName(file.name);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setResAccIdPhoto(reader.result as string);
+      toast.success('Valid ID attached', { description: file.name });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearResAccIdPhoto = () => {
+    setResAccIdPhoto(null);
+    setResAccIdFileName('');
+    if (resAccFileInputRef.current) resAccFileInputRef.current.value = '';
+  };
 
   // Searchable Household Selector State (Census Add Resident Modal)
   const [householdSearchQuery, setHouseholdSearchQuery] = useState('');
@@ -903,6 +967,17 @@ export default function AdminDashboard() {
       loadData(false);
     }, 30000);
 
+    // Instant real-time synchronization with Nurse, BHW, and Resident actions
+    let syncChannel: BroadcastChannel | null = null;
+    try {
+      syncChannel = new BroadcastChannel('barangay_health_sync');
+      syncChannel.onmessage = (event) => {
+        if (event.data?.type === 'HEALTH_DATA_SYNC') {
+          loadData(false);
+        }
+      };
+    } catch {}
+
     // Debounced window focus sync (silent, max once every 10s)
     let lastFocusSync = 0;
     const handleTabVisibility = () => {
@@ -919,6 +994,9 @@ export default function AdminDashboard() {
       clearInterval(autoSyncTimer);
       window.removeEventListener('focus', handleTabVisibility);
       document.removeEventListener('visibilitychange', handleTabVisibility);
+      if (syncChannel) {
+        syncChannel.close();
+      }
     };
   }, []);
 
@@ -1421,8 +1499,12 @@ export default function AdminDashboard() {
       setStats(prev => ({ ...prev, totalResidents: freshResidents.length }));
       apiService.getCensusStats(user?.barangay, selectedCensusPurok).then(data => { if (data) setCensusStats(data); }).catch(() => {});
       apiService.getHouseholds(user?.barangay, selectedCensusPurok).then(data => { if (data) setCensusHouseholds(data); }).catch(() => {});
-      apiService.getPopulationStats(user?.barangay).then(p => { if (p) setPopulationStats(p); }).catch(() => {});
       toast.success('Resident registered in Population Census successfully');
+      try {
+        const ch = new BroadcastChannel('barangay_health_sync');
+        ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
+        ch.close();
+      } catch {}
       setIsAddResidentOpen(false);
       setNewResFirstName('');
       setNewResMiddleName('');
@@ -1489,6 +1571,19 @@ export default function AdminDashboard() {
     if (r.civil_status) {
       setResAccCivilStatus(r.civil_status);
     }
+    if ((r as any).employment_status) {
+      setResAccEmployment((r as any).employment_status);
+    }
+    if ((r as any).years_of_residency) {
+      setResAccResidencyYears(String((r as any).years_of_residency));
+    }
+    if ((r as any).id_type) {
+      setResAccIdType((r as any).id_type);
+    }
+    if ((r as any).submitted_id) {
+      setResAccIdPhoto((r as any).submitted_id);
+      setResAccIdFileName('Census_Verified_ID.jpg');
+    }
     if (r.purok) {
       const cleanP = r.purok.replace(/purok\s*/i, '').trim();
       setResAccPurok(cleanP || '1');
@@ -1535,6 +1630,10 @@ export default function AdminDashboard() {
       toast.error('Resident Email is required for portal login.');
       return;
     }
+    if (!resAccPassword.trim()) {
+      toast.error('Password is required for resident account.');
+      return;
+    }
 
     let cleanPhone = resAccPhone.trim().replace(/\D/g, '');
     if (cleanPhone.startsWith('639')) {
@@ -1559,6 +1658,8 @@ export default function AdminDashboard() {
     try {
       const fullName = `${resAccFirstName.trim()}${resAccMiddleName.trim() ? ' ' + resAccMiddleName.trim() : ''} ${resAccLastName.trim()}`;
       const assignedBarangay = resAccBarangay || user?.barangay || 'Pianing';
+      const cleanPurokNum = resAccPurok.replace(/purok\s*/i, '').trim() || '1';
+      const fullAddress = `Purok ${cleanPurokNum}, Barangay ${assignedBarangay}, ${resAccCity || 'Butuan City'}`;
 
       await apiService.createUser({
         name: fullName,
@@ -1570,12 +1671,19 @@ export default function AdminDashboard() {
         phone: cleanPhone || undefined,
         created_by: user?.name || 'Administrator',
         first_name: resAccFirstName.trim(),
+        middle_name: resAccMiddleName.trim() || undefined,
         last_name: resAccLastName.trim(),
         household_number: resAccHouseholdNum.trim() || undefined,
-        purok: resAccPurok.trim() || undefined,
+        purok: cleanPurokNum,
+        address: fullAddress,
         gender: resAccGender,
         civil_status: resAccCivilStatus,
+        employment_status: resAccEmployment,
+        years_of_residency: resAccResidencyYears.trim() || undefined,
         date_of_birth: resAccDOB || undefined,
+        id_type: resAccIdType,
+        submitted_id: resAccIdPhoto || undefined,
+        verification_status: 'Verified',
         resident_id: resAccLinkedCensusId || undefined
       } as any);
 
@@ -1586,7 +1694,10 @@ export default function AdminDashboard() {
             phone: cleanPhone || undefined,
             verification_status: 'Verified',
             household_number: resAccHouseholdNum.trim() || undefined,
-            purok: resAccPurok.trim() || undefined
+            purok: cleanPurokNum,
+            address: fullAddress,
+            id_type: resAccIdType,
+            submitted_id: resAccIdPhoto || undefined
           });
         } catch (linkErr) {
           console.warn('Census link sync notice:', linkErr);
@@ -1603,13 +1714,19 @@ export default function AdminDashboard() {
       setResAccMiddleName('');
       setResAccLastName('');
       setResAccEmail('');
-      setResAccPassword('Resident123!');
+      setResAccPassword('');
       setResAccPhone('');
       setResAccDOB('');
       setResAccGender('Male');
       setResAccCivilStatus('Single');
+      setResAccEmployment('Employed');
+      setResAccResidencyYears('');
       setResAccPurok('1');
+      setResAccCity('Butuan City');
       setResAccHouseholdNum('');
+      setResAccIdType('Philippine National ID (PhilSys)');
+      setResAccIdPhoto(null);
+      setResAccIdFileName('');
       setResAccLinkedCensusId(null);
       setResAccCensusMatch(null);
 
@@ -2198,7 +2315,7 @@ export default function AdminDashboard() {
   const handleExportResidentsCsv = () => {
     const dataToExport = barangayResidents.map(r => ({
       ID: r.id,
-      Name: `${r.first_name || ''} ${r.last_name || ''}`.trim() || r.name || 'Resident',
+      Name: `${r.first_name || ''} ${r.last_name || ''}`.trim() || (r as any).name || 'Resident',
       Email: r.email || '—',
       Phone: r.phone || '—',
       Address: r.address || '—',
@@ -2370,14 +2487,9 @@ export default function AdminDashboard() {
 
   const menuItems = [
     { id: 'overview', label: 'Dashboard', icon: Home },
-    ...(isSuperAdmin || hasUserPermission(user, 'can_manage_users') ? [{ id: 'users', label: 'Staff Management', icon: UserCog }] : []),
-    ...(isSuperAdmin || hasUserPermission(user, 'can_manage_residents') ? [{
-      id: 'residents',
-      label: 'Resident Management',
-      icon: Users,
-      badge: myPendingResidents.length > 0 ? myPendingResidents.length : undefined,
-      badgeColor: 'bg-red-600 text-white'
-    }] : []),
+    // Staff Management: Only Superadmin can manage staff — Admin cannot
+    ...(isSuperAdmin ? [{ id: 'users', label: 'Staff Management', icon: UserCog }] : []),
+    ...(isSuperAdmin || hasUserPermission(user, 'can_manage_residents') ? [{ id: 'residents', label: 'Resident Management', icon: Users }] : []),
     ...(isSuperAdmin || hasUserPermission(user, 'can_verify_residents') ? [{
       id: 'approvals',
       label: 'Pending Approvals',
@@ -2393,16 +2505,23 @@ export default function AdminDashboard() {
       badgeColor: 'bg-red-600 text-white'
     }] : []),
     ...(isSuperAdmin || hasUserPermission(user, 'can_view_census') ? [{ id: 'records', label: 'Census & Demographics', icon: Users }] : []),
-    ...(isSuperAdmin || hasUserPermission(user, 'can_generate_reports') ? [{ id: 'reports', label: 'System Reports', icon: BarChart }] : []),
+    ...(isSuperAdmin || hasUserPermission(user, 'can_generate_reports') ? [{ id: 'reports', label: 'Analytics & Reports', icon: BarChart }] : []),
     { id: 'archive', label: 'Archive', icon: Archive },
-    ...(isSuperAdmin || hasUserPermission(user, 'can_view_logs') ? [{ id: 'logs', label: 'System Audit & History Logs', icon: History }] : []),
-    ...(isSuperAdmin || hasUserPermission(user, 'can_manage_categories') ? [{ id: 'categories', label: 'Category Manager', icon: Tag }] : []),
-    ...(isSuperAdmin || hasUserPermission(user, 'can_access_system') ? [{ id: 'system', label: 'System & Backup', icon: Database }] : []),
+    // History Logs: Available to Superadmin (scoped to their barangay) — label updated
+    ...(isSuperAdmin || hasUserPermission(user, 'can_view_logs') ? [{ id: 'logs', label: isSuperAdmin ? 'History Logs' : 'Activity Logs', icon: History }] : []),
+    // Category Manager: REMOVED from Superadmin — Super Mega Admin only (via hasUserPermission explicit grant)
+    ...(hasUserPermission(user, 'can_manage_categories') && !isSuperAdmin ? [{ id: 'categories', label: 'Category Manager', icon: Tag }] : []),
+    // System & Backup: REMOVED from Superadmin — Super Mega Admin only
+    ...(hasUserPermission(user, 'can_access_system') && !isSuperAdmin ? [{ id: 'system', label: 'System & Backup', icon: Database }] : []),
     { id: 'profile-settings', label: 'Profile Settings', icon: UserCircle },
   ];
 
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 flex flex-col font-sans">
+      {/* System Notice Banner (System Down / Maintenance / Advisory) */}
+      <SystemNoticeBanner />
+
       {/* Top Navbar matching clean branding on pure white background (#FFFFFF) */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-3 sm:px-6 py-2.5 shadow-xs">
         <div className="flex items-center justify-between w-full">
@@ -3396,7 +3515,6 @@ export default function AdminDashboard() {
                           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 pl-4 py-3.5">Applicant Citizen</TableHead>
                           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 py-3.5">Application Ref</TableHead>
                           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 py-3.5">Submitted Date</TableHead>
-                          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 py-3.5">Government ID Document</TableHead>
                           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 py-3.5">Verification Status</TableHead>
                           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 pr-4 py-3.5 text-right">Review Actions</TableHead>
                         </TableRow>
@@ -3404,7 +3522,7 @@ export default function AdminDashboard() {
                       <TableBody className="divide-y divide-slate-100">
                         {myPendingResidents.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center py-16">
+                            <TableCell colSpan={5} className="text-center py-16">
                               <div className="flex flex-col items-center justify-center max-w-md mx-auto text-slate-400">
                                 <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center mb-3 shadow-2xs border border-slate-200">
                                   <ShieldCheck size={24} />
@@ -3456,17 +3574,6 @@ export default function AdminDashboard() {
                               </TableCell>
                               <TableCell className="text-slate-600 text-[11px]">
                                 {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recent'}
-                              </TableCell>
-                              <TableCell>
-                                <button
-                                  type="button"
-                                  onClick={() => openApplicantReview(r)}
-                                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                                  title="Click to view submitted ID document"
-                                >
-                                  <FileText size={13} className="text-blue-600" />
-                                  <span>View Gov ID</span>
-                                </button>
                               </TableCell>
                               <TableCell>
                                 <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200/80 text-[11px] font-semibold px-2.5 py-1 rounded-full">
@@ -6198,7 +6305,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* KPI Summary Metric Counters */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100">
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
                     <p className="text-[11px] text-slate-500 font-medium">Registered Residents</p>
                     <p className="text-2xl font-bold text-slate-900 mt-0.5">{barangayResidents.length}</p>
@@ -6206,10 +6313,6 @@ export default function AdminDashboard() {
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
                     <p className="text-[11px] text-emerald-700 font-medium">Verified Citizens</p>
                     <p className="text-2xl font-bold text-emerald-600 mt-0.5">{verifiedAccountsCount}</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                    <p className="text-[11px] text-amber-700 font-medium">Pending Verification</p>
-                    <p className="text-2xl font-bold text-amber-600 mt-0.5">{myPendingResidents.length}</p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
                     <p className="text-[11px] text-indigo-700 font-medium">Census Population</p>
@@ -6247,20 +6350,6 @@ export default function AdminDashboard() {
                     Verified Citizens
                     <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono font-bold">
                       {verifiedAccountsCount}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setResidentStatusTab('unverified')}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                      residentStatusTab === 'unverified'
-                        ? 'bg-white text-amber-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Clock size={14} />
-                    Pending / Unverified
-                    <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-mono font-bold">
-                      {myPendingResidents.length}
                     </span>
                   </button>
                 </div>
@@ -6334,7 +6423,7 @@ export default function AdminDashboard() {
                             // 3. Search filter
                             if (residentSearch.trim()) {
                               const q = residentSearch.toLowerCase();
-                              const name = `${r.first_name || ''} ${r.last_name || ''} ${r.name || ''}`.toLowerCase();
+                              const name = `${r.first_name || ''} ${r.last_name || ''} ${(r as any).name || ''}`.toLowerCase();
                               const phone = (r.phone || (r as any).contact_number || '').toLowerCase();
                               const email = (r.email || '').toLowerCase();
                               const addr = (r.address || r.purok || '').toLowerCase();
@@ -6575,6 +6664,453 @@ export default function AdminDashboard() {
                     <Printer size={13} /> Print Official System Report
                   </Button>
                 </div>
+              </div>
+
+              {/* ═══ LIVE ROLE-BASED ANALYTICS (SUPER ADMIN & BARANGAY ADMIN) ═══ */}
+              <div className="space-y-5">
+                {/* Header Banner */}
+                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 border border-indigo-900/40 shadow-sm">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
+                        <BarChart className="text-indigo-400" size={22} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-white">
+                            {isSuperAdmin ? 'City-Wide Municipal Analytics & Master Oversight' : `Barangay ${userBarangay} Administrative Intelligence`}
+                          </h3>
+                          <span className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                            {isSuperAdmin ? 'Super Administrator Scope' : 'Barangay Administrator Scope'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-indigo-200/80 mt-0.5">
+                          {isSuperAdmin
+                            ? 'Consolidated operational metrics across all 86 Butuan City barangays, municipal clearance throughput, staff distribution, and audit activity.'
+                            : `Real-time demographic indicators, clearance issuance pipeline, resident verification velocity, and civil census registry for Barangay ${userBarangay}.`}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-mono text-indigo-300 bg-indigo-950/80 px-2.5 py-1 rounded-lg border border-indigo-800/40">
+                      Live Synchronized
+                    </span>
+                  </div>
+                </div>
+
+                {/* KPI Matrix Row */}
+                {(() => {
+                  const targetResidents = isSuperAdmin
+                    ? residents
+                    : residents.filter(r => (r.barangay || '').toLowerCase().includes((userBarangay || '').toLowerCase()));
+                  const targetDocs = isSuperAdmin
+                    ? documents
+                    : documents.filter(d => (d.barangay || '').toLowerCase().includes((userBarangay || '').toLowerCase()));
+
+                  const totalPop = targetResidents.length;
+                  const maleCount = targetResidents.filter(r => r.gender === 'Male').length;
+                  const femaleCount = targetResidents.filter(r => r.gender === 'Female').length;
+                  const seniorCount = targetResidents.filter(r => {
+                    if (!r.date_of_birth) return false;
+                    const age = Math.floor((Date.now() - new Date(r.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                    return age >= 60;
+                  }).length;
+                  const minorCount = targetResidents.filter(r => {
+                    if (!r.date_of_birth) return false;
+                    const age = Math.floor((Date.now() - new Date(r.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                    return age < 18;
+                  }).length;
+
+                  const totalClearances = targetDocs.length;
+                  const completedClearances = targetDocs.filter(d => d.status === 'Completed').length;
+                  const pendingClearances = targetDocs.filter(d => d.status === 'Pending').length;
+                  const inProgressClearances = targetDocs.filter(d => d.status === 'Processing' || d.status === 'Ready for Pickup').length;
+                  const completionRate = totalClearances > 0 ? Math.round((completedClearances / totalClearances) * 100) : 100;
+
+                  const verifiedResidents = targetResidents.filter(r => r.verification_status === 'Verified').length;
+                  const pendingVerifications = targetResidents.filter(r => r.verification_status === 'Pending' || !r.verification_status).length;
+                  const verificationRate = totalPop > 0 ? Math.round((verifiedResidents / totalPop) * 100) : 0;
+
+                  const activeUsers = users.length;
+                  const adminUsers = users.filter(u => u.role === 'admin' || u.role === 'superadmin').length;
+                  const clinicalStaff = users.filter(u => u.role === 'nurse' || u.role === 'bhw').length;
+
+                  return (
+                    <>
+                      {/* Top Metric Cards */}
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-slate-600">
+                              {isSuperAdmin ? 'Total City Population' : 'Barangay Population'}
+                            </span>
+                            <Users size={16} className="text-blue-600" />
+                          </div>
+                          <p className="text-3xl font-extrabold text-slate-900">{totalPop}</p>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                            <span>M: <strong className="text-blue-700">{maleCount}</strong></span>
+                            <span>•</span>
+                            <span>F: <strong className="text-pink-700">{femaleCount}</strong></span>
+                            <span>•</span>
+                            <span>Seniors: <strong className="text-amber-700">{seniorCount}</strong></span>
+                          </div>
+                        </div>
+
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-slate-600">Clearances Issued</span>
+                            <FileText size={16} className="text-emerald-600" />
+                          </div>
+                          <p className="text-3xl font-extrabold text-slate-900">{completedClearances}</p>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                            <span className="text-emerald-700 font-bold">{completionRate}% fulfillment</span>
+                            <span>•</span>
+                            <span>{pendingClearances} pending</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-slate-600">
+                              {isSuperAdmin ? 'Staff Directory' : 'Citizen Verification'}
+                            </span>
+                            {isSuperAdmin ? <UserCheck size={16} className="text-purple-600" /> : <ShieldCheck size={16} className="text-indigo-600" />}
+                          </div>
+                          <p className="text-3xl font-extrabold text-slate-900">
+                            {isSuperAdmin ? activeUsers : `${verificationRate}%`}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                            {isSuperAdmin ? (
+                              <span>{adminUsers} Admins • {clinicalStaff} Healthcare Staff</span>
+                            ) : (
+                              <span>{verifiedResidents} Verified • {pendingVerifications} Pending</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-slate-600">
+                              {isSuperAdmin ? 'Security Audit Events' : 'Civil Households'}
+                            </span>
+                            <Activity size={16} className="text-amber-600" />
+                          </div>
+                          <p className="text-3xl font-extrabold text-slate-900">
+                            {isSuperAdmin ? activityLogs.length : (censusStats?.total_households ?? censusHouseholds.length)}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                            {isSuperAdmin ? (
+                              <span className="text-emerald-700 font-semibold">100% Audit Logging Active</span>
+                            ) : (
+                              <span>{censusStats?.total_families ?? censusHouseholds.length} Families registered</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Visual Breakdown Grid */}
+                      {(() => {
+                        const clearanceTypes = [
+                          { label: 'Barangay Clearance', key: 'barangay clearance', color: '#3B82F6' },
+                          { label: 'Certificate of Indigency', key: 'indigency', color: '#10B981' },
+                          { label: 'Certificate of Residency', key: 'residency', color: '#6366F1' },
+                          { label: 'Business Clearance / Permit', key: 'business', color: '#F59E0B' },
+                          { label: 'First Time Jobseeker Assistance', key: 'jobseeker', color: '#8B5CF6' },
+                        ];
+
+                        const clearanceChartData = clearanceTypes.map(item => {
+                          const count = targetDocs.filter(d => (d.document_type || '').toLowerCase().includes(item.key)).length;
+                          return {
+                            name: item.label,
+                            value: count,
+                            color: item.color,
+                          };
+                        });
+                        const hasClearanceData = clearanceChartData.some(d => d.value > 0);
+
+                        const purokChartData = ['1', '2', '3', '4', '5', '6', '7', '8'].map(pNum => {
+                          const count = targetResidents.filter(r => (r.purok || '').replace(/purok\s*/i, '').trim() === pNum).length;
+                          const pct = targetResidents.length > 0 ? Math.round((count / targetResidents.length) * 100) : 0;
+                          return {
+                            purok: `Purok ${pNum}`,
+                            shortPurok: `P${pNum}`,
+                            count,
+                            pct,
+                          };
+                        });
+
+                        const municipalChartData = ['Pianing', 'Libertad', 'Ampayon', 'Doongan', 'Villa Kananga', 'Baan Riverside'].map((bName, idx) => {
+                          const count = residents.filter(r => (r.barangay || '').toLowerCase() === bName.toLowerCase()).length;
+                          const pct = residents.length > 0 ? Math.round((count / residents.length) * 100) : 0;
+                          const colors = ['#4F46E5', '#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777'];
+                          return {
+                            name: bName,
+                            count,
+                            pct,
+                            color: colors[idx % colors.length],
+                          };
+                        });
+
+                        return (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {/* Left: Document Clearances Breakdown — Donut Chart */}
+                            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                              <div>
+                                <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
+                                  <span className="flex items-center gap-2">
+                                    <FileText size={16} className="text-indigo-600" />
+                                    Clearance Requests by Document Type
+                                  </span>
+                                  <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                                    {totalClearances} Total
+                                  </span>
+                                </h4>
+
+                                {!hasClearanceData ? (
+                                  <div className="flex flex-col items-center justify-center py-10 text-slate-400 text-center">
+                                    <FileText size={32} className="mb-2 opacity-40" />
+                                    <p className="text-xs">No clearance requests recorded yet</p>
+                                  </div>
+                                ) : (
+                                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center my-2">
+                                    {/* Donut Chart with Center Total */}
+                                    <div className="sm:col-span-5 relative flex items-center justify-center" style={{ height: 180 }}>
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                          <RechartsTooltip
+                                            content={({ active, payload }) => {
+                                              if (active && payload && payload.length) {
+                                                const data = payload[0].payload;
+                                                const pct = totalClearances > 0 ? ((data.value / totalClearances) * 100).toFixed(1) : '0.0';
+                                                return (
+                                                  <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-lg text-xs">
+                                                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: data.color }} />
+                                                      {data.name}
+                                                    </div>
+                                                    <div className="text-slate-500 mt-1">
+                                                      <span className="font-extrabold text-slate-900">{data.value}</span> requests ({pct}%)
+                                                    </div>
+                                                  </div>
+                                                );
+                                              }
+                                              return null;
+                                            }}
+                                          />
+                                          <Pie
+                                            data={clearanceChartData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={46}
+                                            outerRadius={72}
+                                            paddingAngle={3}
+                                            dataKey="value"
+                                            stroke="#ffffff"
+                                            strokeWidth={2}
+                                          >
+                                            {clearanceChartData.map((entry) => (
+                                              <Cell key={`clearance-cell-${entry.name}`} fill={entry.color} />
+                                            ))}
+                                          </Pie>
+                                        </PieChart>
+                                      </ResponsiveContainer>
+                                      {/* Donut Hole Center Badge */}
+                                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                        <span className="text-xl font-black text-slate-900 leading-none">{totalClearances}</span>
+                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Total</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Color-coded Breakdown List */}
+                                    <div className="sm:col-span-7 space-y-1.5">
+                                      {clearanceChartData.map(item => {
+                                        const pct = totalClearances > 0 ? Math.round((item.value / totalClearances) * 100) : 0;
+                                        return (
+                                          <div key={item.name} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg hover:bg-slate-50 transition-colors">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: item.color }} />
+                                              <span className="text-slate-700 font-medium truncate">{item.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              <span className="font-bold text-slate-900">{item.value}</span>
+                                              <span className="text-slate-400 text-[11px] min-w-[34px] text-right">({pct}%)</span>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Status Pipeline Pills */}
+                              <div className="grid grid-cols-4 gap-2 pt-3 mt-3 border-t border-slate-100 text-center">
+                                <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                                  <span className="text-[10px] text-emerald-700 font-bold block uppercase">Completed</span>
+                                  <span className="text-sm font-extrabold text-emerald-800">{completedClearances}</span>
+                                </div>
+                                <div className="p-2 bg-blue-50 rounded-xl border border-blue-200">
+                                  <span className="text-[10px] text-blue-700 font-bold block uppercase">In Progress</span>
+                                  <span className="text-sm font-extrabold text-blue-800">{inProgressClearances}</span>
+                                </div>
+                                <div className="p-2 bg-amber-50 rounded-xl border border-amber-200">
+                                  <span className="text-[10px] text-amber-700 font-bold block uppercase">Pending</span>
+                                  <span className="text-sm font-extrabold text-amber-800">{pendingClearances}</span>
+                                </div>
+                                <div className="p-2 bg-slate-50 rounded-xl border border-slate-200">
+                                  <span className="text-[10px] text-slate-600 font-bold block uppercase">Avg Turnaround</span>
+                                  <span className="text-sm font-extrabold text-slate-800">15 min</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Right: Role-Specific Distribution — Standard Bar Chart */}
+                            {isSuperAdmin ? (
+                              /* Super Admin Cross-Barangay Distribution */
+                              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                                <div>
+                                  <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
+                                    <span className="flex items-center gap-2">
+                                      <Building2 size={16} className="text-purple-600" />
+                                      Municipal Population Distribution (City of Butuan)
+                                    </span>
+                                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                                      86 Barangays
+                                    </span>
+                                  </h4>
+
+                                  <div style={{ width: '100%', height: 180 }} className="my-2">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                      <RechartsBarChart
+                                        data={municipalChartData}
+                                        margin={{ top: 12, right: 10, left: -20, bottom: 0 }}
+                                      >
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                                        <XAxis
+                                          dataKey="name"
+                                          stroke="#94A3B8"
+                                          fontSize={10}
+                                          tickLine={false}
+                                          axisLine={{ stroke: '#E2E8F0' }}
+                                        />
+                                        <YAxis
+                                          stroke="#94A3B8"
+                                          fontSize={11}
+                                          tickLine={false}
+                                          axisLine={{ stroke: '#E2E8F0' }}
+                                          allowDecimals={false}
+                                        />
+                                        <RechartsTooltip
+                                          cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
+                                          content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                              const data = payload[0].payload;
+                                              return (
+                                                <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-lg text-xs">
+                                                  <p className="font-bold text-slate-900">Barangay {data.name}</p>
+                                                  <p className="text-slate-500 mt-0.5">
+                                                    <span className="font-extrabold text-indigo-600">{data.count}</span> residents ({data.pct}%)
+                                                  </p>
+                                                </div>
+                                              );
+                                            }
+                                            return null;
+                                          }}
+                                        />
+                                        <RechartsBar dataKey="count" radius={[5, 5, 0, 0]} barSize={24}>
+                                          {municipalChartData.map((entry, idx) => (
+                                            <Cell key={`muni-bar-${idx}`} fill={entry.count > 0 ? entry.color : '#E2E8F0'} />
+                                          ))}
+                                        </RechartsBar>
+                                      </RechartsBarChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                </div>
+
+                                <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 mt-3 text-xs text-purple-900 flex items-center justify-between">
+                                  <span><strong>Super Administrator Privilege:</strong> Full cross-barangay census oversight.</span>
+                                  <span className="font-bold text-purple-800 font-mono text-[11px]">{BUTUAN_BARANGAYS.length} Barangays Registered</span>
+                                </div>
+                              </div>
+                            ) : (
+                              /* Barangay Admin Purok Population Density — Standard Bar Chart */
+                              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                                <div>
+                                  <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
+                                    <span className="flex items-center gap-2">
+                                      <MapPin size={16} className="text-blue-600" />
+                                      Purok Population Density — Brgy. {userBarangay}
+                                    </span>
+                                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                                      {targetResidents.length} Inhabitants
+                                    </span>
+                                  </h4>
+
+                                  <div style={{ width: '100%', height: 180 }} className="my-2">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                      <RechartsBarChart
+                                        data={purokChartData}
+                                        margin={{ top: 12, right: 10, left: -20, bottom: 0 }}
+                                      >
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                                        <XAxis
+                                          dataKey="shortPurok"
+                                          stroke="#94A3B8"
+                                          fontSize={11}
+                                          tickLine={false}
+                                          axisLine={{ stroke: '#E2E8F0' }}
+                                        />
+                                        <YAxis
+                                          stroke="#94A3B8"
+                                          fontSize={11}
+                                          tickLine={false}
+                                          axisLine={{ stroke: '#E2E8F0' }}
+                                          allowDecimals={false}
+                                        />
+                                        <RechartsTooltip
+                                          cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
+                                          content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                              const data = payload[0].payload;
+                                              return (
+                                                <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-lg text-xs">
+                                                  <p className="font-bold text-slate-900">{data.purok}</p>
+                                                  <p className="text-slate-500 mt-0.5">
+                                                    <span className="font-extrabold text-blue-600">{data.count}</span> residents ({data.pct}%)
+                                                  </p>
+                                                </div>
+                                              );
+                                            }
+                                            return null;
+                                          }}
+                                        />
+                                        <RechartsBar dataKey="count" fill="#2563EB" radius={[5, 5, 0, 0]} barSize={22}>
+                                          {purokChartData.map((entry, idx) => (
+                                            <Cell key={`purok-bar-${idx}`} fill={entry.count > 0 ? (idx % 2 === 0 ? '#2563EB' : '#3B82F6') : '#E2E8F0'} />
+                                          ))}
+                                        </RechartsBar>
+                                      </RechartsBarChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-slate-100 text-xs">
+                                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                                    <span className="text-slate-500 text-[11px] block font-medium">Senior Citizens (60+)</span>
+                                    <span className="font-extrabold text-slate-900 text-sm">{seniorCount} <span className="text-slate-400 font-normal text-xs">({totalPop > 0 ? Math.round((seniorCount / totalPop) * 100) : 0}%)</span></span>
+                                  </div>
+                                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                                    <span className="text-slate-500 text-[11px] block font-medium">Children / Minors (0-17)</span>
+                                    <span className="font-extrabold text-slate-900 text-sm">{minorCount} <span className="text-slate-400 font-normal text-xs">({totalPop > 0 ? Math.round((minorCount / totalPop) * 100) : 0}%)</span></span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Data Export Cards */}
@@ -7102,10 +7638,8 @@ export default function AdminDashboard() {
                             <SelectValue placeholder="Select Department" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Barangay">Barangay (General Public Clearances)</SelectItem>
-                            <SelectItem value="Health Center">Health Center (Clinical &amp; Medical Services)</SelectItem>
-                            <SelectItem value="Social Welfare">Social Welfare &amp; Community Aid</SelectItem>
-                            <SelectItem value="Civil Registry">Civil Registry &amp; Demographics</SelectItem>
+                            <SelectItem value="Barangay">Barangay</SelectItem>
+                            <SelectItem value="Health">Health</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -7146,8 +7680,8 @@ export default function AdminDashboard() {
             );
           })()}
 
-          {/* TAB: AUDIT TRAIL & ACTIVITY HISTORY LOGS (Super Admin Only) */}
-          {activeTab === 'logs' && isSuperAdmin && (
+          {/* TAB: AUDIT TRAIL & ACTIVITY HISTORY LOGS (Superadmin: Barangay-scoped / Delegated staff access) */}
+          {activeTab === 'logs' && (isSuperAdmin || hasUserPermission(user, 'can_view_logs')) && (
             <div className="space-y-6">
               {/* Header */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -7163,7 +7697,7 @@ export default function AdminDashboard() {
                     <span className="text-xs text-slate-500 font-mono">Live Activity Stream</span>
                   </div>
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-                    {isSuperAdmin ? 'System-Wide Audit & Activity History Logs' : `Activity History Logs — Barangay ${userBarangay}`}
+                    {isSuperAdmin ? `History Logs — Barangay ${userBarangay}` : 'Activity History Logs'}
                   </h2>
                   <p className="text-xs text-slate-500">
                     Comprehensive chronological record of staff actions, certificate issuances, resident verifications, and security events.
@@ -7192,7 +7726,17 @@ export default function AdminDashboard() {
               {/* Metric Stat Cards */}
               {(() => {
                 const scopedLogs = activityLogs.filter(log => {
-                  if (!isSuperAdmin && log.barangay && log.barangay !== 'All (City-Wide)' && !log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) {
+                  // Barangay Superadmin: Strictly scoped to their barangay only — no city-wide or system events
+                  if (isSuperAdmin) {
+                    if (!log.barangay || log.barangay === 'All (City-Wide)') return false;
+                    if (!log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) return false;
+                    if (log.action_type === 'System') return false;
+                    const staffRoles = ['admin', 'bhw', 'nurse', 'staff', 'resident'];
+                    if (log.user_role && !staffRoles.includes(log.user_role.toLowerCase())) return false;
+                    return true;
+                  }
+                  // Other permitted users: filter by their barangay
+                  if (log.barangay && log.barangay !== 'All (City-Wide)' && !log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) {
                     return false;
                   }
                   return true;
@@ -8185,7 +8729,7 @@ export default function AdminDashboard() {
                                       <span className="text-xs font-medium text-slate-800">• {h.family_name} Family</span>
                                     </div>
                                     <p className="text-[11px] text-slate-500 mt-0.5">
-                                      Head: <span className="text-slate-700 font-medium">{h.head_name || 'Not Recorded'}</span> • Purok {h.purok} ({h.members_count || 1} members)
+                                      Head: <span className="text-slate-700 font-medium">{h.head_name || 'Not Recorded'}</span> • Purok {h.purok} ({h.total_members || h.members?.length || 1} members)
                                     </p>
                                   </div>
                                   <Badge variant="outline" className="text-[10px] text-slate-600 shrink-0 ml-2">
@@ -8318,27 +8862,30 @@ export default function AdminDashboard() {
             </div>
 
             {/* Dynamic Age & Sector Detection Banner */}
-            {newResDOB && (
-              <div className="text-xs p-2.5 rounded-lg border flex items-center justify-between bg-slate-50 border-slate-200">
-                <div>
-                  <span className="text-slate-500">Calculated Age: </span>
-                  <strong className="text-slate-800">{getDynamicAge(newResDOB)} years old</strong>
+            {newResDOB && getDynamicAge(newResDOB) !== null && (() => {
+              const age = getDynamicAge(newResDOB)!;
+              return (
+                <div className="text-xs p-2.5 rounded-lg border flex items-center justify-between bg-slate-50 border-slate-200">
+                  <div>
+                    <span className="text-slate-500">Calculated Age: </span>
+                    <strong className="text-slate-800">{age} years old</strong>
+                  </div>
+                  {age >= 60 ? (
+                    <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[11px] border border-amber-300">
+                      Senior Citizen (60+) — Auto-tallied in Household
+                    </span>
+                  ) : age < 18 ? (
+                    <span className="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[11px] border border-blue-300">
+                      Child / Minor (&lt;18)
+                    </span>
+                  ) : (
+                    <span className="bg-slate-200 text-slate-700 font-medium px-2 py-0.5 rounded text-[11px]">
+                      Adult (18-59)
+                    </span>
+                  )}
                 </div>
-                {getDynamicAge(newResDOB) >= 60 ? (
-                  <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[11px] border border-amber-300">
-                    Senior Citizen (60+) — Auto-tallied in Household
-                  </span>
-                ) : getDynamicAge(newResDOB) < 18 ? (
-                  <span className="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[11px] border border-blue-300">
-                    Child / Minor (&lt;18)
-                  </span>
-                ) : (
-                  <span className="bg-slate-200 text-slate-700 font-medium px-2 py-0.5 rounded text-[11px]">
-                    Adult (18-59)
-                  </span>
-                )}
-              </div>
-            )}
+              );
+            })()}
 
             {/* Employment Status & Contact */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -8553,15 +9100,15 @@ export default function AdminDashboard() {
                       value={resAccPassword}
                       onChange={e => setResAccPassword(e.target.value)}
                       placeholder="Enter secure password"
-                      className="text-xs font-mono bg-white border-slate-300"
+                      className="text-xs font-mono bg-white border-slate-300 pr-8"
                       required
                     />
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Default: Resident123! (Min. 6 chars, upper, lower, digit, symbol)</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Min. 6 chars with uppercase, lowercase, digit &amp; symbol.</p>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <Label className="text-xs font-semibold text-slate-700">Mobile Contact Number</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Mobile Contact Number *</Label>
                   <div className="relative mt-1">
                     <Phone size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
                     <Input
@@ -8570,17 +9117,19 @@ export default function AdminDashboard() {
                       onChange={e => setResAccPhone(e.target.value.replace(/[^0-9+]/g, '').slice(0, 13))}
                       placeholder="09XXXXXXXXX"
                       className="text-xs pl-8 font-mono bg-white border-slate-300"
+                      required
                     />
                   </div>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Philippine 11-digit mobile number for SMS notifications.</p>
                 </div>
               </div>
             </div>
 
-            {/* Step 2: Citizen Demographics */}
+            {/* Step 2: Citizen Demographics & Profile */}
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
               <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <Users size={14} className="text-blue-600" />
-                Step 2: Resident Demographics &amp; Identity
+                Step 2: Resident Demographics &amp; Profile
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -8627,11 +9176,19 @@ export default function AdminDashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
-                  <Label className="text-xs font-semibold text-slate-700">Date of Birth</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-slate-700">Date of Birth</Label>
+                    {resAccDOB && getDynamicAge(resAccDOB) !== null && (
+                      <span className="text-[9px] text-blue-600 font-bold bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
+                        {getDynamicAge(resAccDOB)} yrs
+                      </span>
+                    )}
+                  </div>
                   <Input
                     type="date"
                     value={resAccDOB}
                     onChange={e => setResAccDOB(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
                     className="text-xs mt-1 bg-white border-slate-300"
                   />
                 </div>
@@ -8654,8 +9211,38 @@ export default function AdminDashboard() {
                       <SelectItem value="Married">Married</SelectItem>
                       <SelectItem value="Widowed">Widowed</SelectItem>
                       <SelectItem value="Separated">Separated</SelectItem>
+                      <SelectItem value="Live-In">Live-In / Common Law</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Employment Status</Label>
+                  <Select value={resAccEmployment} onValueChange={setResAccEmployment}>
+                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Employed">Employed</SelectItem>
+                      <SelectItem value="Self-Employed">Self-Employed / Business</SelectItem>
+                      <SelectItem value="Unemployed">Unemployed</SelectItem>
+                      <SelectItem value="Student">Student</SelectItem>
+                      <SelectItem value="Retired">Retired</SelectItem>
+                      <SelectItem value="Minor">Dependent Minor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Years of Residency</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={resAccResidencyYears}
+                    onChange={e => setResAccResidencyYears(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="e.g. 5"
+                    className="text-xs mt-1 bg-white border-slate-300"
+                  />
                 </div>
               </div>
             </div>
@@ -8664,12 +9251,12 @@ export default function AdminDashboard() {
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
               <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <Building2 size={14} className="text-blue-600" />
-                Step 3: Barangay, Purok &amp; Household
+                Step 3: Barangay, Purok &amp; City
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
                 <div>
-                  <Label className="text-xs font-semibold text-slate-700">Barangay</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Barangay *</Label>
                   {isSuperAdmin ? (
                     <Select value={resAccBarangay || 'Pianing'} onValueChange={setResAccBarangay}>
                       <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue /></SelectTrigger>
@@ -8688,7 +9275,7 @@ export default function AdminDashboard() {
                   )}
                 </div>
                 <div>
-                  <Label className="text-xs font-semibold text-slate-700">Purok</Label>
+                  <Label className="text-xs font-semibold text-slate-700">Purok *</Label>
                   <Select value={resAccPurok} onValueChange={setResAccPurok}>
                     <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -8699,13 +9286,115 @@ export default function AdminDashboard() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs font-semibold text-slate-700">Household Number</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-slate-700">City / Municipality</Label>
+                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+                      Static Jurisdiction
+                    </span>
+                  </div>
                   <Input
-                    value={resAccHouseholdNum}
-                    onChange={e => setResAccHouseholdNum(e.target.value)}
-                    placeholder="e.g. HH-P1-001"
-                    className="text-xs mt-1 font-mono bg-white border-slate-300"
+                    value="Butuan City"
+                    readOnly
+                    disabled
+                    className="text-xs mt-1 bg-slate-100/90 border-slate-200 font-bold text-slate-700 cursor-not-allowed select-none"
                   />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Fixed to local municipal jurisdiction (Butuan City)</p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-slate-700">Census Household #</Label>
+                    <span className="text-[10px] text-slate-400 font-normal">From Census Only</span>
+                  </div>
+                  {resAccHouseholdNum ? (
+                    <div className="mt-1 flex items-center justify-between px-3 py-2 bg-emerald-50/80 border border-emerald-200 rounded-lg text-xs">
+                      <span className="font-mono font-bold text-emerald-800">{resAccHouseholdNum}</span>
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                        Auto-linked from Census
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-1 flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500">
+                      <span className="font-mono text-[11px] text-slate-400">Unassigned (Optional)</span>
+                      <span className="text-[10px] text-slate-400">Census Managed Only</span>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-slate-400 mt-0.5">Household numbers originate exclusively from the Census Registry</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 4: Valid Government ID & Upload */}
+            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-blue-600" />
+                Step 4: Valid Government ID &amp; Document Photo
+              </span>
+
+              <div className="space-y-2.5">
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Valid Government ID Type *</Label>
+                  <Select value={resAccIdType} onValueChange={setResAccIdType}>
+                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300">
+                      <SelectValue placeholder="Select Government ID Type" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {ID_TYPES.map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Government ID Photo Upload
+                  </Label>
+                  <input
+                    type="file"
+                    ref={resAccFileInputRef}
+                    onChange={handleResAccFileChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+
+                  {!resAccIdPhoto ? (
+                    <div
+                      onClick={() => resAccFileInputRef.current?.click()}
+                      className="border border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/20 rounded-xl p-3 text-center cursor-pointer transition-all group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-1 group-hover:scale-105 transition-transform">
+                        <Camera size={16} />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-700">Click to attach or capture resident valid ID photo</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">PNG, JPG, or JPEG up to 5MB (PhilSys, Driver's License, Voter's, etc.)</p>
+                    </div>
+                  ) : (
+                    <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={resAccIdPhoto}
+                          alt="ID Preview"
+                          className="w-12 h-9 object-cover rounded-lg border border-blue-300 shadow-2xs shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-blue-950 truncate">
+                            {resAccIdFileName || resAccIdType}
+                          </p>
+                          <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-1">
+                            <CheckCircle2 size={12} className="text-emerald-600" /> Valid ID Photo Attached
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClearResAccIdPhoto}
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full cursor-pointer transition-colors"
+                        title="Remove photo"
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

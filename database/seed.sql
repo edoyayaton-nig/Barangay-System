@@ -16,14 +16,16 @@ TRUNCATE TABLE `messages`;
 TRUNCATE TABLE `faq_knowledge`;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- Seed Users (5 Roles: superadmin, admin, staff, bhw, resident)
+-- Seed Users (Roles: super_mega_admin, superadmin, admin, staff, nurse, bhw, resident)
 INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `status`, `verification_status`, `last_login`) VALUES
 (1, 'Super Admin Rodrigo Lim', 'superadmin@barangay.gov', '123', 'superadmin', 'Active', 'Verified', NOW()),
 (2, 'Barangay Captain Juan Dela Cruz', 'admin@barangay.gov', '123', 'admin', 'Active', 'Verified', NOW()),
 (3, 'Barangay Clerk Ana Reyes', 'staff@barangay.gov', '123', 'staff', 'Active', 'Verified', NOW() - INTERVAL 1 DAY),
 (4, 'Nurse Maria Santos', 'bhw@barangay.gov', '123', 'bhw', 'Active', 'Verified', NOW()),
 (5, 'Juan Resident Dela Cruz', 'resident@gmail.com', '123', 'resident', 'Active', 'Verified', NOW() - INTERVAL 1 DAY),
-(6, 'Josefina Villanueva', 'josefina@gmail.com', '123', 'resident', 'Active', 'Pending_Review', NOW() - INTERVAL 3 DAY)
+(6, 'Josefina Villanueva', 'josefina@gmail.com', '123', 'resident', 'Active', 'Pending_Review', NOW() - INTERVAL 3 DAY),
+(7, 'Nurse Ligaya Santos', 'nurse@barangay.gov', '123', 'nurse', 'Active', 'Verified', NOW()),
+(28, 'Super Mega Admin', 'supermegaadmin@barangay.gov', '123', 'super_mega_admin', 'Active', 'Verified', NOW())
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `email` = VALUES(`email`), `role` = VALUES(`role`), `verification_status` = VALUES(`verification_status`);
 
 -- Seed Residents

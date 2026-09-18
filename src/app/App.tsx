@@ -1,10 +1,12 @@
 import { RouterProvider } from 'react-router';
 import { router } from './routes';
 import { Toaster } from 'sonner';
+import NetworkStatusBanner from './components/NetworkStatusBanner';
 
 export default function App() {
   return (
     <>
+      <NetworkStatusBanner />
       <Toaster
         position="top-right"
         theme="light"

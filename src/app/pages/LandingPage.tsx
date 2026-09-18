@@ -1,8 +1,11 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { FileText, Users, Baby, Bell, BarChart, Shield, ArrowRight, CheckCircle2, MapPin, Clock } from 'lucide-react';
+import { FileText, Users, Baby, Bell, BarChart, Shield, ArrowRight, CheckCircle2, MapPin, Clock, AlertTriangle, Wrench } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { apiService } from '../../services/api';
+import SystemNoticeBanner from '../components/SystemNoticeBanner';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -55,6 +58,12 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
+      {/* System Notice Banner (System Down / Maintenance / Advisory) */}
+      <SystemNoticeBanner
+        showStaffButton={true}
+        onStaffClick={() => navigate('/login?tab=login')}
+      />
+
       {/* Top Navbar */}
       <nav className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">

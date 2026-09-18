@@ -110,7 +110,7 @@ function getServiceColor(serviceType?: string) {
   };
 }
 
-function formatApptDate(dateStr?: string, withWeekday = false) {
+function formatApptDate(dateStr?: string | null, withWeekday = false) {
   if (!dateStr) return '';
   const clean = String(dateStr).split('T')[0];
   const parts = clean.split('-');
@@ -324,6 +324,11 @@ export default function HealthCenterPortal() {
       setMyBookings(prev => [apt, ...prev]);
       setAppointments(prev => [apt, ...prev]);
       toast.success(`Appointment booked for ${bookingDate}! The nurse will confirm your slot.`);
+      try {
+        const ch = new BroadcastChannel('barangay_health_sync');
+        ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
+        ch.close();
+      } catch {}
       setIsBookingOpen(false);
       setBookingDate('');
       setBookingNotes('');

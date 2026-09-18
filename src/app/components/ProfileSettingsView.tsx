@@ -293,11 +293,12 @@ export default function ProfileSettingsView({ user, onProfileUpdated }: ProfileS
                 className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden bg-slate-50 border-2 border-slate-200 shadow-sm cursor-pointer flex items-center justify-center transition-all group-hover:border-teal-400 group-hover:shadow-md"
                 title="Click to upload/change photo"
               >
-                {profilePhoto ? (
+                {profilePhoto && typeof profilePhoto === 'string' && profilePhoto.trim().length > 0 && profilePhoto !== 'null' && profilePhoto !== 'undefined' ? (
                   <img
                     src={profilePhoto}
                     alt={name || 'User'}
                     className="w-full h-full object-cover"
+                    onError={() => setProfilePhoto(null)}
                   />
                 ) : (
                   <div className={`w-full h-full flex items-center justify-center text-2xl font-bold tracking-wider ${roleConfig.bgAccent}`}>

@@ -22,6 +22,7 @@ export interface DocumentRequest {
   processed_at?: string | null;
   processed_by?: string;
   barangay?: string;
+  email?: string;
   resident_email?: string;
   extra_fields?: string | Record<string, string>;
 }
@@ -123,7 +124,7 @@ export interface SystemUser {
   last_name?: string;
   email: string;
   password?: string;
-  role: 'superadmin' | 'admin' | 'staff' | 'bhw' | 'nurse' | 'resident';
+  role: 'super_mega_admin' | 'superadmin' | 'admin' | 'staff' | 'bhw' | 'nurse' | 'resident';
   status: 'Active' | 'Inactive' | 'Archived';
   barangay?: string;
   phone?: string;
@@ -146,16 +147,26 @@ export interface SystemUser {
 
 /**
  * Checks whether a user has a specific permission.
- * - Superadmin ALWAYS returns true (unrestricted freedom).
+ * - super_mega_admin: Unrestricted top-tier city-level authority — returns true for all permissions.
+ * - superadmin (Barangay Superadmin): Unrestricted within their barangay, but blocked from system/categories.
+ * - admin: Operational barangay officer — cannot manage users (staff management removed).
  * - Custom explicit permissions override role defaults.
  * - If not explicitly set, falls back to safe role-based defaults.
  */
 export function hasUserPermission(currentUser: SystemUser | null, permissionKey: keyof UserPermissions): boolean {
   if (!currentUser) return false;
-  // Super Admin has complete freedom from all restrictions
-  if (currentUser.role === 'superadmin') return true;
 
-  // If custom permission is explicitly set by Super Admin, use it
+  // Super Mega Admin has absolute top-tier authority — no restrictions whatsoever
+  if (currentUser.role === 'super_mega_admin') return true;
+
+  // Barangay Superadmin — unrestricted WITHIN their barangay, but explicitly blocked from system-level access
+  if (currentUser.role === 'superadmin') {
+    // System & Backup and Category Manager are reserved for Super Mega Admin only
+    if (permissionKey === 'can_access_system' || permissionKey === 'can_manage_categories') return false;
+    return true; // All other permissions granted for barangay-level operations
+  }
+
+  // If custom permission is explicitly set by Superadmin or Super Mega Admin, use it
   if (currentUser.permissions && currentUser.permissions[permissionKey] !== undefined) {
     return Boolean(currentUser.permissions[permissionKey]);
   }
@@ -176,13 +187,14 @@ export function hasUserPermission(currentUser: SystemUser | null, permissionKey:
     case 'can_generate_reports':
       return role === 'admin';
     case 'can_manage_users':
-      return role === 'admin';
+      // Admin CANNOT manage staff — Staff Management is removed from Admin sidebar
+      return false;
     case 'can_manage_categories':
-      return false; // Delegable by Super Admin
+      return false; // Super Mega Admin only — not delegable to admin/staff by default
     case 'can_view_logs':
-      return false; // Delegable by Super Admin
+      return false; // Delegable by Superadmin
     case 'can_access_system':
-      return false; // Delegable by Super Admin
+      return false; // Super Mega Admin only
     case 'can_access_health':
       return role === 'bhw' || role === 'nurse' || role === 'admin';
     default:
@@ -667,8 +679,12 @@ export const apiService = {
   },
 
   // SMS Notifications
-  async getNotifications(): Promise<SmsNotification[]> {
-    const res = await fetch(`${API_BASE}/notifications`);
+  async getNotifications(params?: { department?: string; role?: string }): Promise<SmsNotification[]> {
+    const q = new URLSearchParams();
+    if (params?.department) q.append('department', params.department);
+    if (params?.role) q.append('role', params.role);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    const res = await fetch(`${API_BASE}/notifications${qs}`);
     return await res.json();
   },
 
@@ -1115,17 +1131,24 @@ export const apiService = {
     return await res.json();
   },
 
-  async getMaintenanceMode(): Promise<{ enabled: boolean; message: string; updated_at: string }> {
+  async getMaintenanceMode(): Promise<{ enabled: boolean; type: 'down' | 'maintenance' | 'advisory'; title: string; message: string; estimated_uptime?: string; updated_at: string }> {
     const res = await fetch(`${API_BASE}/system/maintenance`);
     if (!res.ok) throw new Error('Failed to fetch maintenance status');
     return await res.json();
   },
 
-  async toggleMaintenanceMode(enabled: boolean, message?: string): Promise<any> {
+  async toggleMaintenanceMode(
+    param1: boolean | { enabled: boolean; type?: string; title?: string; message?: string; estimated_uptime?: string },
+    message?: string
+  ): Promise<any> {
+    const body = typeof param1 === 'object'
+      ? param1
+      : { enabled: param1, message };
+
     const res = await fetch(`${API_BASE}/system/maintenance`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled, message }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error('Failed to toggle maintenance mode');
     return await res.json();

@@ -28,6 +28,7 @@ import BarangayChatbot from '../components/BarangayChatbot';
 import ProfileSettingsModal from '../components/ProfileSettingsModal';
 import TermsAndPrivacyModal from '../components/TermsAndPrivacyModal';
 import SuperAdminNavigationDock from '../components/SuperAdminNavigationDock';
+import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import { getUpcomingOperatingDates, formatOperatingDaysSummary } from '../../utils/scheduleDateUtils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -234,6 +235,11 @@ export default function ResidentPortal() {
       } as any);
       setMyBookings(prev => [apt, ...prev]);
       toast.success(`Appointment booked for ${bookingDate}! The nurse will confirm your slot.`);
+      try {
+        const ch = new BroadcastChannel('barangay_health_sync');
+        ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
+        ch.close();
+      } catch {}
       setIsBookingOpen(false);
       setBookingDate('');
       setBookingNotes('');
@@ -246,6 +252,9 @@ export default function ResidentPortal() {
   };
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans relative">
+      {/* System Notice Banner (System Down / Maintenance / Advisory) */}
+      <SystemNoticeBanner />
+
       {/* Super Admin Unified Ecosystem Switcher */}
       <SuperAdminNavigationDock currentRole={user?.role} />
 
@@ -317,7 +326,7 @@ export default function ResidentPortal() {
                   </span>
                   {isVerified ? (
                     <span className="text-[11px] text-emerald-300 font-bold flex items-center gap-1 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                      <CheckCircle size={12} /> Verified Citizen
+                      <CheckCircle2 size={12} /> Verified Citizen
                     </span>
                   ) : (
                     <span className="text-[11px] text-amber-300 font-bold flex items-center gap-1 bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-500/30">

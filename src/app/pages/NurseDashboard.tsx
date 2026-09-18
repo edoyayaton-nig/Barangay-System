@@ -4,14 +4,15 @@ import {
   Stethoscope, Heart, Baby, Activity, CalendarCheck, Clock,
   CheckCircle2, PlusCircle, RefreshCcw, LogOut, MapPin, Pill,
   Syringe, Calendar, Check, X, Menu, Phone, Edit2, Trash2, Bell,
-  AlertTriangle, Send, Package, ClipboardList, UserPlus, Save, Archive, Eye, User,
+  AlertTriangle, Send, Package, ClipboardList, UserPlus, Users, Save, Archive, Eye, User,
   Sparkles, Filter, ShieldCheck, UserCheck, ChevronRight, UserCircle, Plus,
-  Search, CalendarPlus, XCircle
+  Search, CalendarPlus, XCircle, BarChart3, Download, Printer
 } from 'lucide-react';
 import {
   apiService, ImmunizationRecord, MaternalRecord,
   HealthAppointment, ClinicSchedule, Resident, SmsNotification
 } from '../../services/api';
+import { exportToCsv, printOfficialReport, downloadOfficialPdf } from '../../utils/exportCsv';
 import PatientDetailModal, { PatientRecordData } from '../components/PatientDetailModal';
 import SmartClinicalIntakeModal from '../components/SmartClinicalIntakeModal';
 import GmailNotificationHub from '../components/GmailNotificationHub';
@@ -19,6 +20,7 @@ import ClinicalArchivesHub from '../components/ClinicalArchivesHub';
 import ProfileSettingsView from '../components/ProfileSettingsView';
 import SmsDetailsModal from '../components/SmsDetailsModal';
 import BatchSmsReminderModal, { DuePatientItem } from '../components/BatchSmsReminderModal';
+import CensusEntryTab from '../components/CensusEntryTab';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -130,26 +132,58 @@ interface PrescribedMedItem {
 
 export default function NurseDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'consultations' | 'maternal' | 'immunizations' | 'schedule' | 'appointments' | 'inventory' | 'records' | 'archives' | 'sms' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'consultations' | 'maternal' | 'immunizations' | 'schedule' | 'appointments' | 'inventory' | 'records' | 'archives' | 'sms' | 'census' | 'analytics' | 'reports' | 'profile'>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
 
   // User session
   const [user, setUser] = useState<any>(() => {
-    try { return JSON.parse(localStorage.getItem('barangay_user') || 'null'); } catch { return null; }
+    try {
+      const u = JSON.parse(localStorage.getItem('barangay_user') || 'null');
+      if (u && (u.role || '').toLowerCase().trim() === 'nurse') return u;
+      return null;
+    } catch {
+      return null;
+    }
   });
   const nurseBarangay = user?.barangay || 'Pianing';
   const nurseName = user?.name || 'Nurse Maria Santos, RN';
 
-  // Auth guard
+  // Strict Nurse-only Auth guard (Admins and other roles cannot open Nurse Dashboard)
   useEffect(() => {
     const stored = localStorage.getItem('barangay_user');
-    if (!stored) { navigate('/login'); return; }
-    try {
-      const role = (JSON.parse(stored)?.role || '').toLowerCase().trim();
-      if (role !== 'nurse') navigate('/login');
-    } catch { navigate('/login'); }
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const role = (parsed.role || '').toLowerCase().trim();
+        if (role !== 'nurse') {
+          toast.error('Access Denied', {
+            description: 'Admins and unauthorized roles cannot access the Nurse Dashboard. Only Nurse accounts are permitted.'
+          });
+          if (role === 'superadmin' || role === 'admin' || role === 'staff') {
+            navigate('/admin');
+          } else if (role === 'bhw') {
+            navigate('/bhw');
+          } else if (role === 'resident') {
+            navigate('/resident');
+          } else {
+            navigate('/login');
+          }
+          return;
+        }
+        setUser(parsed);
+      } catch {
+        navigate('/login');
+        return;
+      }
+    } else {
+      toast.error('Authentication Required', {
+        description: 'Please sign in with your Nurse account.'
+      });
+      navigate('/login');
+      return;
+    }
   }, [navigate]);
 
   // Global Profile Update Listener
@@ -273,6 +307,9 @@ export default function NurseDashboard() {
   const [cTbPartner, setCTbPartner] = useState('');
 
   // ══ Prenatal Form State ══
+  const [pFirstName, setPFirstName] = useState('');
+  const [pMiddleName, setPMiddleName] = useState('');
+  const [pLastName, setPLastName] = useState('');
   const [pName, setPName] = useState('');
   const [pPhone, setPPhone] = useState('');
   const [pAge, setPAge] = useState('');
@@ -281,7 +318,10 @@ export default function NurseDashboard() {
   const [pLmp, setPLmp] = useState('');
   const [pEdd, setPEdd] = useState('');
   const [pAog, setPAog] = useState('');
-  const [pVisitNum, setPVisitNum] = useState('2'); // default 2nd visit
+  const [pVisitNum, setPVisitNum] = useState('1'); // default 1st visit
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [pSearchFocus, setPSearchFocus] = useState(false);
+  const [iSearchFocus, setISearchFocus] = useState(false);
   // Fixed Dual BP Inputs
   const [pBpSys, setPBpSys] = useState('120');
   const [pBpDia, setPBpDia] = useState('80');
@@ -295,6 +335,9 @@ export default function NurseDashboard() {
   const [pMedQty, setPMedQty] = useState('30'); // Freedom to start from 1 unit
 
   // ══ Immunization Form State ══
+  const [iChildFirstName, setIChildFirstName] = useState('');
+  const [iChildMiddleName, setIChildMiddleName] = useState('');
+  const [iChildLastName, setIChildLastName] = useState('');
   const [iChild, setIChild] = useState('');
   const [iPhone, setIPhone] = useState('');
   const [iAge, setIAge] = useState('');
@@ -305,7 +348,7 @@ export default function NurseDashboard() {
   const [iVaccine, setIVaccine] = useState('Pentavalent (DPT-HepB-Hib)');
   const [iCustomVaccine, setICustomVaccine] = useState('');
   const [iVaccineQty, setIVaccineQty] = useState('1'); // Starting from 1 with full freedom
-  const [iDose, setIDose] = useState('Dose 2'); // Highlighted 2nd dose
+  const [iDose, setIDose] = useState('Dose 1');
   const [iBatch, setIBatch] = useState('');
   const [iDateGiven, setIDateGiven] = useState(new Date().toISOString().split('T')[0]);
   const [iNextDue, setINextDue] = useState('');
@@ -401,17 +444,40 @@ export default function NurseDashboard() {
   const loadData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const [apts, schedules, notifs, liveCons, liveMat, liveImm, liveInv] = await Promise.all([
+      const [apts, schedules, notifs, liveCons, liveMat, liveImm, liveInv, liveRes] = await Promise.all([
         apiService.getAppointments({ barangay: nurseBarangay }).catch(() => []),
         apiService.getClinicSchedules(nurseBarangay).catch(() => []),
-        apiService.getNotifications().catch(() => []),
+        apiService.getNotifications({ department: 'health', role: 'nurse' }).catch(() => []),
         apiService.getConsultations(nurseBarangay).catch(() => []),
         apiService.getMaternalRecords().catch(() => []),
         apiService.getImmunizations().catch(() => []),
-        apiService.getInventory(nurseBarangay).catch(() => [])
+        apiService.getInventory(nurseBarangay).catch(() => []),
+        apiService.getResidents(nurseBarangay).catch(() => [])
       ]);
       setAppointments(apts || []);
-      setNotifications(notifs || []);
+      setResidents(Array.isArray(liveRes) ? liveRes : []);
+      const isHealthWorkerNotification = (n: any) => {
+        const type = (n.type || '').toLowerCase();
+        const msg = (n.message || '').toLowerCase();
+        if (
+          type.includes('account verified') ||
+          type.includes('id correction') ||
+          type.includes('verification') ||
+          type.includes('clearance') ||
+          type.includes('permit') ||
+          type.includes('document ready') ||
+          type.includes('pickup') ||
+          msg.includes('resident account application') ||
+          msg.includes('clearances, business permits') ||
+          msg.includes('resubmit your valid id') ||
+          msg.includes('application has been verified') ||
+          msg.includes('application has been rejected')
+        ) {
+          return false;
+        }
+        return true;
+      };
+      setNotifications((notifs || []).filter(isHealthWorkerNotification));
       setInventory(liveInv || []);
 
       if (liveCons && liveCons.length > 0) {
@@ -870,7 +936,8 @@ export default function NurseDashboard() {
 
   const handleCreatePrenatal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pName.trim()) { toast.error('Patient name is required'); return; }
+    const combinedMotherName = [pFirstName.trim(), pMiddleName.trim(), pLastName.trim()].filter(Boolean).join(' ') || pName.trim();
+    if (!combinedMotherName) { toast.error("Mother's first and last name are required"); return; }
     if (!pPhone.trim()) { toast.error('Contact number is required for SMS reminders'); return; }
     if (!pLmp) { toast.error('Last Menstrual Period (LMP) is required'); return; }
     if (!pNextDate) { toast.error('Next visit date is required'); return; }
@@ -884,7 +951,7 @@ export default function NurseDashboard() {
 
     const optimisticRecord: PrenatalRecord = {
       id: Date.now(),
-      patient_name: pName.trim(),
+      patient_name: combinedMotherName,
       contact_number: pPhone.trim(),
       age: pAge ? Number(pAge) || 25 : 25,
       barangay: nurseBarangay,
@@ -899,29 +966,20 @@ export default function NurseDashboard() {
       fetal_heart_rate: pFhr ? `${pFhr} bpm` : '144 bpm',
       fundic_height: pFh ? `${pFh} cm` : '18 cm',
       next_visit_date: pNextDate,
-      next_visit_note: pNextNote || `Visit #${pVisitNum} Follow-up`,
+      visit_number: parseInt(pVisitNum, 10) || 2,
       prescribed_meds: finalPMeds,
+      remarks: pNextNote || 'Regular follow-up scheduled. Vital signs within normal limits.',
       attending_nurse: nurseName,
-      visit_date: new Date().toISOString().split('T')[0],
-      visit_number: Number(pVisitNum) || 2,
       sms_sent: false
     };
 
-    // Immediate UI update & local inventory deduction
+    // Immediate UI update
     setPrenatalRecords(prev => [optimisticRecord, ...prev]);
-
-    if (selectedPrenatalInvItem) {
-      setInventory(prev => prev.map(item => {
-        if (item.id === selectedPrenatalInvItem.id) {
-          return { ...item, stock: Math.max(0, item.stock - pMedQtyNum) };
-        }
-        return item;
-      }));
-    }
 
     try {
       await apiService.createMaternalRecord({
-        mother_name: pName.trim(),
+        patient_name: combinedMotherName,
+        mother_name: combinedMotherName,
         contact_number: pPhone.trim(),
         age: pAge ? Number(pAge) || 25 : 25,
         barangay: nurseBarangay,
@@ -929,22 +987,22 @@ export default function NurseDashboard() {
         para: pPara,
         lmp: pLmp,
         edd: pEdd,
-        aog_weeks: pAog,
+        aog_weeks: pAog || '18',
         bp: bpString,
-        weight: pWeight,
-        temp: pTemp,
-        fetal_heart_rate: pFhr,
-        fundic_height: pFh,
-        next_visit: pNextDate,
+        weight_kg: pWeight || '56.0',
+        temp: pTemp || '36.5',
+        fetal_heart_rate: pFhr || '144',
+        fundic_height: pFh || '18',
         next_visit_date: pNextDate,
-        notes: `Visit #${pVisitNum}. ${pNextNote || ''}`,
+        visit_number: parseInt(pVisitNum, 10) || 2,
         prescribed_meds: finalPMeds,
         med_quantity: pMedQtyNum,
         attending_nurse: nurseName
       } as any);
 
-      toast.success(`Prenatal record for ${pName} saved & archived! Dispensed ${pMedQtyNum}x vitamins.`);
+      toast.success(`Prenatal record for ${combinedMotherName} saved & archived! Dispensed ${pMedQtyNum}x vitamins.`);
       setIsNewPrenatalOpen(false);
+      setPFirstName(''); setPMiddleName(''); setPLastName('');
       setPName(''); setPPhone(''); setPAge(''); setPLmp(''); setPEdd(''); setPAog('');
       setPBpSys('120'); setPBpDia('80'); setPWeight(''); setPFhr(''); setPFh('');
       setPNextDate(''); setPNextNote('');
@@ -956,7 +1014,8 @@ export default function NurseDashboard() {
 
   const handleCreateImmun = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!iChild.trim()) { toast.error("Child's full name is required"); return; }
+    const combinedChildName = [iChildFirstName.trim(), iChildMiddleName.trim(), iChildLastName.trim()].filter(Boolean).join(' ') || iChild.trim();
+    if (!combinedChildName) { toast.error("Child's first and last name are required"); return; }
     if (!iPhone.trim()) { toast.error('Guardian contact number is required'); return; }
     if (!iGuardian.trim()) { toast.error('Guardian name is required'); return; }
 
@@ -964,7 +1023,7 @@ export default function NurseDashboard() {
 
     const optimisticRecord: ImmunRecord = {
       id: Date.now(),
-      child_name: iChild.trim(),
+      child_name: combinedChildName,
       contact_number: iPhone.trim(),
       age_months: iAge || '6',
       gender: iGender,
@@ -988,7 +1047,7 @@ export default function NurseDashboard() {
 
     try {
       await apiService.createImmunization({
-        child_name: iChild.trim(),
+        child_name: combinedChildName,
         parent_phone: iPhone.trim(),
         contact_number: iPhone.trim(),
         age_months: iAge || '6',
@@ -1025,8 +1084,9 @@ export default function NurseDashboard() {
         return item;
       }));
 
-      toast.success(`Immunization for ${iChild} recorded & archived! (${vaccineDeductQty}x ${activeVaccine} deducted)`);
+      toast.success(`Immunization for ${combinedChildName} recorded & archived! (${vaccineDeductQty}x ${activeVaccine} deducted)`);
       setIsNewImmunOpen(false);
+      setIChildFirstName(''); setIChildMiddleName(''); setIChildLastName('');
       setIChild(''); setIPhone(''); setIAge(''); setIGuardian('');
       setICustomVaccine(''); setINextDue(''); setIVaccineQty('1');
       loadData();
@@ -1313,6 +1373,140 @@ export default function NurseDashboard() {
     setIsNewConsultOpen(true);
   };
 
+  // Auto-fill logic for Prenatal Mother Name
+  const pSearchQuery = `${pFirstName} ${pLastName}`.trim().toLowerCase();
+  const matchingMothers = useMemo(() => {
+    if (!pSearchQuery || pSearchQuery.length < 2) return [];
+    const queryParts = pSearchQuery.split(/\s+/).filter(Boolean);
+    return residents.filter(r => {
+      const fullName = `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}`.toLowerCase();
+      const matchesAll = queryParts.length > 0 && queryParts.every(part => fullName.includes(part));
+      return matchesAll || fullName.includes(pSearchQuery) || (r.last_name || '').toLowerCase().includes(pSearchQuery);
+    }).slice(0, 5);
+  }, [residents, pSearchQuery]);
+
+  const selectMatchedMother = (m: Resident) => {
+    setPFirstName(m.first_name);
+    setPMiddleName(m.middle_name || '');
+    setPLastName(m.last_name);
+    if (m.phone) setPPhone(m.phone);
+    if ((m as any).age != null) {
+      setPAge(String((m as any).age));
+    } else if (m.date_of_birth) {
+      const ageYears = Math.floor((Date.now() - new Date(m.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      if (!isNaN(ageYears) && ageYears > 0) setPAge(String(ageYears));
+    }
+    // Check previous prenatal records for this mother
+    const motherFullName = `${m.first_name} ${m.last_name}`.toLowerCase();
+    const prevVisits = prenatalRecords.filter(r => 
+      (r.patient_name || '').toLowerCase().includes(motherFullName) || 
+      motherFullName.includes((r.patient_name || '').toLowerCase())
+    );
+    if (prevVisits.length > 0) {
+      const nextVisit = Math.min(prevVisits.length + 1, 4);
+      setPVisitNum(String(nextVisit));
+      toast.info(`Found ${prevVisits.length} prior prenatal record(s) for ${m.first_name}. Auto-set to Visit #${nextVisit}!`);
+    } else {
+      setPVisitNum('1');
+      toast.success(`Auto-filled details for ${m.first_name} ${m.last_name} from Census Registry!`);
+    }
+    setPSearchFocus(false);
+  };
+
+  // Auto-fill logic for Child Immunization
+  const iSearchQuery = `${iChildFirstName} ${iChildLastName}`.trim().toLowerCase();
+  const matchingChildren = useMemo(() => {
+    if (!iSearchQuery || iSearchQuery.length < 2) return [];
+    const queryParts = iSearchQuery.split(/\s+/).filter(Boolean);
+    return residents.filter(r => {
+      const fullName = `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}`.toLowerCase();
+      const matchesAll = queryParts.length > 0 && queryParts.every(part => fullName.includes(part));
+      return matchesAll || fullName.includes(iSearchQuery) || (r.last_name || '').toLowerCase().includes(iSearchQuery);
+    }).slice(0, 5);
+  }, [residents, iSearchQuery]);
+
+  const selectMatchedChild = (c: Resident) => {
+    setIChildFirstName(c.first_name);
+    setIChildMiddleName(c.middle_name || '');
+    setIChildLastName(c.last_name);
+    // Dynamic Sex / Gender
+    if (c.gender === 'Female' || c.gender === 'Male') {
+      setIGender(c.gender);
+    }
+    // Age in months
+    if (c.date_of_birth) {
+      const months = Math.floor((Date.now() - new Date(c.date_of_birth).getTime()) / (30.4375 * 24 * 60 * 60 * 1000));
+      if (!isNaN(months) && months >= 0) setIAge(String(months));
+    } else if ((c as any).age != null) {
+      setIAge(String((c as any).age * 12));
+    }
+    // Guardian and phone
+    if (c.phone) setIPhone(c.phone);
+    if (c.household_number) {
+      const familyMembers = residents.filter(r => r.household_number === c.household_number && r.id !== c.id);
+      const head = familyMembers.find(m => m.is_head_of_household) || familyMembers[0];
+      if (head) {
+        setIGuardian(`${head.first_name} ${head.last_name}`);
+        if (head.phone && !c.phone) setIPhone(head.phone);
+      }
+    }
+    // Check previous immunizations
+    const childFullName = `${c.first_name} ${c.last_name}`.toLowerCase();
+    const prevVaccines = immunRecords.filter(r => 
+      (r.child_name || '').toLowerCase().includes(childFullName) || 
+      childFullName.includes((r.child_name || '').toLowerCase())
+    );
+    if (prevVaccines.length > 0) {
+      const nextDose = prevVaccines.length + 1;
+      setIDose(`Dose ${nextDose}`);
+      toast.info(`Found ${prevVaccines.length} previous immunization(s) for ${c.first_name}. Auto-set to Dose ${nextDose}!`);
+    } else {
+      setIDose('Dose 1');
+      toast.success(`Auto-filled details for ${c.first_name} ${c.last_name} from Census Registry!`);
+    }
+    setISearchFocus(false);
+  };
+
+  const openNewPrenatalModal = () => {
+    setPFirstName('');
+    setPMiddleName('');
+    setPLastName('');
+    setPPhone('');
+    setPAge('');
+    setPVisitNum('1'); // Default to 1st Visit
+    setPGravida('G1');
+    setPPara('P0');
+    setPLmp('');
+    setPEdd('');
+    setPBpSys('120');
+    setPBpDia('80');
+    setPWeight('');
+    setPTemp('36.5');
+    setPFhr('');
+    setPFh('');
+    setPNextDate('');
+    setPNextNote('');
+    setPSearchFocus(false);
+    setIsNewPrenatalOpen(true);
+  };
+
+  const openNewImmunModal = () => {
+    setIChildFirstName('');
+    setIChildMiddleName('');
+    setIChildLastName('');
+    setIChild('');
+    setIPhone('');
+    setIAge('');
+    setIGender('Male');
+    setIGuardian('');
+    setIWeight('');
+    setIHeight('');
+    setIVaccine('Pentavalent (DPT-HepB-Hib)');
+    setIDose('Dose 1');
+    setISearchFocus(false);
+    setIsNewImmunOpen(true);
+  };
+
   const menuItems = [
     { id: 'overview', label: 'Clinical Overview', icon: Activity },
     { id: 'consultations', label: 'Patient Consultations', icon: Stethoscope },
@@ -1321,6 +1515,8 @@ export default function NurseDashboard() {
     { id: 'schedule', label: 'Weekly Schedule', icon: CalendarCheck },
     { id: 'appointments', label: 'Resident Appointments', icon: CalendarCheck, badge: appointments.filter(a => a.status === 'Pending').length || undefined, badgeColor: 'bg-red-600 text-white' },
     { id: 'inventory', label: 'Vaccines & Medicine Supply', icon: Pill },
+    { id: 'census', label: 'Populations & Census Registry', icon: Users },
+    { id: 'reports', label: 'Health Reports & Analytics', icon: BarChart3 },
     { id: 'records', label: 'Records', icon: ClipboardList },
     { id: 'sms', label: 'Gmail Notification Hub', icon: Bell },
     { id: 'profile', label: 'Profile Settings', icon: UserCircle },
@@ -1741,6 +1937,193 @@ export default function NurseDashboard() {
                   </div>
                 </div>
               )}
+
+              {/* ═══ SECTION: ACTION REQUIRED - NEW APPOINTMENT REQUESTS ═══ */}
+              {appointments.filter(a => (a.status || '').toLowerCase() === 'pending').length > 0 && (
+                <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-amber-200/70">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                      <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                        New Resident Clinic Appointments ({appointments.filter(a => (a.status || '').toLowerCase() === 'pending').length} Pending)
+                      </h4>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setActiveTab('schedules')}
+                      className="text-[11px] h-7 border-amber-300 text-amber-900 bg-white hover:bg-amber-100 cursor-pointer rounded-lg"
+                    >
+                      View Schedules &rarr;
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                    {appointments.filter(a => (a.status || '').toLowerCase() === 'pending').slice(0, 3).map(apt => (
+                      <div key={`nurse-pend-${apt.id}`} className="bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-900 truncate">{apt.resident_name}</span>
+                            <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                              {apt.appointment_code}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-0.5 font-medium">{apt.service_type}</p>
+                          <p className="text-[10px] text-slate-400">📅 {apt.preferred_date} • ⏰ {apt.preferred_time || 'Morning'}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedApptForConfirm(apt);
+                            setIsConfirmApptModalOpen(true);
+                          }}
+                          className="mt-2 bg-amber-600 hover:bg-amber-700 text-white text-[11px] h-7 rounded-lg cursor-pointer w-full"
+                        >
+                          Confirm Slot
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ═══ SECTION: CLINICAL HEALTH ANALYTICS IN OVERVIEW ═══ */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-teal-50 border border-teal-200 rounded-xl">
+                      <Activity className="text-teal-600" size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Clinical Health Analytics &amp; Program Intelligence</h3>
+                      <p className="text-xs text-slate-500">Live consultation distribution, vital signs alerts, and medicine supply monitoring for Barangay {nurseBarangay}.</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActiveTab('analytics')}
+                    className="text-xs h-8 border-slate-200 cursor-pointer rounded-xl text-slate-600 hover:text-slate-900"
+                  >
+                    Open Full Analytics Hub &rarr;
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Program Consultations Breakdown */}
+                  <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 space-y-2.5">
+                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                      <Stethoscope size={14} className="text-teal-600" />
+                      Consultations by Clinical Program
+                    </h4>
+                    <div className="space-y-2 pt-1">
+                      {[
+                        { label: 'General Consultation', color: 'bg-teal-500' },
+                        { label: 'Adolescent Health', color: 'bg-blue-500' },
+                        { label: 'Family Planning', color: 'bg-pink-500' },
+                        { label: 'NTP (TB-DOTS)', color: 'bg-amber-500' },
+                        { label: 'Teenage Pregnancy Prevention', color: 'bg-purple-500' },
+                      ].map(prog => {
+                        const count = consultations.filter(c =>
+                          (c.program_type || c.service_type || '').toLowerCase().includes(prog.label.toLowerCase()) ||
+                          prog.label.toLowerCase().includes((c.program_type || c.service_type || '').toLowerCase().split(' ')[0])
+                        ).length;
+                        const pct = consultations.length > 0 ? Math.round((count / consultations.length) * 100) : 0;
+                        return (
+                          <div key={prog.label}>
+                            <div className="flex items-center justify-between text-[11px] mb-1">
+                              <span className="text-slate-600 font-medium">{prog.label}</span>
+                              <span className="font-bold text-slate-900">{count} <span className="text-slate-400 font-normal">({pct}%)</span></span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-1.5">
+                              <div className={`${prog.color} h-1.5 rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Vital Signs Alerts & Clinical Thresholds */}
+                  <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 space-y-2.5">
+                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                      <AlertTriangle size={14} className="text-red-500" />
+                      Vital Signs &amp; Follow-up Threshold Alerts
+                    </h4>
+                    {(() => {
+                      const hypertensive = consultations.filter(c => {
+                        const bp = (c.bp || '').replace(/mmHg/i, '').trim();
+                        const parts = bp.split('/');
+                        const sys = parseInt(parts[0]) || 0;
+                        const dia = parseInt(parts[1]) || 0;
+                        return sys >= 140 || dia >= 90;
+                      }).length;
+                      const febrile = consultations.filter(c => {
+                        const temp = parseFloat((c.temp || '').replace(/°c/i, '').trim());
+                        return !isNaN(temp) && temp >= 38.5;
+                      }).length;
+                      return (
+                        <div className="space-y-2 pt-1">
+                          <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-red-100 shadow-2xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                              <span className="text-xs font-semibold text-slate-800">Stage 2 Hypertension (BP &ge; 140/90)</span>
+                            </div>
+                            <span className="text-xs font-bold font-mono text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">
+                              {hypertensive} {hypertensive === 1 ? 'patient' : 'patients'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-amber-100 shadow-2xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                              <span className="text-xs font-semibold text-slate-800">High Fever Infection (Temp &ge; 38.5°C)</span>
+                            </div>
+                            <span className="text-xs font-bold font-mono text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                              {febrile} {febrile === 1 ? 'patient' : 'patients'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-purple-100 shadow-2xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                              <span className="text-xs font-semibold text-slate-800">Overdue Prenatal / Immunization</span>
+                            </div>
+                            <span className="text-xs font-bold font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                              {duePatientsList.length} scheduled
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Medicine & Vaccine Stock Depletion Alert */}
+                {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock' || i.stock < 25).length > 0 && (
+                  <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                        <Pill size={14} className="text-amber-700" />
+                        Critically Low Medicine &amp; Vaccine Stock Alert
+                      </span>
+                      <span className="text-[10px] text-amber-800 font-semibold">Immediate Replenishment Required</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock' || i.stock < 25).slice(0, 4).map(item => (
+                        <div key={`inv-${item.id}`} className="bg-white p-2.5 rounded-lg border border-amber-200 shadow-2xs flex items-center justify-between">
+                          <div className="truncate">
+                            <p className="text-xs font-bold text-slate-800 truncate">{item.item_name}</p>
+                            <p className="text-[10px] text-slate-400">{item.category}</p>
+                          </div>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono shrink-0 ml-1.5 ${item.stock <= 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
+                            {item.stock} {item.unit}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1932,7 +2315,7 @@ export default function NurseDashboard() {
                     <span>Send Due Reminders ({overduePrenatal.length})</span>
                   </Button>
                   <Button
-                    onClick={() => setIsNewPrenatalOpen(true)}
+                    onClick={openNewPrenatalModal}
                     className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold gap-1.5 shadow-xs cursor-pointer rounded-xl h-9 px-4"
                   >
                     <PlusCircle size={14} /> + New Prenatal Record
@@ -2097,7 +2480,7 @@ export default function NurseDashboard() {
                     <span>Send Due Reminders ({overdueImmun.length})</span>
                   </Button>
                   <Button
-                    onClick={() => setIsNewImmunOpen(true)}
+                    onClick={openNewImmunModal}
                     className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5 shadow-xs cursor-pointer rounded-xl h-9 px-4"
                   >
                     <PlusCircle size={14} /> + Record Child Vaccination
@@ -2680,6 +3063,397 @@ export default function NurseDashboard() {
               />
             </div>
           )}
+          {/* ═══ CENSUS ENTRY TAB ════════════════════════════════════════ */}
+          {activeTab === 'census' && (
+            <CensusEntryTab
+              user={user}
+              accentColor="teal"
+              onSync={triggerHealthSync}
+            />
+          )}
+
+          {/* ═══ HEALTH REPORTS & CLINICAL ANALYTICS TAB ══════════════════════════════════ */}
+          {(activeTab === 'analytics' || activeTab === 'reports') && (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-teal-50 border border-teal-200 rounded-xl">
+                      <BarChart3 size={22} className="text-teal-600" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-slate-900">Health Reports &amp; Clinical Analytics</h2>
+                        <span className="text-[11px] bg-teal-50 text-teal-700 border border-teal-200 px-2.5 py-0.5 rounded-full font-bold">Nurse Scope</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">Comprehensive morbidity, maternal registry, child immunization coverage, and pharmaceutical audit for Barangay {nurseBarangay}.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        downloadOfficialPdf({
+                          title: 'Clinical Consultation & Morbidity Report',
+                          subtitle: `Barangay ${nurseBarangay} Health Center • Clinical Encounters — ${new Date().toLocaleDateString()}`,
+                          filename: `Consultation_Morbidity_Report_${new Date().toISOString().slice(0, 10)}`,
+                          preparedBy: user?.name || 'Public Health Nurse',
+                          preparedByTitle: 'Public Health Nurse (RN)',
+                          department: 'Barangay Health Center • Primary Care Unit',
+                          stats: [
+                            { label: 'Total Consultations', value: consultations.length },
+                            { label: 'Pediatric Cases', value: consultations.filter(c => Number(c.age) < 18).length },
+                            { label: 'Adult / Senior', value: consultations.filter(c => Number(c.age) >= 18).length },
+                            { label: 'High BP Flagged', value: consultations.filter(c => parseInt((c.bp || '').split('/')[0], 10) >= 140).length }
+                          ],
+                          tables: [{
+                            title: 'Patient Consultations & Morbidity Registry',
+                            headers: ['Patient Name', 'Phone', 'Age', 'Gender', 'Program', 'Blood Pressure', 'Diagnosis / Complaint'],
+                            rows: consultations.map(c => [
+                              c.patient_name,
+                              c.contact_number || 'N/A',
+                              String(c.age ?? '—'),
+                              c.gender || 'Female',
+                              c.program_type || c.service_type || 'General Consultation',
+                              c.bp || '120/80',
+                              c.diagnosis || c.chief_complaint || 'Routine Checkup'
+                            ])
+                          }]
+                        });
+                        toast.success('Consultation & Morbidity report PDF downloaded');
+                      }}
+                      className="text-xs h-9 gap-1.5 border-slate-300 hover:bg-slate-50 text-slate-700 shadow-xs cursor-pointer rounded-lg font-medium"
+                    >
+                      <Download size={13} className="text-slate-600" />
+                      Consultations (PDF)
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        downloadOfficialPdf({
+                          title: 'Maternal Health & Prenatal Performance Report',
+                          subtitle: `Barangay ${nurseBarangay} Health Center • Prenatal & Postnatal Monitoring — ${new Date().toLocaleDateString()}`,
+                          filename: `Maternal_Health_Report_${new Date().toISOString().slice(0, 10)}`,
+                          preparedBy: user?.name || 'Public Health Nurse',
+                          preparedByTitle: 'Public Health Nurse (RN)',
+                          department: 'Barangay Health Center • Maternal Care Unit',
+                          stats: [
+                            { label: 'Total Mothers', value: prenatalRecords.length },
+                            { label: 'Overdue / Due Soon', value: overduePrenatal.length },
+                            { label: '1st Visit Initial', value: prenatalRecords.filter(r => r.visit_number === 1).length },
+                            { label: 'Follow-up Visits', value: prenatalRecords.filter(r => r.visit_number > 1).length }
+                          ],
+                          tables: [{
+                            title: 'Maternal Care Patient Records',
+                            headers: ['Mother Patient', 'Phone', 'Age', 'Visit #', 'Gestational Parameters', 'Blood Pressure', 'Next Visit'],
+                            rows: prenatalRecords.map(r => [
+                              r.patient_name,
+                              r.contact_number || 'N/A',
+                              String(r.age ?? '—'),
+                              `Visit ${r.visit_number || 1}`,
+                              `${r.aog || 'Mid-Term'} • FH: ${r.fundic_height || 'Normal'}`,
+                              r.blood_pressure || '120/80',
+                              r.next_visit_date ? new Date(r.next_visit_date).toLocaleDateString() : 'Scheduled Revisit'
+                            ])
+                          }]
+                        });
+                        toast.success('Maternal health report PDF downloaded');
+                      }}
+                      className="text-xs h-9 gap-1.5 border-slate-300 hover:bg-slate-50 text-slate-700 shadow-xs cursor-pointer rounded-lg font-medium"
+                    >
+                      <Download size={13} className="text-slate-600" />
+                      Maternal (PDF)
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        downloadOfficialPdf({
+                          title: 'EPI Child Immunization Coverage Report',
+                          subtitle: `Barangay ${nurseBarangay} Health Center • Expanded Program on Immunization — ${new Date().toLocaleDateString()}`,
+                          filename: `Child_Immunization_Report_${new Date().toISOString().slice(0, 10)}`,
+                          preparedBy: user?.name || 'Public Health Nurse',
+                          preparedByTitle: 'Public Health Nurse (RN)',
+                          department: 'Barangay Health Center • Child Care Unit',
+                          stats: [
+                            { label: 'Vaccines Administered', value: immunRecords.length },
+                            { label: 'Overdue Doses', value: overdueImmun.length }
+                          ],
+                          tables: [{
+                            title: 'Child Immunization Delivery Roster',
+                            headers: ['Child Patient', 'Sex', 'Guardian Contact', 'Vaccine', 'Dose', 'Date Administered', 'Administered By'],
+                            rows: immunRecords.map(i => [
+                              i.child_name,
+                              i.gender || 'Male',
+                              i.contact_number || 'N/A',
+                              i.vaccine_name,
+                              i.dose_number,
+                              i.date_administered || new Date().toISOString().split('T')[0],
+                              i.administered_by || 'Clinic Nurse'
+                            ])
+                          }]
+                        });
+                        toast.success('Child immunization report PDF downloaded');
+                      }}
+                      className="text-xs h-9 gap-1.5 border-slate-300 hover:bg-slate-50 text-slate-700 shadow-xs cursor-pointer rounded-lg font-medium"
+                    >
+                      <Download size={13} className="text-slate-600" />
+                      Vaccines (PDF)
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        downloadOfficialPdf({
+                          title: 'Clinic Medicine & Vaccine Supply Audit Report',
+                          subtitle: `Barangay ${nurseBarangay} Health Center • Pharmaceutical & Supply Stock Registry — ${new Date().toLocaleDateString()}`,
+                          filename: `Clinic_Supply_Audit_${new Date().toISOString().slice(0, 10)}`,
+                          preparedBy: user?.name || 'Public Health Nurse',
+                          preparedByTitle: 'Public Health Nurse (RN)',
+                          department: 'Barangay Health Center • Pharmacy & Supplies',
+                          stats: [
+                            { label: 'Total Supply Items', value: inventory.length },
+                            { label: 'Low / Out of Stock', value: inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock').length }
+                          ],
+                          tables: [{
+                            title: 'Pharmaceutical & Vaccine Stock Inventory',
+                            headers: ['Item Name', 'Category', 'Stock Available', 'Unit', 'Batch / Lot #', 'Expiry Date', 'Status'],
+                            rows: inventory.map(item => [
+                              item.item_name,
+                              item.category || 'General',
+                              String(item.stock),
+                              item.unit || 'units',
+                              item.batch_lot_number || 'LOT-OK',
+                              item.expiry_date || 'Current',
+                              item.status
+                            ])
+                          }]
+                        });
+                        toast.success('Supply audit report PDF downloaded');
+                      }}
+                      className="text-xs h-9 gap-1.5 border-slate-300 hover:bg-slate-50 text-slate-700 shadow-xs cursor-pointer rounded-lg font-medium"
+                    >
+                      <Download size={13} className="text-slate-600" />
+                      Supply Audit (PDF)
+                    </Button>
+
+                    <Button
+                      onClick={() => {
+                        printOfficialReport({
+                          title: 'Official Clinical Performance & Health Summary',
+                          subtitle: `Barangay ${nurseBarangay} Health Center • Comprehensive Primary Care & Public Health Registry`,
+                          department: 'Barangay Health Center • Clinical Nursing Unit',
+                          preparedBy: user?.name || 'Public Health Nurse',
+                          preparedByTitle: 'Public Health Nurse (RN)',
+                          stats: [
+                            { label: 'Total Consultations', value: consultations.length, color: '#0d9488' },
+                            { label: 'Maternal Patients', value: prenatalRecords.length, color: '#db2777' },
+                            { label: 'Vaccines Administered', value: immunRecords.length, color: '#2563eb' },
+                            { label: 'Low Stock Alerts', value: inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock').length, color: '#d97706' }
+                          ],
+                          tables: [
+                            {
+                              title: 'Recent Patient Clinical Consultations',
+                              headers: ['Patient Name', 'Age', 'Gender', 'Program', 'BP', 'Diagnosis'],
+                              rows: consultations.slice(0, 8).map(c => [
+                                c.patient_name,
+                                String(c.age ?? '—'),
+                                c.gender || 'Female',
+                                c.program_type || c.service_type || 'General Consultation',
+                                c.bp || '120/80',
+                                c.diagnosis || c.chief_complaint || 'Routine'
+                              ])
+                            },
+                            {
+                              title: 'Active Prenatal & Maternal Monitoring',
+                              headers: ['Mother Patient', 'Age', 'Visit #', 'BP', 'Next Visit'],
+                              rows: prenatalRecords.slice(0, 8).map(r => [
+                                r.patient_name,
+                                String(r.age ?? '—'),
+                                `Visit ${r.visit_number || 1}`,
+                                r.blood_pressure || '120/80',
+                                r.next_visit_date ? new Date(r.next_visit_date).toLocaleDateString() : 'TBD'
+                              ])
+                            }
+                          ]
+                        });
+                      }}
+                      className="bg-teal-600 hover:bg-teal-700 text-white text-xs h-9 gap-1.5 shadow-xs cursor-pointer rounded-lg font-semibold"
+                    >
+                      <Printer size={13} />
+                      Print Summary
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* KPI Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-slate-600">Consultations</span>
+                    <Stethoscope size={16} className="text-teal-600" />
+                  </div>
+                  <p className="text-3xl font-extrabold text-slate-900">{consultations.length}</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Total recorded</p>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-slate-600">Maternal Patients</span>
+                    <Heart size={16} className="text-pink-600" />
+                  </div>
+                  <p className="text-3xl font-extrabold text-slate-900">{prenatalRecords.length}</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Prenatal monitoring</p>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-slate-600">Vaccines Given</span>
+                    <Syringe size={16} className="text-blue-600" />
+                  </div>
+                  <p className="text-3xl font-extrabold text-slate-900">{immunRecords.length}</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Child immunizations</p>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-slate-600">Inventory Items</span>
+                    <Pill size={16} className="text-purple-600" />
+                  </div>
+                  <p className="text-3xl font-extrabold text-slate-900">{inventory.length}</p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock').length > 0
+                      ? <span className="text-amber-600 font-semibold">{inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock').length} low/out of stock</span>
+                      : 'All stock normal'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Consultation Breakdown + Vital Sign Alerts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Consultation Breakdown by Program */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                  <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <Stethoscope size={16} className="text-teal-600" />
+                    Consultation Breakdown by Program
+                  </h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'General Consultation', color: 'bg-teal-500' },
+                      { label: 'Adolescent Health', color: 'bg-blue-500' },
+                      { label: 'Family Planning', color: 'bg-pink-500' },
+                      { label: 'NTP (TB-DOTS)', color: 'bg-amber-500' },
+                      { label: 'Teenage Pregnancy Prevention', color: 'bg-purple-500' },
+                    ].map(prog => {
+                      const count = consultations.filter(c =>
+                        (c.program_type || c.service_type || '').toLowerCase().includes(prog.label.toLowerCase()) ||
+                        prog.label.toLowerCase().includes((c.program_type || c.service_type || '').toLowerCase().split(' ')[0])
+                      ).length;
+                      const pct = consultations.length > 0 ? Math.round((count / consultations.length) * 100) : 0;
+                      return (
+                        <div key={prog.label}>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-slate-600 font-medium">{prog.label}</span>
+                            <span className="font-bold text-slate-900">{count} <span className="text-slate-400 font-normal">({pct}%)</span></span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-2">
+                            <div className={`${prog.color} h-2 rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Vital Sign Alerts */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                  <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <AlertTriangle size={16} className="text-red-500" />
+                    Vital Sign Alerts
+                  </h3>
+                  {(() => {
+                    const hypertensive = consultations.filter(c => {
+                      const bp = (c.bp || '').replace(/mmHg/i, '').trim();
+                      const parts = bp.split('/');
+                      const sys = parseInt(parts[0]) || 0;
+                      const dia = parseInt(parts[1]) || 0;
+                      return sys >= 140 || dia >= 90;
+                    }).length;
+                    const fever = consultations.filter(c => parseFloat((c.temp || '0').replace(/[^\d.]/g, '')) >= 37.8).length;
+                    const overduePrenatalCount = prenatalRecords.filter(r => r.next_visit_date && new Date(r.next_visit_date) <= new Date()).length;
+                    const overdueVaccineCount = immunRecords.filter(r => r.next_due_date && new Date(r.next_due_date) <= new Date()).length;
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-xl">
+                          <div>
+                            <p className="text-xs font-semibold text-red-800">Hypertensive Readings</p>
+                            <p className="text-[11px] text-red-600">BP ≥ 140/90 mmHg</p>
+                          </div>
+                          <span className="text-2xl font-extrabold text-red-700">{hypertensive}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                          <div>
+                            <p className="text-xs font-semibold text-orange-800">Fever Cases</p>
+                            <p className="text-[11px] text-orange-600">Temp ≥ 37.8°C</p>
+                          </div>
+                          <span className="text-2xl font-extrabold text-orange-700">{fever}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-pink-50 border border-pink-200 rounded-xl">
+                          <div>
+                            <p className="text-xs font-semibold text-pink-800">Overdue Prenatal Visits</p>
+                            <p className="text-[11px] text-pink-600">Past next visit date</p>
+                          </div>
+                          <span className="text-2xl font-extrabold text-pink-700">{overduePrenatalCount}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                          <div>
+                            <p className="text-xs font-semibold text-amber-800">Overdue Vaccines</p>
+                            <p className="text-[11px] text-amber-600">Past next due date</p>
+                          </div>
+                          <span className="text-2xl font-extrabold text-amber-700">{overdueVaccineCount}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Low Stock Vaccine Tracker */}
+              {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock').length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+                  <h3 className="text-sm font-bold text-amber-900 mb-3 flex items-center gap-2">
+                    <Pill size={16} className="text-amber-600" />
+                    Vaccine & Medicine Depletion Tracker
+                    <span className="text-[11px] bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-full font-semibold">
+                      {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock').length} Critical Items
+                    </span>
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock').map(item => (
+                      <div key={item.id} className="flex items-center justify-between bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-xs">
+                        <div>
+                          <p className="font-semibold text-slate-800">{item.item_name}</p>
+                          <p className="text-slate-500 text-[11px]">{item.category} • Exp: {item.expiry_date || 'N/A'}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] block ${item.status === 'Out of Stock' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {item.status}
+                          </span>
+                          <span className="text-slate-600 text-[10px] font-mono">{item.stock} {item.unit}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ═══ PROFILE SETTINGS DEDICATED TAB ═════════════════════════════ */}
           {activeTab === 'profile' && (
             <ProfileSettingsView
@@ -3378,7 +4152,15 @@ export default function NurseDashboard() {
               <span className="text-xs text-slate-400 font-medium mr-6">Brgy. {nurseBarangay}</span>
             </div>
             <DialogTitle className="text-lg font-bold text-slate-900 mt-1.5 flex items-center gap-2">
-              <Heart className="text-pink-600" size={18} /> New Prenatal / Maternal Record (2nd Visit Tracking)
+              <Heart className="text-pink-600" size={18} /> New Prenatal / Maternal Record (
+              {pVisitNum === '1'
+                ? '1st Visit Initial Tracking'
+                : pVisitNum === '2'
+                ? '2nd Visit Follow-up'
+                : pVisitNum === '3'
+                ? '3rd Visit Follow-up'
+                : '4th Visit Pre-delivery'}
+              )
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 mt-0.5">
               Record gestational parameters, fundic height, fetal heart tones, and scheduled revisit reminders.
@@ -3386,21 +4168,100 @@ export default function NurseDashboard() {
           </div>
 
           <form onSubmit={handleCreatePrenatal} className="p-6 space-y-3.5">
+            <div className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Patient Identification</p>
+                {matchingMothers.length > 0 && pSearchFocus && (
+                  <span className="text-[10px] text-pink-700 font-semibold bg-pink-50 px-2 py-0.5 rounded-full border border-pink-200 animate-pulse">
+                    Found in Census Registry ({matchingMothers.length})
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">First Name <span className="text-rose-500">*</span></Label>
+                  <Input
+                    value={pFirstName}
+                    onChange={e => {
+                      setPFirstName(e.target.value);
+                      setPSearchFocus(true);
+                    }}
+                    onFocus={() => setPSearchFocus(true)}
+                    placeholder="e.g. Maria"
+                    required
+                    className="h-9 text-xs mt-1 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Middle Name</Label>
+                  <Input
+                    value={pMiddleName}
+                    onChange={e => setPMiddleName(e.target.value)}
+                    placeholder="e.g. Grace"
+                    className="h-9 text-xs mt-1 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Last Name <span className="text-rose-500">*</span></Label>
+                  <Input
+                    value={pLastName}
+                    onChange={e => {
+                      setPLastName(e.target.value);
+                      setPSearchFocus(true);
+                    }}
+                    onFocus={() => setPSearchFocus(true)}
+                    placeholder="e.g. Santos"
+                    required
+                    className="h-9 text-xs mt-1 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* Dynamic Mother suggestions dropdown */}
+              {pSearchFocus && matchingMothers.length > 0 && (
+                <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-pink-300 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
+                  <div className="p-1.5 bg-pink-50/90 text-[10px] font-bold text-pink-800 flex items-center justify-between px-3">
+                    <span>Matching Inhabitants in Census ({matchingMothers.length})</span>
+                    <button
+                      type="button"
+                      onClick={() => setPSearchFocus(false)}
+                      className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {matchingMothers.map((m: any) => (
+                    <button
+                      key={`mother-match-${m.id}`}
+                      type="button"
+                      onClick={() => selectMatchedMother(m)}
+                      className="w-full text-left p-2.5 hover:bg-pink-50/60 transition-colors flex items-center justify-between text-xs cursor-pointer group"
+                    >
+                      <div>
+                        <span className="font-bold text-slate-800 group-hover:text-pink-700 block">
+                          {m.first_name} {m.middle_name ? m.middle_name + ' ' : ''}{m.last_name}
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">
+                          {m.gender} · Purok {m.purok || '1'} · {m.phone || 'No phone recorded'}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-[9px] bg-white border-pink-300 text-pink-700 shrink-0">
+                        Auto-Fill
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-3 gap-2.5">
-              <div className="col-span-2">
-                <Label className="text-xs font-semibold">Mother's Full Name <span className="text-red-500">*</span></Label>
-                <Input value={pName} onChange={e => setPName(e.target.value)} placeholder="Full name" required className="h-9 text-xs mt-1 rounded-xl" />
+              <div>
+                <Label className="text-xs font-semibold">Contact Mobile Phone <span className="text-red-500">*</span></Label>
+                <Input value={pPhone} onChange={e => setPPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} placeholder="09XXXXXXXXX" required maxLength={11} className="h-9 text-xs font-mono mt-1 rounded-xl" />
               </div>
               <div>
                 <Label className="text-xs font-semibold">Age</Label>
                 <Input value={pAge} onChange={e => setPAge(e.target.value)} placeholder="e.g. 28" className="h-9 text-xs mt-1 rounded-xl" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <Label className="text-xs font-semibold">Contact Mobile Phone <span className="text-red-500">*</span></Label>
-                <Input value={pPhone} onChange={e => setPPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} placeholder="09XXXXXXXXX" required maxLength={11} className="h-9 text-xs font-mono mt-1 rounded-xl" />
               </div>
               <div>
                 <Label className="text-xs font-semibold">Visit Number</Label>
@@ -3609,29 +4470,129 @@ export default function NurseDashboard() {
           </div>
 
           <form onSubmit={handleCreateImmun} className="p-6 space-y-3.5">
-            <div className="grid grid-cols-3 gap-2.5">
-              <div className="col-span-2">
-                <Label className="text-xs font-semibold">Child's Full Name <span className="text-red-500">*</span></Label>
-                <Input value={iChild} onChange={e => setIChild(e.target.value)} placeholder="Full name of child" required className="h-9 text-xs mt-1 rounded-xl" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Child Identification</p>
+                {matchingChildren.length > 0 && iSearchFocus && (
+                  <span className="text-[10px] text-blue-700 font-semibold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 animate-pulse">
+                    Found in Census Registry ({matchingChildren.length})
+                  </span>
+                )}
               </div>
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">First Name <span className="text-rose-500">*</span></Label>
+                  <Input
+                    value={iChildFirstName}
+                    onChange={e => {
+                      setIChildFirstName(e.target.value);
+                      setISearchFocus(true);
+                    }}
+                    onFocus={() => setISearchFocus(true)}
+                    placeholder="e.g. Liam"
+                    required
+                    className="h-9 text-xs mt-1 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Middle Name</Label>
+                  <Input
+                    value={iChildMiddleName}
+                    onChange={e => setIChildMiddleName(e.target.value)}
+                    placeholder="e.g. Gabriel"
+                    className="h-9 text-xs mt-1 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Last Name <span className="text-rose-500">*</span></Label>
+                  <Input
+                    value={iChildLastName}
+                    onChange={e => {
+                      setIChildLastName(e.target.value);
+                      setISearchFocus(true);
+                    }}
+                    onFocus={() => setISearchFocus(true)}
+                    placeholder="e.g. Santos"
+                    required
+                    className="h-9 text-xs mt-1 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* Dynamic Child Auto-suggest dropdown */}
+              {iSearchFocus && matchingChildren.length > 0 && (
+                <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-blue-300 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
+                  <div className="p-1.5 bg-blue-50/90 text-[10px] font-bold text-blue-800 flex items-center justify-between px-3">
+                    <span>Matching Minors in Census Registry ({matchingChildren.length})</span>
+                    <button
+                      type="button"
+                      onClick={() => setISearchFocus(false)}
+                      className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {matchingChildren.map((c: any) => (
+                    <button
+                      key={`child-match-${c.id}`}
+                      type="button"
+                      onClick={() => selectMatchedChild(c)}
+                      className="w-full text-left p-2.5 hover:bg-blue-50/60 transition-colors flex items-center justify-between text-xs cursor-pointer group"
+                    >
+                      <div>
+                        <span className="font-bold text-slate-800 group-hover:text-blue-700 block">
+                          {c.first_name} {c.middle_name ? c.middle_name + ' ' : ''}{c.last_name}
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">
+                          {c.gender} · Purok {c.purok || '1'} · {c.date_of_birth || 'No DOB'}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-[9px] bg-white border-blue-300 text-blue-700 shrink-0">
+                        Auto-Fill
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2.5">
               <div>
-                <Label className="text-xs font-semibold">Sex</Label>
-                <Select value={iGender} onValueChange={setIGender}>
-                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem></SelectContent>
-                </Select>
+                <Label className="text-xs font-semibold text-slate-700">Sex <span className="text-rose-500">*</span></Label>
+                <div className="grid grid-cols-2 gap-1 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIGender('Male')}
+                    className={`h-9 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                      iGender === 'Male'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>👦</span> Male
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIGender('Female')}
+                    className={`h-9 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                      iGender === 'Female'
+                        ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>👧</span> Female
+                  </button>
+                </div>
+              </div>
+              <div className="col-span-2">
+                <Label className="text-xs font-semibold text-slate-700">Guardian Name <span className="text-rose-500">*</span></Label>
+                <Input value={iGuardian} onChange={e => setIGuardian(e.target.value)} placeholder="Parent/Guardian" required className="h-9 text-xs mt-1 rounded-xl" />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <Label className="text-xs font-semibold">Guardian Name <span className="text-red-500">*</span></Label>
-                <Input value={iGuardian} onChange={e => setIGuardian(e.target.value)} placeholder="Parent/Guardian" required className="h-9 text-xs mt-1 rounded-xl" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Guardian Phone <span className="text-red-500">*</span></Label>
-                <Input value={iPhone} onChange={e => setIPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} placeholder="09XXXXXXXXX" required maxLength={11} className="h-9 text-xs font-mono mt-1 rounded-xl" />
-              </div>
+            <div>
+              <Label className="text-xs font-semibold text-slate-700">Guardian Phone <span className="text-rose-500">*</span></Label>
+              <Input value={iPhone} onChange={e => setIPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} placeholder="09XXXXXXXXX" required maxLength={11} className="h-9 text-xs font-mono mt-1 rounded-xl" />
             </div>
 
             <div className="grid grid-cols-3 gap-2">

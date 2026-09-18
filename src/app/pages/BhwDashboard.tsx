@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Baby,
@@ -6,6 +6,9 @@ import {
   Heart,
   Bell,
   BarChart,
+  BarChart2,
+  TrendingUp,
+  TrendingDown,
   AlertTriangle,
   LogOut,
   Activity,
@@ -34,6 +37,7 @@ import {
   Archive,
   User,
   UserCheck,
+  UserPlus,
   MessageSquare,
   Filter,
   HeartHandshake,
@@ -43,18 +47,18 @@ import {
   ClipboardList,
   XCircle
 } from 'lucide-react';
-import { apiService, ImmunizationRecord, MaternalRecord, SmsNotification, DocumentRequest, HealthAppointment, ClinicSchedule, InventoryItem } from '../../services/api';
+import { apiService, ImmunizationRecord, MaternalRecord, SmsNotification, DocumentRequest, HealthAppointment, ClinicSchedule, InventoryItem, Resident } from '../../services/api';
 import SystemMessenger from '../components/SystemMessenger';
 import ResidentProfileModal from '../components/ResidentProfileModal';
 import DocumentPrintModal from '../components/DocumentPrintModal';
 import DocumentInfoModal from '../components/DocumentInfoModal';
 import SmsDetailsModal from '../components/SmsDetailsModal';
-import SuperAdminNavigationDock from '../components/SuperAdminNavigationDock';
 import SmartClinicalIntakeModal from '../components/SmartClinicalIntakeModal';
 import GmailNotificationHub from '../components/GmailNotificationHub';
 import ClinicalArchivesHub from '../components/ClinicalArchivesHub';
 import ProfileSettingsView from '../components/ProfileSettingsView';
 import BatchSmsReminderModal, { DuePatientItem } from '../components/BatchSmsReminderModal';
+import CensusEntryTab from '../components/CensusEntryTab';
 import { exportToCsv, printOfficialReport, downloadOfficialPdf } from '../../utils/exportCsv';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -83,6 +87,9 @@ export default function BhwDashboard() {
   const [documents, setDocuments] = useState<DocumentRequest[]>([]);
   const [appointments, setAppointments] = useState<HealthAppointment[]>([]);
   const [clinicSchedules, setClinicSchedules] = useState<ClinicSchedule[]>([]);
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [bhwMSearchFocus, setBhwMSearchFocus] = useState(false);
+  const [bhwCSearchFocus, setBhwCSearchFocus] = useState(false);
 
   // Clinical Intake & Profile Modal States
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
@@ -201,7 +208,10 @@ export default function BhwDashboard() {
   const [isBatchSmsOpen, setIsBatchSmsOpen] = useState(false);
   const [batchSmsInitialService, setBatchSmsInitialService] = useState<'Child Immunization' | 'Maternal Health'>('Child Immunization');
 
-  // DOH Standard EPI Immunization Form states
+  // Child name split (First / Middle / Last)
+  const [newChildFirstName, setNewChildFirstName] = useState('');
+  const [newChildMiddleName, setNewChildMiddleName] = useState('');
+  const [newChildLastName, setNewChildLastName] = useState('');
   const [newChildName, setNewChildName] = useState('');
   const [newChildGender, setNewChildGender] = useState<'Male' | 'Female'>('Male');
   const [newGuardianName, setNewGuardianName] = useState('');
@@ -219,6 +229,9 @@ export default function BhwDashboard() {
   const [newImmStatus, setNewImmStatus] = useState('Completed');
 
   // Maternal Form states
+  const [newMotherFirstName, setNewMotherFirstName] = useState('');
+  const [newMotherMiddleName, setNewMotherMiddleName] = useState('');
+  const [newMotherLastName, setNewMotherLastName] = useState('');
   const [newMotherName, setNewMotherName] = useState('');
   const [newMotherPhone, setNewMotherPhone] = useState('');
   const [newMotherAge, setNewMotherAge] = useState('28');
@@ -262,27 +275,53 @@ export default function BhwDashboard() {
     } catch {}
   };
 
+  const isHealthWorkerNotification = (n: SmsNotification) => {
+    const type = (n.type || '').toLowerCase();
+    const msg = (n.message || '').toLowerCase();
+    // Strictly exclude administrative barangay office notifications (account verification, ID rejection, clearances)
+    if (
+      type.includes('account verified') ||
+      type.includes('id correction') ||
+      type.includes('verification') ||
+      type.includes('clearance') ||
+      type.includes('permit') ||
+      type.includes('document ready') ||
+      type.includes('pickup') ||
+      msg.includes('resident account application') ||
+      msg.includes('clearances, business permits') ||
+      msg.includes('resubmit your valid id') ||
+      msg.includes('application has been verified') ||
+      msg.includes('application has been rejected')
+    ) {
+      return false;
+    }
+    return true;
+  };
+
   // Load Data with silent real-time background sync support
   const loadData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const [immData, matData, smsData, statsData, docsData, aptsData, schedulesData, invData] = await Promise.all([
+      const [immData, matData, smsData, statsData, docsData, aptsData, schedulesData, invData, resData] = await Promise.all([
         apiService.getImmunizations().catch(() => []),
         apiService.getMaternalRecords().catch(() => []),
-        apiService.getNotifications().catch(() => []),
+        apiService.getNotifications({ department: 'health', role: 'bhw' }).catch(() => []),
         apiService.getBhwStats().catch(() => null),
         apiService.getDocuments().catch(() => []),
         apiService.getAppointments().catch(() => []),
         apiService.getClinicSchedules().catch(() => []),
-        apiService.getInventory(user?.barangay || 'Pianing').catch(() => [])
+        apiService.getInventory(user?.barangay || 'Pianing').catch(() => []),
+        apiService.getResidents(user?.barangay || 'Pianing').catch(() => [])
       ]);
       setImmunizations(immData || []);
       setMaternalRecords(matData || []);
-      setNotifications(smsData || []);
+      const healthOnlySms = (smsData || []).filter(isHealthWorkerNotification);
+      setNotifications(healthOnlySms);
       if (statsData) setStats(statsData);
       setDocuments(docsData || []);
       setAppointments(aptsData || []);
       setClinicSchedules(schedulesData || []);
+      setResidents(Array.isArray(resData) ? resData : []);
       if (invData && Array.isArray(invData)) {
         setInventory(invData);
       }
@@ -422,26 +461,30 @@ export default function BhwDashboard() {
     if (storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
-        setUser(parsed);
-        if (parsed.role === 'resident') {
+        const role = (parsed.role || '').toLowerCase().trim();
+        if (role !== 'bhw') {
           toast.error('Access Denied', {
-            description: 'Resident accounts cannot access the BHW Health Center Portal.'
+            description: 'Admins and unauthorized roles cannot access the BHW Health Center Portal. Only BHW accounts are permitted.'
           });
-          navigate('/resident');
-          return;
-        } else if (parsed.role !== 'bhw' && parsed.role !== 'superadmin') {
-          toast.error('Access Denied', {
-            description: 'You do not have permission to view the BHW Portal.'
-          });
-          navigate('/login');
+          if (role === 'superadmin' || role === 'admin' || role === 'staff') {
+            navigate('/admin');
+          } else if (role === 'nurse') {
+            navigate('/nurse');
+          } else if (role === 'resident') {
+            navigate('/resident');
+          } else {
+            navigate('/login');
+          }
           return;
         }
+        setUser(parsed);
       } catch (e) {
-        // Fallback in case of parsing errors
+        navigate('/login');
+        return;
       }
     } else {
       toast.error('Authentication Required', {
-        description: 'Please sign in with your BHW or Super Admin account.'
+        description: 'Please sign in with your BHW account.'
       });
       navigate('/login');
       return;
@@ -471,7 +514,9 @@ export default function BhwDashboard() {
   // Handlers
   const handleCreateImmunization = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newChildName.trim()) { toast.error("Child's full name is required"); return; }
+    // Combine split name fields
+    const combinedChildName = [newChildFirstName.trim(), newChildMiddleName.trim(), newChildLastName.trim()].filter(Boolean).join(' ') || newChildName.trim();
+    if (!combinedChildName) { toast.error("Child's first name and last name are required"); return; }
     if (!newGuardianName.trim()) { toast.error("Guardian name is required"); return; }
     if (!newParentPhone.trim()) { toast.error("Guardian phone number is required"); return; }
 
@@ -481,7 +526,7 @@ export default function BhwDashboard() {
 
     try {
       const payload: any = {
-        child_name: newChildName.trim(),
+        child_name: combinedChildName,
         gender: newChildGender,
         guardian_name: newGuardianName.trim(),
         parent_phone: newParentPhone.trim(),
@@ -535,9 +580,12 @@ export default function BhwDashboard() {
         return item;
       }));
 
-      toast.success(`Immunization for ${newChildName} saved & archived! Vaccine stock updated.`);
+      toast.success(`Immunization for ${combinedChildName} saved & archived! Vaccine stock updated.`);
       setIsAddImmOpen(false);
       setNewChildName('');
+      setNewChildFirstName('');
+      setNewChildMiddleName('');
+      setNewChildLastName('');
       setNewGuardianName('');
       setNewParentPhone('');
       setNewCustomVaccine('');
@@ -629,13 +677,14 @@ export default function BhwDashboard() {
 
   const handleCreateMaternalRecord = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMotherName.trim()) { toast.error("Mother's full name is required"); return; }
+    const combinedMotherName = [newMotherFirstName.trim(), newMotherMiddleName.trim(), newMotherLastName.trim()].filter(Boolean).join(' ') || newMotherName.trim();
+    if (!combinedMotherName) { toast.error("Mother's first and last name are required"); return; }
     
     const bpReading = (newMotherBpSys && newMotherBpDia) ? `${newMotherBpSys}/${newMotherBpDia} mmHg` : '110/70 mmHg';
 
     try {
       const payload: any = {
-        mother_name: newMotherName.trim(),
+        mother_name: combinedMotherName,
         age: Number(newMotherAge) || 25,
         phone: newMotherPhone.trim() || '09171234567',
         contact_number: newMotherPhone.trim() || '09171234567',
@@ -673,8 +722,11 @@ export default function BhwDashboard() {
       };
       setMaternalRecords(prev => [newRec, ...prev]);
 
-      toast.success(`Maternal record for ${newMotherName} added to database!`);
+      toast.success(`Maternal record for ${combinedMotherName} added to database!`);
       setIsAddMaternalOpen(false);
+      setNewMotherFirstName('');
+      setNewMotherMiddleName('');
+      setNewMotherLastName('');
       setNewMotherName('');
       setNewMotherPhone('');
       setNewMotherNotes('Routine checkup, healthy fetal movement observed.');
@@ -777,6 +829,7 @@ export default function BhwDashboard() {
   ];
 
   const filteredNotifications = notifications.filter(n => {
+    if (!isHealthWorkerNotification(n)) return false;
     const matchesSearch =
       (n.recipient_name || '').toLowerCase().includes(smsSearch.toLowerCase()) ||
       (n.recipient_phone || '').toLowerCase().includes(smsSearch.toLowerCase()) ||
@@ -786,6 +839,7 @@ export default function BhwDashboard() {
   });
 
   const overdueVaccines = immunizations.filter(i => i.status === 'Overdue');
+  const pendingAppointments = appointments.filter(a => (a.status || '').toLowerCase() === 'pending');
 
   const filteredAppointments = appointments.filter(a => {
     const matchesSearch =
@@ -793,8 +847,13 @@ export default function BhwDashboard() {
       (a.resident_name || '').toLowerCase().includes(apptSearch.toLowerCase()) ||
       (a.service_type || '').toLowerCase().includes(apptSearch.toLowerCase()) ||
       (a.resident_phone || '').toLowerCase().includes(apptSearch.toLowerCase());
-    const matchesStatus = apptStatusFilter === 'all' || a.status === apptStatusFilter;
-    const matchesService = apptServiceFilter === 'all' || a.service_type === apptServiceFilter;
+    const matchesStatus = apptStatusFilter === 'all' || (a.status || '').toLowerCase() === apptStatusFilter.toLowerCase();
+    const cleanFilterService = apptServiceFilter.toLowerCase();
+    const aService = (a.service_type || '').toLowerCase();
+    const matchesService = apptServiceFilter === 'all' || 
+      aService === cleanFilterService ||
+      aService.includes(cleanFilterService) ||
+      cleanFilterService.includes(aService);
     return matchesSearch && matchesStatus && matchesService;
   });
 
@@ -806,6 +865,65 @@ export default function BhwDashboard() {
     return matchesSearch && matchesCat;
   });
 
+  // Auto-fill logic for Maternal Mother Name in BHW
+  const bhwMSearchQuery = `${newMotherFirstName} ${newMotherLastName}`.trim().toLowerCase();
+  const bhwMatchingMothers = useMemo(() => {
+    if (!bhwMSearchQuery || bhwMSearchQuery.length < 2) return [];
+    const queryParts = bhwMSearchQuery.split(/\s+/).filter(Boolean);
+    return residents.filter(r => {
+      const fullName = `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}`.toLowerCase();
+      const matchesAll = queryParts.length > 0 && queryParts.every(part => fullName.includes(part));
+      return matchesAll || fullName.includes(bhwMSearchQuery) || (r.last_name || '').toLowerCase().includes(bhwMSearchQuery);
+    }).slice(0, 5);
+  }, [residents, bhwMSearchQuery]);
+
+  const selectBhwMatchedMother = (m: Resident) => {
+    setNewMotherFirstName(m.first_name);
+    setNewMotherMiddleName(m.middle_name || '');
+    setNewMotherLastName(m.last_name);
+    if (m.phone) setNewMotherPhone(m.phone);
+    if ((m as any).age != null) {
+      setNewMotherAge(String((m as any).age));
+    } else if (m.date_of_birth) {
+      const ageYears = Math.floor((Date.now() - new Date(m.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      if (!isNaN(ageYears) && ageYears > 0) setNewMotherAge(String(ageYears));
+    }
+    toast.success(`Auto-filled details for ${m.first_name} ${m.last_name} from Census Registry!`);
+    setBhwMSearchFocus(false);
+  };
+
+  // Auto-fill logic for Child Vaccination in BHW
+  const bhwCSearchQuery = `${newChildFirstName} ${newChildLastName}`.trim().toLowerCase();
+  const bhwMatchingChildren = useMemo(() => {
+    if (!bhwCSearchQuery || bhwCSearchQuery.length < 2) return [];
+    const queryParts = bhwCSearchQuery.split(/\s+/).filter(Boolean);
+    return residents.filter(r => {
+      const fullName = `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}`.toLowerCase();
+      const matchesAll = queryParts.length > 0 && queryParts.every(part => fullName.includes(part));
+      return matchesAll || fullName.includes(bhwCSearchQuery) || (r.last_name || '').toLowerCase().includes(bhwCSearchQuery);
+    }).slice(0, 5);
+  }, [residents, bhwCSearchQuery]);
+
+  const selectBhwMatchedChild = (c: Resident) => {
+    setNewChildFirstName(c.first_name);
+    setNewChildMiddleName(c.middle_name || '');
+    setNewChildLastName(c.last_name);
+    if (c.gender === 'Female' || c.gender === 'Male') {
+      setNewChildGender(c.gender);
+    }
+    if (c.phone) setNewParentPhone(c.phone);
+    if (c.household_number) {
+      const familyMembers = residents.filter(r => r.household_number === c.household_number && r.id !== c.id);
+      const head = familyMembers.find(m => m.is_head_of_household) || familyMembers[0];
+      if (head) {
+        setNewGuardianName(`${head.first_name} ${head.last_name}`);
+        if (head.phone && !c.phone) setNewParentPhone(head.phone);
+      }
+    }
+    toast.success(`Auto-filled details for ${c.first_name} ${c.last_name} from Census Registry!`);
+    setBhwCSearchFocus(false);
+  };
+
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: Home },
     { id: 'appointments', label: 'Appointments & Schedules', icon: CalendarCheck },
@@ -813,16 +931,14 @@ export default function BhwDashboard() {
     { id: 'maternal', label: 'Maternal Health', icon: Heart },
     { id: 'inventory', label: 'Vaccines & Medicine Supply', icon: Pill },
     { id: 'records', label: 'Records', icon: ClipboardList },
+    { id: 'census', label: 'Populations & Census Registry', icon: Users },
     { id: 'notifications', label: 'Gmail Notification Hub', icon: Bell },
-    { id: 'reports', label: 'Health Reports', icon: BarChart },
+    { id: 'reports', label: 'Health Reports & Analytics', icon: BarChart },
     { id: 'profile', label: 'Profile Settings', icon: UserCheck },
   ];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
-      {/* Super Admin Unified Ecosystem Switcher */}
-      <SuperAdminNavigationDock currentRole={user?.role} />
-
       {/* Top Navbar */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-3 sm:px-6 py-2.5 shadow-xs">
         <div className="flex items-center justify-between w-full">
@@ -851,17 +967,6 @@ export default function BhwDashboard() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {user?.role === 'superadmin' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/admin')}
-                className="hidden sm:flex items-center gap-1.5 text-xs text-indigo-700 border-indigo-200 hover:bg-indigo-50 hover:text-indigo-800 font-semibold cursor-pointer animate-pulse"
-              >
-                <Shield size={14} />
-                Switch to Admin Portal
-              </Button>
-            )}
 
             {/* Notification Bell */}
             <div className="relative">
@@ -1100,69 +1205,13 @@ export default function BhwDashboard() {
                     <PlusCircle size={15} />
                     <span>+ Add Patient (Intake)</span>
                   </Button>
-                  <Dialog open={isAddImmOpen} onOpenChange={setIsAddImmOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 shadow-sm rounded-xl cursor-pointer">
-                        <Syringe size={15} />
-                        Record Vaccination
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="bg-white">
-                      <DialogHeader>
-                        <DialogTitle>Record New Vaccination</DialogTitle>
-                        <DialogDescription className="text-xs">Schedule or record an immunization for a child.</DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleCreateImmunization} className="space-y-3 py-2">
-                        <div>
-                          <Label className="text-xs">Child Full Name</Label>
-                          <Input value={newChildName} onChange={e => setNewChildName(e.target.value)} required placeholder="Baby Maria Santos" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-xs">Parent Phone</Label>
-                            <Input value={newParentPhone} onChange={e => setNewParentPhone(e.target.value)} placeholder="09182345678" />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Vaccine Type</Label>
-                            <Select value={newVaccineName} onValueChange={setNewVaccineName}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="BCG">BCG</SelectItem>
-                                <SelectItem value="Hepatitis B">Hepatitis B</SelectItem>
-                                <SelectItem value="DPT">DPT</SelectItem>
-                                <SelectItem value="Polio">Polio</SelectItem>
-                                <SelectItem value="MMR">MMR</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-xs">Dose Number</Label>
-                            <Input type="number" min="1" max="5" value={newDoseNumber} onChange={e => setNewDoseNumber(e.target.value)} />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Due Date</Label>
-                            <Input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)} required />
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-xs">Status</Label>
-                          <Select value={newImmStatus} onValueChange={setNewImmStatus}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Scheduled">Scheduled</SelectItem>
-                              <SelectItem value="Completed">Completed Now</SelectItem>
-                              <SelectItem value="Overdue">Overdue</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <DialogFooter>
-                          <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Save Record</Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
+                  <Button
+                    onClick={() => setIsAddImmOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 shadow-sm rounded-xl cursor-pointer"
+                  >
+                    <Syringe size={15} />
+                    <span>Record Vaccination</span>
+                  </Button>
                 </div>
               </div>
 
@@ -1217,7 +1266,176 @@ export default function BhwDashboard() {
                 </Card>
               </div>
 
-              {/* Overdue Alerts Box removed per user request */}
+              {/* ═══ SECTION: ACTION REQUIRED - NEW APPOINTMENT REQUESTS ═══ */}
+              {pendingAppointments.length > 0 && (
+                <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 shadow-xs animate-in fade-in">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 pb-3 border-b border-amber-200/70">
+                    <div className="flex items-center gap-2.5">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                      </span>
+                      <h3 className="text-sm font-bold text-amber-950 flex items-center gap-2">
+                        <CalendarCheck className="text-amber-700" size={17} />
+                        New Appointment Requests Awaiting BHW Action ({pendingAppointments.length})
+                      </h3>
+                    </div>
+                    <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                      Needs Slot Confirmation
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {pendingAppointments.slice(0, 6).map(apt => (
+                      <div key={`ov-pending-${apt.id}`} className="bg-white p-3.5 rounded-xl border border-amber-200/80 shadow-xs flex flex-col justify-between hover:border-amber-300 transition-all">
+                        <div>
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="font-bold text-xs text-slate-900 truncate">{apt.resident_name}</span>
+                            <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 shrink-0">
+                              {apt.appointment_code}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-slate-700">{apt.service_type}</p>
+                          <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                            <span>📅 Preferred:</span>
+                            <strong className="text-slate-700">{apt.preferred_date}</strong>
+                            <span>• {apt.preferred_time || 'Morning'}</span>
+                          </p>
+                          {apt.resident_phone && (
+                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">📞 {apt.resident_phone}</p>
+                          )}
+                          {apt.resident_notes && (
+                            <p className="text-[10px] text-slate-500 italic mt-1 bg-slate-50 p-1 rounded border border-slate-100 line-clamp-1" title={apt.resident_notes}>
+                              "{apt.resident_notes}"
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleOpenScheduleModal(apt)}
+                          className="w-full mt-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold h-8 rounded-lg shadow-xs cursor-pointer"
+                        >
+                          Review &amp; Confirm Slot
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ═══ SECTION: BHW FIELD HEALTH ANALYTICS & COMMUNITY INTELLIGENCE ═══ */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <BarChart2 className="text-emerald-600" size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">BHW Field Analytics &amp; Health Intelligence</h3>
+                      <p className="text-xs text-slate-500">Live operational metrics and community coverage status for Barangay {user?.barangay || 'Pianing'}.</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActiveTab('reports')}
+                    className="text-xs h-8 border-slate-200 cursor-pointer rounded-xl text-slate-600 hover:text-slate-900"
+                  >
+                    View Detailed Reports &rarr;
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* EPI Immunization Progress */}
+                  {(() => {
+                    const completedDoses = immunizations.filter(i => i.status === 'Completed').length;
+                    const totalScheduled = immunizations.length || 1;
+                    const rate = Math.min(100, Math.round((completedDoses / totalScheduled) * 100));
+                    return (
+                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-bold text-slate-700">EPI Immunization Coverage</span>
+                            <Syringe size={15} className="text-blue-600" />
+                          </div>
+                          <p className="text-2xl font-black text-blue-700">{rate}%</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">{completedDoses} administered of {totalScheduled} target doses</p>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2 mt-3">
+                          <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${rate}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Maternal Health Risk Breakdown */}
+                  {(() => {
+                    const high = maternalRecords.filter(m => m.risk_level === 'High').length;
+                    const moderate = maternalRecords.filter(m => m.risk_level === 'Moderate').length;
+                    const low = maternalRecords.filter(m => m.risk_level === 'Low' || !m.risk_level).length;
+                    return (
+                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-bold text-slate-700">Maternal Health Risk</span>
+                            <Heart size={15} className="text-pink-600" />
+                          </div>
+                          <p className="text-2xl font-black text-pink-700">{maternalRecords.length}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Mothers currently under active care</p>
+                        </div>
+                        <div className="flex gap-1.5 mt-3">
+                          <span className="text-[10px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.5 rounded font-bold">{high} High</span>
+                          <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-bold">{moderate} Mod</span>
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">{low} Low</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Appointment Fulfillment Pipeline */}
+                  {(() => {
+                    const confirmed = appointments.filter(a => (a.status || '').toLowerCase() === 'approved' || (a.status || '').toLowerCase() === 'completed').length;
+                    const total = appointments.length;
+                    const pct = total > 0 ? Math.round((confirmed / total) * 100) : 0;
+                    return (
+                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-bold text-slate-700">Appointment Fulfillment</span>
+                            <CalendarCheck size={15} className="text-emerald-600" />
+                          </div>
+                          <p className="text-2xl font-black text-emerald-700">{pct}%</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">{confirmed} confirmed of {total} requested visits</p>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2 mt-3">
+                          <div className="bg-emerald-600 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Automated SMS Health Alerts */}
+                  {(() => {
+                    const sent = notifications.filter(n => n.status === 'Sent' || !n.status).length;
+                    const pending = notifications.filter(n => n.status === 'Pending').length;
+                    return (
+                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-bold text-slate-700">SMS Health Reminders</span>
+                            <Bell size={15} className="text-purple-600" />
+                          </div>
+                          <p className="text-2xl font-black text-purple-700">{notifications.length}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Health alert dispatches sent to residents</p>
+                        </div>
+                        <div className="flex gap-1.5 mt-3">
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">{sent} Sent</span>
+                          {pending > 0 && <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-bold">{pending} Pending</span>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1234,7 +1452,7 @@ export default function BhwDashboard() {
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-500">
-                    Review and confirm resident appointment requests for <strong>Pre-Marriage Counseling (PMC)</strong>, Prenatal Care, Immunizations, and Family Planning.
+                    Review and confirm resident appointment requests for General Consultation, <strong>Pre-Marriage Counseling (PMC)</strong>, Prenatal Care, Immunizations, and Family Planning.
                   </p>
                 </div>
 
@@ -1254,19 +1472,19 @@ export default function BhwDashboard() {
                 <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Pending Review</span>
                   <span className="text-2xl font-black text-amber-600">
-                    {appointments.filter(a => a.status === 'Pending').length}
+                    {pendingAppointments.length}
                   </span>
                 </div>
                 <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Confirmed / Approved</span>
                   <span className="text-2xl font-black text-emerald-600">
-                    {appointments.filter(a => a.status === 'Approved').length}
+                    {appointments.filter(a => (a.status || '').toLowerCase() === 'approved').length}
                   </span>
                 </div>
                 <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Completed Visits</span>
                   <span className="text-2xl font-black text-blue-600">
-                    {appointments.filter(a => a.status === 'Completed').length}
+                    {appointments.filter(a => (a.status || '').toLowerCase() === 'completed').length}
                   </span>
                 </div>
                 <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
@@ -1276,6 +1494,50 @@ export default function BhwDashboard() {
                   </span>
                 </div>
               </div>
+
+              {/* ACTION REQUIRED: Pending Appointment Requests Callout */}
+              {pendingAppointments.length > 0 && (
+                <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                      <h3 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                        Action Required: New Incoming Resident Appointment Requests ({pendingAppointments.length})
+                      </h3>
+                    </div>
+                    <Badge className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px]">
+                      Awaiting Health Worker Confirmation
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {pendingAppointments.map(apt => (
+                      <div key={`incoming-${apt.id}`} className="bg-white p-3 rounded-xl border border-amber-200 shadow-xs flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="font-bold text-xs text-slate-900 truncate">{apt.resident_name}</span>
+                            <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 shrink-0">
+                              {apt.appointment_code}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-slate-700">{apt.service_type}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">📅 Preferred: {apt.preferred_date} • ⏰ {apt.preferred_time || 'Morning'}</p>
+                          {apt.resident_phone && <p className="text-[10px] text-slate-400 font-mono">📞 {apt.resident_phone}</p>}
+                          {apt.resident_notes && (
+                            <p className="text-[10px] text-slate-500 italic mt-1 truncate" title={apt.resident_notes}>Note: {apt.resident_notes}</p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleOpenScheduleModal(apt)}
+                          className="mt-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold h-8 rounded-lg shadow-xs cursor-pointer w-full"
+                        >
+                          Review &amp; Schedule Slot
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Filters & Search */}
               <div className="flex flex-col sm:flex-row gap-2 justify-between">
@@ -1296,12 +1558,12 @@ export default function BhwDashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Services</SelectItem>
-                      <SelectItem value="Pre-Marriage Counseling (PMC)">Pre-Marriage Counseling</SelectItem>
-                      <SelectItem value="Prenatal Check-up">Prenatal Check-up</SelectItem>
-                      <SelectItem value="Child Immunization">Child Immunization</SelectItem>
-                      <SelectItem value="Family Planning &amp; Counseling">Family Planning</SelectItem>
-                      <SelectItem value="General Medical Consultation">General Consultation</SelectItem>
-                      <SelectItem value="BHW Home Visit">BHW Home Visit</SelectItem>
+                      <SelectItem value="General">General Consultation</SelectItem>
+                      <SelectItem value="Prenatal">Prenatal Check-up / Care</SelectItem>
+                      <SelectItem value="Immunization">Child Immunization</SelectItem>
+                      <SelectItem value="Family Planning">Family Planning</SelectItem>
+                      <SelectItem value="Pre-Marriage">Pre-Marriage Counseling (PMC)</SelectItem>
+                      <SelectItem value="Home Visit">BHW Home Visit</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -1762,232 +2024,12 @@ export default function BhwDashboard() {
                     <Download size={13} /> Export PDF
                   </Button>
 
-                  <Dialog open={isAddImmOpen} onOpenChange={setIsAddImmOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold h-9 px-3.5 gap-1.5 shadow-sm cursor-pointer">
-                        <PlusCircle size={14} /> Record Vaccine
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="bg-white max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-2xl border border-slate-200">
-                      <DialogHeader className="border-b border-slate-100 pb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                            <Baby size={18} />
-                          </div>
-                          <div>
-                            <DialogTitle className="text-base font-bold text-slate-900">
-                              Record Pediatric Immunization Encounter
-                            </DialogTitle>
-                            <DialogDescription className="text-xs text-slate-500">
-                              Standard DOH EPI registry form with dynamic vaccine type & remarks pills.
-                            </DialogDescription>
-                          </div>
-                        </div>
-                      </DialogHeader>
-
-                      <form onSubmit={handleCreateImmunization} className="space-y-3.5 pt-3">
-                        <div className="grid grid-cols-3 gap-2.5">
-                          <div className="col-span-2">
-                            <Label className="text-xs font-semibold text-slate-700">Child's Full Name <span className="text-rose-500">*</span></Label>
-                            <Input
-                              value={newChildName}
-                              onChange={e => setNewChildName(e.target.value)}
-                              placeholder="e.g. Liam Gabriel Santos"
-                              required
-                              className="h-9 text-xs mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Sex</Label>
-                            <Select value={newChildGender} onValueChange={(val: any) => setNewChildGender(val)}>
-                              <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Male">Male</SelectItem>
-                                <SelectItem value="Female">Female</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2.5">
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Mother / Guardian Name <span className="text-rose-500">*</span></Label>
-                            <Input
-                              value={newGuardianName}
-                              onChange={e => setNewGuardianName(e.target.value)}
-                              placeholder="e.g. Angela Santos"
-                              required
-                              className="h-9 text-xs mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Contact Number (SMS Alerts) <span className="text-rose-500">*</span></Label>
-                            <Input
-                              value={newParentPhone}
-                              onChange={e => setNewParentPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                              placeholder="09XXXXXXXXX"
-                              required
-                              maxLength={11}
-                              className="h-9 text-xs font-mono mt-1"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2.5">
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Age (months)</Label>
-                            <Input
-                              value={newChildAge}
-                              onChange={e => setNewChildAge(e.target.value)}
-                              placeholder="e.g. 3.5"
-                              className="h-9 text-xs mt-1 font-mono"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Weight (kg)</Label>
-                            <Input
-                              value={newChildWeight}
-                              onChange={e => setNewChildWeight(e.target.value)}
-                              placeholder="e.g. 6.2"
-                              className="h-9 text-xs mt-1 font-mono"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Height (cm)</Label>
-                            <Input
-                              value={newChildHeight}
-                              onChange={e => setNewChildHeight(e.target.value)}
-                              placeholder="e.g. 62"
-                              className="h-9 text-xs mt-1 font-mono"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Vaccine Type & Custom Input */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Vaccine Formulation</Label>
-                            <Select value={newVaccineName} onValueChange={setNewVaccineName}>
-                              <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="BCG">BCG (Tuberculosis)</SelectItem>
-                                <SelectItem value="Hepatitis B">Hepatitis B (Birth Dose)</SelectItem>
-                                <SelectItem value="Pentavalent (DPT-HepB-Hib)">Pentavalent (DPT-HepB-Hib)</SelectItem>
-                                <SelectItem value="OPV (Oral Polio)">OPV (Oral Polio Vaccine)</SelectItem>
-                                <SelectItem value="IPV (Inactivated Polio)">IPV (Inactivated Polio)</SelectItem>
-                                <SelectItem value="PCV13">PCV13 (Pneumococcal)</SelectItem>
-                                <SelectItem value="MMR (Measles-Mumps-Rubella)">MMR (Measles-Mumps-Rubella)</SelectItem>
-                                <SelectItem value="Measles-Rubella (MR)">Measles-Rubella (MR)</SelectItem>
-                                <SelectItem value="Vitamin A">Vitamin A Supplementation</SelectItem>
-                                <SelectItem value="Other">Other (Custom Vaccine Formulation)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Dose Sequence</Label>
-                            <Select value={newDoseNumber} onValueChange={setNewDoseNumber}>
-                              <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Dose 1">Dose 1</SelectItem>
-                                <SelectItem value="Dose 2">⭐ Dose 2 (Follow-up)</SelectItem>
-                                <SelectItem value="Dose 3">Dose 3</SelectItem>
-                                <SelectItem value="Booster 1">Booster 1</SelectItem>
-                                <SelectItem value="Booster 2">Booster 2</SelectItem>
-                                <SelectItem value="Single Dose">Single Dose</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Batch / Lot #</Label>
-                            <Input
-                              value={newBatchLot}
-                              onChange={e => setNewBatchLot(e.target.value)}
-                              placeholder="LOT-2026-X9"
-                              className="h-9 text-xs font-mono mt-1"
-                            />
-                          </div>
-                        </div>
-
-                        {newVaccineName === 'Other' && (
-                          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl">
-                            <Label className="text-xs font-bold text-blue-900">Specify Custom Vaccine Name <span className="text-rose-500">*</span></Label>
-                            <Input
-                              value={newCustomVaccine}
-                              onChange={e => setNewCustomVaccine(e.target.value)}
-                              placeholder="e.g. Japanese Encephalitis, Varicella, Typhoid..."
-                              required
-                              className="h-8 text-xs bg-white mt-1 border-blue-300"
-                            />
-                          </div>
-                        )}
-
-                        <div className="grid grid-cols-2 gap-2.5">
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Date Administered</Label>
-                            <Input
-                              type="date"
-                              value={newDateGiven}
-                              onChange={e => setNewDateGiven(e.target.value)}
-                              className="h-9 text-xs mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Next Scheduled Dose Due</Label>
-                            <Input
-                              type="date"
-                              value={newDueDate}
-                              onChange={e => setNewDueDate(e.target.value)}
-                              className="h-9 text-xs mt-1"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Dynamic Remarks with Observation Pills */}
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs font-semibold text-slate-700">Clinical Observations &amp; Remarks</Label>
-                            <span className="text-[10px] text-slate-400">Click quick observation tags:</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {[
-                              'Cleared for routine vaccination',
-                              'Normal post-vaccine reaction observed',
-                              'Mild fever reported - paracetamol advised',
-                              'Follow-up in 4 weeks scheduled',
-                              'Mother educated on exclusive breastfeeding',
-                              'Weight and growth on track'
-                            ].map(tag => (
-                              <button
-                                key={tag}
-                                type="button"
-                                onClick={() => setNewRemarks(prev => prev ? `${prev}. ${tag}` : tag)}
-                                className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
-                              >
-                                + {tag}
-                              </button>
-                            ))}
-                          </div>
-                          <Input
-                            value={newRemarks}
-                            onChange={e => setNewRemarks(e.target.value)}
-                            placeholder="e.g. Cleared for routine vaccination, advised paracetamol"
-                            className="h-9 text-xs mt-1"
-                          />
-                        </div>
-
-                        <DialogFooter className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                          <Button type="button" variant="outline" onClick={() => setIsAddImmOpen(false)} className="text-xs h-9">
-                            Cancel
-                          </Button>
-                          <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-9 px-4 gap-1.5 cursor-pointer">
-                            <Check size={14} /> Save Immunization Record
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
+                  <Button
+                    onClick={() => setIsAddImmOpen(true)}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold h-9 px-3.5 gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <PlusCircle size={14} /> Record Vaccine
+                  </Button>
                 </div>
               </div>
 
@@ -2243,28 +2285,106 @@ export default function BhwDashboard() {
                       </DialogHeader>
 
                       <form onSubmit={handleCreateMaternalRecord} className="space-y-3.5 pt-3">
-                        <div className="grid grid-cols-2 gap-2.5">
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Mother's Full Name <span className="text-rose-500">*</span></Label>
-                            <Input
-                              value={newMotherName}
-                              onChange={e => setNewMotherName(e.target.value)}
-                              placeholder="e.g. Maria Elena Gomez"
-                              required
-                              className="h-9 text-xs mt-1"
-                            />
+                        <div className="relative">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Patient Identification</p>
+                            {bhwMatchingMothers.length > 0 && bhwMSearchFocus && (
+                              <span className="text-[10px] text-pink-600 font-semibold animate-pulse">
+                                Found in Census Registry ({bhwMatchingMothers.length})
+                              </span>
+                            )}
                           </div>
-                          <div>
-                            <Label className="text-xs font-semibold text-slate-700">Mobile Phone Number <span className="text-rose-500">*</span></Label>
-                            <Input
-                              value={newMotherPhone}
-                              onChange={e => setNewMotherPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                              placeholder="09XXXXXXXXX"
-                              required
-                              maxLength={11}
-                              className="h-9 text-xs font-mono mt-1"
-                            />
+                          <div className="grid grid-cols-3 gap-2.5">
+                            <div>
+                              <Label className="text-xs font-semibold text-slate-700">First Name <span className="text-rose-500">*</span></Label>
+                              <Input
+                                value={newMotherFirstName}
+                                onChange={e => {
+                                  setNewMotherFirstName(e.target.value);
+                                  setBhwMSearchFocus(true);
+                                }}
+                                onFocus={() => setBhwMSearchFocus(true)}
+                                placeholder="e.g. Maria"
+                                required
+                                className="h-9 text-xs mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs font-semibold text-slate-700">Middle Name</Label>
+                              <Input
+                                value={newMotherMiddleName}
+                                onChange={e => {
+                                  setNewMotherMiddleName(e.target.value);
+                                  setBhwMSearchFocus(true);
+                                }}
+                                onFocus={() => setBhwMSearchFocus(true)}
+                                placeholder="e.g. Elena"
+                                className="h-9 text-xs mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs font-semibold text-slate-700">Last Name <span className="text-rose-500">*</span></Label>
+                              <Input
+                                value={newMotherLastName}
+                                onChange={e => {
+                                  setNewMotherLastName(e.target.value);
+                                  setBhwMSearchFocus(true);
+                                }}
+                                onFocus={() => setBhwMSearchFocus(true)}
+                                placeholder="e.g. Gomez"
+                                required
+                                className="h-9 text-xs mt-1"
+                              />
+                            </div>
                           </div>
+
+                          {/* Dynamic Mother suggestions dropdown */}
+                          {bhwMSearchFocus && bhwMatchingMothers.length > 0 && (
+                            <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-pink-300 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
+                              <div className="p-1.5 bg-pink-50/90 text-[10px] font-bold text-pink-800 flex items-center justify-between px-3">
+                                <span>Matching Inhabitants in Census ({bhwMatchingMothers.length})</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setBhwMSearchFocus(false)}
+                                  className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              {bhwMatchingMothers.map((m: any) => (
+                                <button
+                                  key={`bhw-mother-match-${m.id}`}
+                                  type="button"
+                                  onClick={() => selectBhwMatchedMother(m)}
+                                  className="w-full text-left p-2.5 hover:bg-pink-50/60 transition-colors flex items-center justify-between text-xs cursor-pointer group"
+                                >
+                                  <div>
+                                    <span className="font-bold text-slate-800 group-hover:text-pink-700 block">
+                                      {m.first_name} {m.middle_name ? m.middle_name + ' ' : ''}{m.last_name}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 block">
+                                      {m.gender} · Purok {m.purok || '1'} · {m.phone || 'No phone recorded'}
+                                    </span>
+                                  </div>
+                                  <Badge variant="outline" className="text-[9px] bg-white border-pink-300 text-pink-700 shrink-0">
+                                    Auto-Fill
+                                  </Badge>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-semibold text-slate-700">Mobile Phone Number (SMS Reminders) <span className="text-rose-500">*</span></Label>
+                          <Input
+                            value={newMotherPhone}
+                            onChange={e => setNewMotherPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                            placeholder="09XXXXXXXXX"
+                            required
+                            maxLength={11}
+                            className="h-9 text-xs font-mono mt-1"
+                          />
                         </div>
 
                         <div className="grid grid-cols-3 gap-2.5">
@@ -3016,9 +3136,136 @@ export default function BhwDashboard() {
                     </div>
                   </CardContent>
                 </Card>
+                </div>
+
+              {/* ─── LIVE ANALYTICS ─────────────────────────────────────────── */}
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <BarChart2 size={18} className="text-blue-600" />
+                  <h3 className="text-base font-bold text-slate-900">Live Field Health Analytics</h3>
+                  <span className="text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-semibold">BHW Role</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                  {/* Immunization Compliance */}
+                  {(() => {
+                    const completed = immunizations.filter(i => i.status === 'Completed').length;
+                    const overdue = immunizations.filter(i => i.status === 'Overdue').length;
+                    const total = completed + overdue;
+                    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+                    return (
+                      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold text-slate-600">Immunization Compliance</span>
+                          <Syringe size={16} className="text-blue-600" />
+                        </div>
+                        <p className="text-3xl font-extrabold text-slate-900">{pct}%</p>
+                        <p className="text-[11px] text-slate-500 mt-1">{completed} completed / {overdue} overdue</p>
+                        <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+                          <div className={`h-1.5 rounded-full ${pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {/* Maternal Risk Distribution */}
+                  {(() => {
+                    const high = maternalRecords.filter(m => m.risk_level === 'High').length;
+                    const moderate = maternalRecords.filter(m => m.risk_level === 'Moderate').length;
+                    const low = maternalRecords.filter(m => !m.risk_level || m.risk_level === 'Low').length;
+                    return (
+                      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold text-slate-600">Maternal Risk Distribution</span>
+                          <Heart size={16} className="text-pink-600" />
+                        </div>
+                        <p className="text-3xl font-extrabold text-slate-900">{maternalRecords.length}</p>
+                        <p className="text-[11px] text-slate-500 mt-1">Active maternal patients</p>
+                        <div className="flex gap-1.5 mt-2">
+                          <span className="text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-semibold">{high} High</span>
+                          <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">{moderate} Mod</span>
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">{low} Low</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {/* Appointment Fulfillment */}
+                  {(() => {
+                    const confirmed = appointments.filter(a => a.status === 'Approved' || a.status === 'Completed').length;
+                    const total = appointments.length;
+                    const pct = total > 0 ? Math.round((confirmed / total) * 100) : 0;
+                    return (
+                      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold text-slate-600">Appointment Fulfillment</span>
+                          <CalendarCheck size={16} className="text-emerald-600" />
+                        </div>
+                        <p className="text-3xl font-extrabold text-slate-900">{pct}%</p>
+                        <p className="text-[11px] text-slate-500 mt-1">{confirmed} confirmed of {total} total</p>
+                        <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+                          <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {/* SMS Health Dispatch */}
+                  {(() => {
+                    const sent = notifications.filter(n => n.status === 'Sent' || !n.status).length;
+                    const pending = notifications.filter(n => n.status === 'Pending').length;
+                    return (
+                      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold text-slate-600">SMS Health Dispatch</span>
+                          <Bell size={16} className="text-purple-600" />
+                        </div>
+                        <p className="text-3xl font-extrabold text-slate-900">{notifications.length}</p>
+                        <p className="text-[11px] text-slate-500 mt-1">Total dispatched</p>
+                        <div className="flex gap-1.5 mt-2">
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">{sent} Sent</span>
+                          {pending > 0 && <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">{pending} Pending</span>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Inventory Low Stock Alerts */}
+                {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock').length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlertTriangle size={16} className="text-amber-600" />
+                      <h4 className="text-sm font-bold text-amber-900">Low Stock / Out of Stock Alerts</h4>
+                      <span className="text-[11px] bg-amber-100 text-amber-700 border border-amber-300 px-2 py-0.5 rounded-full font-semibold">
+                        {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock').length} Items
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock').map(item => (
+                        <div key={item.id} className="flex items-center justify-between bg-white border border-amber-200 rounded-xl px-3 py-2 text-xs">
+                          <div>
+                            <p className="font-semibold text-slate-800">{item.item_name}</p>
+                            <p className="text-slate-500">{item.category}</p>
+                          </div>
+                          <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${item.status === 'Out of Stock' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {item.stock} {item.unit}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
+
+          {/* ═══ TAB: CENSUS ENTRY ══════════════════════════════════════════ */}
+          {activeTab === 'census' && (
+            <CensusEntryTab
+              user={user}
+              onSync={() => {
+                triggerHealthSync();
+              }}
+            />
+          )}
+
           {/* TAB: PROFILE SETTINGS */}
           {activeTab === 'profile' && (
             <ProfileSettingsView
@@ -3031,11 +3278,11 @@ export default function BhwDashboard() {
 
       {/* Intra-System Messenger (floating, Staff Chat) */}
       <SystemMessenger
-        currentUserRole={user?.role === 'superadmin' ? 'superadmin' : 'bhw'}
+        currentUserRole="bhw"
         currentUserName={user?.name || "BHW Maria Santos"}
         currentUserEmail={user?.email}
         currentUserId={user?.id}
-        currentUserBarangay={user?.barangay || (user?.role === 'superadmin' ? 'All (City-Wide)' : 'Pianing')}
+        currentUserBarangay={user?.barangay || 'Pianing'}
       />
 
       {/* Resident 360° Profile Modal */}
@@ -3097,6 +3344,353 @@ export default function BhwDashboard() {
           loadData();
         }}
       />
+
+      {/* ═══ MASTER RECORD NEW VACCINATION MODAL ═══ */}
+      <Dialog open={isAddImmOpen} onOpenChange={setIsAddImmOpen}>
+        <DialogContent className="bg-white max-w-xl max-h-[92vh] overflow-y-auto p-0 rounded-2xl shadow-2xl border border-slate-200">
+          <div className="p-5 border-b border-slate-100 bg-white sticky top-0 z-10 rounded-t-2xl">
+            <div className="flex items-center justify-between">
+              <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Child Immunization (EPI)
+              </span>
+              <span className="text-xs text-slate-400 font-medium mr-6">Brgy. {user?.barangay || 'Pianing'}</span>
+            </div>
+            <DialogTitle className="text-lg font-bold text-slate-900 mt-2 flex items-center gap-2">
+              <Baby className="text-emerald-600" size={20} /> Record New Vaccination
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 mt-0.5">
+              Schedule or record an immunization for a child.
+            </DialogDescription>
+          </div>
+
+          <form onSubmit={handleCreateImmunization} className="p-5 space-y-4">
+            {/* Child Name Fields (Split First / Middle / Last) with Census Autocomplete */}
+            <div className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Child Information</p>
+                {bhwMatchingChildren.length > 0 && bhwCSearchFocus && (
+                  <span className="text-[10px] text-emerald-600 font-semibold animate-pulse">
+                    Found in Census Registry ({bhwMatchingChildren.length})
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">First Name <span className="text-rose-500">*</span></Label>
+                  <Input
+                    value={newChildFirstName}
+                    onChange={e => {
+                      setNewChildFirstName(e.target.value);
+                      setBhwCSearchFocus(true);
+                    }}
+                    onFocus={() => setBhwCSearchFocus(true)}
+                    placeholder="e.g. Baby Maria"
+                    required
+                    className="h-9 text-xs mt-1 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Middle Name</Label>
+                  <Input
+                    value={newChildMiddleName}
+                    onChange={e => {
+                      setNewChildMiddleName(e.target.value);
+                      setBhwCSearchFocus(true);
+                    }}
+                    onFocus={() => setBhwCSearchFocus(true)}
+                    placeholder="e.g. Grace"
+                    className="h-9 text-xs mt-1 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Last Name <span className="text-rose-500">*</span></Label>
+                  <Input
+                    value={newChildLastName}
+                    onChange={e => {
+                      setNewChildLastName(e.target.value);
+                      setBhwCSearchFocus(true);
+                    }}
+                    onFocus={() => setBhwCSearchFocus(true)}
+                    placeholder="e.g. Santos"
+                    required
+                    className="h-9 text-xs mt-1 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* Dynamic Child Auto-suggest dropdown */}
+              {bhwCSearchFocus && bhwMatchingChildren.length > 0 && (
+                <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-emerald-300 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100">
+                  <div className="p-1.5 bg-emerald-50/90 text-[10px] font-bold text-emerald-800 flex items-center justify-between px-3">
+                    <span>Matching Minors in Census Registry ({bhwMatchingChildren.length})</span>
+                    <button
+                      type="button"
+                      onClick={() => setBhwCSearchFocus(false)}
+                      className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {bhwMatchingChildren.map((c: any) => (
+                    <button
+                      key={`bhw-child-match-${c.id}`}
+                      type="button"
+                      onClick={() => selectBhwMatchedChild(c)}
+                      className="w-full text-left p-2.5 hover:bg-emerald-50/60 transition-colors flex items-center justify-between text-xs cursor-pointer group"
+                    >
+                      <div>
+                        <span className="font-bold text-slate-800 group-hover:text-emerald-700 block">
+                          {c.first_name} {c.middle_name ? c.middle_name + ' ' : ''}{c.last_name}
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">
+                          {c.gender} · Purok {c.purok || '1'} · {c.date_of_birth || 'No DOB'}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-[9px] bg-white border-emerald-300 text-emerald-700 shrink-0">
+                        Auto-Fill
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sex & Guardian Details */}
+            <div className="grid grid-cols-3 gap-2.5">
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Sex <span className="text-rose-500">*</span></Label>
+                <div className="grid grid-cols-2 gap-1 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setNewChildGender('Male')}
+                    className={`h-9 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                      newChildGender === 'Male'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>👦</span> Male
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewChildGender('Female')}
+                    className={`h-9 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                      newChildGender === 'Female'
+                        ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>👧</span> Female
+                  </button>
+                </div>
+              </div>
+              <div className="col-span-2">
+                <Label className="text-xs font-semibold text-slate-700">Parent / Guardian Name <span className="text-rose-500">*</span></Label>
+                <Input
+                  value={newGuardianName}
+                  onChange={e => setNewGuardianName(e.target.value)}
+                  placeholder="e.g. Angela Santos"
+                  required
+                  className="h-9 text-xs mt-1 rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Parent Phone <span className="text-rose-500">*</span></Label>
+                <Input
+                  value={newParentPhone}
+                  onChange={e => setNewParentPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                  placeholder="09182345678"
+                  required
+                  maxLength={11}
+                  className="h-9 text-xs font-mono mt-1 rounded-xl"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Status</Label>
+                <Select value={newImmStatus} onValueChange={setNewImmStatus}>
+                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Completed">Completed Now</SelectItem>
+                    <SelectItem value="Scheduled">Scheduled</SelectItem>
+                    <SelectItem value="Overdue">Overdue</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Physical Vitals */}
+            <div className="grid grid-cols-3 gap-2.5">
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Age (Months)</Label>
+                <Input
+                  value={newChildAge}
+                  onChange={e => setNewChildAge(e.target.value)}
+                  placeholder="e.g. 6"
+                  className="h-9 text-xs mt-1 font-mono rounded-xl"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Weight (kg)</Label>
+                <Input
+                  value={newChildWeight}
+                  onChange={e => setNewChildWeight(e.target.value)}
+                  placeholder="e.g. 7.8"
+                  className="h-9 text-xs mt-1 font-mono rounded-xl"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Height (cm)</Label>
+                <Input
+                  value={newChildHeight}
+                  onChange={e => setNewChildHeight(e.target.value)}
+                  placeholder="e.g. 66"
+                  className="h-9 text-xs mt-1 font-mono rounded-xl"
+                />
+              </div>
+            </div>
+
+            {/* Vaccine Type & Dose */}
+            <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl space-y-2.5">
+              <Label className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                <Syringe size={14} className="text-emerald-600" /> Vaccine Formulation &amp; Batch
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-700">Vaccine Type</Label>
+                  <Select value={newVaccineName} onValueChange={setNewVaccineName}>
+                    <SelectTrigger className="h-9 text-xs mt-1 rounded-xl bg-white"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BCG">BCG (Tuberculosis)</SelectItem>
+                      <SelectItem value="Hepatitis B">Hepatitis B (Birth Dose)</SelectItem>
+                      <SelectItem value="Pentavalent (DPT-HepB-Hib)">Pentavalent (DPT-HepB-Hib)</SelectItem>
+                      <SelectItem value="OPV (Oral Polio)">OPV (Oral Polio Vaccine)</SelectItem>
+                      <SelectItem value="IPV (Inactivated Polio)">IPV (Inactivated Polio)</SelectItem>
+                      <SelectItem value="PCV13">PCV13 (Pneumococcal)</SelectItem>
+                      <SelectItem value="MMR (Measles-Mumps-Rubella)">MMR (Measles-Mumps-Rubella)</SelectItem>
+                      <SelectItem value="Measles-Rubella (MR)">Measles-Rubella (MR)</SelectItem>
+                      <SelectItem value="Vitamin A">Vitamin A Supplementation</SelectItem>
+                      <SelectItem value="Other">Other (Custom Vaccine)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-700">Dose Number</Label>
+                  <Select value={newDoseNumber} onValueChange={setNewDoseNumber}>
+                    <SelectTrigger className="h-9 text-xs mt-1 rounded-xl bg-white"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Dose 1">Dose 1</SelectItem>
+                      <SelectItem value="Dose 2">⭐ Dose 2 (Follow-up)</SelectItem>
+                      <SelectItem value="Dose 3">Dose 3</SelectItem>
+                      <SelectItem value="Booster 1">Booster 1</SelectItem>
+                      <SelectItem value="Booster 2">Booster 2</SelectItem>
+                      <SelectItem value="Single Dose">Single Dose</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-[11px] font-semibold text-slate-700">Batch / Lot #</Label>
+                  <Input
+                    value={newBatchLot}
+                    onChange={e => setNewBatchLot(e.target.value)}
+                    placeholder="LOT-2026-X9"
+                    className="h-9 text-xs font-mono mt-1 rounded-xl bg-white"
+                  />
+                </div>
+              </div>
+
+              {newVaccineName === 'Other' && (
+                <div className="pt-2">
+                  <Label className="text-xs font-bold text-emerald-900">Custom Vaccine Name <span className="text-rose-500">*</span></Label>
+                  <Input
+                    value={newCustomVaccine}
+                    onChange={e => setNewCustomVaccine(e.target.value)}
+                    placeholder="e.g. Varicella, Typhoid..."
+                    required
+                    className="h-8 text-xs bg-white mt-1 border-emerald-300 rounded-xl"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Dates */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Date Administered</Label>
+                <Input
+                  type="date"
+                  value={newDateGiven}
+                  onChange={e => setNewDateGiven(e.target.value)}
+                  className="h-9 text-xs mt-1 rounded-xl"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Due Date</Label>
+                <Input
+                  type="date"
+                  value={newDueDate}
+                  onChange={e => setNewDueDate(e.target.value)}
+                  className="h-9 text-xs mt-1 rounded-xl"
+                />
+              </div>
+            </div>
+
+            {/* Observations & Remarks with Quick Tags */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-slate-700">Clinical Observations &amp; Remarks</Label>
+                <span className="text-[10px] text-slate-400">Quick observation tags:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'Cleared for routine vaccination',
+                  'Normal post-vaccine reaction observed',
+                  'Mild fever reported - paracetamol advised',
+                  'Follow-up in 4 weeks scheduled',
+                  'Mother educated on exclusive breastfeeding',
+                  'Weight and growth on track'
+                ].map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setNewRemarks(prev => prev ? `${prev}. ${tag}` : tag)}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                  >
+                    + {tag}
+                  </button>
+                ))}
+              </div>
+              <Input
+                value={newRemarks}
+                onChange={e => setNewRemarks(e.target.value)}
+                placeholder="e.g. Cleared for routine vaccination, advised paracetamol"
+                className="h-9 text-xs mt-1 rounded-xl"
+              />
+            </div>
+
+            <DialogFooter className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddImmOpen(false)}
+                className="text-xs h-9 rounded-xl border-slate-200 cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 px-5 gap-1.5 shadow-sm rounded-xl cursor-pointer"
+              >
+                <Check size={14} /> Save Record
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Compose SMS Notification Dialog */}
       <Dialog open={isSendSmsOpen} onOpenChange={setIsSendSmsOpen}>

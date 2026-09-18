@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -46,6 +46,7 @@ interface SmartClinicalIntakeModalProps {
   barangay?: string;
   attendingWorker?: string;
   workerRole?: string;
+  availableInventory?: InventoryItem[];
 }
 
 interface PrescribedItem {

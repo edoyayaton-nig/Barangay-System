@@ -30,6 +30,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { FloatingInput, FloatingSelect } from '../components/ui/floating-input';
 import { BUTUAN_BARANGAYS, normalizeBarangay, formatJurisdictionAddress } from '../../utils/barangays';
 import TermsAndPrivacyModal from '../components/TermsAndPrivacyModal';
+import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import { toast } from 'sonner';
 
 const ID_TYPES = [
@@ -84,7 +85,7 @@ export default function LoginPage() {
   const [regPhone, setRegPhone] = useState('');
   const [regPurok, setRegPurok] = useState('');
   const [regBarangay, setRegBarangay] = useState('');
-  const [regCity, setRegCity] = useState('');
+  const [regCity, setRegCity] = useState('Butuan City');
   const [regEmployment, setRegEmployment] = useState('Employed');
   const [regIdType, setRegIdType] = useState('');
   const [regIdPhoto, setRegIdPhoto] = useState<string | null>(null);
@@ -96,6 +97,7 @@ export default function LoginPage() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const clearForm = () => {
@@ -114,7 +116,7 @@ export default function LoginPage() {
     setRegPhone('');
     setRegPurok('');
     setRegBarangay('');
-    setRegCity('');
+    setRegCity('Butuan City');
     setRegIdType('');
     setRegIdPhoto(null);
     setRegIdFileName('');
@@ -186,7 +188,9 @@ export default function LoginPage() {
         localStorage.setItem('barangay_user', JSON.stringify(u));
         toast.success(`Welcome back, ${u.name}!`);
 
-        if (u.role === 'superadmin' || u.role === 'admin') {
+        if (u.role === 'super_mega_admin') {
+          navigate('/super-mega-admin');
+        } else if (u.role === 'superadmin' || u.role === 'admin' || u.role === 'staff') {
           navigate('/admin');
         } else if (u.role === 'nurse') {
           navigate('/nurse');
@@ -196,7 +200,7 @@ export default function LoginPage() {
           setIsChoiceModalOpen(true);
         }
       } else {
-        toast.error('Authentication failed', { description: 'Invalid email or password.' });
+        toast.error('Authentication failed', { description: response?.message || 'Invalid email or password.' });
       }
     } catch (err: any) {
       toast.error('Login error', { description: err.message || 'Could not connect to authentication server.' });
@@ -368,11 +372,14 @@ export default function LoginPage() {
     setRegPassword('');
     setRegPurok('');
     setRegBarangay('');
-    setRegCity('');
+    setRegCity('Butuan City');
   }, []);
 
   return (
     <div className="min-h-screen bg-white sm:bg-[#FAFAFA] flex flex-col justify-between font-sans">
+      {/* System Outage / Maintenance / Advisory Notice */}
+      <SystemNoticeBanner allowDismiss={false} />
+
       {/* Top Viewport Header: Pinned directly to far Top-Left */}
       <header className="w-full px-6 py-4 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
@@ -450,9 +457,18 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                  Password <span className="text-red-500 font-bold">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-slate-700 block">
+                    Password <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPasswordOpen(true)}
+                    className="text-[10.5px] font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type={showLoginPassword ? 'text' : 'password'}
@@ -793,27 +809,29 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  {/* Col 3: City / Municipality (Fully Dynamic) */}
+                  {/* Col 3: City / Municipality (Static / Locked to Local Jurisdiction) */}
                   <div>
-                    <span className="text-[10px] text-slate-500 block mb-0.5 font-medium">
-                      City / Municipality <span className="text-red-500">*</span>
-                    </span>
-                    <input
-                      type="text"
-                      value={regCity}
-                      onChange={(e) => setRegCity(e.target.value)}
-                      list="reg-city-suggestions"
-                      placeholder="e.g. Butuan City"
-                      required
-                      className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all font-medium"
-                    />
-                    <datalist id="reg-city-suggestions">
-                      <option value="Butuan City" />
-                      <option value="Cabadbaran City" />
-                      <option value="Bayugan City" />
-                      <option value="Surigao City" />
-                      <option value="Cagayan de Oro City" />
-                    </datalist>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[10px] text-slate-500 font-medium">
+                        City / Municipality
+                      </span>
+                      <span className="text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-semibold flex items-center gap-0.5">
+                        <Lock size={9} /> Static Jurisdiction
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value="Butuan City"
+                        readOnly
+                        disabled
+                        tabIndex={-1}
+                        className="w-full h-9 px-3 bg-slate-100/90 border border-slate-200 rounded-lg text-xs text-slate-700 font-bold cursor-not-allowed select-none"
+                      />
+                      <span className="absolute right-2.5 top-2.5 text-[10px] text-slate-400 font-medium">
+                        Agusan del Norte
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1042,6 +1060,60 @@ export default function LoginPage() {
           });
         }}
       />
+
+      {/* Forgot Password / Account Recovery Assistance Modal */}
+      <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
+        <DialogContent className="bg-white max-w-sm sm:max-w-md rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xl">
+          <DialogHeader className="text-center">
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 mb-2">
+              <Shield size={24} />
+            </div>
+            <DialogTitle className="text-slate-900 font-bold text-center text-lg">
+              Account Recovery Assistance
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 text-center mt-1">
+              Barangay Pianing Citizen &amp; Official Identity Management
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 text-xs text-slate-600 mt-2">
+            <div className="p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl space-y-1.5">
+              <strong className="text-blue-900 font-bold block">For Registered Residents:</strong>
+              <p>
+                To maintain compliance with the Data Privacy Act (RA 10173), password resets require identity verification. Please visit the <strong>Barangay Pianing Hall</strong> with your valid Government ID, or reach out to our Helpdesk during office hours (Mon–Fri, 8:00 AM – 5:00 PM).
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+              <strong className="text-slate-900 font-bold block">For Administrative Staff &amp; Healthcare Workers:</strong>
+              <p>
+                Please contact the <strong>Super Administrator</strong> or Barangay IT Officer to issue a temporary security PIN for your account.
+              </p>
+            </div>
+
+            <div className="pt-1 flex flex-col gap-2 text-slate-700 font-medium">
+              <div className="flex items-center gap-2">
+                <Phone size={14} className="text-blue-600 shrink-0" />
+                <span>Barangay Hotlines: (085) 342-8890 / 0917-123-4567</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail size={14} className="text-blue-600 shrink-0" />
+                <span>Official Email: support@barangaypianing.gov.ph</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+            <Button
+              type="button"
+              onClick={() => setIsForgotPasswordOpen(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl cursor-pointer"
+            >
+              Understood / Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-400 dark:text-slate-500 py-3 space-y-1">

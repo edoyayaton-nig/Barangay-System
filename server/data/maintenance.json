@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "type": "down",
+  "title": "System Outage Alert",
+  "message": "Operational",
+  "estimated_uptime": "1h",
+  "updated_at": "2026-09-17T16:30:05.524Z"
+}
