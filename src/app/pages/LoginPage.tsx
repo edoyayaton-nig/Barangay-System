@@ -19,7 +19,10 @@ import {
   Mail,
   Home,
   Eye,
-  EyeOff
+  EyeOff,
+  Search,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { validatePasswordComplexity } from '../../utils/passwordValidation';
@@ -29,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { FloatingInput, FloatingSelect } from '../components/ui/floating-input';
 import { BUTUAN_BARANGAYS, normalizeBarangay, formatJurisdictionAddress } from '../../utils/barangays';
+import { AGUSAN_DEL_NORTE_LGUS, getBarangaysForCity } from '../../utils/caragaJurisdictions';
 import TermsAndPrivacyModal from '../components/TermsAndPrivacyModal';
 import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import { toast } from 'sonner';
@@ -85,7 +89,7 @@ export default function LoginPage() {
   const [regPhone, setRegPhone] = useState('');
   const [regPurok, setRegPurok] = useState('');
   const [regBarangay, setRegBarangay] = useState('');
-  const [regCity, setRegCity] = useState('Butuan City');
+  const [regCity, setRegCity] = useState('');
   const [regEmployment, setRegEmployment] = useState('Employed');
   const [regIdType, setRegIdType] = useState('');
   const [regIdPhoto, setRegIdPhoto] = useState<string | null>(null);
@@ -99,6 +103,9 @@ export default function LoginPage() {
   const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Dynamically resolved official barangays for selected city/municipality in Agusan del Norte
+  const cityBarangays = regCity ? getBarangaysForCity(regCity) : [];
 
   const clearForm = () => {
     setEmail('');
@@ -116,7 +123,7 @@ export default function LoginPage() {
     setRegPhone('');
     setRegPurok('');
     setRegBarangay('');
-    setRegCity('Butuan City');
+    setRegCity('');
     setRegIdType('');
     setRegIdPhoto(null);
     setRegIdFileName('');
@@ -261,13 +268,13 @@ export default function LoginPage() {
       return;
     }
 
-    if (!regBarangay.trim()) {
-      toast.error('Barangay required', { description: 'Please enter your Barangay.' });
+    if (!regCity.trim()) {
+      toast.error('City / Municipality required', { description: 'Please select your City or Municipality in Agusan del Norte.' });
       return;
     }
 
-    if (!regCity.trim()) {
-      toast.error('City / Municipality required', { description: 'Please enter your City or Municipality.' });
+    if (!regBarangay.trim()) {
+      toast.error('Barangay required', { description: `Please select your Barangay in ${regCity || 'Agusan del Norte'}.` });
       return;
     }
 
@@ -372,7 +379,7 @@ export default function LoginPage() {
     setRegPassword('');
     setRegPurok('');
     setRegBarangay('');
-    setRegCity('Butuan City');
+    setRegCity('');
   }, []);
 
   return (
@@ -781,57 +788,61 @@ export default function LoginPage() {
                     </datalist>
                   </div>
 
-                  {/* Col 2: Barangay (Tolerant & Recognized) */}
+                  {/* Col 2: Barangay (Dropdown Scoped to Selected City/Municipality in Agusan del Norte) */}
                   <div>
                     <span className="text-[10px] text-slate-500 block mb-0.5 font-medium">
                       Barangay <span className="text-red-500">*</span>
                     </span>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={regBarangay}
-                        onChange={(e) => setRegBarangay(e.target.value)}
-                        onBlur={() => {
-                          if (regBarangay.trim()) {
-                            setRegBarangay(normalizeBarangay(regBarangay));
-                          }
-                        }}
-                        list="reg-barangay-suggestions"
-                        placeholder="e.g. Pianing"
-                        required
-                        className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all font-medium"
-                      />
-                      <datalist id="reg-barangay-suggestions">
-                        {BUTUAN_BARANGAYS.map((b) => (
-                          <option key={b} value={b}>Barangay {b}</option>
-                        ))}
-                      </datalist>
-                    </div>
+                    <select
+                      value={regBarangay}
+                      onChange={(e) => setRegBarangay(e.target.value)}
+                      disabled={!regCity}
+                      required
+                      className="w-full h-9 px-2.5 sm:px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer font-medium disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      <option value="">{regCity ? 'Select Barangay' : 'Select City / Municipality first'}</option>
+                      {cityBarangays.map((b) => (
+                        <option key={b} value={b}>
+                          Barangay {b}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* Col 3: City / Municipality (Static / Locked to Local Jurisdiction) */}
+                  {/* Col 3: City / Municipality (Agusan del Norte Only Dropdown) */}
                   <div>
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-[10px] text-slate-500 font-medium">
-                        City / Municipality
-                      </span>
-                      <span className="text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-semibold flex items-center gap-0.5">
-                        <Lock size={9} /> Static Jurisdiction
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value="Butuan City"
-                        readOnly
-                        disabled
-                        tabIndex={-1}
-                        className="w-full h-9 px-3 bg-slate-100/90 border border-slate-200 rounded-lg text-xs text-slate-700 font-bold cursor-not-allowed select-none"
-                      />
-                      <span className="absolute right-2.5 top-2.5 text-[10px] text-slate-400 font-medium">
-                        Agusan del Norte
-                      </span>
-                    </div>
+                    <span className="text-[10px] text-slate-500 block mb-0.5 font-medium">
+                      City / Municipality <span className="text-red-500">*</span>
+                    </span>
+                    <select
+                      value={regCity}
+                      onChange={(e) => {
+                        const newCity = e.target.value;
+                        setRegCity(newCity);
+                        const newBarangays = getBarangaysForCity(newCity);
+                        if (!newBarangays.includes(regBarangay)) {
+                          setRegBarangay('');
+                        }
+                      }}
+                      required
+                      className="w-full h-9 px-2.5 sm:px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer font-medium"
+                    >
+                      <option value="">Select City / Municipality</option>
+                      <optgroup label="Cities (Agusan del Norte)">
+                        {AGUSAN_DEL_NORTE_LGUS.filter((l) => l.isCity).map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Municipalities (Agusan del Norte)">
+                        {AGUSAN_DEL_NORTE_LGUS.filter((l) => !l.isCity).map((m) => (
+                          <option key={m.name} value={m.name}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1114,6 +1125,8 @@ export default function LoginPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-400 dark:text-slate-500 py-3 space-y-1">

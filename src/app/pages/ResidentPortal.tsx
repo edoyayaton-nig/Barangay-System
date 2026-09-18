@@ -267,7 +267,7 @@ export default function ResidentPortal() {
             </div>
             <div>
               <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Barangay {residentBrgy}</h1>
-              <span className="text-xs text-teal-600 font-semibold">Resident Self-Service Hub</span>
+              <span className="text-xs text-teal-600 font-semibold">Resident Portal</span>
             </div>
           </div>
 

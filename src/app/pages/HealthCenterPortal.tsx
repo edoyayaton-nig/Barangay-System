@@ -4,6 +4,7 @@ import {
   Heart,
   Building2,
   ArrowRight,
+  ArrowLeft,
   Stethoscope,
   Activity,
   Clock,
@@ -432,7 +433,15 @@ export default function HealthCenterPortal() {
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <button
+              onClick={() => navigate('/resident')}
+              className="flex items-center gap-1 text-xs text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-2.5 h-8 rounded-xl cursor-pointer transition-colors shadow-xs"
+              title="Back to Portals"
+            >
+              <ArrowLeft size={13} className="text-slate-600" />
+              <span className="font-semibold">Back</span>
+            </button>
             <div className="w-9 h-9 rounded-xl overflow-hidden shadow-xs border border-emerald-100 bg-white shrink-0">
               <img src="/assets/pianing-logo.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
@@ -477,15 +486,6 @@ export default function HealthCenterPortal() {
                 <Settings size={16} className="text-slate-600" />
               </button>
             )}
-            <button
-              onClick={() => navigate('/resident/barangay')}
-              className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 sm:px-3 h-8 rounded-xl transition-colors cursor-pointer"
-              title="Switch to Barangay Documents Portal"
-            >
-              <Building2 size={13} className="shrink-0" />
-              <span className="hidden xs:inline sm:inline">Documents</span>
-              <ArrowRight size={11} className="hidden md:inline" />
-            </button>
             <button
               onClick={() => { toast.info('Logged out'); navigate('/login'); }}
               className="flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-white bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 px-2.5 sm:px-3 h-8 rounded-xl transition-all cursor-pointer"
@@ -1313,7 +1313,7 @@ export default function HealthCenterPortal() {
             <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-3 rounded-xl border border-slate-200">
               <div><p className="text-slate-400 text-[10px]">Full Name:</p><strong className="text-slate-900">{user?.name || 'Resident Patient'}</strong></div>
               <div><p className="text-slate-400 text-[10px]">Contact Mobile:</p><strong className="text-slate-900 font-mono">{user?.phone || '—'}</strong></div>
-              <div><p className="text-slate-400 text-[10px]">Registered Address:</p><span className="text-slate-700">{user?.address || `Barangay ${user?.barangay || 'Pianing'}, Butuan City`}</span></div>
+              <div><p className="text-slate-400 text-[10px]">Registered Address:</p><span className="text-slate-700">{user?.address || `Barangay ${user?.barangay || 'Pianing'}, ${user?.city || 'Butuan City'}`}</span></div>
               <div><p className="text-slate-400 text-[10px]">Health Verification Status:</p><Badge className="bg-emerald-600 text-white text-[9px]">Verified Barangay Resident</Badge></div>
             </div>
 

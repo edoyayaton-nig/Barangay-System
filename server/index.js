@@ -920,6 +920,13 @@ app.post('/api/auth/login', async (req, res) => {
             const pMatch = (user.address || resRows[0].address || '').match(/purok\s*([0-9A-Za-z]+)/i);
             if (pMatch) user.purok = pMatch[1];
           }
+          if (!user.city && (user.address || resRows[0].address)) {
+            const addr = user.address || resRows[0].address || '';
+            const parts = addr.split(',').map(s => s.trim());
+            if (parts.length >= 3) {
+              user.city = parts[parts.length - 1];
+            }
+          }
           user.first_name = resRows[0].first_name || '';
           user.middle_name = resRows[0].middle_name || '';
           user.last_name = resRows[0].last_name || '';
@@ -988,6 +995,13 @@ app.post('/api/auth/login', async (req, res) => {
       if (!user.purok && (user.address || res_rec.address)) {
         const pMatch = (user.address || res_rec.address || '').match(/purok\s*([0-9A-Za-z]+)/i);
         if (pMatch) user.purok = pMatch[1];
+      }
+      if (!user.city && (user.address || res_rec.address)) {
+        const addr = user.address || res_rec.address || '';
+        const parts = addr.split(',').map(s => s.trim());
+        if (parts.length >= 3) {
+          user.city = parts[parts.length - 1];
+        }
       }
     }
     const safeUser = { ...user };
@@ -1115,8 +1129,8 @@ app.post('/api/auth/register', async (req, res) => {
 
         // Create the user login account
         const [userResult] = await pool.query(
-          "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, NOW())",
-          [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '']
+          "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, NOW())",
+          [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress]
         );
         const newUserId = userResult.insertId;
 
@@ -1145,15 +1159,15 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(201).json({
           success: true,
           is_claimed: true,
-          user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, purok: existingRec.purok || cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
+          user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, city: userCity, purok: existingRec.purok || cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
           message: 'Existing resident profile linked successfully! Your submitted ID is under review by the Barangay Admin.'
         });
       }
 
       // Case: No existing resident found. Create brand new user & resident record
       const [userResult] = await pool.query(
-        "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, NOW())",
-        [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '']
+        "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, NOW())",
+        [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress]
       );
       const newUserId = userResult.insertId;
 
@@ -1181,7 +1195,7 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(201).json({
         success: true,
         is_claimed: false,
-        user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, purok: cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
+        user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, city: userCity, purok: cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
         message: 'Account created! Your submitted ID is under review by the Barangay Admin.'
       });
     } catch (err) {
@@ -1228,6 +1242,8 @@ app.post('/api/auth/register', async (req, res) => {
       role: userRole,
       status: 'Active',
       barangay: userBarangay,
+      address: residentAddress,
+      city: userCity,
       verification_status: 'Pending_Review',
       last_login: new Date().toLocaleString()
     });
@@ -1244,7 +1260,7 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(201).json({
       success: true,
       is_claimed: true,
-      user: { id: matchedMock.id, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, purok: matchedMock.purok || cleanPurokNum || '1', barangay: userBarangay },
+      user: { id: matchedMock.id, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, city: userCity, purok: matchedMock.purok || cleanPurokNum || '1', barangay: userBarangay },
       message: 'Existing resident profile linked successfully! Your submitted ID is under review by the Barangay Admin.'
     });
   }
@@ -1277,6 +1293,8 @@ app.post('/api/auth/register', async (req, res) => {
     role: userRole,
     status: 'Active',
     barangay: userBarangay,
+    address: residentAddress,
+    city: userCity,
     verification_status: 'Pending_Review',
     last_login: new Date().toLocaleString()
   });
@@ -1309,7 +1327,7 @@ app.post('/api/auth/register', async (req, res) => {
 
   res.status(201).json({
     success: true,
-    user: { id: newPending.id, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, purok: cleanPurokNum || '1', barangay: userBarangay },
+    user: { id: newPending.id, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, city: userCity, purok: cleanPurokNum || '1', barangay: userBarangay },
     message: 'Account created! Your submitted ID is under review by the Barangay Admin.'
   });
 
@@ -1802,6 +1820,9 @@ app.put('/api/users/profile', async (req, res) => {
       }
       if (phone) {
         await pool.query("UPDATE users SET phone = ? WHERE id = ? OR LOWER(email) = LOWER(?)", [phone, id || 0, (email || '').toLowerCase()]);
+      }
+      if (address) {
+        await pool.query("UPDATE users SET address = ? WHERE id = ? OR LOWER(email) = LOWER(?)", [address, id || 0, (email || '').toLowerCase()]);
       }
       if (profile_photo !== undefined) {
         await pool.query("UPDATE users SET profile_photo = ? WHERE id = ? OR LOWER(email) = LOWER(?)", [profile_photo || null, id || 0, (email || '').toLowerCase()]);

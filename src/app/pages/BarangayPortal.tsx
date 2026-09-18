@@ -12,6 +12,7 @@ import {
   Building2,
   Heart,
   ArrowRight,
+  ArrowLeft,
   Settings,
   Clock,
   Bell,
@@ -617,7 +618,7 @@ export default function BarangayPortal() {
       'Civil Status': user?.civil_status || user?.civilStatus || 'Single',
       'Date of Birth': user?.date_of_birth || user?.birth_date || user?.birthdate || '',
       'Purok / Location': purok || `Barangay ${userBarangay}`,
-      'Home Address': user?.address || `Barangay ${userBarangay}, Butuan City`,
+      'Home Address': user?.address || `Barangay ${userBarangay}, ${user?.city || 'Butuan City'}`,
       ...extraFields,
     };
     try {
@@ -671,7 +672,17 @@ export default function BarangayPortal() {
       {/* Navbar */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3 shadow-sm">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/resident')}
+              className="flex items-center gap-1.5 text-xs text-slate-700 border-slate-300 hover:bg-slate-100 rounded-xl h-8 px-2.5 cursor-pointer shadow-xs"
+              title="Back to Portals"
+            >
+              <ArrowLeft size={13} className="text-slate-600" />
+              <span className="font-semibold">Back</span>
+            </Button>
             <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-indigo-200 flex items-center justify-center">
               <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
             </div>
@@ -728,19 +739,6 @@ export default function BarangayPortal() {
                 <span className="hidden sm:inline">Profile Settings</span>
               </Button>
             )}
-
-            {/* Switch to Health Center */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/resident/health')}
-              className="flex items-center gap-1.5 text-xs border-emerald-300 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100/70 h-8 px-2.5 sm:px-3 rounded-xl cursor-pointer"
-              title="Switch to Health Center Portal"
-            >
-              <Heart size={13} className="shrink-0 text-emerald-600" />
-              <span className="hidden xs:inline sm:inline">Health Center</span>
-              <ArrowRight size={12} className="hidden md:inline" />
-            </Button>
 
             <Button
               variant="destructive"
@@ -1219,177 +1217,7 @@ export default function BarangayPortal() {
         </Card>
 
         {/* ─── Health Clinic Schedules & Appointment Booking ─── */}
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <CalendarCheck className="text-emerald-600" size={18} />
-                Barangay Health Center — Clinic Schedules &amp; Appointments
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Official weekly clinic programs posted by health center staff. Select a schedule below to book your appointment slot.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                disabled={!isVerified}
-                onClick={() => {
-                  if (!isVerified) {
-                    toast.error('Residency verification required', {
-                      description: 'Only verified residents can book health center clinic appointments.'
-                    });
-                    return;
-                  }
-                  setSelectedSchedule(clinicSchedules[0] || null);
-                  setIsBookingOpen(true);
-                }}
-                className={`text-xs gap-1.5 rounded-xl font-bold shadow-xs ${
-                  !isVerified
-                    ? 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
-                }`}
-              >
-                {!isVerified ? <Lock size={14} /> : <CalendarPlus size={14} />}
-                {!isVerified ? 'Verification Required' : 'Book Clinic Appointment'}
-              </Button>
-            </div>
-          </div>
-
-          {/* My Appointment Requests Tracker */}
-          {myBookings.length > 0 && (
-            <div className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-xs space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <CalendarPlus className="text-emerald-600" size={15} /> My Clinic Appointment Requests ({myBookings.length})
-                </span>
-                <span className="text-[10px] text-slate-400">Live Status from Health Station</span>
-              </div>
-              <div className="space-y-2">
-                {myBookings.slice(0, 5).map((b, i) => (
-                  <div key={b.id || i} className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800">{b.service_type}</span>
-                        {b.appointment_code && (
-                          <Badge variant="outline" className="text-[9px] font-mono border-slate-300">
-                            {b.appointment_code}
-                          </Badge>
-                        )}
-                      </div>
-                      <Badge className={`text-[10px] border-0 shrink-0 ${
-                        b.status === 'Approved' ? 'bg-emerald-100 text-emerald-800 font-bold' :
-                        b.status === 'Completed' ? 'bg-blue-100 text-blue-800 font-bold' :
-                        b.status === 'Cancelled' ? 'bg-rose-100 text-rose-800' :
-                        'bg-amber-100 text-amber-800 font-bold'
-                      }`}>
-                        {b.status === 'Approved' ? 'Confirmed Slot' : b.status || 'Pending Review'}
-                      </Badge>
-                    </div>
-
-                    <div className="text-slate-500 text-[11px] flex items-center gap-2">
-                      <span>Requested: <strong>{b.preferred_date || b.scheduled_date}</strong></span>
-                      {b.preferred_time && <span>• {b.preferred_time}</span>}
-                    </div>
-
-                    {b.status === 'Approved' && (b.scheduled_date || b.scheduled_time) && (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-[11px] text-emerald-900 flex items-center justify-between flex-wrap gap-1">
-                        <span className="font-medium flex items-center gap-1.5">
-                          <Clock size={12} className="text-emerald-700" />
-                          Confirmed Schedule: <strong>{b.scheduled_date}</strong> at <strong>{b.scheduled_time || '09:00 AM'}</strong>
-                        </span>
-                        {b.attending_bhw && (
-                          <span className="text-[10px] text-emerald-700 font-semibold">
-                            Attending: {b.attending_bhw}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {b.bhw_notes && (
-                      <p className="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-slate-200/80 italic">
-                        Nurse Note: &ldquo;{b.bhw_notes}&rdquo;
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Weekly Schedules Grid */}
-          {clinicSchedules.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2">
-              <Calendar className="mx-auto text-slate-300" size={32} />
-              <p className="font-semibold text-sm text-slate-600">No special clinic schedules posted yet</p>
-              <p className="text-xs text-slate-400">The Health Center is open Monday to Friday, 8:00 AM – 5:00 PM for walk-ins.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-              {clinicSchedules.map(sch => {
-                const Icon = getHealthServiceIcon(sch.service_type);
-                const colors = getHealthServiceColor(sch.service_type);
-                return (
-                  <div
-                    key={sch.id}
-                    className={`bg-white rounded-2xl border ${colors.border} shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between`}
-                  >
-                    <div className={`h-1.5 w-full bg-gradient-to-r ${colors.gradient}`} />
-                    <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className={`w-10 h-10 rounded-xl ${colors.iconBg} flex items-center justify-center shrink-0`}>
-                            <Icon size={20} />
-                          </div>
-                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${colors.badge}`}>
-                            {sch.service_type || 'Health Service'}
-                          </span>
-                        </div>
-
-                        <div>
-                          <h4 className="font-bold text-sm text-slate-900 leading-snug">{sch.title}</h4>
-                          <div className={`inline-flex items-center gap-1.5 mt-2 text-[11px] font-semibold ${colors.bg} px-2.5 py-1 rounded-lg border ${colors.border} text-slate-800`}>
-                            <Clock size={12} className="text-slate-500" />
-                            <span>{sch.day_of_week || 'Mon - Fri'} • {sch.time_slot}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                        <span className="flex items-center gap-1 text-[11px] truncate max-w-[180px]">
-                          <MapPin size={11} className="text-slate-400 shrink-0" />
-                          <span className="truncate">{sch.location || `Barangay ${userBarangay} Health Center`}</span>
-                        </span>
-                        <Button
-                          size="sm"
-                          disabled={!isVerified}
-                          onClick={() => {
-                            if (!isVerified) {
-                              toast.error('Residency verification required to reserve slots');
-                              return;
-                            }
-                            setSelectedSchedule(sch);
-                            setIsBookingOpen(true);
-                          }}
-                          className={`text-[11px] h-7 px-2.5 rounded-lg font-semibold gap-1 shrink-0 shadow-xs ${
-                            !isVerified
-                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-                              : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
-                          }`}
-                          title={!isVerified ? 'Residency verification required' : 'Reserve appointment slot'}
-                        >
-                          {!isVerified ? <Lock size={12} /> : <CalendarPlus size={12} />}
-                          {!isVerified ? 'Locked' : 'Reserve Slot'}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Switch Portal CTA */}
+        {/* Referral banner to Health Center Portal */}
         <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
@@ -1505,211 +1333,6 @@ export default function BarangayPortal() {
               Close
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ─── Health Appointment Reservation Modal ─── */}
-      <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
-        <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-slate-900 font-bold text-base">
-              <CalendarPlus className="text-emerald-600" size={20} />
-              Book Clinic Appointment
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Reserve your consultation slot based on Barangay {userBarangay} health center operating schedules.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleBookAppointment} className="space-y-4 pt-2">
-            {!isVerified && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-900">
-                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold">Residency Verification Required</p>
-                  <p className="text-[11px] text-amber-700 mt-0.5">
-                    Your resident profile is awaiting Barangay Admin verification. Online appointment bookings unlock once approved.
-                  </p>
-                </div>
-              </div>
-            )}
-            {/* Target Clinic Program */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Health Program / Service</label>
-              {clinicSchedules.length > 0 ? (
-                <select
-                  value={selectedSchedule?.id || clinicSchedules[0]?.id || ''}
-                  onChange={(e) => {
-                    const found = clinicSchedules.find(s => String(s.id) === e.target.value);
-                    if (found) setSelectedSchedule(found);
-                  }}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                >
-                  {clinicSchedules.map(sched => (
-                    <option key={sched.id} value={sched.id}>
-                      {sched.service_type || sched.title} ({sched.day_of_week} • {sched.time_slot})
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="p-2.5 bg-slate-100 rounded-xl text-xs text-slate-600">
-                  {selectedSchedule?.service_type || selectedSchedule?.title || 'General Consultation'}
-                </div>
-              )}
-            </div>
-
-            {/* Selected Schedule Details Card */}
-            {selectedSchedule && (
-              <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl text-xs space-y-1.5">
-                <div className="flex items-center justify-between text-emerald-900 font-semibold">
-                  <span className="flex items-center gap-1.5">
-                    <Clock size={13} className="text-emerald-600" />
-                    {selectedSchedule.day_of_week}s, {selectedSchedule.time_slot}
-                  </span>
-                  <Badge className="bg-emerald-600 text-white text-[10px]">
-                    Max {selectedSchedule.slots_available || selectedSchedule.max_slots || 30} slots
-                  </Badge>
-                </div>
-                {(selectedSchedule.location || selectedSchedule.room) && (
-                  <p className="text-[11px] text-emerald-700 flex items-center gap-1">
-                    <MapPin size={11} /> {selectedSchedule.location || selectedSchedule.room}
-                  </p>
-                )}
-                {(selectedSchedule.bhw_in_charge || selectedSchedule.assigned_staff) && (
-                  <p className="text-[11px] text-emerald-700">
-                    Assigned: <span className="font-medium">{selectedSchedule.bhw_in_charge || selectedSchedule.assigned_staff}</span>
-                  </p>
-                )}
-                {selectedSchedule.description && (
-                  <p className="text-[11px] text-slate-600 italic">
-                    {selectedSchedule.description}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Resident Info Preview */}
-            <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase">Patient Name</span>
-                <p className="font-bold text-slate-900 truncate">{user?.name || 'Resident'}</p>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase">Contact Phone</span>
-                <p className="font-bold text-slate-800 font-mono">{user?.phone || user?.contact_number || 'None provided'}</p>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase">Barangay</span>
-                <p className="font-medium text-slate-800">Brgy. {userBarangay}</p>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase">Purok</span>
-                <p className="font-medium text-slate-800">
-                  {user?.purok
-                    ? (String(user.purok).toLowerCase().startsWith('purok') ? user.purok : `Purok ${user.purok}`)
-                    : (user?.address?.match(/purok\s*([0-9A-Za-z]+)/i)?.[0] || 'Purok 1')}
-                </p>
-              </div>
-            </div>
-
-            {/* Preferred Date Strictly Filtered by Schedule's Operating Day */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
-                  Preferred Appointment Date <span className="text-rose-500">*</span>
-                </label>
-                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  {formatOperatingDaysSummary(selectedSchedule?.day_of_week)} Only
-                </span>
-              </div>
-
-              {/* Operating Dates Dropdown */}
-              <select
-                required
-                value={bookingDate}
-                onChange={(e) => setBookingDate(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
-              >
-                {availableOperatingDates.map((d, i) => (
-                  <option key={d.dateStr} value={d.dateStr}>
-                    {d.label} {i === 0 ? '— (Next Available Operating Slot)' : ''}
-                  </option>
-                ))}
-              </select>
-
-              {/* Quick-Pick Date Pills */}
-              <div className="pt-0.5">
-                <span className="text-[10px] text-slate-400 block mb-1 font-medium">Quick Select Available Slot:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {availableOperatingDates.slice(0, 4).map(d => (
-                    <button
-                      key={d.dateStr}
-                      type="button"
-                      onClick={() => setBookingDate(d.dateStr)}
-                      className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium ${
-                        bookingDate === d.dateStr
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {d.formatted}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-[10px] text-slate-400">
-                Operating schedule: <span className="font-semibold text-slate-600">{formatOperatingDaysSummary(selectedSchedule?.day_of_week)}</span> ({selectedSchedule?.time_slot || 'Regular Hours'}). Only available operating dates are shown.
-              </p>
-            </div>
-
-            {/* Reason / Notes */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">
-                Symptoms / Reason for Consultation (Optional)
-              </label>
-              <textarea
-                rows={3}
-                value={bookingNotes}
-                onChange={(e) => setBookingNotes(e.target.value)}
-                placeholder="Briefly state your concern, symptoms, or consultation requests..."
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden resize-none"
-              />
-            </div>
-
-            <p className="text-[10px] text-slate-400 text-center pt-1">
-              By booking an appointment, you agree to our{' '}
-              <button
-                type="button"
-                onClick={() => setIsTermsOpen(true)}
-                className="text-emerald-700 font-semibold underline cursor-pointer hover:text-emerald-800"
-              >
-                Data Privacy Policy &amp; Terms
-              </button>
-            </p>
-
-            <DialogFooter className="gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsBookingOpen(false)}
-                className="text-xs rounded-xl cursor-pointer"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isBookingLoading || !bookingDate || !isVerified}
-                className={`text-xs font-bold gap-1.5 rounded-xl ${
-                  !isVerified
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
-                }`}
-              >
-                {isBookingLoading ? 'Submitting...' : !isVerified ? <><Lock size={14} /> Verification Required</> : 'Confirm Appointment'}
-              </Button>
-            </DialogFooter>
-          </form>
         </DialogContent>
       </Dialog>
 

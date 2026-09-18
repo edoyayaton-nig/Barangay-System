@@ -24,6 +24,26 @@ async function runAppointmentLifecycleTest() {
   let appointmentId = null;
   let appointmentCode = null;
 
+  // Ensure test resident is registered & verified in system
+  const regRes = await request('/residents', {
+    method: 'POST',
+    body: JSON.stringify({
+      first_name: 'Juan',
+      last_name: `Dela Cruz ${rand}`,
+      email: residentEmail,
+      phone: residentPhone,
+      date_of_birth: '1995-05-14',
+      gender: 'Male',
+      barangay: 'Pianing',
+      purok: '1',
+      civil_status: 'Single'
+    })
+  });
+  const residentId = regRes.data?.id || regRes.data?.resident?.id || null;
+  if (residentId) {
+    await request(`/residents/${residentId}/approve`, { method: 'PUT' });
+  }
+
   // STEP 1: Resident Books Appointment
   console.log('\x1b[1m[STEP 1: Resident Portal Booking]\x1b[0m');
   const bookRes = await request('/appointments', {
