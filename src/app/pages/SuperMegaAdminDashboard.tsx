@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Crown, Database, History, Users, BarChart2, LogOut,
   Server, RefreshCcw, Download, Activity, UserPlus, Search, X, Eye, EyeOff, Trash2,
   FileText, Mail, Shield, Menu, Tag, PlusCircle, ShieldCheck, Users2, Send,
   LayoutDashboard, Globe, Building2, Cpu, CheckCircle2, ArrowUpRight, ChevronRight, Clock, ExternalLink,
-  AlertOctagon, Wrench, Megaphone, Radio
+  AlertOctagon, Wrench, Megaphone, Radio, UserCircle
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -21,8 +21,10 @@ import {
 } from 'recharts';
 import { apiService, SystemUser, ActivityLog } from '../../services/api';
 import { BUTUAN_BARANGAYS } from '../../utils/barangays';
+import { AGUSAN_DEL_NORTE_LGUS, getBarangaysForCity } from '../../utils/caragaJurisdictions';
 import { toast } from 'sonner';
 import SystemNoticeBanner from '../components/SystemNoticeBanner';
+import ProfileSettingsView from '../components/ProfileSettingsView';
 
 
 /* ─────────────────────────────────────────────────────────── */
@@ -82,7 +84,7 @@ const DB_TABLES = [
 /* ─────────────────────────────────────────────────────────── */
 export default function SuperMegaAdminDashboard() {
   const navigate = useNavigate();
-  const [user] = useState<any>(() => {
+  const [user, setUser] = useState<any>(() => {
     try { return JSON.parse(localStorage.getItem('barangay_user') || 'null'); } catch { return null; }
   });
 
@@ -93,7 +95,7 @@ export default function SuperMegaAdminDashboard() {
     }
   }, [user, navigate]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'system' | 'logs' | 'users' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'system' | 'logs' | 'users' | 'reports' | 'profile-settings'>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -111,10 +113,28 @@ export default function SuperMegaAdminDashboard() {
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
   const [userBarangayFilter, setUserBarangayFilter] = useState<string>('all');
   const [isCreateSuperadminOpen, setIsCreateSuperadminOpen] = useState(false);
-  const [newSA, setNewSA] = useState({ name: '', email: '', password: '', confirmPassword: '', barangay: 'Pianing', phone: '' });
+  const [newSA, setNewSA] = useState({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    employeeId: '',
+    jobTitle: 'Barangay Super Administrator',
+    city: 'Butuan City',
+    barangay: '',
+    purok: '1',
+    password: '',
+    confirmPassword: ''
+  });
   const [newSAError, setNewSAError] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
   const [showNewSAPass, setShowNewSAPass] = useState(false);
+
+  const saBarangays = useMemo(() => {
+    if (!newSA.city) return [];
+    return getBarangaysForCity(newSA.city);
+  }, [newSA.city]);
 
   // ── Category Management ───────────────────────────────────
   const [catSearch, setCatSearch] = useState('');
@@ -171,6 +191,16 @@ export default function SuperMegaAdminDashboard() {
     }
   };
 
+  const broadcastNoticeUpdate = () => {
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('barangay_system_notice');
+        bc.postMessage({ type: 'SYSTEM_NOTICE_UPDATE', timestamp: Date.now() });
+        bc.close();
+      }
+    } catch {}
+  };
+
   const handleToggleMaintenance = async (enabled: boolean) => {
     setMaintenanceMode(enabled);
     try {
@@ -181,6 +211,7 @@ export default function SuperMegaAdminDashboard() {
         message: maintenanceMsg,
         estimated_uptime: estimatedUptime
       });
+      broadcastNoticeUpdate();
       const label = noticeType === 'down' ? 'System Down Warning' : noticeType === 'maintenance' ? 'Scheduled Maintenance' : 'Public Advisory';
       toast.success(enabled ? `System notice enabled (${label})` : 'System notice deactivated (System Live)');
     } catch {
@@ -190,16 +221,36 @@ export default function SuperMegaAdminDashboard() {
 
   const handleSaveMaintenanceMsg = async () => {
     try {
+      setMaintenanceMode(true);
       await apiService.toggleMaintenanceMode({
-        enabled: maintenanceMode,
+        enabled: true,
         type: noticeType,
         title: noticeTitle,
         message: maintenanceMsg,
         estimated_uptime: estimatedUptime
       });
-      toast.success('System notice broadcast updated');
+      broadcastNoticeUpdate();
+      const label = noticeType === 'down' ? 'System Outage Alert' : noticeType === 'maintenance' ? 'Maintenance Window' : 'Public Advisory';
+      toast.success(`System Notice is now LIVE & broadcasting to all portals! (${label})`);
     } catch {
-      toast.error('Failed to update system notice broadcast');
+      toast.error('Failed to broadcast system notice to server');
+    }
+  };
+
+  const handleStopBroadcast = async () => {
+    try {
+      setMaintenanceMode(false);
+      await apiService.toggleMaintenanceMode({
+        enabled: false,
+        type: noticeType,
+        title: noticeTitle,
+        message: maintenanceMsg,
+        estimated_uptime: estimatedUptime
+      });
+      broadcastNoticeUpdate();
+      toast.success('System notice broadcast deactivated — All portals returned to Normal');
+    } catch {
+      toast.error('Failed to deactivate broadcast');
     }
   };
 
@@ -265,29 +316,89 @@ export default function SuperMegaAdminDashboard() {
   const handleCreateSuperadmin = async (e: React.FormEvent) => {
     e.preventDefault();
     setNewSAError('');
-    if (!newSA.name.trim() || !newSA.email.trim() || !newSA.password || !newSA.barangay) {
-      setNewSAError('All fields are required.'); return;
+
+    const fn = newSA.firstName.trim();
+    const ln = newSA.lastName.trim();
+    const em = newSA.email.trim().toLowerCase();
+    const ph = newSA.phone.replace(/[\s-]/g, '').trim();
+    const badge = newSA.employeeId.trim();
+    const title = newSA.jobTitle.trim();
+
+    if (!fn || !ln) {
+      setNewSAError('First Name and Last Name are required.');
+      return;
+    }
+    if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+      setNewSAError('Please provide a valid official email address.');
+      return;
+    }
+    if (!ph || !/^09\d{9}$/.test(ph)) {
+      setNewSAError('Please provide a valid 11-digit mobile number starting with 09 (e.g. 09171234567).');
+      return;
+    }
+    if (!newSA.city) {
+      setNewSAError('Please select a City or Municipality in Agusan del Norte.');
+      return;
+    }
+    if (!newSA.barangay) {
+      setNewSAError('Please select an official Barangay.');
+      return;
+    }
+    if (!badge) {
+      setNewSAError('Employee / Badge ID is required for governance tracking.');
+      return;
+    }
+    if (!title) {
+      setNewSAError('Official designation or job title is required.');
+      return;
     }
     if (newSA.password !== newSA.confirmPassword) {
-      setNewSAError('Passwords do not match.'); return;
+      setNewSAError('Passwords do not match.');
+      return;
     }
     const pwErr = validatePassword(newSA.password);
-    if (pwErr) { setNewSAError(pwErr); return; }
+    if (pwErr) {
+      setNewSAError(pwErr);
+      return;
+    }
+
+    const fullName = `${fn}${newSA.middleName.trim() ? ' ' + newSA.middleName.trim() : ''} ${ln}`.replace(/\s+/g, ' ');
 
     setCreatingUser(true);
     try {
       await apiService.createUser({
-        name: newSA.name.trim(),
-        email: newSA.email.trim().toLowerCase(),
+        name: fullName,
+        first_name: fn,
+        middle_name: newSA.middleName.trim() || undefined,
+        last_name: ln,
+        email: em,
         password: newSA.password,
         role: 'superadmin',
+        city: newSA.city,
         barangay: newSA.barangay,
-        phone: newSA.phone.trim(),
-        status: 'Active'
+        purok: newSA.purok || '1',
+        phone: ph,
+        status: 'Active',
+        employee_id: badge,
+        job_title: title
       } as any);
-      toast.success(`Barangay Superadmin for ${newSA.barangay} created!`);
+
+      toast.success(`Barangay Superadmin for ${newSA.barangay} (${newSA.city}) created!`);
       setIsCreateSuperadminOpen(false);
-      setNewSA({ name: '', email: '', password: '', confirmPassword: '', barangay: 'Pianing', phone: '' });
+      setNewSA({
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        employeeId: '',
+        jobTitle: 'Barangay Super Administrator',
+        city: 'Butuan City',
+        barangay: '',
+        purok: '1',
+        password: '',
+        confirmPassword: ''
+      });
       loadData();
     } catch (err: any) {
       setNewSAError(err?.message || 'Failed to create account');
@@ -471,6 +582,7 @@ export default function SuperMegaAdminDashboard() {
     { id: 'logs', label: 'System Audit & Logs', icon: History },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'reports', label: 'Analytics & Reports', icon: BarChart2 },
+    { id: 'profile-settings', label: 'Profile Settings', icon: UserCircle },
   ];
 
   const greeting = () => {
@@ -520,10 +632,24 @@ export default function SuperMegaAdminDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <div className="hidden sm:flex items-center gap-2.5">
-            <div style={{ background: `${ACCENT_VIOLET}18`, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '4px 10px' }}>
-              <p style={{ color: '#C4B5FD', fontSize: 11, fontWeight: 700 }}>Super Mega Admin</p>
-              <p style={{ color: MUTED, fontSize: 9, fontWeight: 600 }}>SYSTEM ROOT OPERATOR</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('profile-settings')}
+              style={{
+                background: activeTab === 'profile-settings' ? `${ACCENT_VIOLET}30` : `${ACCENT_VIOLET}18`,
+                border: `1px solid ${activeTab === 'profile-settings' ? ACCENT_VIOLET : BORDER}`,
+                borderRadius: 8,
+                padding: '4px 10px'
+              }}
+              className="cursor-pointer hover:bg-violet-950/40 transition-colors text-left flex items-center gap-2"
+              title="Open Profile Settings"
+            >
+              <UserCircle size={15} style={{ color: '#C4B5FD' }} />
+              <div>
+                <p style={{ color: '#C4B5FD', fontSize: 11, fontWeight: 700 }}>{user?.name || 'Super Mega Admin'}</p>
+                <p style={{ color: MUTED, fontSize: 9, fontWeight: 600 }}>SYSTEM ROOT OPERATOR</p>
+              </div>
+            </button>
           </div>
           <button onClick={handleLogout} style={{ color: MUTED, border: `1px solid ${BORDER}` }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/40 transition-all cursor-pointer">
@@ -1605,21 +1731,42 @@ export default function SuperMegaAdminDashboard() {
                       </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleSaveMaintenanceMsg}
-                      style={{
-                        background: noticeType === 'down' ? '#ef4444' : noticeType === 'advisory' ? '#6366f1' : ACCENT_AMBER,
-                        color: '#ffffff',
-                        borderRadius: 8,
-                        padding: '6px 16px',
-                        fontSize: 12,
-                        fontWeight: 700
-                      }}
-                      className="hover:opacity-90 transition-opacity cursor-pointer shadow-md"
-                    >
-                      Save &amp; Broadcast Notice
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {maintenanceMode && (
+                        <button
+                          type="button"
+                          onClick={handleStopBroadcast}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            color: '#FCA5A5',
+                            borderRadius: 8,
+                            padding: '6px 14px',
+                            fontSize: 12,
+                            fontWeight: 600
+                          }}
+                          className="hover:bg-red-950/50 transition-colors cursor-pointer"
+                        >
+                          Deactivate / Turn Off
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleSaveMaintenanceMsg}
+                        style={{
+                          background: noticeType === 'down' ? '#ef4444' : noticeType === 'advisory' ? '#6366f1' : ACCENT_AMBER,
+                          color: '#ffffff',
+                          borderRadius: 8,
+                          padding: '6px 18px',
+                          fontSize: 12,
+                          fontWeight: 700
+                        }}
+                        className="hover:opacity-90 transition-opacity cursor-pointer shadow-md flex items-center gap-1.5"
+                      >
+                        <Radio size={13} className={maintenanceMode ? 'animate-pulse' : ''} />
+                        {maintenanceMode ? 'Update Live Broadcast' : 'Save & Broadcast Live Now'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1853,14 +2000,14 @@ export default function SuperMegaAdminDashboard() {
                     style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px 7px 26px', width: '100%' }} />
                 </div>
                 <select value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)}
-                  style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px' }}>
+                  style={{ colorScheme: 'dark', background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px' }}>
                   <option value="all">All Roles</option>
-                  {['super_mega_admin', 'superadmin', 'admin', 'staff', 'bhw', 'nurse', 'resident'].map(r => <option key={r} value={r}>{r}</option>)}
+                  {['super_mega_admin', 'superadmin', 'admin', 'staff', 'bhw', 'nurse', 'resident'].map(r => <option key={r} value={r} style={{ background: '#161F30', color: TEXT }}>{r}</option>)}
                 </select>
                 <select value={userBarangayFilter} onChange={e => setUserBarangayFilter(e.target.value)}
-                  style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px' }}>
+                  style={{ colorScheme: 'dark', background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px' }}>
                   <option value="all">All Barangays</option>
-                  {BUTUAN_BARANGAYS.slice(0, 20).map(b => <option key={b} value={b}>{b}</option>)}
+                  {BUTUAN_BARANGAYS.slice(0, 20).map(b => <option key={b} value={b} style={{ background: '#161F30', color: TEXT }}>{b}</option>)}
                 </select>
               </div>
 
@@ -1873,7 +2020,7 @@ export default function SuperMegaAdminDashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: `${BORDER}60` }}>
-                        {['Name', 'Email', 'Role', 'Barangay', 'Status', 'Actions'].map(h => (
+                        {['Name', 'Email', 'Role', 'Jurisdiction', 'Status', 'Actions'].map(h => (
                           <th key={h} style={{ padding: '10px 14px', color: MUTED, fontWeight: 600, textAlign: h === 'Actions' ? 'right' : 'left', fontSize: 11 }}>{h}</th>
                         ))}
                       </tr>
@@ -1888,7 +2035,9 @@ export default function SuperMegaAdminDashboard() {
                           <td style={{ padding: '10px 14px' }}>
                             <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 ${roleBadge(u.role)}`}>{u.role}</span>
                           </td>
-                          <td style={{ padding: '10px 14px', color: MUTED }}>{u.barangay || '—'}</td>
+                          <td style={{ padding: '10px 14px', color: MUTED }}>
+                            {u.barangay ? `${u.barangay}${u.city ? ` (${u.city})` : ''}` : '—'}
+                          </td>
                           <td style={{ padding: '10px 14px' }}>
                             <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '2px 8px', background: u.status === 'Active' ? `${ACCENT_EMERALD}20` : `${ACCENT_ROSE}20`, color: u.status === 'Active' ? ACCENT_EMERALD : ACCENT_ROSE }}>
                               {u.status}
@@ -2134,74 +2283,310 @@ export default function SuperMegaAdminDashboard() {
             </div>
           )}
 
+          {/* ── TAB 7: PROFILE SETTINGS ───────────────────── */}
+          {activeTab === 'profile-settings' && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 style={{ color: TEXT, fontWeight: 700, fontSize: 17 }}>Profile &amp; Security Settings</h2>
+                  <p style={{ color: MUTED, fontSize: 12 }}>Manage your Super Mega Administrator credentials, security keys, contact details, and account preferences.</p>
+                </div>
+              </div>
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 20 }}>
+                <ProfileSettingsView
+                  user={user}
+                  onProfileUpdated={(updated) => {
+                    setUser(updated);
+                    localStorage.setItem('barangay_user', JSON.stringify(updated));
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
         </main>
       </div>
 
       {/* MODAL: Create Barangay Superadmin */}
       {isCreateSuperadminOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 16, width: '100%', maxWidth: 460, padding: 24 }}>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 style={{ color: TEXT, fontWeight: 700, fontSize: 15 }}>Create Barangay Superadmin</h3>
-                <p style={{ color: MUTED, fontSize: 11 }}>Assign a new Superadmin account to a specific barangay.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)' }}>
+          <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 16, width: '100%', maxWidth: 580, maxHeight: '92vh', display: 'flex', flexDirection: 'column' }} className="shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: `${BORDER}80` }}>
+              <div className="flex items-center gap-2.5">
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: `${ACCENT_VIOLET}25`, border: `1px solid ${ACCENT_VIOLET}50`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Crown size={18} style={{ color: '#C4B5FD' }} />
+                </div>
+                <div>
+                  <h3 style={{ color: TEXT, fontWeight: 700, fontSize: 16 }}>Create Barangay Superadmin</h3>
+                  <p style={{ color: MUTED, fontSize: 11 }}>Deploy a new authorized Superadmin for a specific City and Barangay in Agusan del Norte.</p>
+                </div>
               </div>
-              <button onClick={() => { setIsCreateSuperadminOpen(false); setNewSAError(''); }} style={{ color: MUTED, background: 'transparent', border: 'none' }} className="cursor-pointer hover:text-white">
+              <button
+                onClick={() => { setIsCreateSuperadminOpen(false); setNewSAError(''); }}
+                style={{ color: MUTED, background: 'transparent', border: 'none' }}
+                className="cursor-pointer hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+              >
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleCreateSuperadmin} className="space-y-3">
+
+            {/* Modal Body */}
+            <form onSubmit={handleCreateSuperadmin} className="p-5 overflow-y-auto space-y-4 flex-1">
               {newSAError && (
-                <div style={{ background: `${ACCENT_ROSE}15`, border: `1px solid ${ACCENT_ROSE}40`, borderRadius: 8, padding: '8px 12px', color: ACCENT_ROSE, fontSize: 11 }}>
-                  {newSAError}
+                <div style={{ background: `${ACCENT_ROSE}15`, border: `1px solid ${ACCENT_ROSE}40`, borderRadius: 8, padding: '10px 14px', color: ACCENT_ROSE, fontSize: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AlertOctagon size={15} className="shrink-0" />
+                  <span>{newSAError}</span>
                 </div>
               )}
-              {[
-                { label: 'Full Name *', field: 'name', type: 'text', placeholder: 'e.g. Juan Dela Cruz' },
-                { label: 'Email Address *', field: 'email', type: 'email', placeholder: 'e.g. superadmin@pianing.gov.ph' },
-                { label: 'Phone Number', field: 'phone', type: 'tel', placeholder: 'e.g. 09171234567' },
-              ].map(f => (
-                <div key={f.field}>
-                  <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>{f.label}</label>
-                  <input type={f.type} placeholder={f.placeholder} value={(newSA as any)[f.field]}
-                    onChange={e => setNewSA(prev => ({ ...prev, [f.field]: e.target.value }))}
-                    style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
-                    required={f.label.includes('*')} />
-                </div>
-              ))}
+
+              {/* SECTION: Identity */}
               <div>
-                <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Assigned Barangay *</label>
-                <select value={newSA.barangay} onChange={e => setNewSA(prev => ({ ...prev, barangay: e.target.value }))}
-                  style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}>
-                  {BUTUAN_BARANGAYS.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
-              </div>
-              {[
-                { label: 'Password *', field: 'password' },
-                { label: 'Confirm Password *', field: 'confirmPassword' },
-              ].map(f => (
-                <div key={f.field}>
-                  <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>{f.label}</label>
-                  <div style={{ position: 'relative' }}>
-                    <input type={showNewSAPass ? 'text' : 'password'} value={(newSA as any)[f.field]}
-                      onChange={e => setNewSA(prev => ({ ...prev, [f.field]: e.target.value }))}
-                      style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 36px 8px 12px', width: '100%' }}
-                      required />
-                    <button type="button" onClick={() => setShowNewSAPass(p => !p)} style={{ position: 'absolute', right: 10, top: 9, color: MUTED, background: 'transparent', border: 'none' }} className="cursor-pointer">
-                      {showNewSAPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
+                <p style={{ color: '#C4B5FD', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  1. Official Identity & Full Name
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>First Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Maria"
+                      value={newSA.firstName}
+                      onChange={e => setNewSA(prev => ({ ...prev, firstName: e.target.value }))}
+                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Middle Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Santos (optional)"
+                      value={newSA.middleName}
+                      onChange={e => setNewSA(prev => ({ ...prev, middleName: e.target.value }))}
+                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Last Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Dela Cruz"
+                      value={newSA.lastName}
+                      onChange={e => setNewSA(prev => ({ ...prev, lastName: e.target.value }))}
+                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      required
+                    />
                   </div>
                 </div>
-              ))}
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => { setIsCreateSuperadminOpen(false); setNewSAError(''); }}
-                  style={{ flex: 1, padding: '9px', borderRadius: 8, border: `1px solid ${BORDER}`, color: MUTED, background: 'transparent', fontSize: 12, fontWeight: 600 }}
-                  className="cursor-pointer hover:bg-white/5 transition-colors">Cancel</button>
-                <button type="submit" disabled={creatingUser}
-                  style={{ flex: 2, padding: '9px', borderRadius: 8, background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', border: 'none', fontSize: 12, fontWeight: 700 }}
-                  className="cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2">
-                  {creatingUser ? <RefreshCcw size={13} className="animate-spin" /> : <UserPlus size={13} />}
-                  {creatingUser ? 'Creating...' : 'Create Superadmin'}
+              </div>
+
+              {/* SECTION: Contact & Governance */}
+              <div>
+                <p style={{ color: '#C4B5FD', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  2. Official Contact & Designation
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Email Address *</label>
+                    <input
+                      type="email"
+                      placeholder="e.g. superadmin@butuancity.gov.ph"
+                      value={newSA.email}
+                      onChange={e => setNewSA(prev => ({ ...prev, email: e.target.value }))}
+                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Mobile Number (11-digit) *</label>
+                    <input
+                      type="tel"
+                      placeholder="09171234567"
+                      maxLength={11}
+                      value={newSA.phone}
+                      onChange={e => setNewSA(prev => ({ ...prev, phone: e.target.value }))}
+                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Employee / Badge ID *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. BSA-2026-001"
+                      value={newSA.employeeId}
+                      onChange={e => setNewSA(prev => ({ ...prev, employeeId: e.target.value }))}
+                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Official Designation *</label>
+                    <input
+                      type="text"
+                      placeholder="Barangay Super Administrator"
+                      value={newSA.jobTitle}
+                      onChange={e => setNewSA(prev => ({ ...prev, jobTitle: e.target.value }))}
+                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION: Territorial Jurisdiction */}
+              <div>
+                <p style={{ color: '#C4B5FD', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  3. Territorial Jurisdiction (Agusan del Norte)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>City / Municipality *</label>
+                    <select
+                      value={newSA.city}
+                      onChange={e => setNewSA(prev => ({ ...prev, city: e.target.value, barangay: '' }))}
+                      style={{
+                        colorScheme: 'dark',
+                        background: '#161F30',
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 8,
+                        color: '#F8FAFC',
+                        fontSize: 12,
+                        padding: '8px 12px',
+                        width: '100%',
+                        cursor: 'pointer'
+                      }}
+                      required
+                    >
+                      <option value="" disabled style={{ background: '#161F30', color: '#94A3B8' }}>Select City / Municipality</option>
+                      {AGUSAN_DEL_NORTE_LGUS.map(lgu => (
+                        <option key={lgu.name} value={lgu.name} style={{ background: '#161F30', color: '#F8FAFC' }}>
+                          {lgu.name} {lgu.isCity ? '(City)' : '(Municipality)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Select Barangay *</label>
+                    <select
+                      value={newSA.barangay}
+                      onChange={e => setNewSA(prev => ({ ...prev, barangay: e.target.value }))}
+                      disabled={!newSA.city}
+                      style={{
+                        colorScheme: 'dark',
+                        background: '#161F30',
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 8,
+                        color: '#F8FAFC',
+                        fontSize: 12,
+                        padding: '8px 12px',
+                        width: '100%',
+                        cursor: newSA.city ? 'pointer' : 'not-allowed',
+                        opacity: newSA.city ? 1 : 0.6
+                      }}
+                      required
+                    >
+                      <option value="" disabled style={{ background: '#161F30', color: '#94A3B8' }}>
+                        {newSA.city ? 'Select Barangay' : 'Select City / Municipality first'}
+                      </option>
+                      {saBarangays.map(b => (
+                        <option key={b} value={b} style={{ background: '#161F30', color: '#F8FAFC' }}>
+                          {b}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {newSA.city && (
+                  <p style={{ color: MUTED, fontSize: 10, marginTop: 4 }}>
+                    {saBarangays.length} official barangays loaded for {newSA.city}.
+                  </p>
+                )}
+              </div>
+
+              {/* SECTION: Security & Passwords */}
+              <div>
+                <p style={{ color: '#C4B5FD', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  4. Security & Account Password
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Password *</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showNewSAPass ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={newSA.password}
+                        onChange={e => setNewSA(prev => ({ ...prev, password: e.target.value }))}
+                        style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 36px 8px 12px', width: '100%' }}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewSAPass(p => !p)}
+                        style={{ position: 'absolute', right: 10, top: 9, color: MUTED, background: 'transparent', border: 'none' }}
+                        className="cursor-pointer hover:text-white"
+                      >
+                        {showNewSAPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Confirm Password *</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showNewSAPass ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={newSA.confirmPassword}
+                        onChange={e => setNewSA(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 36px 8px 12px', width: '100%' }}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Password Strength Checklist */}
+                {newSA.password && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-2.5 p-2 rounded-lg" style={{ background: '#0F172A', border: `1px solid ${BORDER}` }}>
+                    {[
+                      { label: '8+ Characters', valid: newSA.password.length >= 8 },
+                      { label: '1 Uppercase (A-Z)', valid: /[A-Z]/.test(newSA.password) },
+                      { label: '1 Lowercase (a-z)', valid: /[a-z]/.test(newSA.password) },
+                      { label: '1 Number (0-9)', valid: /[0-9]/.test(newSA.password) },
+                      { label: '1 Symbol (!@#$)', valid: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(newSA.password) },
+                      { label: 'Passwords Match', valid: !!newSA.password && newSA.password === newSA.confirmPassword },
+                    ].map(req => (
+                      <div key={req.label} className="flex items-center gap-1.5 text-[10px]">
+                        <CheckCircle2 size={11} style={{ color: req.valid ? ACCENT_EMERALD : MUTED }} />
+                        <span style={{ color: req.valid ? TEXT : MUTED }}>{req.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex gap-2.5 pt-3 border-t" style={{ borderColor: `${BORDER}80` }}>
+                <button
+                  type="button"
+                  onClick={() => { setIsCreateSuperadminOpen(false); setNewSAError(''); }}
+                  style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1px solid ${BORDER}`, color: MUTED, background: 'transparent', fontSize: 12, fontWeight: 600 }}
+                  className="cursor-pointer hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingUser}
+                  style={{ flex: 2, padding: '10px', borderRadius: 8, background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', border: 'none', fontSize: 12, fontWeight: 700 }}
+                  className="cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-violet-900/30"
+                >
+                  {creatingUser ? <RefreshCcw size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                  {creatingUser ? 'Creating Superadmin...' : 'Create Superadmin'}
                 </button>
               </div>
             </form>

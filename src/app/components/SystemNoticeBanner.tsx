@@ -53,6 +53,10 @@ export default function SystemNoticeBanner({
         const data = await apiService.getMaintenanceMode();
         if (isMounted && data) {
           setNotice(data);
+          // If a new broadcast was activated, re-show it even if previously dismissed
+          if (data.enabled) {
+            setIsDismissed(false);
+          }
         }
       } catch (err) {
         console.warn('Unable to load live system notice from server:', err);
@@ -60,19 +64,40 @@ export default function SystemNoticeBanner({
     };
 
     fetchNotice();
-    const interval = setInterval(fetchNotice, 30000); // refresh every 30s
+    const interval = setInterval(fetchNotice, 15000); // refresh every 15s
+
+    // Real-time inter-tab notification
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('barangay_system_notice');
+        bc.onmessage = () => {
+          fetchNotice();
+        };
+      }
+    } catch {}
 
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
+    const handleVisibility = () => {
+      if (!document.hidden) fetchNotice();
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('focus', fetchNotice);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       isMounted = false;
       clearInterval(interval);
+      if (bc) {
+        try { bc.close(); } catch {}
+      }
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('focus', fetchNotice);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [customNotice]);
 

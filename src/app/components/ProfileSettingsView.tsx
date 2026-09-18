@@ -56,6 +56,16 @@ export default function ProfileSettingsView({ user, onProfileUpdated }: ProfileS
 
   const getRoleConfig = (role?: string) => {
     const r = (role || '').toLowerCase();
+    if (r === 'super_mega_admin') {
+      return {
+        badge: 'bg-violet-950 text-violet-300 border-violet-700',
+        accent: 'text-violet-400',
+        bgAccent: 'bg-violet-950/50 border-violet-800 text-violet-300',
+        btn: 'bg-violet-600 hover:bg-violet-700',
+        title: 'Super Mega Administrator (System Root)',
+        station: 'Municipal Central Command Dock'
+      };
+    }
     if (r === 'superadmin') {
       return {
         badge: 'bg-purple-50 text-purple-800 border-purple-200',

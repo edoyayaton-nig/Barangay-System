@@ -1,8 +1,8 @@
 {
   "enabled": false,
   "type": "down",
-  "title": "System Outage Alert",
-  "message": "Operational",
-  "estimated_uptime": "1h",
-  "updated_at": "2026-09-17T16:30:05.524Z"
+  "title": "CRITICAL ALERT: System is Temporarily Down",
+  "message": "The Barangay Information System is currently experiencing an unexpected database server outage.",
+  "estimated_uptime": "Expected recovery: Within 1 hour",
+  "updated_at": "2026-09-18T18:05:52.055Z"
 }

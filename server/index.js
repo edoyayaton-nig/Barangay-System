@@ -1915,6 +1915,8 @@ app.get('/api/users', async (req, res) => {
     try {
       // Safe column check / addition
       await safeAddColumn(pool, 'users', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
+      await safeAddColumn(pool, 'users', 'city', "VARCHAR(100) DEFAULT 'Butuan City'");
+      await safeAddColumn(pool, 'residents', 'city', "VARCHAR(100) DEFAULT 'Butuan City'");
       await safeAddColumn(pool, 'users', 'phone', "VARCHAR(50) DEFAULT ''");
       await safeAddColumn(pool, 'users', 'last_login', "DATETIME NULL");
       await safeAddColumn(pool, 'users', 'employee_id', "VARCHAR(50) DEFAULT NULL");
@@ -1922,7 +1924,7 @@ app.get('/api/users', async (req, res) => {
       await safeAddColumn(pool, 'users', 'permissions', "TEXT NULL");
 
       const [rows] = await pool.query(`
-        SELECT u.id, u.name, u.email, u.role, u.status, u.barangay, u.phone, u.employee_id, u.job_title, u.last_login, u.created_at, u.permissions,
+        SELECT u.id, u.name, u.email, u.role, u.status, u.barangay, COALESCE(u.city, 'Butuan City') AS city, u.phone, u.employee_id, u.job_title, u.last_login, u.created_at, u.permissions,
                COALESCE(u.profile_photo, r.profile_photo) AS profile_photo,
                COALESCE(r.verification_status, u.verification_status, 'Verified') AS verification_status,
                r.first_name, r.last_name, r.middle_name, r.address, r.date_of_birth,
@@ -1953,6 +1955,7 @@ app.get('/api/users', async (req, res) => {
       role: u.role,
       status: u.status || 'Active',
       barangay: u.barangay || 'Pianing',
+      city: u.city || r?.city || 'Butuan City',
       phone: u.phone || (r?.phone || ''),
       employee_id: u.employee_id || null,
       job_title: u.job_title || null,
@@ -1978,7 +1981,7 @@ app.get('/api/users', async (req, res) => {
 });
 
 app.post('/api/users', async (req, res) => {
-  const { name, email, password, role, barangay, phone, status, employee_id, job_title, created_by } = req.body;
+  const { name, email, password, role, barangay, city, phone, status, employee_id, job_title, created_by } = req.body;
   if (!name || !email) {
     return res.status(400).json({ success: false, message: 'Name and email are required.' });
   }
@@ -1986,6 +1989,7 @@ app.post('/api/users', async (req, res) => {
   const cleanEmail = email.trim().toLowerCase();
   const userRole = role || 'staff';
   const userBarangay = (barangay || 'Pianing').trim();
+  const userCity = (city || 'Butuan City').trim();
   const userPhone = phone || '';
   const userEmployeeId = employee_id ? String(employee_id).trim() : null;
   const userJobTitle = job_title ? String(job_title).trim() : null;
@@ -2032,6 +2036,7 @@ app.post('/api/users', async (req, res) => {
         return res.status(400).json({ success: false, message: 'An account with this email already exists. Each account must have a unique email.' });
       }
 
+      await safeAddColumn(pool, 'users', 'city', "VARCHAR(100) DEFAULT 'Butuan City'");
       await safeAddColumn(pool, 'users', 'employee_id', "VARCHAR(50) DEFAULT NULL");
       await safeAddColumn(pool, 'users', 'job_title', "VARCHAR(100) DEFAULT NULL");
 
@@ -2040,8 +2045,8 @@ app.post('/api/users', async (req, res) => {
       const userStatus = status || 'Active';
 
       const [result] = await pool.query(
-        "INSERT INTO users (name, email, password_hash, role, barangay, phone, status, verification_status, employee_id, job_title, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, 'Verified', ?, ?, NOW())",
-        [name.trim(), cleanEmail, hashedPassword, userRole, userBarangay, userPhone, userStatus, userEmployeeId, userJobTitle]
+        "INSERT INTO users (name, email, password_hash, role, barangay, city, phone, status, verification_status, employee_id, job_title, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Verified', ?, ?, NOW())",
+        [name.trim(), cleanEmail, hashedPassword, userRole, userBarangay, userCity, userPhone, userStatus, userEmployeeId, userJobTitle]
       );
 
       // If resident role, link with existing census record or insert new resident
@@ -2107,6 +2112,7 @@ app.post('/api/users', async (req, res) => {
         email: cleanEmail,
         role: userRole,
         barangay: userBarangay,
+        city: userCity,
         phone: userPhone,
         status: userStatus,
         employee_id: userEmployeeId,
@@ -2137,6 +2143,7 @@ app.post('/api/users', async (req, res) => {
     password_hash: hashedPassword,
     role: userRole,
     barangay: userBarangay,
+    city: userCity,
     phone: userPhone,
     status: status || 'Active',
     employee_id: userEmployeeId,

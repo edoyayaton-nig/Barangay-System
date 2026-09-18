@@ -46,11 +46,11 @@ async function runCrossCityTest() {
 
   // Pre-clean any existing active admin for this barangay to satisfy 1 Admin per Barangay rule
   const usersRes = await request('/users');
-  const existingAdmin = (usersRes.data || []).find(u => u.role === 'admin' && u.status === 'Active' && (u.barangay || '').toLowerCase() === barangay.toLowerCase());
-  if (existingAdmin) {
-    await request(`/users/${existingAdmin.id}`, {
+  const existingAdmins = (usersRes.data || []).filter(u => u.role === 'admin' && u.status === 'Active' && (u.barangay || '').toLowerCase() === barangay.toLowerCase());
+  for (const ea of existingAdmins) {
+    await request(`/users/${ea.id}`, {
       method: 'PUT',
-      body: JSON.stringify({ status: 'Archived' })
+      body: JSON.stringify({ status: 'Inactive' })
     });
   }
 
