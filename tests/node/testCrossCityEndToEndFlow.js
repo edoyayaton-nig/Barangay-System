@@ -29,12 +29,7 @@ async function runCrossCityTest() {
 
   const rand = Math.floor(1000 + Math.random() * 9000);
   const city = 'Cabadbaran City';
-  const CBR_BARANGAYS = [
-    'Antonio Luna', 'Bayabas', 'Bay-ang', 'Caasinan', 'Cabinet', 'Calamba', 'Calibunan',
-    'Comagascas', 'Concepcion', 'Del Pilar', 'Katugasan', 'Kauswagan', 'La Fraternidad',
-    'Mabini', 'Mahaba', 'Puting Bato', 'Sanghan', 'Soriano', 'Tolosa'
-  ];
-  const barangay = CBR_BARANGAYS[rand % CBR_BARANGAYS.length];
+  const barangay = 'Antonio Luna';
   let passedAssertions = 0;
   let failedAssertions = 0;
 
@@ -60,11 +55,11 @@ async function runCrossCityTest() {
   }
 
   // --------------------------------------------------------------------------
-  // STEP 1: CREATE SUPER ADMIN FOR CABADBARAN CITY
+  // STEP 1: CREATE SUPER ADMIN FROM BARANGAY ANTONIO LUNA, CABADBARAN CITY
   // --------------------------------------------------------------------------
-  console.log('\x1b[1m[STEP 1: Create Super Admin for Cabadbaran City]\x1b[0m');
-  const saEmail = `superadmin.cbr.${rand}@gmail.com`;
-  const saName = `Super Admin Cabadbaran ${rand}`;
+  console.log('\x1b[1m[STEP 1: Create Super Admin from Barangay Antonio Luna, Cabadbaran City]\x1b[0m');
+  const saEmail = `superadmin.antonioluna.${rand}@gmail.com`;
+  const saName = `Super Admin Antonio Luna (${rand})`;
   const saPassword = 'SuperAdmin123!';
 
   const saCreateRes = await request('/users', {
@@ -75,11 +70,12 @@ async function runCrossCityTest() {
       password: saPassword,
       role: 'superadmin',
       barangay: barangay,
+      city: city,
       phone: '09171112233',
       status: 'Active'
     })
   });
-  assert(saCreateRes.ok, `Super Admin account created for ${city} (ID: ${saCreateRes.data?.id})`);
+  assert(saCreateRes.ok, `Super Admin created specifically from Barangay ${barangay}, ${city} (ID: ${saCreateRes.data?.id})`);
 
   // Verify Super Admin can login
   const saLoginRes = await request('/auth/login', {
@@ -87,14 +83,15 @@ async function runCrossCityTest() {
     body: JSON.stringify({ email: saEmail, password: saPassword })
   });
   assert(saLoginRes.ok && saLoginRes.data?.user?.role === 'superadmin', 'Super Admin successfully logged in with valid role');
-  console.log(`  \x1b[90mSuper Admin: ${saName} (${saEmail}) | Status: Active\x1b[0m\n`);
+  assert(saLoginRes.data?.user?.barangay === barangay, `Super Admin registered to jurisdiction: Barangay ${barangay}, ${city}`);
+  console.log(`  \x1b[90mSuper Admin: ${saName} (${saEmail}) | Jurisdiction: Barangay ${barangay}, ${city}\x1b[0m\n`);
 
   // --------------------------------------------------------------------------
   // STEP 2: SUPER ADMIN CREATES BARANGAY ADMIN FOR ANTONIO LUNA
   // --------------------------------------------------------------------------
-  console.log('\x1b[1m[STEP 2: Super Admin Creates Barangay Admin for Barangay Antonio Luna]\x1b[0m');
+  console.log(`\x1b[1m[STEP 2: Super Admin Creates Barangay Admin for Barangay ${barangay}]\x1b[0m`);
   const adminEmail = `admin.antonioluna.${rand}@gmail.com`;
-  const adminName = `Admin Antonio Luna ${rand}`;
+  const adminName = `Barangay Admin Antonio Luna ${rand}`;
   const adminPassword = 'AdminPassword123!';
 
   const adminCreateRes = await request('/users', {
@@ -105,9 +102,10 @@ async function runCrossCityTest() {
       password: adminPassword,
       role: 'admin',
       barangay: barangay,
+      city: city,
       phone: '09182223344',
       employee_id: `CBR-ADM-${rand}`,
-      job_title: 'Punong Barangay Administrator',
+      job_title: `Punong Barangay Administrator (${barangay})`,
       status: 'Active',
       created_by: saName
     })
@@ -121,14 +119,14 @@ async function runCrossCityTest() {
   });
   assert(adminLoginRes.ok && adminLoginRes.data?.user?.role === 'admin', 'Barangay Admin login verified with role admin');
   assert(adminLoginRes.data?.user?.barangay === barangay, `Admin correctly assigned to Barangay ${barangay}`);
-  console.log(`  \x1b[90mAdmin: ${adminName} (${adminEmail}) | Assigned: Barangay ${barangay}\x1b[0m\n`);
+  console.log(`  \x1b[90mAdmin: ${adminName} (${adminEmail}) | Assigned: Barangay ${barangay}, ${city}\x1b[0m\n`);
 
   // --------------------------------------------------------------------------
   // STEP 3: SUPER ADMIN CREATES NURSE FOR HEALTH CENTER IN ANTONIO LUNA
   // --------------------------------------------------------------------------
-  console.log('\x1b[1m[STEP 3: Super Admin Creates Clinic Nurse for Health Center in Antonio Luna]\x1b[0m');
+  console.log(`\x1b[1m[STEP 3: Super Admin Creates Clinic Nurse for Health Center in ${barangay}]\x1b[0m`);
   const nurseEmail = `nurse.antonioluna.${rand}@gmail.com`;
-  const nurseName = `Nurse Cabadbaran Health ${rand}`;
+  const nurseName = `Nurse Antonio Luna Health Center ${rand}`;
   const nursePassword = 'NursePassword123!';
 
   const nurseCreateRes = await request('/users', {
@@ -139,9 +137,10 @@ async function runCrossCityTest() {
       password: nursePassword,
       role: 'nurse',
       barangay: barangay,
+      city: city,
       phone: '09193334455',
       employee_id: `CBR-NRS-${rand}`,
-      job_title: 'Health Center Duty Nurse',
+      job_title: `Health Center Duty Nurse (${barangay})`,
       status: 'Active',
       created_by: saName
     })
