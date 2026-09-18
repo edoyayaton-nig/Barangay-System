@@ -2668,12 +2668,12 @@ app.get('/api/documents', async (req, res) => {
         whereConditions.push(`(${userOrs.join(' OR ')})`);
       } else if (barangay && barangay.toLowerCase() !== 'all' && !barangay.toLowerCase().includes('city-wide')) {
         whereConditions.push(`(
-          LOWER(COALESCE(d.barangay, '')) LIKE LOWER(?)
-          OR LOWER(COALESCE(r.barangay, '')) LIKE LOWER(?)
-          OR LOWER(COALESCE(r.address, '')) LIKE LOWER(?)
-          OR (LOWER(?) = 'pianing' AND (d.barangay IS NULL OR d.barangay = '' OR LOWER(d.barangay) NOT LIKE '%anticala%'))
+          LOWER(COALESCE(d.barangay, '')) = LOWER(?)
+          OR LOWER(COALESCE(d.barangay, '')) LIKE LOWER(?)
+          OR LOWER(COALESCE(r.barangay, '')) = LOWER(?)
+          OR (LOWER(?) = 'pianing' AND (d.barangay IS NULL OR d.barangay = ''))
         )`);
-        params.push(`%${barangay.trim()}%`, `%${barangay.trim()}%`, `%${barangay.trim()}%`, barangay.trim());
+        params.push(barangay.trim(), `%${barangay.trim()}%`, barangay.trim(), barangay.trim());
       }
 
       if (whereConditions.length > 0) {
@@ -2699,8 +2699,8 @@ app.get('/api/documents', async (req, res) => {
     const bLower = barangay.toLowerCase().trim();
     docs = docs.filter(d => {
       const docB = (d.barangay || '').toLowerCase();
-      if (docB.includes(bLower)) return true;
-      if (bLower === 'pianing' && (!docB || !docB.includes('anticala'))) return true;
+      if (docB === bLower || docB.includes(bLower)) return true;
+      if (bLower === 'pianing' && (!docB)) return true;
       return false;
     });
   }
