@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
-import { Printer, Shield, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
+import { Printer, Shield, X, ZoomIn, ZoomOut, Download } from 'lucide-react';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
-import { DocumentRequest } from '../../services/api';
+import { DocumentRequest, apiService } from '../../services/api';
 import { PIANING_LOGO_BASE64, BUTUAN_LOGO_BASE64 } from './officialLogos';
+import { toast } from 'sonner';
 
 interface DocumentPrintModalProps {
   isOpen: boolean;
@@ -489,7 +490,7 @@ function getCertificateBody(doc: DocumentRequest): string {
       return `
         <div class="doc-wrapper">
           ${logoHeader}
-          <div class="doc-title">CERTIFICATION OF RESIDENCY</div>
+          <div class="doc-title">CERTIFICATE OF RESIDENCY</div>
           <p class="salute">TO WHOM IT MAY CONCERN:</p>
           <p class="para">This is to certify that <strong>${name}</strong>, Filipino, is a bonafide <strong>resident</strong> of Purok ${purok}, Barangay Pianing, Butuan City together with ${pronouns.hisHer} entire family circle.</p>
           <p class="para">This certifies further that the above-mentioned resident has been permanently living and residing at Purok ${purok}, Barangay Pianing, Butuan City <strong>${cleanResidencyYears(f)}</strong>.</p>
@@ -513,13 +514,14 @@ function getCertificateBody(doc: DocumentRequest): string {
         </div>`;
 
     // ── BUSINESS CLEARANCE / BUSINESS CERTIFICATE / PERMIT ───────────────────
+    case 'Barangay Business Clearance':
     case 'Business Clearance':
     case 'Business Permit':
     case 'Business Certificate':
       return `
         <div class="doc-wrapper">
           ${logoHeaderSangguniang}
-          <div class="doc-title">CERTIFICATION</div>
+          <div class="doc-title">BARANGAY BUSINESS CLEARANCE</div>
           <p class="salute">TO WHOM IT MAY CONCERN:</p>
           <p class="para">This is to certify that <strong>${name}</strong>, of legal age, bona-fide resident of ${purok.includes('Purok') ? purok : `Purok ${purok}`}, Barangay Pianing, Butuan City, Philippines, has a <strong>${bizName}</strong> store business located in its/own residence Based on the verification gathered.</p>
           <p class="para">This certification is issued upon the request of the above-named person for <strong>${purpose}</strong> and for whatever legal purpose it may serve.</p>
@@ -551,7 +553,7 @@ function getCertificateBody(doc: DocumentRequest): string {
       return `
         <div class="doc-wrapper">
           ${logoHeaderPunong}
-          <div class="doc-title" style="font-size: 20pt; letter-spacing: 1px; margin: 22px 0 18px 0;">ACTUAL OCCUPANCY</div>
+          <div class="doc-title" style="font-size: 20pt; letter-spacing: 1px; margin: 22px 0 18px 0;">CERTIFICATE OF LAND OCCUPANCY</div>
           <p class="salute">TO WHOM IT MAY CONCERN:</p>
           <p class="para" style="line-height: 1.65; margin-bottom: 18px;">This is to certify that <strong style="text-decoration: underline;">${name.toUpperCase()}</strong>, Filipino, ${civilStatus.toLowerCase()}, a bona fide resident of ${formattedPurok} Pianing, Butuan City is the <strong style="text-decoration: underline;">ACTUAL OCCUPANT</strong> on a parcel of land with an area of <strong style="text-decoration: underline;">${land.landArea}</strong> square meters more or less, identified as Lot # ${land.lotNumber}, ${land.surveyInfo} <span style="text-decoration: underline;">since</span> the year ${land.yearStarted} until this document has been made.</p>
           <p class="para" style="line-height: 1.65; margin-bottom: 22px;">This certification is being issued upon the requesting party for whatever legal purposes it may serve best.</p>
@@ -696,7 +698,7 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
       case 'Certificate of Residency':
         return (<>
           <OfficialHeader />
-          <h2 className={title}>CERTIFICATION OF RESIDENCY</h2>
+          <h2 className={title}>CERTIFICATE OF RESIDENCY</h2>
           <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
           <p className={p}>This is to certify that <strong>{name}</strong>, Filipino, is a bonafide <strong>resident</strong> of Purok {purok}, Barangay Pianing, Butuan City together with {pronouns.hisHer} entire family circle.</p>
           <p className={p}>This certifies further that the above-mentioned resident has been permanently living and residing at Purok {purok}, Barangay Pianing, Butuan City <strong>{cleanResidencyYears(f)}</strong>.</p>
@@ -719,12 +721,13 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
           <CertifiedBySig />
         </>);
 
+      case 'Barangay Business Clearance':
       case 'Business Clearance':
       case 'Business Permit':
       case 'Business Certificate':
         return (<>
           <OfficialHeader office="OFFICE OF THE SANGGUNIANG BARANGAY" />
-          <h2 className={title}>CERTIFICATION</h2>
+          <h2 className={title}>BARANGAY BUSINESS CLEARANCE</h2>
           <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
           <p className={p}>This is to certify that <strong>{name}</strong>, of legal age, bona-fide resident of {purok.includes('Purok') ? purok : `Purok ${purok}`}, Barangay Pianing, Butuan City, Philippines, has a <strong>{bizName}</strong> store business located in its/own residence Based on the verification gathered.</p>
           <p className={p}>This certification is issued upon the request of the above-named person for <strong>{purpose}</strong> and for whatever legal purpose it may serve.</p>
@@ -754,7 +757,7 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
         const formattedPurok = purok.startsWith('Purok') ? purok : `Purok ${purok}`;
         return (<>
           <OfficialHeader office="OFFICE OF THE PUNONG BARANGAY" />
-          <h2 className={title}>ACTUAL OCCUPANCY</h2>
+          <h2 className={title}>CERTIFICATE OF LAND OCCUPANCY</h2>
           <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
           <p className={p}>This is to certify that <strong className="underline uppercase">{name}</strong>, Filipino, {civilStatus.toLowerCase()}, a bona fide resident of {formattedPurok} Pianing, Butuan City is the <strong className="underline">ACTUAL OCCUPANT</strong> on a parcel of land with an area of <strong className="underline">{land.landArea}</strong> square meters more or less, identified as Lot # {land.lotNumber}, {land.surveyInfo} <span className="underline">since</span> the year {land.yearStarted} until this document has been made.</p>
           <p className={p}>This certification is being issued upon the requesting party for whatever legal purposes it may serve best.</p>
@@ -792,13 +795,50 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
 export default function DocumentPrintModal({ isOpen, onClose, document: docItem }: DocumentPrintModalProps) {
   const printFrameRef = useRef<HTMLIFrameElement | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!docItem) return;
+    setDownloading(true);
+    try {
+      const fileName = `${(docItem.document_type || 'document').replace(/\s+/g, '_')}_${docItem.request_code || docItem.id}.pdf`;
+      await apiService.downloadDocumentPdf(docItem.id, fileName);
+      toast.success('Official PDF downloaded successfully');
+    } catch (err) {
+      console.error('PDF download error:', err);
+      toast.error('Failed to download PDF');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleClose = () => {
+    try {
+      const oldIframe = window.document.getElementById('print-doc-iframe');
+      if (oldIframe) oldIframe.remove();
+      document.body.style.pointerEvents = 'auto';
+      window.focus();
+    } catch {}
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   if (!isOpen || !docItem) return null;
 
   const handlePrint = () => {
     if (!docItem) return;
     const originalTitle = window.document.title;
-    window.document.title = ' ';
+    window.document.title = `${docItem.document_type || 'Document'} - ${docItem.resident_name || ''}`;
 
     // Remove any previous print iframe
     const oldIframe = window.document.getElementById('print-doc-iframe');
@@ -806,12 +846,7 @@ export default function DocumentPrintModal({ isOpen, onClose, document: docItem 
 
     const iframe = window.document.createElement('iframe');
     iframe.id = 'print-doc-iframe';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
+    iframe.setAttribute('style', 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:0;visibility:hidden;pointer-events:none;');
     window.document.body.appendChild(iframe);
 
     const frameDoc = iframe.contentWindow?.document;
@@ -822,7 +857,7 @@ export default function DocumentPrintModal({ isOpen, onClose, document: docItem 
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title> </title>
+  <title>${docItem.document_type || 'Official Document'}</title>
   <style>
     @page {
       size: letter portrait;
@@ -837,13 +872,28 @@ export default function DocumentPrintModal({ isOpen, onClose, document: docItem 
 </html>`);
     frameDoc.close();
 
-    setTimeout(() => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-      setTimeout(() => {
+    const cleanup = () => {
+      try {
         window.document.title = originalTitle;
-      }, 2500);
-    }, 400);
+        document.body.style.pointerEvents = 'auto';
+        const f = window.document.getElementById('print-doc-iframe');
+        if (f) f.remove();
+        window.focus();
+      } catch {}
+    };
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (err) {
+        console.error('Print trigger error:', err);
+      }
+      iframe.contentWindow?.addEventListener('afterprint', cleanup);
+      window.addEventListener('afterprint', cleanup, { once: true });
+      window.addEventListener('focus', cleanup, { once: true });
+      setTimeout(cleanup, 2000);
+    }, 350);
   };
 
   return (
@@ -897,20 +947,33 @@ export default function DocumentPrintModal({ isOpen, onClose, document: docItem 
                 </button>
               </div>
 
-              <Button
-                onClick={handlePrint}
-                size="sm"
-                className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 h-9 shadow-sm cursor-pointer"
-              >
-                <Printer size={15} /> Print Document
-              </Button>
-              <button
-                onClick={onClose}
-                className="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                title="Close"
-              >
-                <X size={18} />
-              </button>
+                <Button
+                  onClick={handleDownloadPdf}
+                  disabled={downloading}
+                  size="sm"
+                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 h-9 shadow-sm cursor-pointer"
+                >
+                  <Download size={15} className={downloading ? 'animate-bounce' : ''} />
+                  {downloading ? 'Downloading...' : 'Download PDF'}
+                </Button>
+
+                <Button
+                  onClick={handlePrint}
+                  size="sm"
+                  className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 h-9 shadow-sm cursor-pointer"
+                >
+                  <Printer size={15} /> Print Document
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClose}
+                  className="text-xs h-9 px-3 gap-1.5 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer"
+                  title="Close and return to dashboard"
+                >
+                  <X size={15} /> Close Preview
+                </Button>
             </div>
           </div>
 

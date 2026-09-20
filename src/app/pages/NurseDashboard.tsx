@@ -449,8 +449,8 @@ export default function NurseDashboard() {
         apiService.getClinicSchedules(nurseBarangay).catch(() => []),
         apiService.getNotifications({ department: 'health', role: 'nurse' }).catch(() => []),
         apiService.getConsultations(nurseBarangay).catch(() => []),
-        apiService.getMaternalRecords().catch(() => []),
-        apiService.getImmunizations().catch(() => []),
+        apiService.getMaternalRecords(nurseBarangay).catch(() => []),
+        apiService.getImmunizations(nurseBarangay).catch(() => []),
         apiService.getInventory(nurseBarangay).catch(() => []),
         apiService.getResidents(nurseBarangay).catch(() => [])
       ]);

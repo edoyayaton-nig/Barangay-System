@@ -495,6 +495,28 @@ export const apiService = {
     return await res.json();
   },
 
+  async downloadDocumentPdf(id: number, filename?: string) {
+    const res = await fetch(`${API_BASE}/documents/${id}/pdf`);
+    if (!res.ok) throw new Error('Failed to generate official PDF');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || `document_${id}.pdf`;
+    a.style.display = 'none';
+    a.style.pointerEvents = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        document.body.style.pointerEvents = 'auto';
+        window.focus();
+      } catch {}
+    }, 250);
+  },
+
   // Residents & Population Census
   async getResidents(barangay?: string, purok?: string): Promise<Resident[]> {
     const q = new URLSearchParams();
@@ -583,8 +605,9 @@ export const apiService = {
   },
 
   // Immunizations
-  async getImmunizations(): Promise<ImmunizationRecord[]> {
-    const res = await fetch(`${API_BASE}/immunizations`);
+  async getImmunizations(barangay?: string): Promise<ImmunizationRecord[]> {
+    const query = barangay ? `?barangay=${encodeURIComponent(barangay)}` : '';
+    const res = await fetch(`${API_BASE}/immunizations${query}`);
     return await res.json();
   },
 
@@ -607,8 +630,9 @@ export const apiService = {
   },
 
   // Maternal
-  async getMaternalRecords(): Promise<MaternalRecord[]> {
-    const res = await fetch(`${API_BASE}/maternal`);
+  async getMaternalRecords(barangay?: string): Promise<MaternalRecord[]> {
+    const query = barangay ? `?barangay=${encodeURIComponent(barangay)}` : '';
+    const res = await fetch(`${API_BASE}/maternal${query}`);
     return await res.json();
   },
 
@@ -731,8 +755,8 @@ export const apiService = {
     return json;
   },
 
-  // Update Profile (password, phone, name, address, date_of_birth, profile_photo, purok, gender, civil_status)
-  async updateProfile(data: { id?: number; email?: string; password?: string; phone?: string; name?: string; address?: string; date_of_birth?: string; profile_photo?: string; avatar?: string; purok?: string; gender?: string; civil_status?: string }) {
+  // Update Profile (password, phone, name, address, date_of_birth, profile_photo, purok, gender, civil_status, new_email)
+  async updateProfile(data: { id?: number; email?: string; new_email?: string; password?: string; phone?: string; name?: string; address?: string; date_of_birth?: string; profile_photo?: string; avatar?: string; purok?: string; gender?: string; civil_status?: string }) {
     const res = await fetch(`${API_BASE}/users/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -1132,7 +1156,13 @@ export const apiService = {
   },
 
   async getMaintenanceMode(): Promise<{ enabled: boolean; type: 'down' | 'maintenance' | 'advisory'; title: string; message: string; estimated_uptime?: string; updated_at: string }> {
-    const res = await fetch(`${API_BASE}/system/maintenance`);
+    const res = await fetch(`${API_BASE}/system/maintenance?_t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
     if (!res.ok) throw new Error('Failed to fetch maintenance status');
     return await res.json();
   },
@@ -1151,7 +1181,11 @@ export const apiService = {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error('Failed to toggle maintenance mode');
-    return await res.json();
+    const result = await res.json();
+    if (result && result.maintenance) {
+      notifySystemNoticeChange(result.maintenance);
+    }
+    return result;
   },
 
   async searchPatients(query: string): Promise<{ patients: any[] }> {
@@ -1194,6 +1228,46 @@ export const apiService = {
     return await res.json();
   }
 };
+
+// Global System Notice synchronization utilities
+let _systemNoticeChannel: BroadcastChannel | null = null;
+function getSystemNoticeChannel(): BroadcastChannel | null {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    if (!_systemNoticeChannel) {
+      try {
+        _systemNoticeChannel = new BroadcastChannel('barangay_system_notice');
+      } catch {}
+    }
+    return _systemNoticeChannel;
+  }
+  return null;
+}
+
+export function notifySystemNoticeChange(noticeData?: any) {
+  try {
+    const ch = getSystemNoticeChannel();
+    if (ch) {
+      ch.postMessage({ type: 'NOTICE_UPDATED', notice: noticeData, timestamp: Date.now() });
+    }
+  } catch {}
+
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem('barangay_system_notice_sync', JSON.stringify({
+        timestamp: Date.now(),
+        notice: noticeData
+      }));
+    }
+  } catch {}
+
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('barangay_system_notice_updated', {
+        detail: noticeData
+      }));
+    }
+  } catch {}
+}
 
 export interface PopulationStats {
   success: boolean;

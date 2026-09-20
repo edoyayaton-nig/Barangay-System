@@ -20,8 +20,11 @@ import {
   Printer,
   Shield,
   MapPin,
-  ClipboardList
+  ClipboardList,
+  Download
 } from 'lucide-react';
+import { apiService } from '../../services/api';
+import { toast } from 'sonner';
 import { DocumentRequest } from '../../services/api';
 
 interface DocumentInfoModalProps {
@@ -43,29 +46,58 @@ export default function DocumentInfoModal({
 }: DocumentInfoModalProps) {
   if (!doc) return null;
 
-  // Helper to parse purpose string into key-value pairs if it was submitted as structured text
-  const parsePurposeFields = (purposeText?: string) => {
-    if (!purposeText) return [];
-    if (purposeText.includes(' | ') || purposeText.includes(': ')) {
-      const parts = purposeText.split(' | ');
-      const parsed: { label: string; value: string }[] = [];
-      for (const part of parts) {
-        const colonIdx = part.indexOf(':');
-        if (colonIdx > 0) {
-          parsed.push({
-            label: part.substring(0, colonIdx).trim(),
-            value: part.substring(colonIdx + 1).trim()
-          });
-        } else {
-          parsed.push({ label: 'Details', value: part.trim() });
+  // Helper to parse all fields: extra_fields (JSON/object) + structured purpose
+  const getAllSubmittedFields = (): { label: string; value: string }[] => {
+    const fields: { label: string; value: string }[] = [];
+    const seen = new Set<string>();
+
+    // 1. Parse extra_fields (Land Area, Lot Number, Survey Info, Occupancy Since, etc.)
+    if (doc.extra_fields) {
+      try {
+        const extra = typeof doc.extra_fields === 'string' ? JSON.parse(doc.extra_fields) : doc.extra_fields;
+        if (extra && typeof extra === 'object') {
+          for (const [k, v] of Object.entries(extra)) {
+            if (v !== undefined && v !== null && String(v).trim()) {
+              fields.push({ label: k, value: String(v).trim() });
+              seen.add(k.toLowerCase());
+            }
+          }
         }
-      }
-      if (parsed.length > 0) return parsed;
+      } catch {}
     }
-    return [{ label: 'Purpose / Reason', value: purposeText }];
+
+    // 2. Parse purpose
+    if (doc.purpose) {
+      if (doc.purpose.includes(' | ') || doc.purpose.includes(': ')) {
+        const parts = doc.purpose.split(' | ');
+        for (const part of parts) {
+          const colonIdx = part.indexOf(':');
+          if (colonIdx > 0) {
+            const label = part.substring(0, colonIdx).trim();
+            const val = part.substring(colonIdx + 1).trim();
+            if (!seen.has(label.toLowerCase())) {
+              fields.push({ label, value: val });
+              seen.add(label.toLowerCase());
+            }
+          } else if (!seen.has('purpose / reason')) {
+            fields.push({ label: 'Purpose / Reason', value: part.trim() });
+            seen.add('purpose / reason');
+          }
+        }
+      } else if (!seen.has('purpose / reason') && !seen.has('purpose')) {
+        fields.push({ label: 'Purpose / Reason', value: doc.purpose });
+      }
+    }
+
+    // 3. Fallback default
+    if (fields.length === 0) {
+      fields.push({ label: 'Purpose / Reason', value: doc.purpose || 'Official Barangay Document' });
+    }
+
+    return fields;
   };
 
-  const parsedFields = parsePurposeFields(doc.purpose);
+  const parsedFields = getAllSubmittedFields();
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -169,7 +201,25 @@ export default function DocumentInfoModal({
         </div>
 
         <DialogFooter className="border-t border-slate-100 dark:border-slate-800 pt-3 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+            <Button
+              type="button"
+              size="sm"
+              onClick={async () => {
+                try {
+                  const fileName = `${(doc.document_type || 'document').replace(/\s+/g, '_')}_${doc.request_code || doc.id}.pdf`;
+                  await apiService.downloadDocumentPdf(doc.id, fileName);
+                  toast.success('Official PDF downloaded successfully');
+                } catch {
+                  toast.error('Failed to download PDF');
+                }
+              }}
+              className="inline-flex items-center justify-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3.5 h-9 rounded-xl transition-colors cursor-pointer"
+            >
+              <Download size={14} />
+              Download PDF
+            </Button>
+
             {onPrint && (
               <Button
                 type="button"
@@ -177,9 +227,14 @@ export default function DocumentInfoModal({
                 size="sm"
                 onClick={() => {
                   onClose();
-                  onPrint(doc);
+                  setTimeout(() => {
+                    try {
+                      document.body.style.pointerEvents = 'auto';
+                    } catch {}
+                    onPrint(doc);
+                  }, 60);
                 }}
-                className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1.5 w-full sm:w-auto"
+                className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1.5 w-full sm:w-auto cursor-pointer"
               >
                 <Printer size={14} />
                 Print / Export

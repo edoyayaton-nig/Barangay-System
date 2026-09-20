@@ -90,6 +90,7 @@ import UserPermissionsModal from '../components/UserPermissionsModal';
 import ImageViewerModal from '../components/ImageViewerModal';
 import ProfileSettingsView from '../components/ProfileSettingsView';
 import SystemNoticeBanner from '../components/SystemNoticeBanner';
+import NotificationSettingsPanel from '../components/NotificationSettingsPanel';
 import { exportToCsv, printOfficialReport, downloadOfficialPdf } from '../../utils/exportCsv';
 import { BUTUAN_BARANGAYS, getBarangayContact, getBarangayEmail } from '../../utils/barangays';
 import { PIANING_LOGO_BASE64, BUTUAN_LOGO_BASE64 } from '../components/officialLogos';
@@ -145,8 +146,11 @@ export default function AdminDashboard() {
   const [isVisitorMode, setIsVisitorMode] = useState(false);
 
   // Barangay isolation & role helpers
-  const userBarangay = user?.barangay || (user?.email?.toLowerCase().includes('anticala') ? 'Anticala' : user?.address?.toLowerCase().includes('anticala') ? 'Anticala' : 'Pianing');
-  const currentAdminBarangay = (user?.barangay || (user?.email?.toLowerCase().includes('anticala') ? 'Anticala' : user?.address?.toLowerCase().includes('anticala') ? 'Anticala' : 'Pianing')).toLowerCase().trim();
+  // IMPORTANT: user.barangay MUST always be set for all roles except super_mega_admin.
+  // Never fall back to a hardcoded barangay — that would leak cross-barangay data.
+  const userBarangay = user?.barangay || '';
+  const currentAdminBarangay = (user?.barangay || '').toLowerCase().trim();
+  const isSuperMegaAdmin = user?.role === 'super_mega_admin';
   const isSuperAdmin = user?.role === 'superadmin';
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -256,7 +260,9 @@ export default function AdminDashboard() {
   const [logSearch, setLogSearch] = useState('');
   const [logActionTypeFilter, setLogActionTypeFilter] = useState('All');
   const [logRoleFilter, setLogRoleFilter] = useState('All');
-  const [logBarangayFilter, setLogBarangayFilter] = useState('All');
+
+  // Barangay Settings sub-tab: 'archive' | 'notifications'
+  const [settingsSubTab, setSettingsSubTab] = useState<'archive' | 'notifications'>('archive');
 
   const [isAddDocOpen, setIsAddDocOpen] = useState(false);
   const [isAddResidentOpen, setIsAddResidentOpen] = useState(false);
@@ -689,7 +695,9 @@ export default function AdminDashboard() {
   const loadData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const activeBarangayParam = isSuperAdmin ? undefined : userBarangay;
+      // Data isolation: super_mega_admin sees all (undefined = no filter).
+      // ALL other roles (superadmin, admin, staff, nurse, bhw) are STRICTLY scoped to their own barangay.
+      const activeBarangayParam = isSuperMegaAdmin ? undefined : userBarangay || undefined;
       const [docsData, resData, usersData, statsData, pendingData, catData, logsData, schedData, aptsData, popData, cStats, hhData] = await Promise.all([
         apiService.getDocuments(activeBarangayParam),
         apiService.getResidents(activeBarangayParam, selectedCensusPurok),
@@ -721,8 +729,8 @@ export default function AdminDashboard() {
         setActivityLogs(logsData);
       }
 
-      // If Super Admin, fetch 86-barangays overview and system diagnostics in background
-      if (isSuperAdmin) {
+      // Only the platform-level super_mega_admin can see all 86 barangays overview and system diagnostics
+      if (isSuperMegaAdmin) {
         apiService.getBarangaysOverview().then(data => setBarangaysOverview(data || [])).catch(() => {});
         apiService.getDatabaseStats().then(data => setDbStats(data?.tables || [])).catch(() => {});
         apiService.getGatewaysHealth().then(data => setGatewayHealth(data || null)).catch(() => {});
@@ -780,19 +788,24 @@ export default function AdminDashboard() {
     }
   };
 
-  const loadLogs = async () => {
+  const loadLogs = async (showToast = false) => {
     setLogsLoading(true);
     try {
       const data = await apiService.getActivityLogs({
-        barangay: logBarangayFilter !== 'All' ? logBarangayFilter : (user?.role === 'superadmin' ? undefined : userBarangay),
+        // Superadmin and Barangay staff: always scoped strictly to their own barangay
+        barangay: userBarangay,
         action_type: logActionTypeFilter !== 'All' ? logActionTypeFilter : undefined,
         role: logRoleFilter !== 'All' ? logRoleFilter : undefined,
         search: logSearch || undefined
       });
       setActivityLogs(data);
-      toast.success('Activity logs refreshed');
+      if (showToast) {
+        toast.success('Activity logs refreshed');
+      }
     } catch (err) {
-      toast.error('Failed to refresh activity logs');
+      if (showToast) {
+        toast.error('Failed to refresh activity logs');
+      }
     } finally {
       setLogsLoading(false);
     }
@@ -806,12 +819,9 @@ export default function AdminDashboard() {
     }
     const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
     
-    // Filter displayed logs
+    // Filter displayed logs — strictly scoped to userBarangay
     const displayedLogs = activityLogs.filter(log => {
-      if (!isSuperAdmin && log.barangay && log.barangay !== 'All (City-Wide)' && !log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) {
-        return false;
-      }
-      if (logBarangayFilter !== 'All' && log.barangay && !log.barangay.toLowerCase().includes(logBarangayFilter.toLowerCase()) && log.barangay !== 'All (City-Wide)') {
+      if (userBarangay && log.barangay && !log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) {
         return false;
       }
       if (logActionTypeFilter !== 'All' && (log.action_type || 'General') !== logActionTypeFilter) {
@@ -1002,7 +1012,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (activeTab === 'records') {
-      const activeBarangayParam = isSuperAdmin ? undefined : userBarangay;
+      const activeBarangayParam = isSuperMegaAdmin ? undefined : (userBarangay || undefined);
       apiService.getCensusStats(activeBarangayParam, selectedCensusPurok).then(data => {
         if (data) setCensusStats(data);
       }).catch(() => {});
@@ -1013,7 +1023,7 @@ export default function AdminDashboard() {
         if (data) setResidents(data);
       }).catch(() => {});
     }
-  }, [selectedCensusPurok, activeTab]);
+  }, [selectedCensusPurok, activeTab, isSuperMegaAdmin, userBarangay]);
 
   useEffect(() => {
     if (activeTab === 'logs' || (activeTab === 'overview' && isSuperAdmin)) {
@@ -1420,6 +1430,25 @@ export default function AdminDashboard() {
       } else {
         await apiService.approveResident(res.id, user?.name);
         toast.success(`${res.first_name} ${res.last_name} has been VERIFIED.`);
+
+        // Dispatch Email notification on verification toggle
+        if (res.email) {
+          const resName = `${res.first_name || ''} ${res.last_name || ''}`.trim() || 'Resident';
+          dispatchResidentNotification({
+            residentEmail: res.email,
+            residentName: resName,
+            type: 'account',
+            title: '🎉 Account Verified & Approved',
+            message: `Mabuhay ${resName}! Your Barangay ${res.barangay || user?.barangay || 'Antongalon'} resident account has been officially approved and verified by the Barangay Administration. You can now log in to the portal to request clearances, certificates, and access healthcare appointments.`,
+            statusBadge: 'Verified',
+            badgeColor: 'emerald',
+            barangay: res.barangay || user?.barangay || 'Antongalon'
+          }).then(notifyRes => {
+            if (notifyRes.email) {
+              toast.info(`📧 Verification email dispatched to ${res.email}`);
+            }
+          }).catch(() => {});
+        }
       }
       loadData();
     } catch {
@@ -2349,9 +2378,9 @@ export default function AdminDashboard() {
 
   // Check if a system user account is visible to the current administrator
   const isUserForAdmin = (u: SystemUser) => {
-    if (isSuperAdmin) return true;
-    if (u.role === 'superadmin') return false;
-    const adminBrgy = (user?.barangay || 'Pianing').toLowerCase().trim();
+    if (isSuperMegaAdmin) return true;
+    if (u.role === 'superadmin' && !isSuperAdmin) return false;
+    const adminBrgy = (user?.barangay || '').toLowerCase().trim();
     const uBrgy = (u.barangay || '').toLowerCase().trim();
     if (!adminBrgy) return true;
     return uBrgy === adminBrgy;
@@ -2359,7 +2388,7 @@ export default function AdminDashboard() {
 
   // Check if an address or record belongs to current admin's barangay
   const belongsToMyBarangay = (itemAddressOrBarangay?: string, itemEmail?: string, itemBarangay?: string) => {
-    if (isSuperAdmin) return true;
+    if (isSuperMegaAdmin) return true;
     if (!currentAdminBarangay) return true;
 
     // Direct barangay field match
@@ -2385,7 +2414,7 @@ export default function AdminDashboard() {
 
   // Filtered lists — Documents tab shows ONLY active requests for this barangay
   const isDocForMyBarangay = (doc: DocumentRequest) => {
-    if (isSuperAdmin) return true;
+    if (isSuperMegaAdmin) return true;
     if (!currentAdminBarangay) return true;
 
     // 1. Direct barangay check
@@ -2462,6 +2491,29 @@ export default function AdminDashboard() {
     (res.phone || '').toLowerCase().includes(residentSearch.toLowerCase())
   );
 
+  // Census Inhabitants Roster — strictly isolated by barangay, selected census purok, and search
+  const censusFilteredResidents = barangayResidents.filter(res => {
+    if (selectedCensusPurok !== 'all') {
+      const cleanP = selectedCensusPurok.replace(/purok\s*/i, '').trim();
+      const rPurok = (res.purok || '').toString().replace(/purok\s*/i, '').trim();
+      if (rPurok !== cleanP) {
+        const addrLower = (res.address || '').toLowerCase();
+        if (!addrLower.includes(`purok ${cleanP}`) && !addrLower.includes(`purok ${cleanP} `)) {
+          return false;
+        }
+      }
+    }
+    const q = residentSearch.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      `${res.first_name} ${res.last_name}`.toLowerCase().includes(q) ||
+      (res.address || '').toLowerCase().includes(q) ||
+      (res.household_number || '').toLowerCase().includes(q) ||
+      (res.family_name || '').toLowerCase().includes(q) ||
+      (res.phone || '').toLowerCase().includes(q)
+    );
+  });
+
   // Pending resident approvals — strictly isolated by barangay
   const myPendingResidents = pendingResidents
     .filter(res => belongsToMyBarangay(res.address || (res as any).barangay, res.email, (res as any).barangay))
@@ -2506,14 +2558,15 @@ export default function AdminDashboard() {
     }] : []),
     ...(isSuperAdmin || hasUserPermission(user, 'can_view_census') ? [{ id: 'records', label: 'Census & Demographics', icon: Users }] : []),
     ...(isSuperAdmin || hasUserPermission(user, 'can_generate_reports') ? [{ id: 'reports', label: 'Analytics & Reports', icon: BarChart }] : []),
-    { id: 'archive', label: 'Archive', icon: Archive },
-    // History Logs: Available to Superadmin (scoped to their barangay) — label updated
-    ...(isSuperAdmin || hasUserPermission(user, 'can_view_logs') ? [{ id: 'logs', label: isSuperAdmin ? 'History Logs' : 'Activity Logs', icon: History }] : []),
+    // Activity Logs: Available to Superadmin (strictly scoped to their barangay) and permitted staff
+    ...(isSuperAdmin || hasUserPermission(user, 'can_view_logs') ? [{ id: 'logs', label: 'Activity Logs', icon: History }] : []),
     // Category Manager: REMOVED from Superadmin — Super Mega Admin only (via hasUserPermission explicit grant)
     ...(hasUserPermission(user, 'can_manage_categories') && !isSuperAdmin ? [{ id: 'categories', label: 'Category Manager', icon: Tag }] : []),
     // System & Backup: REMOVED from Superadmin — Super Mega Admin only
     ...(hasUserPermission(user, 'can_access_system') && !isSuperAdmin ? [{ id: 'system', label: 'System & Backup', icon: Database }] : []),
     { id: 'profile-settings', label: 'Profile Settings', icon: UserCircle },
+    // Barangay Settings (Archive + Notifications) — SuperAdmin only
+    ...(isSuperAdmin ? [{ id: 'settings', label: 'Barangay Settings', icon: Settings }] : []),
   ];
 
 
@@ -3644,7 +3697,7 @@ export default function AdminDashboard() {
                         </Badge>
                       </div>
                       <p className="text-xs text-slate-500 max-w-2xl mt-1 leading-relaxed">
-                        Process official constituent requests for Barangay Clearance, Certificate of Residency, Indigency, and Business Permits. Once certified and claimed, records move automatically to the <button onClick={() => setActiveTab('archive')} className="underline font-bold text-blue-600 hover:text-blue-800 cursor-pointer">Archive Repository</button>.
+                        Process official constituent requests for Barangay Clearance, Certificate of Residency, Indigency, and Business Permits. Once certified and claimed, records move automatically to the <button onClick={() => { setActiveTab('settings'); setSettingsSubTab('archive'); }} className="underline font-bold text-blue-600 hover:text-blue-800 cursor-pointer">Archive Repository</button>.
                       </p>
                     </div>
                   </div>
@@ -4208,15 +4261,59 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* TAB: ARCHIVE / RECORDS SETTINGS */}
-          {activeTab === 'archive' && (
+          {/* TAB: BARANGAY SETTINGS — Archive + Notifications (SuperAdmin only) */}
+          {activeTab === 'settings' && isSuperAdmin && (
             <div className="space-y-6">
-              {/* Header */}
+              {/* Settings Header */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <Settings className="text-indigo-600" size={22} />
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Settings &amp; Completed Records Archive</h2>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Barangay Settings</h2>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Manage your barangay's completed records archive and configure notification gateways (Email & SMS).
+                  </p>
+                </div>
+              </div>
+
+              {/* Sub-tab Switcher */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl w-fit border border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setSettingsSubTab('archive')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    settingsSubTab === 'archive'
+                      ? 'bg-white dark:bg-slate-800 text-indigo-700 shadow-sm border border-slate-200 dark:border-slate-700'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                  }`}
+                >
+                  <Archive size={14} />
+                  Archive & Records
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettingsSubTab('notifications')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    settingsSubTab === 'notifications'
+                      ? 'bg-white dark:bg-slate-800 text-indigo-700 shadow-sm border border-slate-200 dark:border-slate-700'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                  }`}
+                >
+                  <Bell size={14} />
+                  Notification Settings
+                </button>
+              </div>
+
+              {/* ── ARCHIVE SUB-TAB ── */}
+              {settingsSubTab === 'archive' && (
+            <div className="space-y-6">
+              {/* Archive Sub-header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Archive className="text-emerald-600" size={20} />
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Completed Records Archive</h3>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
                     Central archive for all approved/completed clearance documents, residency certificates, and verified resident accounts.
@@ -4716,6 +4813,14 @@ export default function AdminDashboard() {
             </div>
           )}
 
+              {/* ── NOTIFICATION SETTINGS SUB-TAB ── */}
+              {settingsSubTab === 'notifications' && (
+                <NotificationSettingsPanel />
+              )}
+
+            </div>
+          )}
+
           {/* TAB 3: POPULATIONS & HOUSEHOLD CENSUS REGISTRY */}
           {activeTab === 'records' && (
             <div className="space-y-6">
@@ -4759,16 +4864,16 @@ export default function AdminDashboard() {
                       const activePurokLabel = selectedCensusPurok === 'all' ? 'All Puroks (1 to 7)' : `Purok ${selectedCensusPurok}`;
                       downloadOfficialPdf({
                         title: 'Barangay Population & Household Census Report',
-                        subtitle: `Barangay ${user?.barangay || 'Pianing'}, Butuan City — ${activePurokLabel}`,
-                        filename: `Barangay_Pianing_Population_Census_${selectedCensusPurok === 'all' ? 'All_Puroks' : 'Purok_' + selectedCensusPurok}`,
-                        barangay: user?.barangay || 'Pianing',
+                        subtitle: `Barangay ${userBarangay || 'Pianing'}, Butuan City — ${activePurokLabel}`,
+                        filename: `Barangay_${(userBarangay || 'Pianing').replace(/\s+/g, '_')}_Population_Census_${selectedCensusPurok === 'all' ? 'All_Puroks' : 'Purok_' + selectedCensusPurok}`,
+                        barangay: userBarangay || 'Pianing',
                         orientation: 'landscape',
                         preparedBy: user?.name || 'Admin',
                         preparedByTitle: 'Barangay Civil Registrar / Administrator',
                         stats: [
-                          { label: 'Total Households', value: censusStats?.total_households ?? 0 },
-                          { label: 'Total Families', value: censusStats?.total_families ?? 0 },
-                          { label: 'Total Population', value: censusStats?.total_population ?? filteredResidents.length },
+                          { label: 'Total Households', value: censusStats?.total_households ?? censusHouseholds.length },
+                          { label: 'Total Families', value: censusStats?.total_families ?? censusHouseholds.length },
+                          { label: 'Total Population', value: censusStats?.total_population ?? censusFilteredResidents.length },
                           { label: 'Senior Citizens', value: `${censusStats?.senior_citizens?.total ?? 0} (M: ${censusStats?.senior_citizens?.male ?? 0}, F: ${censusStats?.senior_citizens?.female ?? 0})` },
                           { label: 'Children / Minors', value: censusStats?.children_count ?? 0 },
                           { label: 'Employment Rate', value: `${censusStats?.employment?.rate_percentage ?? 80}% (${censusStats?.employment?.employed ?? 0} Employed / ${censusStats?.employment?.unemployed ?? 0} Unemployed)` }
@@ -4776,7 +4881,7 @@ export default function AdminDashboard() {
                         tables: [{
                           title: `Civil Inhabitants Roster (${activePurokLabel})`,
                           headers: ['ID', 'Household #', 'Family Name', 'Full Name', 'Age', 'Gender', 'Purok', 'Employment'],
-                          rows: filteredResidents.map(r => [
+                          rows: censusFilteredResidents.map(r => [
                             r.id,
                             r.household_number || `HH-P${r.purok || '1'}-${r.id}`,
                             r.family_name || r.last_name,
@@ -4908,7 +5013,7 @@ export default function AdminDashboard() {
                 >
                   <span>All Puroks</span>
                   <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${selectedCensusPurok === 'all' ? 'bg-blue-50 text-blue-700 font-bold' : 'bg-slate-200/80 text-slate-600'}`}>
-                    {censusStats?.total_population ?? filteredResidents.length}
+                    {censusStats?.total_population ?? censusFilteredResidents.length}
                   </span>
                 </button>
                 {[1, 2, 3, 4, 5, 6].map(p => {
@@ -5141,14 +5246,14 @@ export default function AdminDashboard() {
                           </TableRow>
                         </TableHeader>
                         <TableBody className="divide-y divide-slate-100">
-                          {filteredResidents.length === 0 ? (
+                          {censusFilteredResidents.length === 0 ? (
                             <TableRow>
                               <TableCell colSpan={9} className="text-center py-12 text-slate-400 text-xs">
                                 No inhabitants found matching criteria.
                               </TableCell>
                             </TableRow>
                           ) : (
-                            filteredResidents.map((res, idx) => (
+                            censusFilteredResidents.map((res, idx) => (
                               <TableRow key={`res-rec-${res.id}-${idx}`} className="text-xs hover:bg-slate-50/80 transition-colors">
                                 <TableCell className="pl-4 font-mono text-slate-500 font-semibold">#{res.id}</TableCell>
                                 <TableCell>
@@ -5726,7 +5831,7 @@ export default function AdminDashboard() {
                           <TableHead className="text-xs font-bold text-slate-700">Verification</TableHead>
                           <TableHead className="text-xs font-bold text-slate-700">Last Login</TableHead>
                           <TableHead className="text-xs font-bold text-slate-700">Status</TableHead>
-                          <TableHead className="text-xs font-bold text-slate-700 text-right pr-4">Actions</TableHead>
+                          <TableHead className="text-xs font-bold text-slate-700 text-right pr-4 w-[240px] min-w-[240px] shrink-0">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -5904,8 +6009,8 @@ export default function AdminDashboard() {
                                   {u.status || 'Active'}
                                 </button>
                               </TableCell>
-                              <TableCell className="text-right pr-4">
-                                <div className="flex items-center justify-end gap-1 flex-wrap">
+                              <TableCell className="text-right pr-4 py-2.5 whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                                   {/* View Profile Button */}
                                   <Button
                                     size="sm"
@@ -6550,17 +6655,21 @@ export default function AdminDashboard() {
 
 
           {/* TAB 5: SYSTEM REPORTS */}
-          {activeTab === 'reports' && (
+          {activeTab === 'reports' && (() => {
+            const targetResidents = isSuperMegaAdmin ? residents : barangayResidents;
+            const targetDocs = isSuperMegaAdmin ? documents : barangayDocs;
+
+            return (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                    {isSuperAdmin ? 'City-Wide System & Administrative Reports' : `Barangay ${userBarangay} Administrative Reports`}
+                    {isSuperMegaAdmin ? 'City-Wide System & Administrative Reports' : `Barangay ${userBarangay || 'Pianing'} Administrative Reports`}
                   </h2>
                   <p className="text-xs text-slate-500">
-                    {isSuperAdmin
+                    {isSuperMegaAdmin
                       ? 'Consolidated city-wide analytics, resident registry, and database export center across all Butuan City barangays.'
-                      : `Official Barangay ${userBarangay}, Butuan City analytics, population registry, and report export center.`}
+                      : `Official Barangay ${userBarangay || 'Pianing'}, Butuan City analytics, population registry, and report export center.`}
                   </p>
                 </div>
 
@@ -6568,20 +6677,21 @@ export default function AdminDashboard() {
                   <Button
                     onClick={() => {
                       downloadOfficialPdf({
-                        title: isSuperAdmin ? 'City-Wide Clearance Requests Log' : `Barangay ${userBarangay} Clearance Requests Log`,
+                        title: isSuperMegaAdmin ? 'City-Wide Clearance Requests Log' : `Barangay ${userBarangay || 'Pianing'} Clearance Requests Log`,
                         subtitle: `All clearance & certificate requests — Generated ${new Date().toLocaleDateString()}`,
-                        filename: `Barangay_${userBarangay}_Clearance_Requests_${new Date().toISOString().slice(0, 10)}`,
+                        filename: `Barangay_${(userBarangay || 'Pianing').replace(/\s+/g, '_')}_Clearance_Requests_${new Date().toISOString().slice(0, 10)}`,
+                        barangay: userBarangay || 'Pianing',
                         preparedBy: user?.name || 'Administrator',
                         preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : user?.role === 'staff' ? 'Barangay Staff' : 'Barangay Administrator',
                         stats: [
-                          { label: 'Total Requests', value: documents.length },
-                          { label: 'Completed', value: documents.filter(d => d.status === 'Completed').length },
-                          { label: 'Pending', value: documents.filter(d => d.status === 'Pending').length }
+                          { label: 'Total Requests', value: targetDocs.length },
+                          { label: 'Completed', value: targetDocs.filter(d => d.status === 'Completed').length },
+                          { label: 'Pending', value: targetDocs.filter(d => d.status === 'Pending').length }
                         ],
                         tables: [{
                           title: 'Document Clearance Requests',
                           headers: ['Code', 'Resident', 'Document Type', 'Purpose', 'Status', 'Date'],
-                          rows: documents.map(d => [d.request_code || '', d.resident_name || '', d.document_type || '', d.purpose || '', d.status || '', d.requested_at || 'Recent'])
+                          rows: targetDocs.map(d => [d.request_code || '', d.resident_name || '', d.document_type || '', d.purpose || '', d.status || '', d.requested_at || 'Recent'])
                         }]
                       });
                       toast.success('Clearance log PDF downloaded');
@@ -6596,18 +6706,19 @@ export default function AdminDashboard() {
                   <Button
                     onClick={() => {
                       downloadOfficialPdf({
-                        title: isSuperAdmin ? 'City-Wide Resident Demographic Registry' : `Barangay ${userBarangay} Resident Demographic Registry`,
-                        subtitle: `${isSuperAdmin ? 'All Butuan City Barangays' : `Barangay ${userBarangay}`} resident census — Generated ${new Date().toLocaleDateString()}`,
-                        filename: `Barangay_${userBarangay}_Resident_Demographics_${new Date().toISOString().slice(0, 10)}`,
+                        title: isSuperMegaAdmin ? 'City-Wide Resident Demographic Registry' : `Barangay ${userBarangay || 'Pianing'} Resident Demographic Registry`,
+                        subtitle: `${isSuperMegaAdmin ? 'All Butuan City Barangays' : `Barangay ${userBarangay || 'Pianing'}`} resident census — Generated ${new Date().toLocaleDateString()}`,
+                        filename: `Barangay_${(userBarangay || 'Pianing').replace(/\s+/g, '_')}_Resident_Demographics_${new Date().toISOString().slice(0, 10)}`,
+                        barangay: userBarangay || 'Pianing',
                         preparedBy: user?.name || 'Administrator',
                         preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : user?.role === 'staff' ? 'Barangay Staff' : 'Barangay Administrator',
                         stats: [
-                          { label: 'Total Residents', value: residents.length }
+                          { label: 'Total Residents', value: targetResidents.length }
                         ],
                         tables: [{
                           title: 'Resident Demographics',
                           headers: ['ID', 'First Name', 'Last Name', 'Gender', 'Address', 'Phone', 'Email'],
-                          rows: residents.map(r => [r.id, r.first_name, r.last_name, r.gender, r.address, r.phone || 'N/A', r.email || 'N/A'])
+                          rows: targetResidents.map(r => [r.id, r.first_name, r.last_name, r.gender, r.address, r.phone || 'N/A', r.email || 'N/A'])
                         }]
                       });
                       toast.success('Resident registry PDF downloaded');
@@ -6621,22 +6732,22 @@ export default function AdminDashboard() {
                   <Button
                     onClick={() => {
                       printOfficialReport({
-                        title: isSuperAdmin ? 'City-Wide System & Administrative Report' : `Barangay ${userBarangay} Administrative Report`,
-                        subtitle: `Barangay ${userBarangay}, Butuan City, Agusan del Norte • Administrative Operations & Registry`,
+                        title: isSuperMegaAdmin ? 'City-Wide System & Administrative Report' : `Barangay ${userBarangay || 'Pianing'} Administrative Report`,
+                        subtitle: `Barangay ${userBarangay || 'Pianing'}, Butuan City, Agusan del Norte • Administrative Operations & Registry`,
                         department: 'Office of the Barangay Captain • Administrative Division',
                         preparedBy: user?.name || 'Admin Juan Dela Cruz',
                         preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : user?.role === 'staff' ? 'Barangay Staff / Clerk' : 'Barangay Administrator',
                         stats: [
-                          { label: 'Total Residents', value: residents.length, color: '#2563eb' },
-                          { label: 'Clearance Requests', value: documents.length, color: '#4f46e5' },
-                          { label: 'Completed Clearances', value: documents.filter(d => d.status === 'Completed').length, color: '#059669' },
-                          { label: 'Pending Approvals', value: pendingResidents.length, color: '#d97706' }
+                          { label: 'Total Residents', value: targetResidents.length, color: '#2563eb' },
+                          { label: 'Clearance Requests', value: targetDocs.length, color: '#4f46e5' },
+                          { label: 'Completed Clearances', value: targetDocs.filter(d => d.status === 'Completed').length, color: '#059669' },
+                          { label: 'Pending Approvals', value: myPendingResidents.length, color: '#d97706' }
                         ],
                         tables: [
                           {
                             title: 'Recent Document Clearances & Certification Issuances',
                             headers: ['Control Code', 'Resident Applicant', 'Document Type', 'Status', 'Date'],
-                            rows: documents.slice(0, 10).map(d => [
+                            rows: targetDocs.slice(0, 10).map(d => [
                               d.request_code,
                               d.resident_name,
                               d.document_type,
@@ -6647,7 +6758,7 @@ export default function AdminDashboard() {
                           {
                             title: 'Barangay Resident Demographic Sample',
                             headers: ['Resident ID', 'Full Name', 'Gender', 'Purok / Address', 'Contact'],
-                            rows: residents.slice(0, 10).map(r => [
+                            rows: targetResidents.slice(0, 10).map(r => [
                               `#${r.id}`,
                               `${r.first_name} ${r.last_name}`,
                               r.gender,
@@ -6678,16 +6789,16 @@ export default function AdminDashboard() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="text-base font-bold text-white">
-                            {isSuperAdmin ? 'City-Wide Municipal Analytics & Master Oversight' : `Barangay ${userBarangay} Administrative Intelligence`}
+                            {isSuperMegaAdmin ? 'City-Wide Municipal Analytics & Master Oversight' : `Barangay ${userBarangay || 'Pianing'} Administrative Intelligence`}
                           </h3>
                           <span className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                            {isSuperAdmin ? 'Super Administrator Scope' : 'Barangay Administrator Scope'}
+                            {isSuperMegaAdmin ? 'Super Mega Administrator Scope' : isSuperAdmin ? 'Barangay Captain Scope' : 'Barangay Administrator Scope'}
                           </span>
                         </div>
                         <p className="text-xs text-indigo-200/80 mt-0.5">
-                          {isSuperAdmin
+                          {isSuperMegaAdmin
                             ? 'Consolidated operational metrics across all 86 Butuan City barangays, municipal clearance throughput, staff distribution, and audit activity.'
-                            : `Real-time demographic indicators, clearance issuance pipeline, resident verification velocity, and civil census registry for Barangay ${userBarangay}.`}
+                            : `Real-time demographic indicators, clearance issuance pipeline, resident verification velocity, and civil census registry for Barangay ${userBarangay || 'Pianing'}.`}
                         </p>
                       </div>
                     </div>
@@ -7278,7 +7389,8 @@ export default function AdminDashboard() {
                 </Card>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* TAB 8: CATEGORY MANAGER (SUPER ADMIN FREEDOM & DELEGABLE ACCESS) */}
           {activeTab === 'categories' && (isSuperAdmin || hasUserPermission(user, 'can_manage_categories')) && (() => {
@@ -7706,7 +7818,7 @@ export default function AdminDashboard() {
 
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={loadLogs}
+                    onClick={() => loadLogs(true)}
                     variant="outline"
                     size="sm"
                     className="h-8 text-xs gap-1.5 border-slate-300 cursor-pointer"
@@ -7726,18 +7838,9 @@ export default function AdminDashboard() {
               {/* Metric Stat Cards */}
               {(() => {
                 const scopedLogs = activityLogs.filter(log => {
-                  // Barangay Superadmin: Strictly scoped to their barangay only — no city-wide or system events
-                  if (isSuperAdmin) {
-                    if (!log.barangay || log.barangay === 'All (City-Wide)') return false;
-                    if (!log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) return false;
-                    if (log.action_type === 'System') return false;
-                    const staffRoles = ['admin', 'bhw', 'nurse', 'staff', 'resident'];
-                    if (log.user_role && !staffRoles.includes(log.user_role.toLowerCase())) return false;
-                    return true;
-                  }
-                  // Other permitted users: filter by their barangay
-                  if (log.barangay && log.barangay !== 'All (City-Wide)' && !log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) {
-                    return false;
+                  // Strictly scoped to their own barangay only
+                  if (userBarangay) {
+                    if (!log.barangay || !log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) return false;
                   }
                   return true;
                 });
@@ -7843,26 +7946,13 @@ export default function AdminDashboard() {
                         </SelectContent>
                       </Select>
 
-                      {/* Searchable Barangay Filter (Super Admin) */}
-                      {isSuperAdmin && (
-                        <div className="relative">
-                          <Input
-                            list="activity-logs-barangay-list"
-                            placeholder="Filter by Barangay..."
-                            value={logBarangayFilter === 'All' ? '' : logBarangayFilter}
-                            onChange={e => setLogBarangayFilter(e.target.value.trim() || 'All')}
-                            className="h-9 text-xs w-44 bg-white dark:bg-slate-800 border-slate-200"
-                          />
-                          <datalist id="activity-logs-barangay-list">
-                            <option value="All">All Barangays</option>
-                            {BUTUAN_BARANGAYS.map(b => (
-                              <option key={b} value={b}>Barangay {b}</option>
-                            ))}
-                          </datalist>
-                        </div>
-                      )}
+                      {/* Scoped Barangay Indicator */}
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        <MapPin size={13} className="text-indigo-600 shrink-0" />
+                        <span>Barangay {userBarangay}</span>
+                      </div>
 
-                      {(logSearch || logActionTypeFilter !== 'All' || logRoleFilter !== 'All' || logBarangayFilter !== 'All') && (
+                      {(logSearch || logActionTypeFilter !== 'All' || logRoleFilter !== 'All') && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -7870,7 +7960,6 @@ export default function AdminDashboard() {
                             setLogSearch('');
                             setLogActionTypeFilter('All');
                             setLogRoleFilter('All');
-                            setLogBarangayFilter('All');
                           }}
                           className="h-9 text-xs text-rose-600 hover:text-rose-800 hover:bg-rose-50 cursor-pointer"
                         >
@@ -7897,8 +7986,7 @@ export default function AdminDashboard() {
                   <Badge variant="outline" className="text-xs font-mono">
                     {(() => {
                       const displayed = activityLogs.filter(log => {
-                        if (!isSuperAdmin && log.barangay && log.barangay !== 'All (City-Wide)' && !log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) return false;
-                        if (logBarangayFilter !== 'All' && log.barangay && !log.barangay.toLowerCase().includes(logBarangayFilter.toLowerCase()) && log.barangay !== 'All (City-Wide)') return false;
+                        if (userBarangay && (!log.barangay || !log.barangay.toLowerCase().includes(userBarangay.toLowerCase()))) return false;
                         if (logActionTypeFilter !== 'All' && (log.action_type || 'General') !== logActionTypeFilter) return false;
                         if (logRoleFilter !== 'All' && log.user_role?.toLowerCase() !== logRoleFilter.toLowerCase()) return false;
                         if (logSearch.trim()) {
@@ -7917,18 +8005,17 @@ export default function AdminDashboard() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50 text-xs">
-                          <TableHead className="font-bold">Actor / User</TableHead>
-                          <TableHead className="font-bold">Event &amp; Action</TableHead>
-                          <TableHead className="font-bold text-center">Category</TableHead>
-                          <TableHead className="font-bold text-center">Barangay Scope</TableHead>
-                          <TableHead className="font-bold text-right">Timestamp</TableHead>
+                          <TableHead className="font-bold w-[200px] shrink-0">Actor / User</TableHead>
+                          <TableHead className="font-bold min-w-[260px]">Event &amp; Action</TableHead>
+                          <TableHead className="font-bold text-center w-[110px] shrink-0">Category</TableHead>
+                          <TableHead className="font-bold text-center w-[120px] shrink-0">Barangay Scope</TableHead>
+                          <TableHead className="font-bold text-right w-[150px] shrink-0">Timestamp</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {(() => {
                           const displayedLogs = activityLogs.filter(log => {
-                            if (!isSuperAdmin && log.barangay && log.barangay !== 'All (City-Wide)' && !log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) return false;
-                            if (logBarangayFilter !== 'All' && log.barangay && !log.barangay.toLowerCase().includes(logBarangayFilter.toLowerCase()) && log.barangay !== 'All (City-Wide)') return false;
+                            if (userBarangay && (!log.barangay || !log.barangay.toLowerCase().includes(userBarangay.toLowerCase()))) return false;
                             if (logActionTypeFilter !== 'All' && (log.action_type || 'General') !== logActionTypeFilter) return false;
                             if (logRoleFilter !== 'All' && log.user_role?.toLowerCase() !== logRoleFilter.toLowerCase()) return false;
                             if (logSearch.trim()) {
@@ -7997,10 +8084,10 @@ export default function AdminDashboard() {
                                 </TableCell>
 
                                 {/* Action & Details */}
-                                <TableCell className="max-w-md py-3">
-                                  <p className="font-bold text-slate-900">{log.action}</p>
+                                <TableCell className="max-w-md py-3 pr-4 break-words">
+                                  <p className="font-bold text-slate-900 leading-snug">{log.action}</p>
                                   {log.details && (
-                                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{log.details}</p>
+                                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed break-words">{log.details}</p>
                                   )}
                                 </TableCell>
 
@@ -8525,7 +8612,7 @@ export default function AdminDashboard() {
         currentUserName={user?.name || "Admin Juan Dela Cruz"}
         currentUserEmail={user?.email}
         currentUserId={user?.id}
-        currentUserBarangay={user?.barangay || (user?.email?.toLowerCase().includes('anticala') ? 'Anticala' : user?.address?.toLowerCase().includes('anticala') ? 'Anticala' : (user?.role === 'superadmin' ? 'All (City-Wide)' : 'Pianing'))}
+        currentUserBarangay={user?.barangay || (user?.email?.toLowerCase().includes('anticala') ? 'Anticala' : user?.address?.toLowerCase().includes('anticala') ? 'Anticala' : (isSuperMegaAdmin ? 'All (City-Wide)' : 'Pianing'))}
       />
 
       {/* Resident 360° Profile Modal */}

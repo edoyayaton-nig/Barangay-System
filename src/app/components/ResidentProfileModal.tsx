@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, FileText, Syringe, Heart, Phone, MapPin, ShieldCheck, Building2, Send, MessageSquare, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
+import { User, FileText, Syringe, Heart, Phone, MapPin, ShieldCheck, Building2, Send, MessageSquare, CheckCircle2, Clock, XCircle, AlertCircle, Info } from 'lucide-react';
 import { apiService, Resident, DocumentRequest, MaternalRecord, ImmunizationRecord } from '../../services/api';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Badge } from './ui/badge';
@@ -266,6 +266,18 @@ export default function ResidentProfileModal({
             </div>
           </div>
         </DialogHeader>
+
+        {Boolean((resident as any)?.last_profile_update_note) && (
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2.5 text-xs text-blue-900 shadow-xs">
+            <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <span className="font-semibold text-blue-950">Recent Profile Update by Resident:</span>
+              <p className="mt-0.5 text-blue-800 leading-relaxed font-mono text-[11px] whitespace-pre-wrap">
+                {(resident as any).last_profile_update_note}
+              </p>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="py-12 text-center text-xs text-slate-400">Loading full resident record...</div>

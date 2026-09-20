@@ -27,24 +27,52 @@ async function run() {
   }
   console.log('✓ POST /api/system/maintenance successfully activated broadcast');
 
-  // 2. Fetch GET maintenance
-  const getRes = await fetch('http://localhost:5000/api/system/maintenance');
-  const getData = await getRes.json();
+  // 2. Fetch GET maintenance (confirm active)
+  const getActiveRes = await fetch('http://localhost:5000/api/system/maintenance');
+  const getActiveData = await getActiveRes.json();
 
-  if (!getData.enabled || getData.type !== 'down') {
-    throw new Error(`GET maintenance mismatch: ${JSON.stringify(getData)}`);
+  if (!getActiveData.enabled || getActiveData.type !== 'down') {
+    throw new Error(`GET maintenance mismatch: ${JSON.stringify(getActiveData)}`);
   }
   console.log('✓ GET /api/system/maintenance confirmed enabled: true with down type');
 
-  // 3. Verify file storage
+  // 3. Deactivate broadcast (Turn OFF)
+  const deactivateRes = await fetch('http://localhost:5000/api/system/maintenance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      enabled: false,
+      type: 'down',
+      title: 'CRITICAL ALERT: System is Temporarily Down',
+      message: 'The system is normal.',
+      estimated_uptime: ''
+    })
+  });
+
+  const deactivateData = await deactivateRes.json();
+  if (deactivateRes.status !== 200 || !deactivateData.success || deactivateData.maintenance.enabled !== false) {
+    throw new Error(`Deactivation failed: ${JSON.stringify(deactivateData)}`);
+  }
+  console.log('✓ POST /api/system/maintenance successfully deactivated broadcast (Turned OFF)');
+
+  // 4. Fetch GET maintenance (confirm disabled)
+  const getDeactRes = await fetch('http://localhost:5000/api/system/maintenance');
+  const getDeactData = await getDeactRes.json();
+
+  if (getDeactData.enabled !== false) {
+    throw new Error(`GET maintenance mismatch: expected enabled: false, got: ${JSON.stringify(getDeactData)}`);
+  }
+  console.log('✓ GET /api/system/maintenance confirmed enabled: false (broadcast OFF)');
+
+  // 5. Verify file storage persistence
   const filePath = path.join(__dirname, '..', '..', 'server', 'data', 'maintenance.json');
   const fileContent = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  if (!fileContent.enabled || fileContent.type !== 'down') {
-    throw new Error('maintenance.json did not persist enabled: true');
+  if (fileContent.enabled !== false) {
+    throw new Error('maintenance.json did not persist enabled: false');
   }
-  console.log('✓ server/data/maintenance.json confirmed persisted state');
+  console.log('✓ server/data/maintenance.json confirmed persisted enabled: false state');
 
-  console.log('All maintenance broadcast checks PASSED!');
+  console.log('All maintenance broadcast activate AND deactivate checks PASSED!');
 }
 
 run().catch(err => {

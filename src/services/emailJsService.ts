@@ -14,30 +14,76 @@ export interface EmailJsConfig {
 
 const DEFAULT_CONFIG: EmailJsConfig = {
   serviceId: (import.meta as any).env?.VITE_EMAILJS_SERVICE_ID || 'service_6nk2ylj',
-  templateId: (import.meta as any).env?.VITE_EMAILJS_TEMPLATE_ID || 'service_6nk2ylj',
+  templateId: (import.meta as any).env?.VITE_EMAILJS_TEMPLATE_ID || 'template_tjcwzij',
   publicKey: (import.meta as any).env?.VITE_EMAILJS_PUBLIC_KEY || ''
 };
 
-// Retrieve configuration (allows dynamic setting via Settings tab or localStorage)
-export function getEmailJsConfig(): EmailJsConfig {
+// Retrieve configuration (strictly scoped per barangay jurisdiction)
+export function getEmailJsConfig(barangayName?: string): EmailJsConfig {
   try {
+    if (barangayName) {
+      const cleanBrgy = barangayName.replace(/^Barangay\s+/i, '').trim().toLowerCase();
+      // 1. Check barangay-specific emailjs_config cache
+      const brgySaved = localStorage.getItem(`emailjs_config_${cleanBrgy}`);
+      if (brgySaved) {
+        const parsed = JSON.parse(brgySaved);
+        if (parsed.serviceId || parsed.templateId || parsed.publicKey) {
+          return {
+            serviceId: parsed.serviceId || '',
+            templateId: parsed.templateId || '',
+            publicKey: parsed.publicKey || '',
+          };
+        }
+      }
+
+      // 2. Check barangay-specific notification settings cache
+      const notifSaved = localStorage.getItem(`barangay_notification_settings_${cleanBrgy}`);
+      if (notifSaved) {
+        const parsed = JSON.parse(notifSaved);
+        if (parsed.emailjs_service_id || parsed.emailjs_template_id || parsed.emailjs_public_key) {
+          return {
+            serviceId: parsed.emailjs_service_id || '',
+            templateId: parsed.emailjs_template_id || '',
+            publicKey: parsed.emailjs_public_key || '',
+          };
+        }
+      }
+
+      // 3. Fallback to active .env configured credentials if available
+      if (DEFAULT_CONFIG.publicKey && DEFAULT_CONFIG.serviceId) {
+        return DEFAULT_CONFIG;
+      }
+
+      // Other barangays start blank if no .env credentials are provided
+      return {
+        serviceId: '',
+        templateId: '',
+        publicKey: ''
+      };
+    }
+
     const saved = localStorage.getItem('emailjs_config');
     if (saved) {
       const parsed = JSON.parse(saved);
       return {
-        serviceId: parsed.serviceId || DEFAULT_CONFIG.serviceId,
-        templateId: parsed.templateId || DEFAULT_CONFIG.templateId,
-        publicKey: parsed.publicKey || DEFAULT_CONFIG.publicKey,
+        serviceId: parsed.serviceId || '',
+        templateId: parsed.templateId || '',
+        publicKey: parsed.publicKey || '',
       };
     }
   } catch {}
   return DEFAULT_CONFIG;
 }
 
-export function saveEmailJsConfig(config: Partial<EmailJsConfig>) {
-  const current = getEmailJsConfig();
+export function saveEmailJsConfig(config: Partial<EmailJsConfig>, barangayName?: string) {
+  const current = getEmailJsConfig(barangayName);
   const updated = { ...current, ...config };
-  localStorage.setItem('emailjs_config', JSON.stringify(updated));
+  if (barangayName) {
+    const cleanBrgy = barangayName.replace(/^Barangay\s+/i, '').trim().toLowerCase();
+    localStorage.setItem(`emailjs_config_${cleanBrgy}`, JSON.stringify(updated));
+  } else {
+    localStorage.setItem('emailjs_config', JSON.stringify(updated));
+  }
   return updated;
 }
 
@@ -54,7 +100,7 @@ export async function sendEmailNotification(params: {
   request_code?: string;
   document_type?: string;
 }): Promise<{ success: boolean; message: string }> {
-  const config = getEmailJsConfig();
+  const config = getEmailJsConfig(params.barangay);
 
   if (!params.to_email || !params.to_email.includes('@')) {
     return { success: false, message: 'Invalid recipient email address' };

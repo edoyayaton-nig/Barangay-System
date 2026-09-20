@@ -5,7 +5,8 @@ import {
   Server, RefreshCcw, Download, Activity, UserPlus, Search, X, Eye, EyeOff, Trash2,
   FileText, Mail, Shield, Menu, Tag, PlusCircle, ShieldCheck, Users2, Send,
   LayoutDashboard, Globe, Building2, Cpu, CheckCircle2, ArrowUpRight, ChevronRight, Clock, ExternalLink,
-  AlertOctagon, Wrench, Megaphone, Radio, UserCircle
+  AlertOctagon, Wrench, Megaphone, Radio, UserCircle, Settings,
+  Key, Lock, Check, Layers
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -19,12 +20,13 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
-import { apiService, SystemUser, ActivityLog } from '../../services/api';
+import { apiService, notifySystemNoticeChange, SystemUser, ActivityLog } from '../../services/api';
 import { BUTUAN_BARANGAYS } from '../../utils/barangays';
 import { AGUSAN_DEL_NORTE_LGUS, getBarangaysForCity } from '../../utils/caragaJurisdictions';
 import { toast } from 'sonner';
 import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import ProfileSettingsView from '../components/ProfileSettingsView';
+import { ClientBarangay, INITIAL_CLIENTS } from '../components/BarangaySettingsControlPanel';
 
 
 /* ─────────────────────────────────────────────────────────── */
@@ -82,6 +84,23 @@ const DB_TABLES = [
 /* ─────────────────────────────────────────────────────────── */
 /*  Main Component                                              */
 /* ─────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────── */
+/*  Blank state for "Create Superadmin" form (module-level)   */
+/* ─────────────────────────────────────────────────────────── */
+const BLANK_NEW_SA = {
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  jobTitle: 'Barangay Super Administrator',
+  city: 'Butuan City',
+  barangay: '',
+  purok: '1',
+  password: '',
+  confirmPassword: ''
+};
+
 export default function SuperMegaAdminDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(() => {
@@ -108,28 +127,63 @@ export default function SuperMegaAdminDashboard() {
   const [dbHealth, setDbHealth] = useState<{ table: string; count: number; status: string }[]>([]);
   const [gatewayStatus, setGatewayStatus] = useState({ db: 'Checking...', sms: 'Checking...', smtp: 'Checking...' });
 
-  // ── User Management ───────────────────────────────────────
+  // ── User Management (System Owner Governance) ────────────
+  const [userManagementSubTab, setUserManagementSubTab] = useState<'superadmins' | 'platform' | 'all'>('superadmins');
+  const [clientBarangays, setClientBarangays] = useState<ClientBarangay[]>(() => {
+    try {
+      const saved = localStorage.getItem('platform_client_barangays');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_CLIENTS;
+  });
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('platform_client_barangays');
+      if (saved) setClientBarangays(JSON.parse(saved));
+    } catch {}
+  }, [activeTab]);
+
+  const handleResetSuperadminKey = (saEmail: string, barangayName: string) => {
+    const tempKey = `BRGY-${Math.random().toString(36).substring(2, 8).toUpperCase()}-#2026`;
+    navigator.clipboard?.writeText(tempKey);
+    toast.success(`One-time emergency key created for ${barangayName} Superadmin (${saEmail}): ${tempKey}`, {
+      description: 'The key has been copied to your clipboard. Share securely with the client administrator.'
+    });
+  };
+
+  const handleToggleClientBarangayStatus = (clientId: string) => {
+    setClientBarangays(prev => {
+      const updated = prev.map(c => {
+        if (c.id === clientId) {
+          const nextStatus = c.status === 'active' ? 'suspended' : 'active';
+          toast.info(`Client Barangay ${c.name} is now ${nextStatus.toUpperCase()}`);
+          return { ...c, status: nextStatus as any };
+        }
+        return c;
+      });
+      localStorage.setItem('platform_client_barangays', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
   const [userBarangayFilter, setUserBarangayFilter] = useState<string>('all');
   const [isCreateSuperadminOpen, setIsCreateSuperadminOpen] = useState(false);
-  const [newSA, setNewSA] = useState({
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    employeeId: '',
-    jobTitle: 'Barangay Super Administrator',
-    city: 'Butuan City',
-    barangay: '',
-    purok: '1',
-    password: '',
-    confirmPassword: ''
-  });
+  const [newSA, setNewSA] = useState({ ...BLANK_NEW_SA });
   const [newSAError, setNewSAError] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
   const [showNewSAPass, setShowNewSAPass] = useState(false);
+
+  // Reset form every time the modal OPENS so stale data never shows
+  useEffect(() => {
+    if (isCreateSuperadminOpen) {
+      setNewSA({ ...BLANK_NEW_SA });
+      setNewSAError('');
+      setShowNewSAPass(false);
+    }
+  }, [isCreateSuperadminOpen]);
 
   const saBarangays = useMemo(() => {
     if (!newSA.city) return [];
@@ -192,13 +246,13 @@ export default function SuperMegaAdminDashboard() {
   };
 
   const broadcastNoticeUpdate = () => {
-    try {
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        const bc = new BroadcastChannel('barangay_system_notice');
-        bc.postMessage({ type: 'SYSTEM_NOTICE_UPDATE', timestamp: Date.now() });
-        bc.close();
-      }
-    } catch {}
+    notifySystemNoticeChange({
+      enabled: maintenanceMode,
+      type: noticeType,
+      title: noticeTitle,
+      message: maintenanceMsg,
+      estimated_uptime: estimatedUptime
+    });
   };
 
   const handleToggleMaintenance = async (enabled: boolean) => {
@@ -321,8 +375,7 @@ export default function SuperMegaAdminDashboard() {
     const ln = newSA.lastName.trim();
     const em = newSA.email.trim().toLowerCase();
     const ph = newSA.phone.replace(/[\s-]/g, '').trim();
-    const badge = newSA.employeeId.trim();
-    const title = newSA.jobTitle.trim();
+    const title = 'Barangay Super Administrator';
 
     if (!fn || !ln) {
       setNewSAError('First Name and Last Name are required.');
@@ -342,14 +395,6 @@ export default function SuperMegaAdminDashboard() {
     }
     if (!newSA.barangay) {
       setNewSAError('Please select an official Barangay.');
-      return;
-    }
-    if (!badge) {
-      setNewSAError('Employee / Badge ID is required for governance tracking.');
-      return;
-    }
-    if (!title) {
-      setNewSAError('Official designation or job title is required.');
       return;
     }
     if (newSA.password !== newSA.confirmPassword) {
@@ -379,26 +424,13 @@ export default function SuperMegaAdminDashboard() {
         purok: newSA.purok || '1',
         phone: ph,
         status: 'Active',
-        employee_id: badge,
         job_title: title
       } as any);
 
       toast.success(`Barangay Superadmin for ${newSA.barangay} (${newSA.city}) created!`);
       setIsCreateSuperadminOpen(false);
-      setNewSA({
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        employeeId: '',
-        jobTitle: 'Barangay Super Administrator',
-        city: 'Butuan City',
-        barangay: '',
-        purok: '1',
-        password: '',
-        confirmPassword: ''
-      });
+      setNewSA({ ...BLANK_NEW_SA });
+      setNewSAError('');
       loadData();
     } catch (err: any) {
       setNewSAError(err?.message || 'Failed to create account');
@@ -578,7 +610,7 @@ export default function SuperMegaAdminDashboard() {
   const sidebarItems = [
     { id: 'overview', label: 'Executive Overview', icon: LayoutDashboard },
     { id: 'categories', label: 'Category Manager', icon: Tag },
-    { id: 'system', label: 'System & Backup', icon: Server },
+    { id: 'system', label: 'System Settings', icon: Settings },
     { id: 'logs', label: 'System Audit & Logs', icon: History },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'reports', label: 'Analytics & Reports', icon: BarChart2 },
@@ -594,11 +626,11 @@ export default function SuperMegaAdminDashboard() {
   /*  RENDER                                                     */
   /* ═══════════════════════════════════════════════════════════ */
   return (
-    <div style={{ background: BG, color: TEXT, minHeight: '100vh', fontFamily: "'Inter', sans-serif" }} className="flex flex-col">
+    <div style={{ background: BG, color: TEXT, height: '100vh', maxHeight: '100vh', fontFamily: "'Inter', sans-serif" }} className="h-screen max-h-screen overflow-hidden flex flex-col">
 
       {/* TOP HEADER */}
       <header style={{ background: CARD, borderBottom: `1px solid ${BORDER}` }}
-        className="sticky top-0 z-30 px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+        className="shrink-0 z-30 px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => setMobileMenuOpen(true)}
             style={{ color: MUTED }} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors lg:hidden cursor-pointer">
@@ -658,7 +690,7 @@ export default function SuperMegaAdminDashboard() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 h-full overflow-hidden">
         {/* MOBILE OVERLAY */}
         {mobileMenuOpen && (
           <div className="fixed inset-0 z-40 lg:hidden">
@@ -688,7 +720,7 @@ export default function SuperMegaAdminDashboard() {
 
         {/* DESKTOP SIDEBAR */}
         <aside style={{ background: CARD2, borderRight: `1px solid ${BORDER}`, width: 230, minWidth: 230 }}
-          className="hidden lg:flex flex-col py-5 px-3 flex-shrink-0">
+          className="hidden lg:flex flex-col py-5 px-3 shrink-0 h-full overflow-y-auto">
           <p style={{ color: MUTED, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', paddingLeft: 10, marginBottom: 8 }}>CONTROL DOCK</p>
           {sidebarItems.map(item => (
             <button key={item.id} onClick={() => setActiveTab(item.id as any)}
@@ -721,7 +753,7 @@ export default function SuperMegaAdminDashboard() {
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <main className="flex-1 min-w-0 h-full overflow-y-auto p-4 sm:p-6 space-y-6">
 
           {/* Welcome banner */}
           <div style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}18, ${ACCENT_CYAN}10)`, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 20px' }}
@@ -1462,8 +1494,8 @@ export default function SuperMegaAdminDashboard() {
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 style={{ color: TEXT, fontWeight: 700, fontSize: 17 }}>System & Backup Management</h2>
-                  <p style={{ color: MUTED, fontSize: 12 }}>Monitor database health, download backups, and control maintenance mode.</p>
+                  <h2 style={{ color: TEXT, fontWeight: 700, fontSize: 17 }}>System Settings & Infrastructure</h2>
+                  <p style={{ color: MUTED, fontSize: 12 }}>Monitor database health, download backups, broadcast system notices, and control maintenance mode. Super Mega Admin exclusive.</p>
                 </div>
                 <button onClick={loadDbHealth} style={{ border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 600, background: 'transparent' }}
                   className="flex items-center gap-1.5 hover:bg-white/5 transition-colors cursor-pointer">
@@ -1908,9 +1940,9 @@ export default function SuperMegaAdminDashboard() {
                   { value: logBarangayFilter, set: setLogBarangayFilter, label: 'All Barangays', opts: ['all', ...BUTUAN_BARANGAYS.slice(0, 20)] },
                 ].map(f => (
                   <select key={f.label} value={f.value} onChange={e => f.set(e.target.value)}
-                    style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px' }}>
-                    <option value="all">{f.label}</option>
-                    {f.opts.filter(o => o !== 'all').map(o => <option key={o} value={o}>{o}</option>)}
+                    style={{ colorScheme: 'dark', background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px', cursor: 'pointer' }}>
+                    <option value="all" style={{ background: '#161F30', color: TEXT }}>{f.label}</option>
+                    {f.opts.filter(o => o !== 'all').map(o => <option key={o} value={o} style={{ background: '#161F30', color: TEXT }}>{o}</option>)}
                   </select>
                 ))}
                 {(logSearch || logRoleFilter !== 'all' || logTypeFilter !== 'all' || logBarangayFilter !== 'all') && (
@@ -1963,108 +1995,475 @@ export default function SuperMegaAdminDashboard() {
             </div>
           )}
 
-          {/* ── TAB 3: USER MANAGEMENT ─────────────────────── */}
+          {/* ── TAB 3: USER MANAGEMENT (SYSTEM OWNER GOVERNANCE) ─── */}
           {activeTab === 'users' && (
             <div className="space-y-5">
+              {/* Header */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <h2 style={{ color: TEXT, fontWeight: 700, fontSize: 17 }}>User Management</h2>
-                  <p style={{ color: MUTED, fontSize: 12 }}>Municipal directory. Create Barangay Superadmins, manage accounts, and control the staff hierarchy.</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, background: `${ACCENT_VIOLET}25`, color: '#C4B5FD', border: `1px solid ${ACCENT_VIOLET}40` }}>
+                      Platform Owner Tier
+                    </span>
+                    <span style={{ fontSize: 11, color: MUTED }}>Multi-Tenant Architecture</span>
+                  </div>
+                  <h2 style={{ color: TEXT, fontWeight: 700, fontSize: 18 }} className="flex items-center gap-2">
+                    <Users style={{ color: ACCENT_VIOLET }} size={20} />
+                    Multi-Tenant User & Identity Governance
+                  </h2>
+                  <p style={{ color: MUTED, fontSize: 12 }}>
+                    Oversee Client Barangay Superadmins, Root Platform Operators, and multi-tenant municipal accounts across all client jurisdictions.
+                  </p>
                 </div>
-                <button onClick={() => setIsCreateSuperadminOpen(true)}
-                  style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, color: 'white', border: 'none' }}
-                  className="flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer flex-shrink-0">
-                  <UserPlus size={14} /> Create Barangay Superadmin
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => { setNewSA({ ...BLANK_NEW_SA }); setNewSAError(''); setShowNewSAPass(false); setIsCreateSuperadminOpen(true); }}
+                    style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, #4F46E5)`, borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, color: 'white', border: 'none', boxShadow: '0 4px 14px rgba(124, 58, 237, 0.35)' }}
+                    className="flex items-center gap-2 hover:opacity-95 transition-opacity cursor-pointer flex-shrink-0"
+                  >
+                    <UserPlus size={14} /> Onboard Client Superadmin
+                  </button>
+                </div>
+              </div>
+
+              {/* Stat Cards tailored for System Owner */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p style={{ color: MUTED, fontSize: 10, fontWeight: 600 }}>Active Client Tenants</p>
+                    <Building2 size={15} style={{ color: ACCENT_EMERALD }} />
+                  </div>
+                  <p style={{ color: ACCENT_EMERALD, fontSize: 24, fontWeight: 800 }}>
+                    {clientBarangays.filter(c => c.status === 'active').length} <span style={{ fontSize: 13, color: MUTED, fontWeight: 500 }}>/ {clientBarangays.length}</span>
+                  </p>
+                  <p style={{ color: MUTED, fontSize: 10 }}>Subscribed Municipal LGUs</p>
+                </div>
+
+                <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p style={{ color: MUTED, fontSize: 10, fontWeight: 600 }}>Client Superadmins</p>
+                    <Crown size={15} style={{ color: '#C4B5FD' }} />
+                  </div>
+                  <p style={{ color: '#C4B5FD', fontSize: 24, fontWeight: 800 }}>{fmt(superadminCount)}</p>
+                  <p style={{ color: MUTED, fontSize: 10 }}>Barangay Chief Executives</p>
+                </div>
+
+                <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p style={{ color: MUTED, fontSize: 10, fontWeight: 600 }}>Total Platform Accounts</p>
+                    <Users size={15} style={{ color: ACCENT_CYAN }} />
+                  </div>
+                  <p style={{ color: ACCENT_CYAN, fontSize: 24, fontWeight: 800 }}>{fmt(systemUsers.length)}</p>
+                  <p style={{ color: MUTED, fontSize: 10 }}>Staff & Verified Constituents</p>
+                </div>
+
+                <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p style={{ color: MUTED, fontSize: 10, fontWeight: 600 }}>Platform Root Operators</p>
+                    <ShieldCheck size={15} style={{ color: ACCENT_AMBER }} />
+                  </div>
+                  <p style={{ color: ACCENT_AMBER, fontSize: 24, fontWeight: 800 }}>
+                    {systemUsers.filter(u => u.role === 'super_mega_admin').length || 1}
+                  </p>
+                  <p style={{ color: MUTED, fontSize: 10 }}>System Owner Core Keyholders</p>
+                </div>
+              </div>
+
+              {/* Sub-Tab Navigation Bar */}
+              <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 6 }} className="flex flex-wrap items-center gap-1">
+                <button
+                  onClick={() => setUserManagementSubTab('superadmins')}
+                  style={{
+                    flex: '1 1 180px',
+                    padding: '8px 14px',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    background: userManagementSubTab === 'superadmins' ? `${ACCENT_VIOLET}25` : 'transparent',
+                    color: userManagementSubTab === 'superadmins' ? '#C4B5FD' : MUTED,
+                    border: userManagementSubTab === 'superadmins' ? `1px solid ${ACCENT_VIOLET}50` : '1px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <Building2 size={14} />
+                  <span>Client Superadmins (Tenants)</span>
+                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#1E293B', color: TEXT, fontWeight: 700 }}>
+                    {clientBarangays.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setUserManagementSubTab('platform')}
+                  style={{
+                    flex: '1 1 180px',
+                    padding: '8px 14px',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    background: userManagementSubTab === 'platform' ? `${ACCENT_VIOLET}25` : 'transparent',
+                    color: userManagementSubTab === 'platform' ? '#C4B5FD' : MUTED,
+                    border: userManagementSubTab === 'platform' ? `1px solid ${ACCENT_VIOLET}50` : '1px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <ShieldCheck size={14} />
+                  <span>Platform Root Operators</span>
+                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#1E293B', color: TEXT, fontWeight: 700 }}>
+                    {systemUsers.filter(u => u.role === 'super_mega_admin').length || 1}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setUserManagementSubTab('all')}
+                  style={{
+                    flex: '1 1 180px',
+                    padding: '8px 14px',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    background: userManagementSubTab === 'all' ? `${ACCENT_VIOLET}25` : 'transparent',
+                    color: userManagementSubTab === 'all' ? '#C4B5FD' : MUTED,
+                    border: userManagementSubTab === 'all' ? `1px solid ${ACCENT_VIOLET}50` : '1px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <Users size={14} />
+                  <span>Municipal Directory Lookup</span>
+                  <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#1E293B', color: TEXT, fontWeight: 700 }}>
+                    {systemUsers.length}
+                  </span>
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { label: 'Total Accounts', value: systemUsers.length, color: ACCENT_CYAN },
-                  { label: 'Superadmins', value: superadminCount, color: ACCENT_VIOLET },
-                  { label: 'Barangay Admins', value: adminCount, color: '#6366F1' },
-                  { label: 'Clinical Staff', value: clinicalStaff, color: ACCENT_EMERALD },
-                ].map(s => (
-                  <div key={s.label} style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
-                    <p style={{ color: MUTED, fontSize: 10, fontWeight: 600 }}>{s.label}</p>
-                    <p style={{ color: s.color, fontSize: 24, fontWeight: 800 }}>{fmt(s.value)}</p>
+              {/* ── SUB-TAB 1: CLIENT SUPERADMINS (TENANTS) ──────── */}
+              {userManagementSubTab === 'superadmins' && (
+                <div className="space-y-4">
+                  {/* Informational Callout */}
+                  <div style={{ background: `${ACCENT_VIOLET}12`, border: `1px solid ${ACCENT_VIOLET}30`, borderRadius: 12, padding: '14px 18px' }}
+                    className="flex items-start gap-3">
+                    <Crown size={20} style={{ color: '#C4B5FD' }} className="shrink-0 mt-0.5" />
+                    <div>
+                      <p style={{ color: '#E2E8F0', fontSize: 13, fontWeight: 700 }}>System Owner Multi-Tenant Management</p>
+                      <p style={{ color: '#94A3B8', fontSize: 11, marginTop: 2, lineHeight: 1.5 }}>
+                        You are the <strong className="text-violet-300">System Owner</strong>. Each client barangay is your tenant organization with an appointed Superadmin who manages their local council, clearance issuance, and health center. Use this portal to monitor tenant licenses, issue temporary keys, or switch between client configurations.
+                      </p>
+                    </div>
                   </div>
-                ))}
-              </div>
 
-              <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}
-                className="flex flex-wrap items-center gap-2">
-                <div style={{ position: 'relative', flex: 1, minWidth: 160 }}>
-                  <Search size={12} style={{ position: 'absolute', left: 8, top: 8, color: MUTED }} />
-                  <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search users..."
-                    style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px 7px 26px', width: '100%' }} />
-                </div>
-                <select value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)}
-                  style={{ colorScheme: 'dark', background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px' }}>
-                  <option value="all">All Roles</option>
-                  {['super_mega_admin', 'superadmin', 'admin', 'staff', 'bhw', 'nurse', 'resident'].map(r => <option key={r} value={r} style={{ background: '#161F30', color: TEXT }}>{r}</option>)}
-                </select>
-                <select value={userBarangayFilter} onChange={e => setUserBarangayFilter(e.target.value)}
-                  style={{ colorScheme: 'dark', background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px' }}>
-                  <option value="all">All Barangays</option>
-                  {BUTUAN_BARANGAYS.slice(0, 20).map(b => <option key={b} value={b} style={{ background: '#161F30', color: TEXT }}>{b}</option>)}
-                </select>
-              </div>
+                  {/* Client Tenants Table */}
+                  <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <p style={{ color: TEXT, fontWeight: 700, fontSize: 13 }}>Provisioned Client Barangays & Superadmins</p>
+                        <p style={{ color: MUTED, fontSize: 11 }}>Client tenant list with appointed administrator credentials</p>
+                      </div>
+                      <button
+                        onClick={() => setIsCreateSuperadminOpen(true)}
+                        style={{ color: '#C4B5FD', background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}40`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}
+                        className="hover:bg-violet-900/40 cursor-pointer transition-colors flex items-center gap-1.5"
+                      >
+                        <UserPlus size={13} /> + Provision Superadmin
+                      </button>
+                    </div>
 
-              <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <p style={{ color: TEXT, fontWeight: 700, fontSize: 13 }}>Municipal User Directory</p>
-                  <span style={{ color: MUTED, fontSize: 11 }}>{filteredUsers.length} of {systemUsers.length} accounts</span>
+                    <div className="overflow-x-auto">
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: `${BORDER}60` }}>
+                            <th style={{ padding: '10px 14px', color: MUTED, fontWeight: 600, textAlign: 'left', fontSize: 11 }}>Client Barangay</th>
+                            <th style={{ padding: '10px 14px', color: MUTED, fontWeight: 600, textAlign: 'left', fontSize: 11 }}>Appointed Superadmin</th>
+                            <th style={{ padding: '10px 14px', color: MUTED, fontWeight: 600, textAlign: 'left', fontSize: 11 }}>LGU Captain</th>
+                            <th style={{ padding: '10px 14px', color: MUTED, fontWeight: 600, textAlign: 'left', fontSize: 11 }}>Active Modules</th>
+                            <th style={{ padding: '10px 14px', color: MUTED, fontWeight: 600, textAlign: 'left', fontSize: 11 }}>Status</th>
+                            <th style={{ padding: '10px 14px', color: MUTED, fontWeight: 600, textAlign: 'right', fontSize: 11 }}>Governance Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {clientBarangays.map(c => {
+                            // Find matching system user if available
+                            const saUser = systemUsers.find(u => u.role === 'superadmin' && u.barangay?.toLowerCase() === c.name.toLowerCase());
+                            const saName = saUser?.name || c.superadminName;
+                            const saEmail = saUser?.email || c.superadminEmail;
+
+                            return (
+                              <tr key={c.id} style={{ borderBottom: `1px solid ${BORDER}30` }} className="hover:bg-white/[0.02]">
+                                <td style={{ padding: '12px 14px' }}>
+                                  <div className="flex items-center gap-2.5">
+                                    <div style={{ width: 32, height: 32, borderRadius: 8, background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <Building2 size={16} style={{ color: '#C4B5FD' }} />
+                                    </div>
+                                    <div>
+                                      <p style={{ color: TEXT, fontWeight: 700, fontSize: 12 }}>Barangay {c.name}</p>
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        <span style={{ color: MUTED, fontSize: 10 }}>{c.district}</span>
+                                        <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: c.plan.includes('Enterprise') ? `${ACCENT_CYAN}20` : `${ACCENT_AMBER}20`, color: c.plan.includes('Enterprise') ? ACCENT_CYAN : ACCENT_AMBER }}>
+                                          {c.plan}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <td style={{ padding: '12px 14px' }}>
+                                  <div className="flex items-center gap-2">
+                                    <Crown size={13} style={{ color: '#C4B5FD' }} />
+                                    <div>
+                                      <p style={{ color: TEXT, fontWeight: 600, fontSize: 12 }}>{saName}</p>
+                                      <p style={{ color: MUTED, fontSize: 11 }}>{saEmail}</p>
+                                      {c.captainPhone && <p style={{ color: '#94A3B8', fontSize: 10 }}>{c.captainPhone}</p>}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <td style={{ padding: '12px 14px', color: TEXT, fontSize: 12 }}>
+                                  {c.captain || '—'}
+                                </td>
+
+                                <td style={{ padding: '12px 14px' }}>
+                                  <div className="flex flex-wrap gap-1">
+                                    {c.modules.documents && <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800">Docs</span>}
+                                    {c.modules.clinic && <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal-950/80 text-teal-300 border border-teal-800">Clinic</span>}
+                                    {c.modules.residentPortal && <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800">Portal</span>}
+                                    {c.modules.sms && <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800">SMS</span>}
+                                  </div>
+                                </td>
+
+                                <td style={{ padding: '12px 14px' }}>
+                                  <span style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    borderRadius: 20,
+                                    padding: '2px 8px',
+                                    background: c.status === 'active' ? `${ACCENT_EMERALD}20` : c.status === 'onboarding' ? `${ACCENT_AMBER}20` : `${ACCENT_ROSE}20`,
+                                    color: c.status === 'active' ? ACCENT_EMERALD : c.status === 'onboarding' ? ACCENT_AMBER : ACCENT_ROSE,
+                                    border: `1px solid ${c.status === 'active' ? ACCENT_EMERALD : c.status === 'onboarding' ? ACCENT_AMBER : ACCENT_ROSE}40`
+                                  }}>
+                                    {c.status.toUpperCase()}
+                                  </span>
+                                </td>
+
+                                <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                                  <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                                    <button
+                                      onClick={() => handleResetSuperadminKey(saEmail, c.name)}
+                                      title="Generate emergency access key for client superadmin"
+                                      style={{ color: '#C4B5FD', border: `1px solid ${ACCENT_VIOLET}40`, borderRadius: 6, padding: '4px 8px', fontSize: 10, fontWeight: 600, background: `${ACCENT_VIOLET}15` }}
+                                      className="hover:bg-violet-900/30 cursor-pointer transition-colors flex items-center gap-1"
+                                    >
+                                      <Key size={11} /> Reset Key
+                                    </button>
+                                    <button
+                                      onClick={() => handleToggleClientBarangayStatus(c.id)}
+                                      style={{ color: c.status === 'active' ? ACCENT_AMBER : ACCENT_EMERALD, border: `1px solid ${c.status === 'active' ? ACCENT_AMBER : ACCENT_EMERALD}40`, borderRadius: 6, padding: '4px 8px', fontSize: 10, fontWeight: 600, background: 'transparent' }}
+                                      className="hover:bg-white/5 cursor-pointer transition-colors"
+                                    >
+                                      {c.status === 'active' ? 'Suspend' : 'Activate'}
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-                <div className="overflow-x-auto">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: `${BORDER}60` }}>
-                        {['Name', 'Email', 'Role', 'Jurisdiction', 'Status', 'Actions'].map(h => (
-                          <th key={h} style={{ padding: '10px 14px', color: MUTED, fontWeight: 600, textAlign: h === 'Actions' ? 'right' : 'left', fontSize: 11 }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredUsers.length === 0 ? (
-                        <tr><td colSpan={6} style={{ padding: 30, textAlign: 'center', color: MUTED }}>No users match your search.</td></tr>
-                      ) : filteredUsers.map(u => (
-                        <tr key={u.id} style={{ borderBottom: `1px solid ${BORDER}30` }} className="hover:bg-white/[0.02]">
-                          <td style={{ padding: '10px 14px', color: TEXT, fontWeight: 600 }}>{u.name}</td>
-                          <td style={{ padding: '10px 14px', color: MUTED, fontSize: 11 }}>{u.email}</td>
-                          <td style={{ padding: '10px 14px' }}>
-                            <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 ${roleBadge(u.role)}`}>{u.role}</span>
-                          </td>
-                          <td style={{ padding: '10px 14px', color: MUTED }}>
-                            {u.barangay ? `${u.barangay}${u.city ? ` (${u.city})` : ''}` : '—'}
-                          </td>
-                          <td style={{ padding: '10px 14px' }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '2px 8px', background: u.status === 'Active' ? `${ACCENT_EMERALD}20` : `${ACCENT_ROSE}20`, color: u.status === 'Active' ? ACCENT_EMERALD : ACCENT_ROSE }}>
-                              {u.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: '10px 14px', textAlign: 'right' }}>
-                            {u.role !== 'super_mega_admin' && (
-                              <div className="flex items-center justify-end gap-1">
-                                <button onClick={() => handleToggleUserStatus(u)}
-                                  style={{ color: u.status === 'Active' ? ACCENT_AMBER : ACCENT_EMERALD, border: `1px solid ${u.status === 'Active' ? ACCENT_AMBER : ACCENT_EMERALD}40`, borderRadius: 6, padding: '3px 9px', fontSize: 10, fontWeight: 600, background: 'transparent' }}
-                                  className="hover:bg-white/5 cursor-pointer transition-colors">
-                                  {u.status === 'Active' ? 'Deactivate' : 'Activate'}
-                                </button>
-                                <button onClick={() => handleDeleteUser(u)}
-                                  style={{ color: MUTED, borderRadius: 6, padding: '4px 6px', background: 'transparent', border: 'none' }}
-                                  className="hover:text-rose-400 cursor-pointer transition-colors">
-                                  <Trash2 size={13} />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              )}
+
+              {/* ── SUB-TAB 2: PLATFORM ROOT OPERATORS (INTERNAL) ── */}
+              {userManagementSubTab === 'platform' && (
+                <div className="space-y-4">
+                  <div style={{ background: `${ACCENT_AMBER}12`, border: `1px solid ${ACCENT_AMBER}30`, borderRadius: 12, padding: '14px 18px' }}
+                    className="flex items-start gap-3">
+                    <ShieldCheck size={20} style={{ color: ACCENT_AMBER }} className="shrink-0 mt-0.5" />
+                    <div>
+                      <p style={{ color: '#E2E8F0', fontSize: 13, fontWeight: 700 }}>Root System Owner Authority</p>
+                      <p style={{ color: '#94A3B8', fontSize: 11, marginTop: 2, lineHeight: 1.5 }}>
+                        Platform Root Operators have unmetered master access across all 86 barangays in the city. They manage multi-tenant database backups, global SMTP/SMS gateways, client provisioning, and system alerts.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 18 }} className="space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: `${BORDER}80` }}>
+                      <p style={{ color: TEXT, fontWeight: 700, fontSize: 13 }}>Active Root Operators</p>
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/80 border border-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Master Security Node Active
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Current User Root Profile */}
+                      <div style={{ background: '#0F172A', border: `1px solid ${ACCENT_VIOLET}50`, borderRadius: 12, padding: 16 }} className="relative overflow-hidden">
+                        <div style={{ position: 'absolute', top: 0, right: 0, background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', fontSize: 9, fontWeight: 800, padding: '2px 10px', borderBottomLeftRadius: 8 }}>
+                          CURRENT SESSION
+                        </div>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div style={{ width: 42, height: 42, borderRadius: 10, background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Crown size={22} className="text-white" />
+                          </div>
+                          <div>
+                            <p style={{ color: TEXT, fontWeight: 700, fontSize: 14 }}>{user?.name || 'Master System Owner'}</p>
+                            <p style={{ color: '#C4B5FD', fontSize: 11 }}>{user?.email || 'supermegaadmin@barangay.gov'}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5 text-[11px] pt-2 border-t" style={{ borderColor: `${BORDER}80` }}>
+                          <div className="flex justify-between">
+                            <span style={{ color: MUTED }}>Platform Clearance:</span>
+                            <span style={{ color: '#C4B5FD', fontWeight: 700 }}>Full Root Authority (System Owner)</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span style={{ color: MUTED }}>Jurisdictional Scope:</span>
+                            <span style={{ color: TEXT, fontWeight: 600 }}>All 86 Municipal Jurisdictions</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span style={{ color: MUTED }}>Master Root Key:</span>
+                            <span style={{ color: ACCENT_CYAN, fontFamily: 'monospace', fontWeight: 700 }}>ROOT-SYS-001-ALPHA</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span style={{ color: MUTED }}>2FA Hardware / TOTP:</span>
+                            <span style={{ color: ACCENT_EMERALD, fontWeight: 700 }}>ENFORCED & ACTIVE</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Secondary Infrastructure Engineer Profile */}
+                      <div style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 16 }}>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div style={{ width: 42, height: 42, borderRadius: 10, background: `${BORDER}80`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <ShieldCheck size={22} style={{ color: ACCENT_AMBER }} />
+                          </div>
+                          <div>
+                            <p style={{ color: TEXT, fontWeight: 700, fontSize: 14 }}>System Infrastructure Standby</p>
+                            <p style={{ color: MUTED, fontSize: 11 }}>ops.infra@barangay.gov</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5 text-[11px] pt-2 border-t" style={{ borderColor: `${BORDER}80` }}>
+                          <div className="flex justify-between">
+                            <span style={{ color: MUTED }}>Platform Clearance:</span>
+                            <span style={{ color: TEXT, fontWeight: 700 }}>Backup Infrastructure Operator</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span style={{ color: MUTED }}>Jurisdictional Scope:</span>
+                            <span style={{ color: TEXT, fontWeight: 600 }}>Database Failover & Server Ops</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span style={{ color: MUTED }}>Emergency Key:</span>
+                            <span style={{ color: MUTED, fontFamily: 'monospace', fontWeight: 700 }}>ROOT-STANDBY-002</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span style={{ color: MUTED }}>Status:</span>
+                            <span style={{ color: ACCENT_AMBER, fontWeight: 700 }}>STANDBY / MONITORED</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* ── SUB-TAB 3: MUNICIPAL CONSTITUENT & STAFF LOOKUP ── */}
+              {userManagementSubTab === 'all' && (
+                <div className="space-y-4">
+                  {/* Search and Filters */}
+                  <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}
+                    className="flex flex-wrap items-center gap-2">
+                    <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+                      <Search size={12} style={{ position: 'absolute', left: 8, top: 10, color: MUTED }} />
+                      <input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name, email, or role..."
+                        style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px 7px 26px', width: '100%' }} />
+                    </div>
+                    <select value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)}
+                      style={{ colorScheme: 'dark', background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px' }}>
+                      <option value="all">All Account Roles</option>
+                      {['super_mega_admin', 'superadmin', 'admin', 'staff', 'bhw', 'nurse', 'resident'].map(r => <option key={r} value={r} style={{ background: '#161F30', color: TEXT }}>{r}</option>)}
+                    </select>
+                    <select value={userBarangayFilter} onChange={e => setUserBarangayFilter(e.target.value)}
+                      style={{ colorScheme: 'dark', background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 11, padding: '7px 10px' }}>
+                      <option value="all">All Client Barangays</option>
+                      {BUTUAN_BARANGAYS.slice(0, 30).map(b => <option key={b} value={b} style={{ background: '#161F30', color: TEXT }}>{b}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Compact Table */}
+                  <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <p style={{ color: TEXT, fontWeight: 700, fontSize: 13 }}>Municipal Personnel & Constituent Directory</p>
+                      <span style={{ color: MUTED, fontSize: 11 }}>{filteredUsers.length} of {systemUsers.length} accounts found</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: `${BORDER}60` }}>
+                            <th style={{ padding: '8px 12px', color: MUTED, fontWeight: 600, textAlign: 'left', fontSize: 11, width: '22%' }}>Name</th>
+                            <th style={{ padding: '8px 12px', color: MUTED, fontWeight: 600, textAlign: 'left', fontSize: 11, width: '25%' }}>Email</th>
+                            <th style={{ padding: '8px 12px', color: MUTED, fontWeight: 600, textAlign: 'left', fontSize: 11, width: '13%' }}>Role</th>
+                            <th style={{ padding: '8px 12px', color: MUTED, fontWeight: 600, textAlign: 'left', fontSize: 11, width: '18%' }}>Jurisdiction</th>
+                            <th style={{ padding: '8px 12px', color: MUTED, fontWeight: 600, textAlign: 'left', fontSize: 11, width: '10%' }}>Status</th>
+                            <th style={{ padding: '8px 12px', color: MUTED, fontWeight: 600, textAlign: 'right', fontSize: 11, width: '12%' }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredUsers.length === 0 ? (
+                            <tr><td colSpan={6} style={{ padding: 30, textAlign: 'center', color: MUTED }}>No accounts match your query.</td></tr>
+                          ) : filteredUsers.map(u => (
+                            <tr key={u.id} style={{ borderBottom: `1px solid ${BORDER}30` }} className="hover:bg-white/[0.02]">
+                              <td style={{ padding: '8px 12px', color: TEXT, fontWeight: 600, fontSize: 12 }}>{u.name}</td>
+                              <td style={{ padding: '8px 12px', color: MUTED, fontSize: 11 }}>{u.email}</td>
+                              <td style={{ padding: '8px 12px' }}>
+                                <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 ${roleBadge(u.role)}`}>{u.role}</span>
+                              </td>
+                              <td style={{ padding: '8px 12px', color: MUTED, fontSize: 11 }}>
+                                {u.barangay ? `${u.barangay}${u.city ? ` (${u.city})` : ''}` : '—'}
+                              </td>
+                              <td style={{ padding: '8px 12px' }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '2px 8px', background: u.status === 'Active' ? `${ACCENT_EMERALD}20` : `${ACCENT_ROSE}20`, color: u.status === 'Active' ? ACCENT_EMERALD : ACCENT_ROSE }}>
+                                  {u.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                                {u.role !== 'super_mega_admin' && (
+                                  <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                                    <button onClick={() => handleToggleUserStatus(u)}
+                                      style={{ color: u.status === 'Active' ? ACCENT_AMBER : ACCENT_EMERALD, border: `1px solid ${u.status === 'Active' ? ACCENT_AMBER : ACCENT_EMERALD}40`, borderRadius: 6, padding: '2px 8px', fontSize: 10, fontWeight: 600, background: 'transparent' }}
+                                      className="hover:bg-white/5 cursor-pointer transition-colors">
+                                      {u.status === 'Active' ? 'Deactivate' : 'Activate'}
+                                    </button>
+                                    <button onClick={() => handleDeleteUser(u)}
+                                      style={{ color: MUTED, borderRadius: 6, padding: '3px 5px', background: 'transparent', border: 'none' }}
+                                      className="hover:text-rose-400 cursor-pointer transition-colors">
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2295,6 +2694,7 @@ export default function SuperMegaAdminDashboard() {
               <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 20 }}>
                 <ProfileSettingsView
                   user={user}
+                  darkMode={true}
                   onProfileUpdated={(updated) => {
                     setUser(updated);
                     localStorage.setItem('barangay_user', JSON.stringify(updated));
@@ -2323,7 +2723,7 @@ export default function SuperMegaAdminDashboard() {
                 </div>
               </div>
               <button
-                onClick={() => { setIsCreateSuperadminOpen(false); setNewSAError(''); }}
+                onClick={() => { setIsCreateSuperadminOpen(false); setNewSA({ ...BLANK_NEW_SA }); setNewSAError(''); }}
                 style={{ color: MUTED, background: 'transparent', border: 'none' }}
                 className="cursor-pointer hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
               >
@@ -2411,26 +2811,12 @@ export default function SuperMegaAdminDashboard() {
                     />
                   </div>
                   <div>
-                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Employee / Badge ID *</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. BSA-2026-001"
-                      value={newSA.employeeId}
-                      onChange={e => setNewSA(prev => ({ ...prev, employeeId: e.target.value }))}
-                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Official Designation *</label>
-                    <input
-                      type="text"
-                      placeholder="Barangay Super Administrator"
-                      value={newSA.jobTitle}
-                      onChange={e => setNewSA(prev => ({ ...prev, jobTitle: e.target.value }))}
-                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
-                      required
-                    />
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Official Designation</label>
+                    <div style={{ background: `${ACCENT_VIOLET}15`, border: `1px solid ${ACCENT_VIOLET}50`, borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <ShieldCheck size={13} style={{ color: '#C4B5FD', flexShrink: 0 }} />
+                      <span style={{ color: '#C4B5FD', fontSize: 12, fontWeight: 600 }}>Barangay Super Administrator</span>
+                    </div>
+                    <p style={{ color: MUTED, fontSize: 10, marginTop: 3 }}>Fixed system role — cannot be changed.</p>
                   </div>
                 </div>
               </div>
@@ -2573,7 +2959,7 @@ export default function SuperMegaAdminDashboard() {
               <div className="flex gap-2.5 pt-3 border-t" style={{ borderColor: `${BORDER}80` }}>
                 <button
                   type="button"
-                  onClick={() => { setIsCreateSuperadminOpen(false); setNewSAError(''); }}
+                  onClick={() => { setIsCreateSuperadminOpen(false); setNewSA({ ...BLANK_NEW_SA }); setNewSAError(''); }}
                   style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1px solid ${BORDER}`, color: MUTED, background: 'transparent', fontSize: 12, fontWeight: 600 }}
                   className="cursor-pointer hover:bg-white/5 transition-colors"
                 >

@@ -14,7 +14,9 @@ import {
   sendAnnouncementEmail,
   sendAppointmentStatusEmail,
   sendDirectNotificationEmail,
+  sendProfileUpdateEmail,
 } from './services/emailService.js';
+import { jsPDF } from 'jspdf';
 import {
   computeNextDose,
   computeNextMaternalVisit,
@@ -190,6 +192,20 @@ async function safeAddColumn(pool, tableName, columnName, columnDef) {
   }
 }
 
+async function safeCreateIndex(pool, tableName, indexName, columns) {
+  try {
+    const [rows] = await pool.query(
+      "SELECT INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?",
+      [tableName, indexName]
+    );
+    if (!rows || rows.length === 0) {
+      await pool.query(`CREATE INDEX \`${indexName}\` ON \`${tableName}\` (${columns})`);
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
 async function migrateDatabase() {
   const pool = getPool();
   if (pool && getStatus().connected) {
@@ -243,9 +259,11 @@ async function migrateDatabase() {
       }
       await pool.query("UPDATE users SET name = 'Super Mega Admin' WHERE role = 'super_mega_admin'");
 
-      // Ensure password for admin, superadmin, super_mega_admin, nurse, bhw, staff is set to 123
+      // Ensure password for ONLY the specific default SEED demo accounts is set to 123.
+      // IMPORTANT: Do NOT use role IN (...) here — that would overwrite custom passwords
+      // for newly created superadmins/staff accounts every server restart.
       await pool.query(
-        "UPDATE users SET password_hash = ? WHERE role IN ('super_mega_admin', 'superadmin', 'admin', 'staff', 'bhw', 'nurse') OR email IN ('supermegaadmin@barangay.gov', 'admin@barangay.gov', 'superadmin@barangay.gov', 'juan.admin@barangay.gov', 'staff@barangay.gov', 'bhw@barangay.gov', 'nurse@barangay.gov')",
+        "UPDATE users SET password_hash = ? WHERE LOWER(TRIM(email)) IN ('supermegaadmin@barangay.gov', 'admin@barangay.gov', 'superadmin@barangay.gov', 'juan.admin@barangay.gov', 'staff@barangay.gov', 'bhw@barangay.gov', 'nurse@barangay.gov')",
         [defaultHash]
       );
     } catch (seedErr) {
@@ -257,21 +275,45 @@ async function migrateDatabase() {
       await pool.query("UPDATE users SET role = 'staff' WHERE role IS NULL OR role = ''");
     } catch {}
 
+    // Document requests columns
     await safeAddColumn(pool, 'document_requests', 'email', "VARCHAR(100) DEFAULT ''");
     await safeAddColumn(pool, 'document_requests', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
+    await safeAddColumn(pool, 'document_requests', 'extra_fields', "TEXT NULL");
+    await safeAddColumn(pool, 'document_requests', 'processed_by', "VARCHAR(100) NULL");
+    await safeAddColumn(pool, 'document_requests', 'processed_at', "DATETIME NULL");
+
+    // Users columns
     await safeAddColumn(pool, 'users', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
+    await safeAddColumn(pool, 'users', 'city', "VARCHAR(100) DEFAULT 'Butuan City'");
     await safeAddColumn(pool, 'users', 'phone', "VARCHAR(50) DEFAULT ''");
     await safeAddColumn(pool, 'users', 'address', "VARCHAR(255) DEFAULT ''");
     await safeAddColumn(pool, 'users', 'civil_status', "ENUM('Single', 'Married', 'Widowed', 'Separated') DEFAULT 'Single'");
     await safeAddColumn(pool, 'users', 'last_login', "DATETIME NULL");
     await safeAddColumn(pool, 'users', 'profile_photo', "LONGTEXT NULL");
+    await safeAddColumn(pool, 'users', 'employee_id', "VARCHAR(50) DEFAULT NULL");
+    await safeAddColumn(pool, 'users', 'job_title', "VARCHAR(100) DEFAULT NULL");
+    await safeAddColumn(pool, 'users', 'permissions', "TEXT NULL");
+
+    // Residents columns
     await safeAddColumn(pool, 'residents', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
+    await safeAddColumn(pool, 'residents', 'city', "VARCHAR(100) DEFAULT 'Butuan City'");
     await safeAddColumn(pool, 'residents', 'profile_photo', "LONGTEXT NULL");
     await safeAddColumn(pool, 'residents', 'first_name', "VARCHAR(50) NOT NULL DEFAULT ''");
     await safeAddColumn(pool, 'residents', 'middle_name', "VARCHAR(50) DEFAULT ''");
     await safeAddColumn(pool, 'residents', 'last_name', "VARCHAR(50) NOT NULL DEFAULT ''");
-    await safeAddColumn(pool, 'residents', 'civil_status', "ENUM('Single', 'Married', 'Widowed', 'Separated') DEFAULT 'Single'");
+    await safeAddColumn(pool, 'residents', 'civil_status', "VARCHAR(50) DEFAULT 'Single'");
     await safeAddColumn(pool, 'residents', 'years_of_residency', "VARCHAR(50) DEFAULT NULL");
+    await safeAddColumn(pool, 'residents', 'purok', "VARCHAR(50) DEFAULT '1'");
+    await safeAddColumn(pool, 'residents', 'date_of_birth', "DATE NULL");
+    await safeAddColumn(pool, 'residents', 'household_number', "VARCHAR(50) DEFAULT NULL");
+    await safeAddColumn(pool, 'residents', 'family_name', "VARCHAR(100) DEFAULT NULL");
+    await safeAddColumn(pool, 'residents', 'is_head_of_household', "TINYINT(1) DEFAULT 0");
+    await safeAddColumn(pool, 'residents', 'relationship_to_head', "VARCHAR(50) DEFAULT 'Member'");
+    await safeAddColumn(pool, 'residents', 'employment_status', "VARCHAR(50) DEFAULT 'Employed'");
+    await safeAddColumn(pool, 'residents', 'last_profile_update_note', "TEXT NULL");
+
+    // SMS notifications columns
+    await safeAddColumn(pool, 'sms_notifications', 'is_read', "TINYINT(1) DEFAULT 0");
 
     // Messages table schema migration
     try {
@@ -280,19 +322,37 @@ async function migrateDatabase() {
           id INT AUTO_INCREMENT PRIMARY KEY,
           sender_name VARCHAR(100) NOT NULL,
           sender_role VARCHAR(50) NOT NULL,
+          sender_email VARCHAR(100) DEFAULT '',
           recipient_name VARCHAR(100) DEFAULT '',
-          recipient_role VARCHAR(50) DEFAULT 'all',
+          recipient_role VARCHAR(100) DEFAULT 'all',
+          recipient_email VARCHAR(100) DEFAULT '',
           barangay VARCHAR(100) DEFAULT 'Pianing',
           message TEXT NOT NULL,
-          sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+          sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
+      await safeAddColumn(pool, 'messages', 'sender_email', "VARCHAR(100) DEFAULT ''");
       await safeAddColumn(pool, 'messages', 'recipient_name', "VARCHAR(100) DEFAULT ''");
+      await safeAddColumn(pool, 'messages', 'recipient_role', "VARCHAR(100) DEFAULT 'all'");
+      await safeAddColumn(pool, 'messages', 'recipient_email', "VARCHAR(100) DEFAULT ''");
       await safeAddColumn(pool, 'messages', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
       await safeAddColumn(pool, 'messages', 'sent_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
       await safeAddColumn(pool, 'messages', 'timestamp', "DATETIME DEFAULT CURRENT_TIMESTAMP");
       await pool.query("ALTER TABLE messages MODIFY COLUMN recipient_role VARCHAR(100) DEFAULT 'all'");
     } catch {}
+
+    // Performance & Concurrency Indexes
+    await safeCreateIndex(pool, 'document_requests', 'idx_doc_status', 'status');
+    await safeCreateIndex(pool, 'document_requests', 'idx_doc_barangay', 'barangay');
+    await safeCreateIndex(pool, 'residents', 'idx_res_purok', 'purok');
+    await safeCreateIndex(pool, 'residents', 'idx_res_barangay', 'barangay');
+    await safeCreateIndex(pool, 'residents', 'idx_res_email', 'email');
+    await safeCreateIndex(pool, 'users', 'idx_users_email', 'email');
+    await safeCreateIndex(pool, 'users', 'idx_users_role', 'role');
+    await safeCreateIndex(pool, 'messages', 'idx_msg_barangay', 'barangay');
+    await safeCreateIndex(pool, 'sms_notifications', 'idx_sms_read', 'is_read');
 
     // Document & Service Categories schema migration
     try {
@@ -566,9 +626,229 @@ async function migrateDatabase() {
     } catch (e) {
       console.warn('clinical_encounters / inventory migration warning:', e.message);
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Barangay Settings Table (per-barangay email/SMS config)
+    // ─────────────────────────────────────────────────────────────
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS barangay_settings (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          barangay_name VARCHAR(150) NOT NULL DEFAULT 'My Barangay',
+          municipality VARCHAR(150) DEFAULT '',
+          province VARCHAR(150) DEFAULT '',
+          emailjs_service_id VARCHAR(100) DEFAULT '',
+          emailjs_template_id VARCHAR(100) DEFAULT '',
+          emailjs_public_key VARCHAR(200) DEFAULT '',
+          emailjs_private_key VARCHAR(200) DEFAULT '',
+          sms_api_key VARCHAR(300) DEFAULT '',
+          sms_sender_name VARCHAR(50) DEFAULT 'BrgySystem',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+      const [sc] = await pool.query('SELECT COUNT(*) AS total FROM barangay_settings');
+      if (sc[0]?.total === 0) {
+        await pool.query(
+          'INSERT INTO barangay_settings (barangay_name, municipality, province, emailjs_service_id, emailjs_template_id, emailjs_public_key, emailjs_private_key, sms_api_key, sms_sender_name) VALUES (?,?,?,?,?,?,?,?,?)',
+          [
+            process.env.VITE_BARANGAY_NAME || 'Barangay Pianing',
+            '', '',
+            process.env.VITE_EMAILJS_SERVICE_ID || '',
+            process.env.VITE_EMAILJS_TEMPLATE_ID || '',
+            process.env.VITE_EMAILJS_PUBLIC_KEY || '',
+            process.env.VITE_EMAILJS_PRIVATE_KEY || '',
+            process.env.SEMAPHORE_API_KEY || '',
+            'BrgySystem'
+          ]
+        );
+        console.log('[Settings] Seeded default barangay_settings from .env');
+      }
+    } catch (e) {
+      console.warn('Barangay settings migration warning:', e.message);
+    }
   }
 }
 setTimeout(migrateDatabase, 1000);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Barangay Settings API Routes (SuperAdmin + SuperMegaAdmin only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/settings — fetch current barangay settings (supports ?barangay=Antongalon)
+app.get('/api/settings', async (req, res) => {
+  const pool = getPool();
+  const rawBrgy = (req.query.barangay || '').toString().trim();
+  const reqBrgy = rawBrgy.replace(/^Barangay\s+/i, '');
+  if (pool && getStatus().connected) {
+    try {
+      let rows;
+      if (reqBrgy) {
+        [rows] = await pool.query(
+          'SELECT * FROM barangay_settings WHERE LOWER(barangay_name) = LOWER(?) OR LOWER(barangay_name) = LOWER(?) LIMIT 1',
+          [reqBrgy, `Barangay ${reqBrgy}`]
+        );
+        if (rows && rows.length > 0) return res.json(rows[0]);
+
+        // If specific barangay requested but not in DB yet, return clean isolated settings for that barangay
+        return res.json({
+          barangay_name: `Barangay ${reqBrgy}`,
+          municipality: 'Butuan City',
+          province: 'Agusan del Norte',
+          emailjs_service_id: '',
+          emailjs_template_id: '',
+          emailjs_public_key: '',
+          emailjs_private_key: '',
+          sms_api_key: '',
+          sms_sender_name: `Brgy${reqBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`
+        });
+      }
+
+      // No specific barangay requested (e.g. system default)
+      [rows] = await pool.query('SELECT * FROM barangay_settings ORDER BY id ASC LIMIT 1');
+      if (rows && rows.length > 0) return res.json(rows[0]);
+    } catch (e) {
+      console.warn('[Settings GET] DB error:', e.message);
+    }
+  }
+
+  // Fallback:
+  if (reqBrgy && reqBrgy.toLowerCase() !== 'pianing') {
+    return res.json({
+      barangay_name: `Barangay ${reqBrgy}`,
+      municipality: 'Butuan City',
+      province: 'Agusan del Norte',
+      emailjs_service_id: '',
+      emailjs_template_id: '',
+      emailjs_public_key: '',
+      emailjs_private_key: '',
+      sms_api_key: '',
+      sms_sender_name: `Brgy${reqBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`
+    });
+  }
+
+  return res.json({
+    barangay_name: reqBrgy ? `Barangay ${reqBrgy}` : (process.env.VITE_BARANGAY_NAME || 'Barangay Pianing'),
+    municipality: 'Butuan City',
+    province: 'Agusan del Norte',
+    emailjs_service_id: process.env.VITE_EMAILJS_SERVICE_ID || '',
+    emailjs_template_id: process.env.VITE_EMAILJS_TEMPLATE_ID || '',
+    emailjs_public_key: process.env.VITE_EMAILJS_PUBLIC_KEY || '',
+    emailjs_private_key: process.env.VITE_EMAILJS_PRIVATE_KEY || '',
+    sms_api_key: process.env.SEMAPHORE_API_KEY || '',
+    sms_sender_name: 'BrgyPianing'
+  });
+});
+
+// GET /api/settings/all — fetch all barangay settings (SuperMegaAdmin multi-tenant overview)
+app.get('/api/settings/all', async (req, res) => {
+  const pool = getPool();
+  if (pool && getStatus().connected) {
+    try {
+      const [rows] = await pool.query('SELECT * FROM barangay_settings ORDER BY barangay_name ASC');
+      return res.json(rows || []);
+    } catch (e) {
+      console.warn('[Settings GET all] DB error:', e.message);
+    }
+  }
+  return res.json([]);
+});
+
+// POST /api/settings — save barangay settings (scoped by barangay_name)
+app.post('/api/settings', async (req, res) => {
+  const { barangay_name, municipality, province, emailjs_service_id, emailjs_template_id, emailjs_public_key, emailjs_private_key, sms_api_key, sms_sender_name } = req.body;
+  if (!barangay_name || !barangay_name.trim()) {
+    return res.status(400).json({ success: false, message: 'Barangay name is required.' });
+  }
+  const cleanBrgy = barangay_name.trim().replace(/^Barangay\s+/i, '');
+  const pool = getPool();
+  if (pool && getStatus().connected) {
+    try {
+      const [existing] = await pool.query(
+        'SELECT id FROM barangay_settings WHERE LOWER(barangay_name) = LOWER(?) OR LOWER(barangay_name) = LOWER(?) LIMIT 1',
+        [cleanBrgy, `Barangay ${cleanBrgy}`]
+      );
+      if (existing && existing.length > 0) {
+        await pool.query(
+          'UPDATE barangay_settings SET barangay_name=?, municipality=?, province=?, emailjs_service_id=?, emailjs_template_id=?, emailjs_public_key=?, emailjs_private_key=?, sms_api_key=?, sms_sender_name=?, updated_at=NOW() WHERE id=?',
+          [cleanBrgy, municipality||'', province||'', emailjs_service_id||'', emailjs_template_id||'', emailjs_public_key||'', emailjs_private_key||'', sms_api_key||'', sms_sender_name||'BrgySystem', existing[0].id]
+        );
+      } else {
+        await pool.query(
+          'INSERT INTO barangay_settings (barangay_name, municipality, province, emailjs_service_id, emailjs_template_id, emailjs_public_key, emailjs_private_key, sms_api_key, sms_sender_name) VALUES (?,?,?,?,?,?,?,?,?)',
+          [cleanBrgy, municipality||'', province||'', emailjs_service_id||'', emailjs_template_id||'', emailjs_public_key||'', emailjs_private_key||'', sms_api_key||'', sms_sender_name||'BrgySystem']
+        );
+      }
+      return res.json({ success: true, message: `Settings for Barangay ${cleanBrgy} saved successfully.` });
+    } catch (e) {
+      console.error('[Settings POST] DB error:', e.message);
+      return res.status(500).json({ success: false, message: 'Failed to save settings.' });
+    }
+  }
+  return res.status(503).json({ success: false, message: 'Database not connected.' });
+});
+
+// POST /api/settings/test-email — send a live test email using saved credentials
+app.post('/api/settings/test-email', async (req, res) => {
+  const { to, barangay_name, emailjs_service_id, emailjs_template_id, emailjs_public_key, emailjs_private_key } = req.body;
+  if (!to || !emailjs_service_id || !emailjs_template_id || !emailjs_public_key) {
+    return res.status(400).json({ success: false, message: 'Missing required EmailJS credentials or recipient email.' });
+  }
+  try {
+    const payload = {
+      service_id: emailjs_service_id,
+      template_id: emailjs_template_id,
+      user_id: emailjs_public_key,
+      template_params: {
+        to_email: to, email: to,
+        to_name: 'Admin',
+        name: barangay_name || 'Barangay',
+        title: 'Test Notification — Settings Verified',
+        message: `This is a test email from ${barangay_name || 'your Barangay System'}. Your email notification settings are working correctly.`,
+        time: new Date().toLocaleString('en-PH'),
+        barangay_name: barangay_name || 'Barangay',
+        from_name: `${barangay_name || 'Barangay'} Administration`
+      }
+    };
+    if (emailjs_private_key) payload.accessToken = emailjs_private_key;
+    const ejRes = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const text = await ejRes.text();
+    if (ejRes.ok) return res.json({ success: true, message: `Test email sent to ${to}.` });
+    return res.status(400).json({ success: false, message: `EmailJS error: ${text}` });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// POST /api/settings/test-sms — send a live test SMS using saved Semaphore credentials
+app.post('/api/settings/test-sms', async (req, res) => {
+  const { phone, barangay_name, sms_api_key, sms_sender_name } = req.body;
+  if (!phone || !sms_api_key) {
+    return res.status(400).json({ success: false, message: 'Missing phone number or SMS API key.' });
+  }
+  try {
+    const params = new URLSearchParams({
+      apikey: sms_api_key,
+      number: phone,
+      message: `[${barangay_name || 'Barangay System'}] SMS notification settings are working correctly. This is a test message.`,
+      sendername: sms_sender_name || 'BrgySystem'
+    });
+    const smsRes = await fetch('https://api.semaphore.co/api/v4/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    const data = await smsRes.json();
+    if (smsRes.ok) return res.json({ success: true, message: `Test SMS sent to ${phone}.` });
+    return res.status(400).json({ success: false, message: JSON.stringify(data) });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: e.message });
+  }
+});
 
 // Document & Service Category Management Endpoints (Two Departments: Barangay & Health)
 const DEFAULT_CATEGORIES = [
@@ -1156,6 +1436,12 @@ app.post('/api/auth/register', async (req, res) => {
           details: `Resident online account ${cleanEmail} claimed existing census record #${residentIdToUse} in Barangay ${userBarangay}`
         }).catch(() => {});
 
+        sendRegistrationEmail({
+          to: cleanEmail,
+          fullName,
+          role: userRole
+        }).catch(e => console.warn('[Email] Registration email error:', e.message));
+
         return res.status(201).json({
           success: true,
           is_claimed: true,
@@ -1182,6 +1468,12 @@ app.post('/api/auth/register', async (req, res) => {
           await pool.query("UPDATE residents SET years_of_residency = ? WHERE id = ?", [years_of_residency.trim(), residentIdToUse]);
         } catch {}
       }
+
+      sendRegistrationEmail({
+        to: cleanEmail,
+        fullName,
+        role: userRole
+      }).catch(e => console.warn('[Email] Registration email error:', e.message));
 
       logActivity({
         user_name: fullName,
@@ -1257,6 +1549,12 @@ app.post('/api/auth/register', async (req, res) => {
       details: `Resident online account ${cleanEmail} claimed existing census record #${matchedMock.id} in Barangay ${userBarangay}`
     }).catch(() => {});
 
+    sendRegistrationEmail({
+      to: cleanEmail,
+      fullName,
+      role: userRole
+    }).catch(e => console.warn('[Email] Registration email error:', e.message));
+
     return res.status(201).json({
       success: true,
       is_claimed: true,
@@ -1324,6 +1622,12 @@ app.post('/api/auth/register', async (req, res) => {
     barangay: userBarangay,
     details: `Created new resident account for ${cleanEmail} in Barangay ${userBarangay}. Status: Pending_Review.`
   }).catch(() => {});
+
+  sendRegistrationEmail({
+    to: cleanEmail,
+    fullName,
+    role: userRole
+  }).catch(e => console.warn('[Email] Registration email error:', e.message));
 
   res.status(201).json({
     success: true,
@@ -1414,7 +1718,12 @@ app.get('/api/residents/pending', async (req, res) => {
       `;
       const params = [];
       if (barangay && barangay.toLowerCase() !== 'all' && !barangay.toLowerCase().includes('city-wide')) {
-        query += ` AND (LOWER(COALESCE(r.barangay, u.barangay, '')) = LOWER(?) OR LOWER(COALESCE(r.address, '')) LIKE LOWER(?))`;
+        // Strict barangay match — only fall back to address when barangay column is empty
+        query += ` AND (
+          (COALESCE(r.barangay, u.barangay, '') != '' AND LOWER(COALESCE(r.barangay, u.barangay, '')) = LOWER(?))
+          OR
+          (COALESCE(r.barangay, u.barangay, '') = '' AND LOWER(COALESCE(r.address, '')) LIKE LOWER(?))
+        )`;
         params.push(barangay.trim(), `%${barangay.trim()}%`);
       }
       query += ` ORDER BY u.id DESC`;
@@ -1511,13 +1820,15 @@ app.put('/api/residents/:id/approve', async (req, res) => {
       let targetEmail = null;
       let targetName = 'Resident';
       let targetPhone = '09171234567';
+      let targetBarangay = 'Antongalon';
 
       // Check residents table first
-      const [rRows] = await pool.query("SELECT first_name, last_name, email, phone FROM residents WHERE id = ?", [id]);
+      const [rRows] = await pool.query("SELECT first_name, last_name, email, phone, barangay FROM residents WHERE id = ?", [id]);
       if (rRows.length > 0) {
         targetEmail = rRows[0].email;
         targetName = `${rRows[0].first_name} ${rRows[0].last_name}`.trim();
         targetPhone = rRows[0].phone || targetPhone;
+        targetBarangay = rRows[0].barangay || targetBarangay;
         await pool.query("UPDATE residents SET verification_status = 'Verified', rejection_reason = NULL WHERE id = ?", [id]);
       } else {
         // Fallback check users table
@@ -1526,6 +1837,7 @@ app.put('/api/residents/:id/approve', async (req, res) => {
           targetEmail = uRows[0].email;
           targetName = uRows[0].name;
           targetPhone = uRows[0].phone || targetPhone;
+          targetBarangay = uRows[0].barangay || targetBarangay;
         }
       }
 
@@ -1541,8 +1853,8 @@ app.put('/api/residents/:id/approve', async (req, res) => {
           const lName = nameParts.slice(1).join(' ') || 'Resident';
           try {
             await pool.query(
-              "INSERT INTO residents (first_name, last_name, email, phone, address, barangay, verification_status) VALUES (?, ?, ?, ?, 'Barangay Pianing', 'Pianing', 'Verified')",
-              [fName, lName, targetEmail.toLowerCase(), targetPhone]
+              "INSERT INTO residents (first_name, last_name, email, phone, address, barangay, verification_status) VALUES (?, ?, ?, ?, ?, ?, 'Verified')",
+              [fName, lName, targetEmail.toLowerCase(), targetPhone, `Barangay ${targetBarangay}`, targetBarangay]
             );
           } catch {}
         }
@@ -1566,6 +1878,7 @@ app.put('/api/residents/:id/approve', async (req, res) => {
           to: targetEmail,
           fullName: targetName,
           status: 'Verified',
+          barangay: targetBarangay
         }).catch(e => console.warn('[Email] Verification approval error:', e.message));
       }
 
@@ -1798,9 +2111,18 @@ app.put('/api/residents/:id', async (req, res) => {
 
 // PUT /api/users/profile - Profile Settings (name, phone, photo, password, address, civil_status, purok)
 app.put('/api/users/profile', async (req, res) => {
-  const { id, email, password, phone, address, name, first_name, middle_name, last_name, date_of_birth, gender, civil_status, submitted_id, profile_photo, purok } = req.body;
+  const { id, email, new_email, newEmail, password, phone, address, name, first_name, middle_name, last_name, date_of_birth, gender, civil_status, submitted_id, profile_photo, purok } = req.body;
   const fullName = name || (first_name ? `${first_name} ${middle_name ? middle_name + ' ' : ''}${last_name || ''}`.trim() : undefined);
-  
+  const cleanCurrentEmail = (email || '').trim().toLowerCase();
+  const cleanNewEmail = (new_email || newEmail || '').trim().toLowerCase();
+  const isEmailChange = Boolean(cleanNewEmail && cleanNewEmail !== cleanCurrentEmail);
+
+  if (isEmailChange) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanNewEmail)) {
+      return res.status(400).json({ success: false, message: 'Invalid email address format.' });
+    }
+  }
+
   if (password) {
     const passCheck = validatePasswordComplexity(password);
     if (!passCheck.isValid) {
@@ -1811,25 +2133,137 @@ app.put('/api/users/profile', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      if (password) {
-        const hashedPassword = await hashPassword(password);
-        await pool.query("UPDATE users SET password_hash = ? WHERE id = ? OR LOWER(email) = LOWER(?)", [hashedPassword, id || 0, (email || '').toLowerCase()]);
+      // Accurately resolve target user and resident IDs
+      let targetUserId = 0;
+      let targetResidentId = 0;
+
+      if (cleanCurrentEmail) {
+        const [uRows] = await pool.query("SELECT id FROM users WHERE LOWER(email) = ?", [cleanCurrentEmail]);
+        if (uRows.length > 0) targetUserId = uRows[0].id;
+
+        const [rRows] = await pool.query("SELECT id, linked_user_id FROM residents WHERE LOWER(email) = ?", [cleanCurrentEmail]);
+        if (rRows.length > 0) {
+          targetResidentId = rRows[0].id;
+          if (!targetUserId && rRows[0].linked_user_id) targetUserId = rRows[0].linked_user_id;
+        }
       }
-      if (fullName) {
-        await pool.query("UPDATE users SET name = ? WHERE id = ? OR LOWER(email) = LOWER(?)", [fullName, id || 0, (email || '').toLowerCase()]);
+
+      if (!targetUserId && id) {
+        const [rRows] = await pool.query("SELECT linked_user_id FROM residents WHERE id = ?", [id]);
+        if (rRows.length > 0 && rRows[0].linked_user_id) {
+          targetUserId = rRows[0].linked_user_id;
+          targetResidentId = id;
+        } else {
+          const [uRows] = await pool.query("SELECT id FROM users WHERE id = ?", [id]);
+          if (uRows.length > 0) targetUserId = uRows[0].id;
+        }
       }
-      if (phone) {
-        await pool.query("UPDATE users SET phone = ? WHERE id = ? OR LOWER(email) = LOWER(?)", [phone, id || 0, (email || '').toLowerCase()]);
+
+      if (!targetResidentId && id) {
+        const [rRows] = await pool.query("SELECT id FROM residents WHERE id = ? OR linked_user_id = ?", [id, targetUserId || id]);
+        if (rRows.length > 0) targetResidentId = rRows[0].id;
       }
-      if (address) {
-        await pool.query("UPDATE users SET address = ? WHERE id = ? OR LOWER(email) = LOWER(?)", [address, id || 0, (email || '').toLowerCase()]);
+
+      let curRes = null;
+      let curUser = null;
+      if (cleanCurrentEmail) {
+        const [cr] = await pool.query("SELECT * FROM residents WHERE LOWER(email) = ? LIMIT 1", [cleanCurrentEmail]);
+        if (cr && cr.length > 0) curRes = cr[0];
+        const [cu] = await pool.query("SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1", [cleanCurrentEmail]);
+        if (cu && cu.length > 0) curUser = cu[0];
       }
-      if (profile_photo !== undefined) {
-        await pool.query("UPDATE users SET profile_photo = ? WHERE id = ? OR LOWER(email) = LOWER(?)", [profile_photo || null, id || 0, (email || '').toLowerCase()]);
+      if (!curRes && targetResidentId) {
+        const [cr] = await pool.query("SELECT * FROM residents WHERE id = ? LIMIT 1", [targetResidentId]);
+        if (cr && cr.length > 0) curRes = cr[0];
       }
+      if (!curUser && targetUserId) {
+        const [cu] = await pool.query("SELECT * FROM users WHERE id = ? LIMIT 1", [targetUserId]);
+        if (cu && cu.length > 0) curUser = cu[0];
+      }
+
+      // Compute field-level diff for admin and resident audit
+      const changedFields = [];
+      if (isEmailChange) {
+        changedFields.push(`Email (${cleanCurrentEmail} -> ${cleanNewEmail})`);
+      }
+      if (phone && curRes?.phone && phone !== curRes.phone) {
+        changedFields.push(`Phone (${curRes.phone} -> ${phone})`);
+      } else if (phone && !curRes?.phone) {
+        changedFields.push(`Phone (${phone})`);
+      }
+      if (purok && curRes?.purok && String(purok).replace(/purok\s*/i, '') !== String(curRes.purok).replace(/purok\s*/i, '')) {
+        changedFields.push(`Purok (${curRes.purok} -> ${purok})`);
+      }
+      if (civil_status && curRes?.civil_status && civil_status !== curRes.civil_status) {
+        changedFields.push(`Civil Status (${curRes.civil_status} -> ${civil_status})`);
+      }
+      if (address && curRes?.address && address !== curRes.address) {
+        changedFields.push(`Address (${address})`);
+      }
+      if (date_of_birth && curRes?.date_of_birth && date_of_birth !== String(curRes.date_of_birth).split('T')[0]) {
+        changedFields.push(`Birth Date (${date_of_birth})`);
+      }
+
+      const diffSummary = changedFields.length > 0 ? changedFields.join(', ') : 'Personal details updated.';
+      const updateNote = `Updated on ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}: ${diffSummary}`;
+
+      if (isEmailChange) {
+        const [dupUsers] = await pool.query(
+          "SELECT id FROM users WHERE LOWER(email) = ? AND id != ?",
+          [cleanNewEmail, targetUserId || 0]
+        );
+        if (dupUsers.length > 0) {
+          return res.status(400).json({ success: false, message: 'This email address is already registered to another account.' });
+        }
+        const [dupResidents] = await pool.query(
+          "SELECT id FROM residents WHERE LOWER(email) = ? AND id != ?",
+          [cleanNewEmail, targetResidentId || 0]
+        );
+        if (dupResidents.length > 0) {
+          return res.status(400).json({ success: false, message: 'This email address is already registered to another resident.' });
+        }
+      }
+
+      if (targetUserId) {
+        if (password) {
+          const hashedPassword = await hashPassword(password);
+          await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [hashedPassword, targetUserId]);
+        }
+        if (fullName) {
+          await pool.query("UPDATE users SET name = ? WHERE id = ?", [fullName, targetUserId]);
+        }
+        if (phone) {
+          await pool.query("UPDATE users SET phone = ? WHERE id = ?", [phone, targetUserId]);
+        }
+        if (address) {
+          await pool.query("UPDATE users SET address = ? WHERE id = ?", [address, targetUserId]);
+        }
+        if (profile_photo !== undefined) {
+          await pool.query("UPDATE users SET profile_photo = ? WHERE id = ?", [profile_photo || null, targetUserId]);
+        }
+        if (isEmailChange) {
+          await pool.query("UPDATE users SET email = ? WHERE id = ?", [cleanNewEmail, targetUserId]);
+        }
+      }
+
+      if (isEmailChange) {
+        // Also cascade email updates across related tables
+        if (targetResidentId || targetUserId) {
+          await pool.query("UPDATE document_requests SET email = ? WHERE resident_id = ? OR LOWER(email) = ?", [cleanNewEmail, targetResidentId || targetUserId, cleanCurrentEmail]).catch(() => {});
+          await pool.query("UPDATE health_appointments SET resident_email = ? WHERE resident_id = ? OR LOWER(resident_email) = ?", [cleanNewEmail, targetResidentId || targetUserId, cleanCurrentEmail]).catch(() => {});
+        } else {
+          await pool.query("UPDATE document_requests SET email = ? WHERE LOWER(email) = ?", [cleanNewEmail, cleanCurrentEmail]).catch(() => {});
+          await pool.query("UPDATE health_appointments SET resident_email = ? WHERE LOWER(resident_email) = ?", [cleanNewEmail, cleanCurrentEmail]).catch(() => {});
+        }
+        await pool.query("UPDATE clinical_consultations SET patient_email = ? WHERE LOWER(patient_email) = ?", [cleanNewEmail, cleanCurrentEmail]).catch(() => {});
+        await pool.query("UPDATE maternal_health_records SET patient_email = ? WHERE LOWER(patient_email) = ?", [cleanNewEmail, cleanCurrentEmail]).catch(() => {});
+        await pool.query("UPDATE child_immunization_records SET parent_email = ? WHERE LOWER(parent_email) = ?", [cleanNewEmail, cleanCurrentEmail]).catch(() => {});
+      }
+
       // Update residents table
       const updates = [];
       const params = [];
+      if (isEmailChange) { updates.push('email = ?'); params.push(cleanNewEmail); }
       if (first_name) { updates.push('first_name = ?'); params.push(first_name); }
       if (middle_name !== undefined) { updates.push('middle_name = ?'); params.push(middle_name); }
       if (last_name) { updates.push('last_name = ?'); params.push(last_name); }
@@ -1840,28 +2274,68 @@ app.put('/api/users/profile', async (req, res) => {
       if (purok) { updates.push('purok = ?'); params.push(purok); }
       if (address) { updates.push('address = ?'); params.push(address); }
       if (profile_photo !== undefined) { updates.push('profile_photo = ?'); params.push(profile_photo || null); }
+      updates.push('last_profile_update_note = ?');
+      params.push(updateNote);
+
       // Handle submitted_id: only update when explicitly provided in payload
-      // null = intentional removal; undefined (not in body) = do NOT touch existing value
       if ('submitted_id' in req.body) {
         const sidVal = submitted_id === null ? null : submitted_id;
         updates.push('submitted_id = ?');
         params.push(sidVal);
-        // Also reset verification to Pending_Review when a new ID is submitted
-        if (sidVal) {
-          updates.push("verification_status = 'Pending_Review'");
-          await pool.query("UPDATE users SET verification_status = 'Pending_Review' WHERE id = ? OR LOWER(email) = LOWER(?)", [id || 0, (email || '').toLowerCase()]);
-        } else if (sidVal === null) {
-          updates.push("verification_status = 'Pending_Review'");
-          await pool.query("UPDATE users SET verification_status = 'Pending_Review' WHERE id = ? OR LOWER(email) = LOWER(?)", [id || 0, (email || '').toLowerCase()]);
+        if (targetUserId) {
+          await pool.query("UPDATE users SET verification_status = 'Pending_Review' WHERE id = ?", [targetUserId]);
         }
       }
-      if (updates.length > 0) {
-        params.push(id || 0, (email || '').toLowerCase(), (email || '').toLowerCase());
-        await pool.query(`UPDATE residents SET ${updates.join(', ')} WHERE id = ? OR LOWER(email) = LOWER(?) OR email = ?`, params);
+      if (updates.length > 0 && targetResidentId) {
+        params.push(targetResidentId);
+        await pool.query(`UPDATE residents SET ${updates.join(', ')} WHERE id = ?`, params);
+      } else if (updates.length > 0 && cleanCurrentEmail) {
+        params.push(cleanCurrentEmail);
+        await pool.query(`UPDATE residents SET ${updates.join(', ')} WHERE LOWER(email) = ?`, params);
       }
+
+      // Log activity
+      logActivity({
+        user_name: fullName || curUser?.name || 'Resident',
+        user_role: curUser?.role || 'resident',
+        action: 'Updated Profile Information',
+        action_type: 'Resident',
+        barangay: curRes?.barangay || curUser?.barangay || 'Pianing',
+        details: updateNote
+      }).catch(() => {});
+
+      // Insert admin alert into messages
+      try {
+        await pool.query(
+          "INSERT INTO messages (sender_name, sender_role, sender_email, recipient_name, recipient_role, recipient_email, barangay, message, sent_at, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+          [
+            fullName || curUser?.name || 'Resident',
+            'resident',
+            cleanNewEmail || cleanCurrentEmail,
+            'Barangay Administrator',
+            'admin',
+            '',
+            curRes?.barangay || curUser?.barangay || 'Pianing',
+            `Resident ${fullName || curUser?.name || 'Resident'} updated profile: ${diffSummary}`
+          ]
+        );
+      } catch (mErr) {}
+
+      // Dispatch email notification to resident
+      const notifyEmail = cleanNewEmail || cleanCurrentEmail;
+      if (notifyEmail && notifyEmail.includes('@')) {
+        sendProfileUpdateEmail({
+          to: notifyEmail,
+          fullName: fullName || curUser?.name || 'Resident',
+          changes: diffSummary,
+          date: new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })
+        }).catch(e => console.warn('Profile email notification error:', e.message));
+      }
+
       return res.json({ 
         success: true, 
-        message: 'Profile settings updated successfully.',
+        message: isEmailChange ? 'Email and profile settings updated successfully.' : 'Profile settings updated successfully.',
+        email: isEmailChange ? cleanNewEmail : (cleanCurrentEmail || undefined),
         profile_photo: profile_photo || null,
         date_of_birth,
         gender,
@@ -1876,8 +2350,18 @@ app.put('/api/users/profile', async (req, res) => {
   }
 
   // Mock data fallback
-  const user = mockData.users.find(u => (id && u.id === id) || (email && u.email.toLowerCase() === email.toLowerCase()));
+  const diffSummary = isEmailChange ? `Email changed to ${cleanNewEmail}` : 'Profile information updated.';
+  const updateNote = `Updated on ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}: ${diffSummary}`;
+
+  if (isEmailChange) {
+    const dup = mockData.users.some(u => u.id !== id && u.email.toLowerCase() === cleanNewEmail);
+    if (dup) {
+      return res.status(400).json({ success: false, message: 'This email address is already in use by another account.' });
+    }
+  }
+  const user = mockData.users.find(u => (id && u.id === id) || (email && u.email.toLowerCase() === cleanCurrentEmail));
   if (user) {
+    if (isEmailChange) user.email = cleanNewEmail;
     if (password) user.password_hash = password;
     if (fullName) user.name = fullName;
     if (phone) user.phone = phone;
@@ -1889,12 +2373,14 @@ app.put('/api/users/profile', async (req, res) => {
     if ('submitted_id' in req.body) user.submitted_id = submitted_id;
     if (profile_photo !== undefined) user.profile_photo = profile_photo || null;
   }
-  const resident = mockData.residents.find(r => (id && r.id === id) || (email && r.email.toLowerCase() === email.toLowerCase()));
+  const resident = mockData.residents.find(r => (id && r.id === id) || (email && r.email.toLowerCase() === cleanCurrentEmail));
   if (resident) {
+    if (isEmailChange) resident.email = cleanNewEmail;
     if (first_name) resident.first_name = first_name;
     if (middle_name !== undefined) resident.middle_name = middle_name;
     if (last_name) resident.last_name = last_name;
     if (date_of_birth) resident.date_of_birth = date_of_birth;
+    resident.last_profile_update_note = updateNote;
     if (gender) resident.gender = gender;
     if (civil_status) resident.civil_status = civil_status;
     if (phone) resident.phone = phone;
@@ -1903,7 +2389,29 @@ app.put('/api/users/profile', async (req, res) => {
     if ('submitted_id' in req.body) resident.submitted_id = submitted_id;
     if (profile_photo !== undefined) resident.profile_photo = profile_photo || null;
   }
-  res.json({ success: true, profile_photo: profile_photo || null, message: 'Profile settings updated successfully.' });
+
+  const notifyEmail = isEmailChange ? cleanNewEmail : cleanCurrentEmail;
+  if (notifyEmail && notifyEmail.includes('@')) {
+    sendProfileUpdateEmail({
+      to: notifyEmail,
+      fullName: fullName || user?.name || 'Resident',
+      changes: diffSummary,
+      date: new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })
+    }).catch(e => console.warn('Profile email notification error:', e.message));
+  }
+  if (isEmailChange && mockData.document_requests) {
+    mockData.document_requests.forEach(d => {
+      if (d.resident_id === id || (d.email && d.email.toLowerCase() === cleanCurrentEmail)) {
+        d.email = cleanNewEmail;
+      }
+    });
+  }
+  res.json({ 
+    success: true, 
+    email: isEmailChange ? cleanNewEmail : (cleanCurrentEmail || undefined),
+    profile_photo: profile_photo || null, 
+    message: isEmailChange ? 'Email and profile settings updated successfully.' : 'Profile settings updated successfully.' 
+  });
 });
 
 // -------------------------------------------------------------
@@ -1913,16 +2421,6 @@ app.get('/api/users', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      // Safe column check / addition
-      await safeAddColumn(pool, 'users', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
-      await safeAddColumn(pool, 'users', 'city', "VARCHAR(100) DEFAULT 'Butuan City'");
-      await safeAddColumn(pool, 'residents', 'city', "VARCHAR(100) DEFAULT 'Butuan City'");
-      await safeAddColumn(pool, 'users', 'phone', "VARCHAR(50) DEFAULT ''");
-      await safeAddColumn(pool, 'users', 'last_login', "DATETIME NULL");
-      await safeAddColumn(pool, 'users', 'employee_id', "VARCHAR(50) DEFAULT NULL");
-      await safeAddColumn(pool, 'users', 'job_title', "VARCHAR(100) DEFAULT NULL");
-      await safeAddColumn(pool, 'users', 'permissions', "TEXT NULL");
-
       const [rows] = await pool.query(`
         SELECT u.id, u.name, u.email, u.role, u.status, u.barangay, COALESCE(u.city, 'Butuan City') AS city, u.phone, u.employee_id, u.job_title, u.last_login, u.created_at, u.permissions,
                COALESCE(u.profile_photo, r.profile_photo) AS profile_photo,
@@ -2036,10 +2534,6 @@ app.post('/api/users', async (req, res) => {
         return res.status(400).json({ success: false, message: 'An account with this email already exists. Each account must have a unique email.' });
       }
 
-      await safeAddColumn(pool, 'users', 'city', "VARCHAR(100) DEFAULT 'Butuan City'");
-      await safeAddColumn(pool, 'users', 'employee_id', "VARCHAR(50) DEFAULT NULL");
-      await safeAddColumn(pool, 'users', 'job_title', "VARCHAR(100) DEFAULT NULL");
-
       const rawPassword = password || 'Admin123!';
       const hashedPassword = await hashPassword(rawPassword);
       const userStatus = status || 'Active';
@@ -2048,6 +2542,27 @@ app.post('/api/users', async (req, res) => {
         "INSERT INTO users (name, email, password_hash, role, barangay, city, phone, status, verification_status, employee_id, job_title, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Verified', ?, ?, NOW())",
         [name.trim(), cleanEmail, hashedPassword, userRole, userBarangay, userCity, userPhone, userStatus, userEmployeeId, userJobTitle]
       );
+
+      // If superadmin role, ensure a clean, isolated barangay_settings row exists for their barangay
+      if (userRole === 'superadmin' && userBarangay) {
+        try {
+          const cleanB = userBarangay.replace(/^Barangay\s+/i, '').trim();
+          const [existingSettings] = await pool.query(
+            'SELECT id FROM barangay_settings WHERE LOWER(barangay_name) = LOWER(?) OR LOWER(barangay_name) = LOWER(?) LIMIT 1',
+            [cleanB, `Barangay ${cleanB}`]
+          );
+          if (!existingSettings || existingSettings.length === 0) {
+            await pool.query(
+              `INSERT INTO barangay_settings (barangay_name, municipality, province, emailjs_service_id, emailjs_template_id, emailjs_public_key, emailjs_private_key, sms_api_key, sms_sender_name, created_at, updated_at)
+               VALUES (?, ?, ?, '', '', '', '', '', ?, NOW(), NOW())`,
+              [`Barangay ${cleanB}`, userCity || 'Butuan City', 'Agusan del Norte', `Brgy${cleanB.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`]
+            );
+            console.log(`[Settings] Created isolated barangay_settings row for ${cleanB}`);
+          }
+        } catch (settingsErr) {
+          console.warn('Superadmin barangay_settings init warning:', settingsErr.message);
+        }
+      }
 
       // If resident role, link with existing census record or insert new resident
       if (userRole === 'resident') {
@@ -2096,6 +2611,13 @@ app.post('/api/users', async (req, res) => {
           console.warn('Resident census link error:', e.message);
         }
       }
+
+      sendRegistrationEmail({
+        to: cleanEmail,
+        fullName: name.trim(),
+        role: userRole,
+        tempPassword: password || 'Admin123!'
+      }).catch(e => console.warn('[Email] User creation email error:', e.message));
 
       logActivity({
         user_name: created_by || 'Super Administrator',
@@ -2153,6 +2675,13 @@ app.post('/api/users', async (req, res) => {
   };
   mockData.users.push(newUser);
 
+  sendRegistrationEmail({
+    to: cleanEmail,
+    fullName: name.trim(),
+    role: userRole,
+    tempPassword: password || 'Admin123!'
+  }).catch(e => console.warn('[Email] User creation email error:', e.message));
+
   logActivity({
     user_name: created_by || 'Super Administrator',
     user_role: 'superadmin',
@@ -2179,7 +2708,6 @@ app.put('/api/users/:id', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      await safeAddColumn(pool, 'users', 'permissions', "TEXT NULL");
       const updates = [];
       const params = [];
       if (name) { updates.push('name = ?'); params.push(name.trim()); }
@@ -2364,11 +2892,6 @@ app.get('/api/messages', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      // Ensure messages table exists and has all required columns
-      await safeAddColumn(pool, 'messages', 'sent_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
-      await safeAddColumn(pool, 'messages', 'timestamp', "DATETIME DEFAULT CURRENT_TIMESTAMP");
-      await safeAddColumn(pool, 'messages', 'recipient_name', "VARCHAR(100) DEFAULT ''");
-      await safeAddColumn(pool, 'messages', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
       const [rows] = await pool.query("SELECT * FROM messages ORDER BY id ASC");
       const formatted = (rows || []).map(r => ({
         ...r,
@@ -2383,9 +2906,11 @@ app.get('/api/messages', async (req, res) => {
 });
 
 app.post('/api/messages', async (req, res) => {
-  const { sender_name, sender_role, recipient_name, recipient_role, message, barangay } = req.body;
+  const { sender_name, sender_role, sender_email, recipient_name, recipient_role, recipient_email, message, barangay } = req.body || {};
   const targetRecipientName = recipient_name || '';
   const targetRecipientRole = recipient_role || 'all';
+  const targetSenderEmail = sender_email || '';
+  const targetRecipientEmail = recipient_email || '';
   let targetBarangay = barangay || 'Pianing';
 
   const pool = getPool();
@@ -2403,15 +2928,17 @@ app.post('/api/messages', async (req, res) => {
       }
 
       const [result] = await pool.query(
-        "INSERT INTO messages (sender_name, sender_role, recipient_name, recipient_role, barangay, message) VALUES (?, ?, ?, ?, ?, ?)",
-        [sender_name || 'Staff', sender_role || 'staff', targetRecipientName, targetRecipientRole, targetBarangay, message || '']
+        "INSERT INTO messages (sender_name, sender_role, sender_email, recipient_name, recipient_role, recipient_email, barangay, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [sender_name || 'Staff', sender_role || 'staff', targetSenderEmail, targetRecipientName, targetRecipientRole, targetRecipientEmail, targetBarangay, message || '']
       );
       return res.status(201).json({
         id: result.insertId,
         sender_name: sender_name || 'Staff',
         sender_role: sender_role || 'staff',
+        sender_email: targetSenderEmail,
         recipient_name: targetRecipientName,
         recipient_role: targetRecipientRole,
+        recipient_email: targetRecipientEmail,
         barangay: targetBarangay,
         message: message || '',
         timestamp: new Date().toISOString()
@@ -2426,12 +2953,15 @@ app.post('/api/messages', async (req, res) => {
     id: Date.now(),
     sender_name: sender_name || 'Staff',
     sender_role: sender_role || 'staff',
+    sender_email: targetSenderEmail,
     recipient_name: targetRecipientName,
     recipient_role: targetRecipientRole,
+    recipient_email: targetRecipientEmail,
     barangay: targetBarangay,
     message: message || '',
     timestamp: new Date().toISOString()
   };
+  mockData.messages = mockData.messages || [];
   mockData.messages.push(newMsg);
   return res.status(201).json(newMsg);
 });
@@ -2639,6 +3169,244 @@ app.get('/api/stats/bhw', async (req, res) => {
 });
 
 // -------------------------------------------------------------
+// Official Document PDF Generator (jsPDF Node-Safe Vector Engine)
+// -------------------------------------------------------------
+function generateDocumentPdf(doc) {
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'letter'
+  });
+
+  const pageWidth = pdf.internal.pageSize.getWidth(); // 215.9mm
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2; // 175.9mm
+
+  // Parse extra fields
+  let extra = {};
+  try {
+    if (doc.extra_fields) {
+      extra = typeof doc.extra_fields === 'string' ? JSON.parse(doc.extra_fields) : doc.extra_fields;
+    }
+  } catch (e) {}
+
+  const residentName = (doc.resident_name || 'Resident').toUpperCase();
+  const address = doc.resident_address || doc.address || `Barangay ${doc.barangay || 'Pianing'}, Butuan City`;
+  const civilStatus = doc.resident_civil_status || doc.civil_status || 'Single';
+  const purpose = doc.purpose || 'Personal / Official Requirement';
+  const brgyName = (doc.barangay || 'Pianing').toUpperCase();
+
+  // Letterhead
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9);
+  pdf.setTextColor(60, 60, 60);
+  pdf.text('Republic of the Philippines', pageWidth / 2, 22, { align: 'center' });
+  pdf.text('Province of Agusan del Norte', pageWidth / 2, 26.5, { align: 'center' });
+  pdf.text('City of Butuan', pageWidth / 2, 31, { align: 'center' });
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(11);
+  pdf.setTextColor(20, 20, 20);
+  pdf.text(`BARANGAY ${brgyName}`, pageWidth / 2, 36.5, { align: 'center' });
+  pdf.setFontSize(10);
+  pdf.text('OFFICE OF THE PUNONG BARANGAY', pageWidth / 2, 41.5, { align: 'center' });
+
+  // Divider lines
+  pdf.setDrawColor(37, 99, 235);
+  pdf.setLineWidth(0.8);
+  pdf.line(margin, 45, pageWidth - margin, 45);
+
+  pdf.setDrawColor(180, 180, 180);
+  pdf.setLineWidth(0.3);
+  pdf.line(margin, 46.5, pageWidth - margin, 46.5);
+
+  // Document Title
+  let docType = (doc.document_type || 'CERTIFICATE').trim();
+  let docTitle = docType.toUpperCase();
+  if (docTitle === 'BUSINESS CLEARANCE') docTitle = 'BARANGAY BUSINESS CLEARANCE';
+  if (docTitle.includes('LAND OCCUPANCY')) docTitle = 'CERTIFICATE OF LAND OCCUPANCY';
+  if (docTitle.includes('RESIDENCY')) docTitle = 'CERTIFICATE OF RESIDENCY';
+  if (docTitle.includes('INDIGENCY')) docTitle = 'CERTIFICATE OF INDIGENCY';
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(16);
+  pdf.setTextColor(15, 23, 42);
+  pdf.text(docTitle, pageWidth / 2, 59, { align: 'center' });
+
+  // Tracking info & Date
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(8.5);
+  pdf.setTextColor(90, 90, 90);
+  const refCode = doc.request_code || `DOC-${doc.id || Date.now()}`;
+  pdf.text(`Control / Reference No.: ${refCode}`, margin, 68);
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+  pdf.text(`Date Issued: ${dateStr}`, pageWidth - margin, 68, { align: 'right' });
+
+  // Salutation
+  let y = 81;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(11);
+  pdf.setTextColor(20, 20, 20);
+  pdf.text('TO WHOM IT MAY CONCERN:', margin, y);
+
+  y += 9;
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(10.5);
+  pdf.setTextColor(30, 30, 30);
+
+  let bodyParagraphs = [];
+
+  if (docTitle === 'CERTIFICATE OF RESIDENCY') {
+    bodyParagraphs.push(
+      `This is to certify that ${residentName}, Filipino citizen, of legal age, ${civilStatus}, is a bona fide resident of ${address}.`,
+      `According to the official census and civil registry records of this Barangay, the aforementioned individual is a permanent and peaceful resident of good moral character and standing in the community, with no derogatory record or civil citation filed against their person.`,
+      `This certification is issued upon the formal request of the interested party for the purpose of: ${purpose.toUpperCase()} and for whatever lawful purpose it may serve.`
+    );
+  } else if (docTitle === 'BARANGAY BUSINESS CLEARANCE') {
+    const bizName = (extra['Business Name'] || extra['business_name'] || 'COMMERCIAL ESTABLISHMENT').toUpperCase();
+    const bizNature = extra['Nature of Business'] || extra['business_type'] || 'General Merchandise';
+    const bizLoc = extra['Business Address'] || extra['business_location'] || address;
+
+    bodyParagraphs.push(
+      `This is to certify that Barangay Business Clearance is hereby granted to:`,
+      `Business Establishment: ${bizName}\nNature / Line of Business: ${bizNature}\nOperating Address: ${bizLoc}\nRegistered Owner / Operator: ${residentName}`,
+      `This clearance is issued pursuant to the provisions of Section 152 of Republic Act No. 7160 (The Local Government Code of 1991), following verification that the aforementioned commercial enterprise complies with all applicable Barangay ordinances, public safety, sanitation, and zoning standards.`,
+      `Purpose: ${purpose.toUpperCase()}`
+    );
+  } else if (docTitle === 'CERTIFICATE OF LAND OCCUPANCY') {
+    const lotNum = extra['Lot Number'] || extra['lot_number'] || 'N/A';
+    const landArea = extra['Approximate Land Area'] || extra['land_area'] || 'N/A';
+    const surveyInfo = extra['Survey / Cadastral Info'] || extra['survey_info'] || 'N/A';
+    const occSince = extra['Occupancy Since'] || extra['occupancy_since'] || 'N/A';
+    const landLocation = extra['Land / Property Location'] || extra['land_location'] || address;
+
+    bodyParagraphs.push(
+      `This is to certify that ${residentName}, Filipino citizen, of legal age, ${civilStatus}, residing at ${address}, is the actual and physical occupant and possessor of a parcel of land situated at:`,
+      `Property Location: ${landLocation}\nCadastral / Lot Number: ${lotNum}\nApproximate Land Area: ${landArea}\nSurvey / Boundary Details: ${surveyInfo}\nOccupancy Duration: ${occSince}`,
+      `This further certifies that, based on official barangay records, ocular verification, and testimony of neighboring residents, the subject real property has been openly, peacefully, and continuously occupied by the applicant without active adverse claimant, contest, or boundary dispute pending before the Lupong Tagapamayapa.`,
+      `This certification is issued upon the request of ${residentName} for the purpose of: ${purpose.toUpperCase()} and for whatever legal intents it may serve.`
+    );
+  } else if (docTitle === 'CERTIFICATE OF INDIGENCY') {
+    bodyParagraphs.push(
+      `This is to certify that ${residentName}, Filipino, of legal age, ${civilStatus}, residing at ${address}, belongs to an indigent family whose income falls below the poverty threshold in this community.`,
+      `This further certifies that the above-named individual has been verified by the Barangay Council as eligible to receive social assistance, medical subsidy, legal representation, and humanitarian aid.`,
+      `This certification is issued upon their request for the purpose of: ${purpose.toUpperCase()}.`
+    );
+  } else {
+    bodyParagraphs.push(
+      `This is to certify that ${residentName}, Filipino citizen, of legal age, ${civilStatus}, residing at ${address}, is a bona fide resident of Barangay ${doc.barangay || 'Pianing'}, Butuan City.`,
+      `Based on the records on file in this office, the applicant has displayed good moral conduct, is a law-abiding citizen, and has NOT been convicted of any crime or penalized for community violations.`,
+      `This official document is issued upon personal request for the purpose of: ${purpose.toUpperCase()}.`
+    );
+  }
+
+  for (const para of bodyParagraphs) {
+    const lines = pdf.splitTextToSize(para, contentWidth);
+    pdf.text(lines, margin, y);
+    y += lines.length * 5.6 + 3.5;
+  }
+
+  y += 3;
+  const day = now.getDate();
+  const monthYear = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const issuanceText = `Issued this ${day}th day of ${monthYear} at the Office of the Punong Barangay, Barangay ${doc.barangay || 'Pianing'}, Butuan City, Agusan del Norte, Philippines.`;
+  const issLines = pdf.splitTextToSize(issuanceText, contentWidth);
+  pdf.text(issLines, margin, y);
+
+  y += 22;
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9);
+  pdf.text("Applicant's Signature:", margin, y);
+  pdf.line(margin, y + 10, margin + 50, y + 10);
+
+  const sigRightX = pageWidth - margin - 55;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(11);
+  pdf.text('HON. JUAN DELA CRUZ', sigRightX + 27, y + 6, { align: 'center' });
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(9.5);
+  pdf.text('Punong Barangay', sigRightX + 27, y + 11, { align: 'center' });
+  pdf.setFontSize(8);
+  pdf.setTextColor(120, 120, 120);
+  pdf.text('(NOT VALID WITHOUT OFFICIAL DRY SEAL)', sigRightX + 27, y + 16, { align: 'center' });
+
+  return Buffer.from(pdf.output('arraybuffer'));
+}
+
+// -------------------------------------------------------------
+// PDF Download & Generation Endpoints
+// -------------------------------------------------------------
+app.get('/api/documents/:id/pdf', async (req, res) => {
+  const id = Number(req.params.id);
+  const pool = getPool();
+  let doc = null;
+
+  if (pool && getStatus().connected) {
+    try {
+      const [rows] = await pool.query(`
+        SELECT d.*,
+               COALESCE(r.address, '') AS resident_address,
+               COALESCE(r.civil_status, 'Single') AS resident_civil_status,
+               COALESCE(r.gender, '') AS resident_gender,
+               r.date_of_birth AS resident_birth_date
+        FROM document_requests d
+        LEFT JOIN residents r ON (d.resident_id = r.id OR (d.email != '' AND LOWER(d.email) = LOWER(r.email)))
+        WHERE d.id = ?
+        LIMIT 1
+      `, [id]);
+      if (rows.length > 0) doc = rows[0];
+    } catch (err) {
+      console.warn('MySQL PDF fetch error:', err.message);
+    }
+  }
+
+  if (!doc) {
+    doc = (mockData.documents || []).find(d => d.id === id);
+  }
+
+  if (!doc) {
+    return res.status(404).json({ error: 'Document request not found' });
+  }
+
+  try {
+    const pdfBuffer = generateDocumentPdf(doc);
+    const safeType = (doc.document_type || 'Document').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const safeCode = (doc.request_code || id).toString().replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `${safeType}_${safeCode}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error('PDF Generation Error:', err);
+    return res.status(500).json({ error: 'Failed to generate PDF file', details: err.message });
+  }
+});
+
+app.post('/api/documents/generate-pdf', async (req, res) => {
+  const doc = req.body;
+  if (!doc || !doc.document_type) {
+    return res.status(400).json({ error: 'Document data with document_type required' });
+  }
+
+  try {
+    const pdfBuffer = generateDocumentPdf(doc);
+    const safeType = (doc.document_type || 'Document').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `${safeType}_Preview.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error('PDF Direct Generation Error:', err);
+    return res.status(500).json({ error: 'Failed to generate PDF file', details: err.message });
+  }
+});
+
+// -------------------------------------------------------------
 // Documents CRUD
 // -------------------------------------------------------------
 app.get('/api/documents', async (req, res) => {
@@ -2646,9 +3414,6 @@ app.get('/api/documents', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      try {
-        await pool.query("ALTER TABLE document_requests ADD COLUMN IF NOT EXISTS extra_fields TEXT NULL");
-      } catch {}
       let query = `
         SELECT d.*, 
                COALESCE(r.address, '') AS resident_address,
@@ -2725,13 +3490,6 @@ app.post('/api/documents', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      try {
-        await pool.query("ALTER TABLE document_requests MODIFY COLUMN document_type VARCHAR(100) NOT NULL");
-        await pool.query("ALTER TABLE document_requests ADD COLUMN IF NOT EXISTS email VARCHAR(100) DEFAULT ''");
-        await pool.query("ALTER TABLE document_requests ADD COLUMN IF NOT EXISTS barangay VARCHAR(100) DEFAULT 'Pianing'");
-        await pool.query("ALTER TABLE document_requests ADD COLUMN IF NOT EXISTS extra_fields TEXT NULL");
-      } catch {}
-
       // Check if this document category is deactivated by Super Admin
       try {
         const [catRows] = await pool.query("SELECT status FROM document_categories WHERE LOWER(name) = LOWER(?) LIMIT 1", [document_type]);
@@ -2767,11 +3525,6 @@ app.post('/api/documents', async (req, res) => {
       const processedBy = req.body.processed_by || (docStatus === 'Completed' ? 'Barangay Administrator' : null);
       const processedAt = docStatus === 'Completed' ? new Date().toISOString() : null;
 
-      try {
-        await pool.query("ALTER TABLE document_requests ADD COLUMN IF NOT EXISTS processed_by VARCHAR(100) NULL");
-        await pool.query("ALTER TABLE document_requests ADD COLUMN IF NOT EXISTS processed_at DATETIME NULL");
-      } catch {}
-
       const safeResidentName = sanitizeInput(resident_name) || 'Resident';
       const safePurpose = sanitizeInput(purpose) || 'Personal Requirement';
       const extraFieldsStr = typeof extra_fields === 'object' ? JSON.stringify(extra_fields) : (extra_fields || null);
@@ -2797,6 +3550,18 @@ app.post('/api/documents', async (req, res) => {
         processed_at: processedAt,
         requested_at: new Date().toISOString()
       };
+
+      // Auto-dispatch email notification to resident upon request submission
+      if (email && email.includes('@')) {
+        sendDocumentStatusEmail({
+          to: email,
+          recipientName: safeResidentName,
+          documentType: document_type,
+          requestCode,
+          status: docStatus,
+          message: 'Your document request has been submitted and is currently pending review.'
+        }).catch(e => console.warn('[Email] Document request email error:', e.message));
+      }
 
       logActivity({
         user_name: resident_name || 'Resident',
@@ -2831,6 +3596,17 @@ app.post('/api/documents', async (req, res) => {
     requested_at: new Date().toISOString()
   };
   mockData.documents.unshift(newDoc);
+
+  if (email && email.includes('@')) {
+    sendDocumentStatusEmail({
+      to: email,
+      recipientName: safeResidentName,
+      documentType: document_type,
+      requestCode,
+      status: docStatus,
+      message: 'Your document request has been submitted and is currently pending review.'
+    }).catch(e => console.warn('[Email] Document request email error:', e.message));
+  }
 
   logActivity({
     user_name: resident_name || 'Resident',
@@ -3009,16 +3785,6 @@ app.get('/api/residents', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      await safeAddColumn(pool, 'residents', 'civil_status', "VARCHAR(50) DEFAULT 'Single'");
-      await safeAddColumn(pool, 'residents', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
-      await safeAddColumn(pool, 'residents', 'purok', "VARCHAR(50) DEFAULT '1'");
-      await safeAddColumn(pool, 'residents', 'date_of_birth', "DATE NULL");
-      await safeAddColumn(pool, 'residents', 'household_number', "VARCHAR(50) DEFAULT NULL");
-      await safeAddColumn(pool, 'residents', 'family_name', "VARCHAR(100) DEFAULT NULL");
-      await safeAddColumn(pool, 'residents', 'is_head_of_household', "TINYINT(1) DEFAULT 0");
-      await safeAddColumn(pool, 'residents', 'relationship_to_head', "VARCHAR(50) DEFAULT 'Member'");
-      await safeAddColumn(pool, 'residents', 'employment_status', "VARCHAR(50) DEFAULT 'Employed'");
-
       let query = `
         SELECT r.*,
                TIMESTAMPDIFF(YEAR, r.date_of_birth, CURDATE()) AS age
@@ -3027,7 +3793,12 @@ app.get('/api/residents', async (req, res) => {
       const params = [];
       const whereClauses = [];
       if (barangay && barangay.toLowerCase() !== 'all' && !barangay.toLowerCase().includes('city-wide')) {
-        whereClauses.push(`(LOWER(r.barangay) = LOWER(?) OR LOWER(r.address) LIKE LOWER(?))`);
+        // Strict barangay match: use barangay column when present, fall back to address only when barangay is NULL/empty
+        whereClauses.push(`(
+          (r.barangay IS NOT NULL AND r.barangay != '' AND LOWER(r.barangay) = LOWER(?))
+          OR
+          (COALESCE(r.barangay, '') = '' AND LOWER(r.address) LIKE LOWER(?))
+        )`);
         params.push(barangay.trim(), `%${barangay.trim()}%`);
       }
       if (purok && purok.toLowerCase() !== 'all') {
@@ -3037,7 +3808,8 @@ app.get('/api/residents', async (req, res) => {
       }
       const cleanIncludePending = req.query.include_pending === 'true';
       if (!cleanIncludePending) {
-        whereClauses.push(`LOWER(COALESCE(r.verification_status, 'verified')) = 'verified'`);
+        // Only include explicitly verified residents — do NOT treat NULL as verified
+        whereClauses.push(`LOWER(COALESCE(r.verification_status, '')) IN ('verified', 'active')`);
       }
       if (whereClauses.length > 0) {
         query += ` WHERE ${whereClauses.join(' AND ')}`;
@@ -3118,7 +3890,12 @@ app.get('/api/census/stats', async (req, res) => {
       let whereClauses = [];
       let params = [];
       if (barangay && barangay.toLowerCase() !== 'all' && !barangay.toLowerCase().includes('city-wide')) {
-        whereClauses.push(`(LOWER(barangay) = LOWER(?) OR LOWER(address) LIKE LOWER(?))`);
+        // Strict barangay match for census stats — same logic as residents endpoint
+        whereClauses.push(`(
+          (barangay IS NOT NULL AND barangay != '' AND LOWER(barangay) = LOWER(?))
+          OR
+          (COALESCE(barangay, '') = '' AND LOWER(address) LIKE LOWER(?))
+        )`);
         params.push(barangay.trim(), `%${barangay.trim()}%`);
       }
       if (purok && purok.toLowerCase() !== 'all') {
@@ -3126,6 +3903,8 @@ app.get('/api/census/stats', async (req, res) => {
         whereClauses.push(`(purok = ? OR purok = ? OR LOWER(address) LIKE ?)`);
         params.push(cleanP, `Purok ${cleanP}`, `%purok ${cleanP}%`);
       }
+      // Restrict to verified residents only
+      whereClauses.push(`LOWER(COALESCE(verification_status, '')) IN ('verified', 'active')`);
 
       const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
@@ -3145,7 +3924,6 @@ app.get('/api/census/stats', async (req, res) => {
         ${whereSql}
       `, params);
 
-      // Purok breakdown across 1-7
       const [purokGroupRows] = await pool.query(`
         SELECT 
           REPLACE(LOWER(purok), 'purok', '') AS p_num,
@@ -3156,7 +3934,10 @@ app.get('/api/census/stats', async (req, res) => {
           SUM(CASE WHEN employment_status IN ('Employed', 'Self-Employed') THEN 1 ELSE 0 END) AS employed,
           SUM(CASE WHEN employment_status = 'Unemployed' THEN 1 ELSE 0 END) AS unemployed
         FROM residents
-        ${barangay && barangay.toLowerCase() !== 'all' && !barangay.toLowerCase().includes('city-wide') ? 'WHERE (LOWER(barangay) = LOWER(?) OR LOWER(address) LIKE LOWER(?))' : ''}
+        WHERE LOWER(COALESCE(verification_status, '')) IN ('verified', 'active')
+        ${barangay && barangay.toLowerCase() !== 'all' && !barangay.toLowerCase().includes('city-wide')
+          ? `AND ((barangay IS NOT NULL AND barangay != '' AND LOWER(barangay) = LOWER(?)) OR (COALESCE(barangay,'') = '' AND LOWER(address) LIKE LOWER(?)))`
+          : ''}
         GROUP BY p_num
       `, barangay && barangay.toLowerCase() !== 'all' && !barangay.toLowerCase().includes('city-wide') ? [barangay.trim(), `%${barangay.trim()}%`] : []);
 
@@ -3294,8 +4075,15 @@ app.get('/api/census/households', async (req, res) => {
     try {
       let whereClauses = [];
       let params = [];
+      // Always restrict to verified residents only
+      whereClauses.push(`LOWER(COALESCE(r.verification_status, '')) IN ('verified', 'active')`);
       if (barangay && barangay.toLowerCase() !== 'all' && !barangay.toLowerCase().includes('city-wide')) {
-        whereClauses.push(`(LOWER(r.barangay) = LOWER(?) OR LOWER(r.address) LIKE LOWER(?))`);
+        // Strict barangay match — only fall back to address when barangay column is NULL/empty
+        whereClauses.push(`(
+          (r.barangay IS NOT NULL AND r.barangay != '' AND LOWER(r.barangay) = LOWER(?))
+          OR
+          (COALESCE(r.barangay, '') = '' AND LOWER(r.address) LIKE LOWER(?))
+        )`);
         params.push(barangay.trim(), `%${barangay.trim()}%`);
       }
       if (purok && purok.toLowerCase() !== 'all') {
@@ -3304,7 +4092,7 @@ app.get('/api/census/households', async (req, res) => {
         params.push(cleanP, `Purok ${cleanP}`, `%purok ${cleanP}%`);
       }
 
-      const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+      const whereSql = `WHERE ${whereClauses.join(' AND ')}`;
 
       const [rows] = await pool.query(`
         SELECT r.*,
@@ -3527,15 +4315,26 @@ app.post('/api/residents', async (req, res) => {
 // -------------------------------------------------------------
 app.get('/api/immunizations', async (req, res) => {
   const pool = getPool();
+  const barangay = req.query.barangay;
   if (pool && getStatus().connected) {
     try {
-      const [rows] = await pool.query("SELECT * FROM immunizations ORDER BY id DESC");
+      let query = "SELECT * FROM immunizations";
+      const params = [];
+      if (barangay) {
+        query += " WHERE LOWER(TRIM(barangay)) = LOWER(TRIM(?))";
+        params.push(barangay);
+      }
+      query += " ORDER BY id DESC";
+      const [rows] = await pool.query(query, params);
       return res.json(rows);
     } catch (err) {
       console.warn('MySQL immunizations fetch error:', err.message);
     }
   }
-  res.json(mockData.immunizations);
+  const result = barangay
+    ? mockData.immunizations.filter(r => (r.barangay || '').toLowerCase() === barangay.toLowerCase())
+    : mockData.immunizations;
+  res.json(result);
 });
 
 // Helper to automatically dispense and reduce inventory stock on hand
@@ -3863,15 +4662,26 @@ app.put('/api/immunizations/:id', async (req, res) => {
 // -------------------------------------------------------------
 app.get('/api/maternal', async (req, res) => {
   const pool = getPool();
+  const barangay = req.query.barangay;
   if (pool && getStatus().connected) {
     try {
-      const [rows] = await pool.query("SELECT * FROM maternal_records ORDER BY id DESC");
+      let query = "SELECT * FROM maternal_records";
+      const params = [];
+      if (barangay) {
+        query += " WHERE LOWER(TRIM(barangay)) = LOWER(TRIM(?))";
+        params.push(barangay);
+      }
+      query += " ORDER BY id DESC";
+      const [rows] = await pool.query(query, params);
       return res.json(rows);
     } catch (err) {
       console.warn('MySQL maternal fetch error:', err.message);
     }
   }
-  res.json(mockData.maternal);
+  const result = barangay
+    ? (mockData.maternal || []).filter(r => (r.barangay || '').toLowerCase() === barangay.toLowerCase())
+    : (mockData.maternal || []);
+  res.json(result);
 });
 
 app.post('/api/maternal', async (req, res) => {
@@ -4871,7 +5681,6 @@ app.get('/api/notifications', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      await safeAddColumn(pool, 'sms_notifications', 'is_read', "TINYINT(1) DEFAULT 0");
       let query = "SELECT * FROM sms_notifications";
       if (isHealth) {
         query += " WHERE type NOT IN ('Account Verified', 'ID Correction Notice', 'Clearance Ready', 'Document Ready', 'Permit Approved') AND message NOT LIKE '%clearances, business permits%' AND message NOT LIKE '%resident account application%'";
@@ -4900,7 +5709,6 @@ app.put('/api/notifications/:id/read', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      await safeAddColumn(pool, 'sms_notifications', 'is_read', "TINYINT(1) DEFAULT 0");
       await pool.query("UPDATE sms_notifications SET is_read = 1 WHERE id = ?", [id]);
       return res.json({ success: true, message: 'Notification marked as read.' });
     } catch (err) {
@@ -4917,7 +5725,6 @@ app.put('/api/notifications/mark-all-read', async (req, res) => {
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
-      await safeAddColumn(pool, 'sms_notifications', 'is_read', "TINYINT(1) DEFAULT 0");
       await pool.query("UPDATE sms_notifications SET is_read = 1");
       return res.json({ success: true, message: 'All notifications marked as read.' });
     } catch (err) {
@@ -4993,78 +5800,8 @@ app.post('/api/notifications', async (req, res) => {
   res.status(201).json(newSms);
 });
 
-// -------------------------------------------------------------
 // Intercom Messages (Barangay <-> Health Center staff chat)
-// -------------------------------------------------------------
-app.get('/api/messages', async (req, res) => {
-  const pool = getPool();
-  if (pool && getStatus().connected) {
-    try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS messages (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          sender_name VARCHAR(100) NOT NULL,
-          sender_role VARCHAR(50) NOT NULL,
-          sender_email VARCHAR(100) DEFAULT '',
-          recipient_name VARCHAR(100) DEFAULT '',
-          recipient_role VARCHAR(50) DEFAULT 'staff',
-          recipient_email VARCHAR(100) DEFAULT '',
-          barangay VARCHAR(100) DEFAULT 'Pianing',
-          message TEXT NOT NULL,
-          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-      `);
-      await safeAddColumn(pool, 'messages', 'sender_email', "VARCHAR(100) DEFAULT ''");
-      await safeAddColumn(pool, 'messages', 'recipient_name', "VARCHAR(100) DEFAULT ''");
-      await safeAddColumn(pool, 'messages', 'recipient_role', "VARCHAR(50) DEFAULT 'staff'");
-      await safeAddColumn(pool, 'messages', 'recipient_email', "VARCHAR(100) DEFAULT ''");
-      await safeAddColumn(pool, 'messages', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
-      await safeAddColumn(pool, 'messages', 'timestamp', "DATETIME DEFAULT CURRENT_TIMESTAMP");
-
-      const [rows] = await pool.query('SELECT * FROM messages ORDER BY id ASC');
-      return res.json(rows || []);
-    } catch (err) {
-      console.warn('MySQL messages fetch error:', err.message);
-    }
-  }
-  res.json(mockData.messages || []);
-});
-
-app.post('/api/messages', async (req, res) => {
-  const { sender_name, sender_role, sender_email, recipient_name, recipient_role, recipient_email, barangay, message } = req.body || {};
-  if (!sender_name || !message) {
-    return res.status(400).json({ error: 'sender_name and message are required' });
-  }
-  const pool = getPool();
-  if (pool && getStatus().connected) {
-    try {
-      const [result] = await pool.query(
-        'INSERT INTO messages (sender_name, sender_role, sender_email, recipient_name, recipient_role, recipient_email, barangay, message, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
-        [sender_name, sender_role || 'staff', sender_email || '', recipient_name || '', recipient_role || 'staff', recipient_email || '', barangay || 'Pianing', message]
-      );
-      const [rows] = await pool.query('SELECT * FROM messages WHERE id = ?', [result.insertId]);
-      return res.status(201).json(rows[0]);
-    } catch (err) {
-      console.warn('MySQL messages insert error:', err.message);
-    }
-  }
-  const newMsg = {
-    id: Date.now(),
-    sender_name,
-    sender_role: sender_role || 'staff',
-    sender_email: sender_email || '',
-    recipient_name: recipient_name || '',
-    recipient_role: recipient_role || 'staff',
-    recipient_email: recipient_email || '',
-    barangay: barangay || 'Pianing',
-    message,
-    timestamp: new Date().toISOString()
-  };
-  mockData.messages = mockData.messages || [];
-  mockData.messages.push(newMsg);
-  res.status(201).json(newMsg);
-});
+// Note: Handled above in Intra-System Messenger Endpoints (/api/messages)
 
 // -------------------------------------------------------------
 // AI Chatbot — Knowledge-Based FAQ Engine
@@ -5605,6 +6342,9 @@ function saveMaintenanceState(state) {
 let systemMaintenanceMode = loadMaintenanceState();
 
 app.get('/api/system/maintenance', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.json(systemMaintenanceMode);
 });
 

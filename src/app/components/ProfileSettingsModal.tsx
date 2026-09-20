@@ -46,6 +46,7 @@ export default function ProfileSettingsModal({
 }: ProfileSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [purok, setPurok] = useState('1');
   const [civilStatus, setCivilStatus] = useState('Single');
@@ -64,6 +65,7 @@ export default function ProfileSettingsModal({
   useEffect(() => {
     if (isOpen && !prevIsOpenRef.current && user) {
       setName(user.name || '');
+      setEmail(user.email || '');
       setPhone(user.phone || '');
       
       // Extract purok cleanly
@@ -112,18 +114,38 @@ export default function ProfileSettingsModal({
       return;
     }
 
-    if (newPassword) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      toast.error('Email address cannot be empty');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      toast.error('Invalid Email Format', { description: 'Please enter a valid email address (e.g. user@gmail.com).' });
+      return;
+    }
+
+    const isChangingEmail = Boolean(user?.email && cleanEmail !== user.email.toLowerCase());
+
+    // If changing password OR changing email, verify current password
+    if (newPassword || isChangingEmail) {
       if (!currentPassword) {
-        toast.error('Current password is required to change your password');
+        toast.error(
+          isChangingEmail
+            ? 'Current password required to authorize email change'
+            : 'Current password is required to change your password'
+        );
         return;
       }
-      if (newPassword !== confirmPassword) {
-        toast.error('New passwords do not match');
-        return;
-      }
-      if (newPassword.length < 6) {
-        toast.error('New password must be at least 6 characters');
-        return;
+      if (newPassword) {
+        if (newPassword !== confirmPassword) {
+          toast.error('New passwords do not match');
+          return;
+        }
+        if (newPassword.length < 6) {
+          toast.error('New password must be at least 6 characters');
+          return;
+        }
       }
       try {
         const verify = await apiService.login(user.email, currentPassword);
@@ -142,9 +164,10 @@ export default function ProfileSettingsModal({
 
     setSaving(true);
     try {
-      await apiService.updateProfile({
+      const res = await apiService.updateProfile({
         id: user?.id,
         email: user?.email,
+        new_email: isChangingEmail ? cleanEmail : undefined,
         name: name.trim() !== user?.name ? name.trim() : undefined,
         phone: phone.trim() || undefined,
         password: newPassword || undefined,
@@ -155,8 +178,13 @@ export default function ProfileSettingsModal({
         address: formattedAddress,
       });
 
+      if (res && res.success === false) {
+        throw new Error(res.message || 'Failed to update profile');
+      }
+
       const updated = {
         ...user,
+        email: isChangingEmail ? cleanEmail : user?.email,
         name: name.trim() || user?.name,
         phone: phone.trim() || user?.phone,
         purok: cleanPurok || user?.purok,
@@ -167,8 +195,17 @@ export default function ProfileSettingsModal({
         address: formattedAddress,
       };
       localStorage.setItem('barangay_user', JSON.stringify(updated));
-      toast.success('Profile settings updated successfully!');
+
+      if (isChangingEmail) {
+        toast.success('Email & Profile Updated!', {
+          description: `Your official login email is now ${cleanEmail}. Please use it next time you sign in.`
+        });
+      } else {
+        toast.success('Profile settings updated successfully!');
+      }
+
       if (onProfileUpdated) onProfileUpdated(updated);
+      window.dispatchEvent(new CustomEvent('user-profile-updated', { detail: updated }));
       onClose();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to update profile');
@@ -197,7 +234,7 @@ export default function ProfileSettingsModal({
               </div>
               <p className="text-xs text-slate-500 truncate mt-0.5 flex items-center gap-1.5">
                 <Mail size={12} className="text-slate-400" />
-                {user?.email || 'resident@barangay.gov.ph'}
+                {email || user?.email || 'resident@barangay.gov.ph'}
               </p>
               <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-500">
                 <span className="flex items-center gap-1 font-semibold text-slate-700">
@@ -260,6 +297,60 @@ export default function ProfileSettingsModal({
                   />
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">Appears on official clearances, permits, and clinical EHR records.</p>
+              </div>
+
+              {/* Email Address Input & Change Email Workflow */}
+              <div>
+                <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                  <span>Email Address (Login &amp; Official Notices) <span className="text-red-500">*</span></span>
+                  {user?.email && email.trim().toLowerCase() !== user.email.toLowerCase() && (
+                    <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      Changing Email
+                    </span>
+                  )}
+                </Label>
+                <div className="relative mt-1.5">
+                  <Mail className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="e.g. resident@gmail.com"
+                    required
+                    className="pl-9 h-10 text-xs bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">Used for signing in and receiving document clearances, clinic reminders, and barangay advisories.</p>
+
+                {/* Password confirmation prompt when changing email */}
+                {user?.email && email.trim().toLowerCase() !== user.email.toLowerCase() && (
+                  <div className="mt-2.5 p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                      <Lock size={13} className="text-amber-600" />
+                      <span>Authorize Email Change</span>
+                    </div>
+                    <p className="text-[11px] text-amber-700 leading-snug">
+                      You are changing your official login email to <strong>{email.trim()}</strong>. Enter your current password to authorize this credential change:
+                    </p>
+                    <div className="relative">
+                      <Input
+                        type={showCurrentPass ? 'text' : 'password'}
+                        value={currentPassword}
+                        onChange={e => setCurrentPassword(e.target.value)}
+                        placeholder="Enter current password to authorize"
+                        className="h-9 text-xs pr-9 bg-white border-amber-300 focus:border-amber-500 rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPass(p => !p)}
+                        className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {showCurrentPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

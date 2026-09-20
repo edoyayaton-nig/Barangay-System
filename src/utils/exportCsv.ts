@@ -41,6 +41,7 @@ export function exportToCsv(filename: string, rows: object[]) {
 }
 
 import html2pdf from 'html2pdf.js';
+import { jsPDF } from 'jspdf';
 import { PIANING_LOGO_BASE64, BUTUAN_LOGO_BASE64 } from '../app/components/officialLogos';
 
 export interface OfficialReportOptions {
@@ -390,392 +391,254 @@ export function buildReportHtml(options: OfficialReportOptions, isPrintMode = fa
 }
 
 /**
- * Directly downloads the official report as a client-side .pdf file
+ * Directly downloads the official report as a client-side .pdf file using high-precision vector rendering
  */
 export async function downloadOfficialPdf(options: OfficialReportOptions): Promise<void> {
-  const bodyHtml = buildReportBodyHtml(options);
-
-  // Clean container without negative coordinates so html2canvas renders the full document
-  const element = document.createElement('div');
-  element.className = 'official-pdf-download-root';
-  element.innerHTML = `
-    <style>
-      .official-pdf-download-root {
-        font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-        color: #1e293b;
-        background: #ffffff;
-        line-height: 1.4;
-        padding: 16px;
-        box-sizing: border-box;
-      }
-      .official-pdf-download-root * {
-        box-sizing: border-box;
-      }
-      .hdr-container {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding-bottom: 8px;
-      }
-      .hdr-logo-box {
-        width: 70px;
-        height: 70px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-      .hdr-logo {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-      }
-      .header-text {
-        text-align: center;
-        flex: 1;
-        padding: 0 12px;
-      }
-      .header-text h4 {
-        margin: 0;
-        font-size: 9pt;
-        text-transform: uppercase;
-        font-weight: normal;
-        color: #475569;
-        letter-spacing: 0.5px;
-      }
-      .header-text h3 {
-        margin: 2px 0;
-        font-size: 9.5pt;
-        font-weight: 600;
-        color: #334155;
-      }
-      .header-text h2 {
-        margin: 2px 0;
-        font-size: 12pt;
-        font-weight: 800;
-        color: #0f172a;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .header-text h1 {
-        margin: 2px 0 0 0;
-        font-size: 13pt;
-        font-weight: 900;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: #1e3a8a;
-      }
-      .header-text p {
-        margin: 2px 0 0 0;
-        font-size: 7.5pt;
-        color: #64748b;
-      }
-      .hdr-divider {
-        border-top: 2px solid #0f172a;
-        border-bottom: 1px solid #0f172a;
-        height: 3px;
-        margin: 8px 0 14px 0;
-      }
-      .title-section {
-        text-align: center;
-        margin-bottom: 14px;
-      }
-      .title-section h2 {
-        font-size: 13pt;
-        font-weight: bold;
-        text-transform: uppercase;
-        color: #0f172a;
-        margin: 0;
-        letter-spacing: 0.5px;
-      }
-      .title-section p {
-        font-size: 9pt;
-        color: #475569;
-        margin: 3px 0 0 0;
-        font-style: italic;
-      }
-      .report-meta-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 8pt;
-        color: #334155;
-        background: #f8fafc;
-        border: 1px solid #cbd5e1;
-        padding: 6px 12px;
-        margin-bottom: 16px;
-      }
-      .signatures {
-        margin-top: 30px;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        page-break-inside: avoid;
-      }
-      .sig-block {
-        text-align: center;
-        width: 200px;
-      }
-      .sig-label {
-        margin-bottom: 30px;
-        font-weight: bold;
-        font-size: 8pt;
-        text-align: left;
-        color: #334155;
-        text-transform: uppercase;
-      }
-      .sig-line {
-        border-top: 1px solid #0f172a;
-        padding-top: 4px;
-        font-weight: bold;
-        font-size: 9pt;
-        text-transform: uppercase;
-        color: #0f172a;
-      }
-      .sig-title {
-        font-size: 8pt;
-        color: #475569;
-      }
-      .seal-circle {
-        width: 75px;
-        height: 75px;
-        border-radius: 50%;
-        border: 2px double #1e3a8a;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        font-size: 5.5pt;
-        font-weight: bold;
-        color: #1e3a8a;
-        margin: 0 auto;
-        text-transform: uppercase;
-        line-height: 1.2;
-      }
-    </style>
-    ${bodyHtml}
-  `;
-
   const cleanFilename = options.filename
     ? (options.filename.endsWith('.pdf') ? options.filename : `${options.filename}.pdf`)
     : `${options.title.replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
 
   const orientation = options.orientation || 'landscape';
-  const widthPx = orientation === 'landscape' ? 1122 : 794;
-
-  // Render container on screen top-left with high z-index and white background
-  const container = document.createElement('div');
-  container.className = 'official-pdf-download-root';
-  container.id = `official-pdf-render-${Date.now()}`;
-  container.style.position = 'fixed';
-  container.style.top = '0';
-  container.style.left = '0';
-  container.style.width = `${widthPx}px`;
-  container.style.maxWidth = `${widthPx}px`;
-  container.style.minHeight = '600px';
-  container.style.backgroundColor = '#ffffff';
-  container.style.zIndex = '9999999';
-  container.style.pointerEvents = 'none';
-  container.style.overflow = 'visible';
-  container.innerHTML = `
-    <style>
-      .official-pdf-download-root {
-        font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-        color: #1e293b;
-        background: #ffffff;
-        line-height: 1.4;
-        padding: 24px;
-        box-sizing: border-box;
-      }
-      .official-pdf-download-root * {
-        box-sizing: border-box;
-      }
-      .hdr-container {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding-bottom: 8px;
-      }
-      .hdr-logo-box {
-        width: 75px;
-        height: 75px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-      .hdr-logo {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-      }
-      .header-text {
-        text-align: center;
-        flex: 1;
-        padding: 0 16px;
-      }
-      .header-text h4 {
-        margin: 0;
-        font-size: 9.5pt;
-        text-transform: uppercase;
-        font-weight: normal;
-        color: #475569;
-        letter-spacing: 0.5px;
-      }
-      .header-text h3 {
-        margin: 2px 0;
-        font-size: 10pt;
-        font-weight: 600;
-        color: #334155;
-      }
-      .header-text h2 {
-        margin: 2px 0;
-        font-size: 13pt;
-        font-weight: 800;
-        color: #0f172a;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .header-text h1 {
-        margin: 2px 0 0 0;
-        font-size: 14pt;
-        font-weight: 900;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        color: #1e3a8a;
-      }
-      .header-text p {
-        margin: 2px 0 0 0;
-        font-size: 8pt;
-        color: #64748b;
-      }
-      .hdr-divider {
-        border-top: 2.5px solid #0f172a;
-        border-bottom: 1px solid #0f172a;
-        height: 4px;
-        margin: 10px 0 16px 0;
-      }
-      .title-section {
-        text-align: center;
-        margin-bottom: 16px;
-      }
-      .title-section h2 {
-        font-size: 14pt;
-        font-weight: bold;
-        text-transform: uppercase;
-        color: #0f172a;
-        margin: 0;
-        letter-spacing: 0.5px;
-      }
-      .title-section p {
-        font-size: 9.5pt;
-        color: #475569;
-        margin: 4px 0 0 0;
-        font-style: italic;
-      }
-      .report-meta-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 8.5pt;
-        color: #334155;
-        background: #f8fafc;
-        border: 1px solid #cbd5e1;
-        padding: 6px 12px;
-        margin-bottom: 18px;
-      }
-      .signatures {
-        margin-top: 36px;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        page-break-inside: avoid;
-      }
-      .sig-block {
-        text-align: center;
-        width: 220px;
-      }
-      .sig-label {
-        margin-bottom: 35px;
-        font-weight: bold;
-        font-size: 8.5pt;
-        text-align: left;
-        color: #334155;
-        text-transform: uppercase;
-      }
-      .sig-line {
-        border-top: 1px solid #0f172a;
-        padding-top: 4px;
-        font-weight: bold;
-        font-size: 9.5pt;
-        text-transform: uppercase;
-        color: #0f172a;
-      }
-      .sig-title {
-        font-size: 8.5pt;
-        color: #475569;
-      }
-      .seal-circle {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        border: 2px double #1e3a8a;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        font-size: 6pt;
-        font-weight: bold;
-        color: #1e3a8a;
-        margin: 0 auto;
-        text-transform: uppercase;
-        line-height: 1.2;
-      }
-    </style>
-    ${bodyHtml}
-  `;
-
-  document.body.appendChild(container);
-
-  // Allow browser layout and decoding
-  await new Promise(resolve => setTimeout(resolve, 150));
-
-  const pdfOpt = {
-    margin: orientation === 'landscape' ? [6, 8, 6, 8] : [8, 8, 8, 8],
-    filename: cleanFilename,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      scrollY: 0,
-      scrollX: 0,
-      x: 0,
-      y: 0,
-      windowWidth: widthPx,
-      backgroundColor: '#ffffff'
-    },
-    jsPDF: {
-      unit: 'mm',
-      format: 'a4',
-      orientation: orientation
-    }
-  };
 
   try {
-    // @ts-ignore
-    await html2pdf().set(pdfOpt).from(container).save();
+    generateDirectJsPdfReport(options, orientation, cleanFilename);
   } catch (err) {
-    console.error('HTML2PDF error:', err);
-    // Fallback: Open print dialog in new window so user still gets the PDF without fail
-    printOfficialReport({ ...options, orientation });
+    console.error('Failed to generate direct jsPDF report:', err);
+    throw err;
   } finally {
-    if (container.parentNode) {
-      container.parentNode.removeChild(container);
-    }
+    try {
+      document.body.style.pointerEvents = 'auto';
+    } catch {}
   }
+}
+
+export function generateDirectJsPdfReport(options: OfficialReportOptions, orientation: 'portrait' | 'landscape', filename: string): void {
+  const doc = new jsPDF({
+    orientation,
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 14;
+  const contentWidth = pageWidth - (marginX * 2);
+  let y = 14;
+
+  const brgyName = (options.barangay || 'Pianing').toUpperCase();
+  const dept = options.department || 'OFFICE OF THE PUNONG BARANGAY';
+
+  // Letterhead
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('REPUBLIC OF THE PHILIPPINES', pageWidth / 2, y, { align: 'center' });
+  y += 4.5;
+  doc.text('PROVINCE OF AGUSAN DEL NORTE • CITY OF BUTUAN', pageWidth / 2, y, { align: 'center' });
+  y += 5.5;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`BARANGAY ${brgyName}`, pageWidth / 2, y, { align: 'center' });
+  y += 5;
+
+  doc.setFontSize(10);
+  doc.setTextColor(30, 58, 138);
+  doc.text(dept.toUpperCase(), pageWidth / 2, y, { align: 'center' });
+  y += 4.5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`${options.barangay || 'Pianing'}, Butuan City, Agusan del Norte 8600, Philippines`, pageWidth / 2, y, { align: 'center' });
+  y += 4;
+
+  // Double divider line
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(0.6);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 1;
+  doc.setLineWidth(0.2);
+  doc.line(marginX, y, pageWidth - marginX, y);
+  y += 6;
+
+  // Title Section
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(15, 23, 42);
+  doc.text(options.title.toUpperCase(), pageWidth / 2, y, { align: 'center' });
+  y += 5;
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(options.subtitle, pageWidth / 2, y, { align: 'center' });
+  y += 6;
+
+  // Meta Bar
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.rect(marginX, y, contentWidth, 7, 'FD');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  const nowStr = new Date().toLocaleString('en-PH');
+  doc.text(`DATE GENERATED: ${nowStr}`, marginX + 3, y + 4.8);
+  y += 11;
+
+  // Summary Stats
+  if (options.stats && options.stats.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text('I. EXECUTIVE DEMOGRAPHIC & STATISTICAL SUMMARY', marginX, y);
+    y += 4.5;
+
+    const colWidth = contentWidth / 2;
+    for (let i = 0; i < options.stats.length; i += 2) {
+      const left = options.stats[i];
+      const right = options.stats[i + 1];
+
+      // Left box
+      doc.setFillColor(248, 250, 252);
+      doc.rect(marginX, y, colWidth * 0.6, 6, 'FD');
+      doc.setFillColor(255, 255, 255);
+      doc.rect(marginX + (colWidth * 0.6), y, colWidth * 0.4, 6, 'FD');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(51, 65, 85);
+      doc.text(left.label, marginX + 2, y + 4.2);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(String(left.value), marginX + (colWidth * 0.6) + (colWidth * 0.4) - 2, y + 4.2, { align: 'right' });
+
+      // Right box if exists
+      if (right) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(marginX + colWidth, y, colWidth * 0.6, 6, 'FD');
+        doc.setFillColor(255, 255, 255);
+        doc.rect(marginX + colWidth + (colWidth * 0.6), y, colWidth * 0.4, 6, 'FD');
+        doc.setFont('helvetica', 'normal');
+        doc.text(right.label, marginX + colWidth + 2, y + 4.2);
+        doc.setFont('helvetica', 'bold');
+        doc.text(String(right.value), marginX + colWidth + (colWidth * 0.6) + (colWidth * 0.4) - 2, y + 4.2, { align: 'right' });
+      }
+
+      y += 6;
+    }
+    y += 5;
+  }
+
+  // Tables
+  if (options.tables && options.tables.length > 0) {
+    options.tables.forEach((table, tIdx) => {
+      if (y > pageHeight - 45) {
+        doc.addPage();
+        y = 15;
+      }
+
+      const roman = (options.stats && options.stats.length > 0) ? (tIdx === 0 ? 'II' : 'III') : (tIdx === 0 ? 'I' : 'II');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${roman}. ${table.title.toUpperCase()}`, marginX, y);
+      y += 4.5;
+
+      const numCols = table.headers.length || 1;
+      const cellWidth = contentWidth / numCols;
+      const headerHeight = 6.5;
+
+      // Table header
+      doc.setFillColor(241, 245, 249);
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(marginX, y, contentWidth, headerHeight, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(15, 23, 42);
+      table.headers.forEach((h, hIdx) => {
+        const hText = String(h).slice(0, 30);
+        doc.text(hText, marginX + (hIdx * cellWidth) + 2, y + 4.5);
+      });
+      y += headerHeight;
+
+      // Rows
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      const rowHeight = 5.8;
+
+      if (table.rows.length === 0) {
+        doc.setFillColor(255, 255, 255);
+        doc.rect(marginX, y, contentWidth, rowHeight, 'FD');
+        doc.setTextColor(148, 163, 184);
+        doc.text('No records found.', pageWidth / 2, y + 4, { align: 'center' });
+        y += rowHeight;
+      } else {
+        table.rows.forEach((row, rIdx) => {
+          if (y > pageHeight - 25) {
+            doc.addPage();
+            y = 15;
+          }
+
+          if (rIdx % 2 === 1) {
+            doc.setFillColor(248, 250, 252);
+          } else {
+            doc.setFillColor(255, 255, 255);
+          }
+          doc.rect(marginX, y, contentWidth, rowHeight, 'FD');
+          doc.setTextColor(30, 41, 59);
+
+          row.forEach((cell, cIdx) => {
+            const cellText = String(cell ?? '').slice(0, 35);
+            doc.text(cellText, marginX + (cIdx * cellWidth) + 2, y + 4);
+          });
+          y += rowHeight;
+        });
+      }
+      y += 5;
+    });
+  }
+
+  // Signatures
+  if (y > pageHeight - 35) {
+    doc.addPage();
+    y = 20;
+  } else {
+    y = Math.max(y + 6, pageHeight - 35);
+  }
+
+  const sigWidth = 55;
+  const leftSigX = marginX + 10;
+  const rightSigX = pageWidth - marginX - sigWidth - 10;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text('PREPARED BY:', leftSigX, y);
+  doc.text('APPROVED BY:', rightSigX, y);
+  y += 12;
+
+  doc.setLineWidth(0.4);
+  doc.setDrawColor(15, 23, 42);
+  doc.line(leftSigX, y, leftSigX + sigWidth, y);
+  doc.line(rightSigX, y, rightSigX + sigWidth, y);
+  y += 3.5;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text((options.preparedBy || 'Barangay Administrator').toUpperCase(), leftSigX + (sigWidth / 2), y, { align: 'center' });
+  doc.text('HON. VIRGENIA S. GOLANDRINA', rightSigX + (sigWidth / 2), y, { align: 'center' });
+  y += 3.5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(options.preparedByTitle || 'Barangay Administrator', leftSigX + (sigWidth / 2), y, { align: 'center' });
+  doc.text('Punong Barangay', rightSigX + (sigWidth / 2), y, { align: 'center' });
+
+  // Save the PDF file directly to downloads!
+  doc.save(filename);
 }
 
 /**

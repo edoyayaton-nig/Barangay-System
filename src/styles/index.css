@@ -8,3 +8,18 @@
   right: 0 !important;
   transform: translate(35%, -35%) !important;
 }
+
+/* Guarantee UI remains interactive after modal closing, PDF downloading, or printing */
+html, body, #root {
+  pointer-events: auto !important;
+}
+
+/* Prevent any unmounted or closed dialog overlays from hijacking clicks */
+[data-slot="dialog-overlay"][data-state="closed"] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+[data-radix-focus-guard] {
+  pointer-events: none !important;
+}

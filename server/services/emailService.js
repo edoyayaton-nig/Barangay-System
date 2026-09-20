@@ -10,55 +10,117 @@ dotenv.config();
 
 const EMAIL_USER    = process.env.EMAIL_USER    || '';
 const EMAIL_PASS    = process.env.EMAIL_PASS    || '';
-const EMAIL_FROM    = process.env.EMAIL_FROM    || `"Barangay Pianing System" <${EMAIL_USER}>`;
 const EMAIL_HOST    = process.env.EMAIL_HOST    || 'smtp.gmail.com';
 const EMAIL_PORT    = parseInt(process.env.EMAIL_PORT || '465');
 const EMAIL_SECURE  = process.env.EMAIL_SECURE !== 'false';   // true by default
+
+// Dynamic barangay name — set VITE_BARANGAY_NAME in .env to change for any barangay
+const BARANGAY_NAME = process.env.VITE_BARANGAY_NAME || process.env.BARANGAY_NAME || 'Barangay Pianing';
+const EMAIL_FROM    = process.env.EMAIL_FROM    || `"${BARANGAY_NAME} System" <${EMAIL_USER}>`;
+
+const EMAILJS_SERVICE_ID  = process.env.VITE_EMAILJS_SERVICE_ID  || process.env.EMAILJS_SERVICE_ID  || 'service_6nk2ylj';
+const EMAILJS_TEMPLATE_ID = process.env.VITE_EMAILJS_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || 'template_tjcwzij';
+const EMAILJS_PUBLIC_KEY  = process.env.VITE_EMAILJS_PUBLIC_KEY  || process.env.EMAILJS_PUBLIC_KEY  || '';
+const EMAILJS_PRIVATE_KEY = process.env.VITE_EMAILJS_PRIVATE_KEY || process.env.EMAILJS_PRIVATE_KEY || '';
 
 let transporter = null;
 
 function getTransporter() {
   if (transporter) return transporter;
-  if (!EMAIL_USER || !EMAIL_PASS) {
-    console.warn('⚠️  [Email] No EMAIL_USER / EMAIL_PASS configured. Running in simulation mode.');
+  if (!EMAIL_USER || !EMAIL_PASS || EMAIL_USER.includes('your_gmail') || EMAIL_PASS.includes('your_app_password')) {
     return null;
   }
+  const cleanPass = EMAIL_PASS.replace(/\s+/g, '');
   transporter = nodemailer.createTransport({
     host:   EMAIL_HOST,
     port:   EMAIL_PORT,
     secure: EMAIL_SECURE,
-    auth:   { user: EMAIL_USER, pass: EMAIL_PASS },
+    auth:   { user: EMAIL_USER.trim(), pass: cleanPass },
     tls:    { rejectUnauthorized: false }
   });
   return transporter;
 }
 
+async function sendViaEmailJs({ to, subject, text, html, recipientName, barangay }) {
+  const serviceId = process.env.VITE_EMAILJS_SERVICE_ID || process.env.EMAILJS_SERVICE_ID || EMAILJS_SERVICE_ID;
+  const templateId = process.env.VITE_EMAILJS_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || EMAILJS_TEMPLATE_ID;
+  const publicKey = process.env.VITE_EMAILJS_PUBLIC_KEY || process.env.EMAILJS_PUBLIC_KEY || EMAILJS_PUBLIC_KEY;
+  const privateKey = process.env.VITE_EMAILJS_PRIVATE_KEY || process.env.EMAILJS_PRIVATE_KEY || EMAILJS_PRIVATE_KEY;
+  const brgyName = barangay || BARANGAY_NAME;
+
+  if (!publicKey) return null;
+  try {
+    const payload = {
+      service_id: serviceId,
+      template_id: templateId,
+      user_id: publicKey,
+      template_params: {
+        to_name: recipientName || to,
+        to_email: to,
+        email: to,
+        name: recipientName || to,
+        title: subject,
+        subject: subject,
+        message: text || subject,
+        time: new Date().toLocaleString('en-PH'),
+        barangay_name: brgyName,
+        from_name: `${brgyName} Administration`
+      }
+    };
+    // Include private key if strict mode is enabled
+    if (privateKey) payload.accessToken = privateKey;
+
+    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      console.log(`✅ [EmailJS] Live email sent to ${to} – Subject: ${subject}`);
+      return { success: true, provider: 'emailjs' };
+    } else {
+      const errText = await res.text();
+      console.warn(`⚠️ [EmailJS] Failed to send to ${to}:`, errText);
+      return { success: false, error: errText };
+    }
+  } catch (err) {
+    console.warn(`⚠️ [EmailJS] Dispatch exception:`, err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Core send function
 // ─────────────────────────────────────────────────────────────────────────────
-export async function sendEmail({ to, subject, html, text }) {
+export async function sendEmail({ to, subject, html, text, recipientName, barangay }) {
+  // 1. Try Gmail SMTP if configured with real credentials
   const xporter = getTransporter();
-  if (!xporter) {
-    // Simulation mode – print to console instead of sending
-    console.log(`📧 [Email – SIMULATION] To: ${to} | Subject: ${subject}`);
-    console.log(`   Body: ${text || html}`);
-    return { success: true, simulated: true };
+  if (xporter) {
+    try {
+      const info = await xporter.sendMail({
+        from:    EMAIL_FROM,
+        to,
+        subject,
+        text:    text || '',
+        html:    html || `<p>${text}</p>`
+      });
+      console.log(`✅ [Email] Sent to ${to} – Message ID: ${info.messageId}`);
+      return { success: true, messageId: info.messageId, provider: 'smtp' };
+    } catch (error) {
+      console.error(`❌ [Email SMTP] Failed to send to ${to}:`, error.message);
+    }
   }
 
-  try {
-    const info = await xporter.sendMail({
-      from:    EMAIL_FROM,
-      to,
-      subject,
-      text:    text || '',
-      html:    html || `<p>${text}</p>`
-    });
-    console.log(`✅ [Email] Sent to ${to} – Message ID: ${info.messageId}`);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error(`❌ [Email] Failed to send to ${to}:`, error.message);
-    return { success: false, error: error.message };
+  // 2. Try EmailJS
+  const jsResult = await sendViaEmailJs({ to, subject, text, html, recipientName, barangay });
+  if (jsResult && jsResult.success) {
+    return jsResult;
   }
+
+  // 3. Simulation mode fallback
+  console.log(`📧 [Email – SIMULATION] To: ${to} | Subject: ${subject}`);
+  console.log(`   Body: ${text || html}`);
+  return { success: true, simulated: true };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,7 +155,7 @@ const STATUS_COLORS = {
 // 1. Document status update email
 export async function sendDocumentStatusEmail({ to, recipientName, documentType, requestCode, status, message }) {
   const color  = STATUS_COLORS[status] || '#2563eb';
-  const subject = `[Barangay Pianing] Document Request Update – ${requestCode}`;
+  const subject = `[${BARANGAY_NAME}] Document Request Update – ${requestCode}`;
   const html = `
 <div style="${baseStyle}">
   <div style="${headerStyle}">
@@ -187,7 +249,7 @@ export async function sendMaternalReminderEmail({ to, motherName, nextVisit, pre
 
 // 4. Account registration / verification email
 export async function sendRegistrationEmail({ to, fullName, role, tempPassword }) {
-  const subject = `[Barangay Pianing] Your Account Has Been Created`;
+  const subject = `[${BARANGAY_NAME}] Your Account Has Been Created`;
   const html = `
 <div style="${baseStyle}">
   <div style="${headerStyle}">
@@ -214,13 +276,14 @@ export async function sendRegistrationEmail({ to, fullName, role, tempPassword }
 }
 
 // 5. Account Verification Notice (Approval / Rejection & Wrong ID Correction)
-export async function sendVerificationNoticeEmail({ to, fullName, status, reason, remarks }) {
+export async function sendVerificationNoticeEmail({ to, fullName, status, reason, remarks, barangay }) {
   const isApproved = status === 'Verified' || status === 'Approved';
   const cause = reason || remarks || 'Submitted Government ID or registration details require correction.';
   const color = isApproved ? '#16a34a' : '#dc2626';
+  const effectiveBrgy = barangay || BARANGAY_NAME;
   const subject = isApproved 
-    ? `[Barangay Pianing] Account Verified — Services Unlocked`
-    : `[Barangay Pianing Action Required] ID Verification Notice: ${cause}`;
+    ? `[${effectiveBrgy}] Account Verified — Services Unlocked`
+    : `[${effectiveBrgy} Action Required] ID Verification Notice: ${cause}`;
 
   const html = `
 <div style="${baseStyle}">
@@ -262,7 +325,9 @@ export async function sendVerificationNoticeEmail({ to, fullName, status, reason
     html,
     text: isApproved 
       ? `Welcome ${fullName}! Your Barangay account has been VERIFIED. You can now access all services online.`
-      : `Barangay Notice for ${fullName}: Your ID verification requires correction: "${cause}". Please log in to your portal to resubmit a clear ID photo.`
+      : `Barangay Notice for ${fullName}: Your ID verification requires correction: "${cause}". Please log in to your portal to resubmit a clear ID photo.`,
+    recipientName: fullName,
+    barangay: effectiveBrgy
   });
 }
 
@@ -304,7 +369,7 @@ export async function sendAppointmentStatusEmail({ to, recipientName, serviceTyp
 
 // 7. Official Barangay Announcement broadcast email
 export async function sendAnnouncementEmail({ to, title, message, authorName, date }) {
-  const subject = `[Barangay Pianing Announcement] ${title}`;
+  const subject = `[${BARANGAY_NAME} Announcement] ${title}`;
   const html = `
 <div style="${baseStyle}">
   <div style="${headerStyle}">
@@ -328,7 +393,7 @@ export async function sendAnnouncementEmail({ to, title, message, authorName, da
 
 // 8. General SMS-to-Email notification bridge
 export async function sendDirectNotificationEmail({ to, recipientName, type, message }) {
-  const subject = `[Barangay Pianing Alert] ${type || 'Notification'}`;
+  const subject = `[${BARANGAY_NAME} Alert] ${type || 'Notification'}`;
   const html = `
 <div style="${baseStyle}">
   <div style="${headerStyle}">
@@ -349,6 +414,36 @@ export async function sendDirectNotificationEmail({ to, recipientName, type, mes
   </div>
 </div>`;
   return sendEmail({ to, subject, html, text: `[Barangay Notification: ${type}]\n\n${message}` });
+}
+
+// 9. Profile & Data Update Notification Email
+export async function sendProfileUpdateEmail({ to, fullName, changes, date }) {
+  const subject = `[${BARANGAY_NAME}] Profile & Account Information Updated`;
+  const html = `
+<div style="${baseStyle}">
+  <div style="${headerStyle}">
+    <h2 style="color:#fff;margin:0;font-size:20px;">👤 Profile Information Updated</h2>
+    <p style="color:#bfdbfe;margin:4px 0 0;font-size:13px;">Smart Barangay Governance System</p>
+  </div>
+  <div style="${bodyStyle}">
+    <p style="font-size:15px;">Dear <strong>${fullName || 'Resident'}</strong>,</p>
+    <p>This is an official notification that your Barangay resident profile details were updated on <strong>${date || new Date().toLocaleString()}</strong>.</p>
+    <div style="background:#f8fafc;border-left:4px solid #4f46e5;padding:14px;border-radius:6px;margin:16px 0;font-size:13px;color:#1e293b;line-height:1.6;">
+      <strong style="color:#4f46e5;display:block;margin-bottom:6px;">Summary of Information Updated:</strong>
+      <p style="margin:0;white-space:pre-wrap;font-weight:600;">${changes || 'Personal details updated successfully.'}</p>
+    </div>
+    <p style="font-size:13px;color:#64748b;">If you performed this update, no further action is required. If you did NOT authorize these changes, please contact the Barangay Administration office immediately.</p>
+  </div>
+  <div style="${footerStyle}">
+    <p style="margin:0;">Automated notification from the <strong>Smart Barangay Management System — Barangay Pianing</strong>.</p>
+  </div>
+</div>`;
+  return sendEmail({
+    to,
+    subject,
+    html,
+    text: `Notice for ${fullName}: Your profile information was updated on ${date || new Date().toLocaleDateString()}. Changes: ${changes}`
+  });
 }
 
 

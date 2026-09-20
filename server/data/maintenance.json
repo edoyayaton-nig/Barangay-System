@@ -2,7 +2,7 @@
   "enabled": false,
   "type": "down",
   "title": "CRITICAL ALERT: System is Temporarily Down",
-  "message": "The Barangay Information System is currently experiencing an unexpected database server outage.",
-  "estimated_uptime": "Expected recovery: Within 1 hour",
-  "updated_at": "2026-09-18T18:05:52.055Z"
+  "message": "The system is normal.",
+  "estimated_uptime": "",
+  "updated_at": "2026-09-19T07:45:24.258Z"
 }

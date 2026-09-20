@@ -51,10 +51,10 @@ export default function SystemNoticeBanner({
     const fetchNotice = async () => {
       try {
         const data = await apiService.getMaintenanceMode();
-        if (isMounted && data) {
+        if (isMounted) {
           setNotice(data);
           // If a new broadcast was activated, re-show it even if previously dismissed
-          if (data.enabled) {
+          if (data && data.enabled) {
             setIsDismissed(false);
           }
         }
@@ -64,18 +64,56 @@ export default function SystemNoticeBanner({
     };
 
     fetchNotice();
-    const interval = setInterval(fetchNotice, 15000); // refresh every 15s
+    const interval = setInterval(fetchNotice, 5000); // refresh every 5s
 
-    // Real-time inter-tab notification
+    // Real-time inter-tab notification via BroadcastChannel
     let bc: BroadcastChannel | null = null;
     try {
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         bc = new BroadcastChannel('barangay_system_notice');
-        bc.onmessage = () => {
-          fetchNotice();
+        bc.onmessage = (event) => {
+          if (event.data?.notice && isMounted) {
+            setNotice(event.data.notice);
+            if (event.data.notice.enabled) {
+              setIsDismissed(false);
+            }
+          } else {
+            fetchNotice();
+          }
         };
       }
     } catch {}
+
+    // Cross-tab fallback via storage events
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'barangay_system_notice_sync' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed.notice && isMounted) {
+            setNotice(parsed.notice);
+            if (parsed.notice.enabled) {
+              setIsDismissed(false);
+            }
+          } else {
+            fetchNotice();
+          }
+        } catch {
+          fetchNotice();
+        }
+      }
+    };
+
+    // Same-window custom event
+    const handleCustomNotice = (e: any) => {
+      if (e.detail && isMounted) {
+        setNotice(e.detail);
+        if (e.detail.enabled) {
+          setIsDismissed(false);
+        }
+      } else {
+        fetchNotice();
+      }
+    };
 
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -86,6 +124,8 @@ export default function SystemNoticeBanner({
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('focus', fetchNotice);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('barangay_system_notice_updated', handleCustomNotice);
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
@@ -97,6 +137,8 @@ export default function SystemNoticeBanner({
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('focus', fetchNotice);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('barangay_system_notice_updated', handleCustomNotice);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [customNotice]);
