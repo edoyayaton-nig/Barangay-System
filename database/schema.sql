@@ -5,8 +5,7 @@
 -- NOTE: If you want to change the database name for XAMPP / phpMyAdmin,
 -- change `smart_barangay_db` below and update `DB_NAME` in your `.env` file!
 
-CREATE DATABASE IF NOT EXISTS `smart_db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `smart_db`;
+-- Note: Targets the currently selected database (e.g. railway or smart_db)
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS `faq_knowledge`;

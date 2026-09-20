@@ -2,7 +2,7 @@
 -- Smart Barangay System - MySQL Seed Data
 -- =========================================================
 
-USE `smart_db`;
+-- Note: Seeds into currently selected database (e.g. railway or smart_db)
 
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE `users`;
