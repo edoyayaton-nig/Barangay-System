@@ -7105,6 +7105,18 @@ app.listen(PORT, async () => {
   const statusRes = await testConnection();
   if (statusRes.connected) {
     console.log(`✅ [MySQL] Connected successfully to ${statusRes.host}:${statusRes.port}/${statusRes.database}`);
+    // If connected to a fresh database with 0 tables (e.g. Railway deploy), auto-create all tables and seed data!
+    try {
+      const pool = getPool();
+      const [tableRows] = await pool.query("SHOW TABLES");
+      if (!tableRows || tableRows.length === 0) {
+        console.log(`📦 [Migration] Empty database detected on fresh deployment. Automatically running schema.sql and seed.sql...`);
+        const { runMigration } = await import('./migrate.js');
+        await runMigration();
+      }
+    } catch (tblErr) {
+      console.warn('[Migration Check] Notice:', tblErr.message);
+    }
     // Always run schema migration on startup to ensure columns are correct
     try {
       await migrateDatabase();

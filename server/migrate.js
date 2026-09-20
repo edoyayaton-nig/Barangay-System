@@ -32,8 +32,12 @@ export async function runMigration() {
     console.log(`✅ Connected to MySQL server.`);
 
     // 2. Create Database if not exists
-    console.log(`📦 Creating database '${dbName}' if not exists...`);
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+    try {
+      console.log(`📦 Creating database '${dbName}' if not exists...`);
+      await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+    } catch (dbErr) {
+      console.log(`ℹ️ [Database Notice] Using existing database '${dbName}': ${dbErr.message}`);
+    }
     await connection.query(`USE \`${dbName}\`;`);
     console.log(`✅ Database '${dbName}' selected.`);
 
