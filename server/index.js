@@ -667,6 +667,58 @@ async function migrateDatabase() {
     } catch (e) {
       console.warn('Barangay settings migration warning:', e.message);
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Broadcasts, Family Planning, User Notifications
+    // ─────────────────────────────────────────────────────────────
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS broadcasts (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          message TEXT NOT NULL,
+          severity ENUM('Emergency', 'Advisory', 'Info') NOT NULL DEFAULT 'Info',
+          target_barangay VARCHAR(100) NOT NULL DEFAULT 'All',
+          target_audience ENUM('All', 'Residents', 'Staff') NOT NULL DEFAULT 'All',
+          created_by VARCHAR(100) NOT NULL DEFAULT 'Super Admin',
+          is_active TINYINT(1) NOT NULL DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS family_planning_records (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          patient_name VARCHAR(255) NOT NULL,
+          contact_number VARCHAR(50) DEFAULT '',
+          age VARCHAR(20) DEFAULT '',
+          barangay VARCHAR(100) DEFAULT 'Pianing',
+          purok VARCHAR(100) DEFAULT 'Purok 1',
+          method_chosen VARCHAR(100) NOT NULL,
+          client_type ENUM('New Acceptor', 'Current User', 'Method Switch') DEFAULT 'New Acceptor',
+          date_given DATE DEFAULT (CURRENT_DATE),
+          next_supply_date DATE NOT NULL,
+          attending_worker VARCHAR(255) DEFAULT 'Healthcare Worker',
+          remarks TEXT DEFAULT NULL,
+          status ENUM('Active', 'Completed', 'Archived') DEFAULT 'Active',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS user_notifications (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          recipient_email VARCHAR(100) NOT NULL,
+          type VARCHAR(100) NOT NULL DEFAULT 'System',
+          title VARCHAR(255) NOT NULL DEFAULT '',
+          message TEXT NOT NULL,
+          ref_code VARCHAR(50) DEFAULT NULL,
+          is_read TINYINT(1) NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_recipient (recipient_email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+    } catch (e) {
+      console.warn('Additional tables migration warning:', e.message);
+    }
   }
 }
 setTimeout(migrateDatabase, 1000);
