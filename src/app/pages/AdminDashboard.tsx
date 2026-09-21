@@ -480,7 +480,17 @@ export default function AdminDashboard() {
   const [smsSending, setSmsSending] = useState(false);
 
   // Email & EmailJS Integration State
-  const [emailJsSettings, setEmailJsSettings] = useState<EmailJsConfig>(() => getEmailJsConfig());
+  // Initializer reads barangay from localStorage so that config is loaded per-barangay, not globally
+  const [emailJsSettings, setEmailJsSettings] = useState<EmailJsConfig>(() => {
+    try {
+      const stored = localStorage.getItem('barangay_user');
+      const u = stored ? JSON.parse(stored) : null;
+      const brgy = u?.barangay || '';
+      return getEmailJsConfig(brgy || undefined);
+    } catch {
+      return getEmailJsConfig();
+    }
+  });
   const [emailJsTestTarget, setEmailJsTestTarget] = useState('');
   const [emailJsTestSending, setEmailJsTestSending] = useState(false);
   const [emailStatus, setEmailStatus] = useState<{ configured: boolean; mode: string; message: string; user: string | null } | null>(null);
@@ -494,7 +504,8 @@ export default function AdminDashboard() {
 
   const handleSaveEmailJsSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    saveEmailJsConfig(emailJsSettings);
+    // Scope the saved config to this specific barangay so it doesn't bleed into other barangays
+    saveEmailJsConfig(emailJsSettings, userBarangay || undefined);
     toast.success('EmailJS settings saved successfully!');
   };
 

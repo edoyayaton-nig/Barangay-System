@@ -49,12 +49,7 @@ export function getEmailJsConfig(barangayName?: string): EmailJsConfig {
         }
       }
 
-      // 3. Fallback to active .env configured credentials if available
-      if (DEFAULT_CONFIG.publicKey && DEFAULT_CONFIG.serviceId) {
-        return DEFAULT_CONFIG;
-      }
-
-      // Other barangays start blank if no .env credentials are provided
+      // 3. No credentials saved for this barangay — return blank (isolated) so it doesn't inherit another barangay's credentials
       return {
         serviceId: '',
         templateId: '',
