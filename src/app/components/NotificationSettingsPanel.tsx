@@ -37,7 +37,7 @@ export default function NotificationSettingsPanel() {
   const currentUser = (() => {
     try { return JSON.parse(localStorage.getItem('barangay_user') || '{}'); } catch { return {}; }
   })();
-  const userBarangay = currentUser?.barangay ? currentUser.barangay.replace(/^Barangay\s+/i, '') : '';
+  const userBarangay = (currentUser?.barangay || 'Pianing').replace(/^Barangay\s+/i, '').trim();
 
   const [activeSubTab, setActiveSubTab] = useState<'gateways' | 'variables' | 'identity'>('gateways');
   const [settings, setSettings] = useState<BarangaySettings>(() => {
@@ -60,9 +60,10 @@ export default function NotificationSettingsPanel() {
   const [copiedTag, setCopiedTag] = useState<string | null>(null);
 
   useEffect(() => {
-    const targetBrgy = settings.barangay_name || userBarangay;
+    const targetBrgy = userBarangay;
     if (!targetBrgy) return;
     setLoading(true);
+
     fetch(`${API_BASE}/api/settings?barangay=${encodeURIComponent(targetBrgy)}`)
       .then((r) => {
         if (!r.ok) throw new Error('API ' + r.status);
@@ -70,17 +71,28 @@ export default function NotificationSettingsPanel() {
       })
       .then((data) => {
         if (data && typeof data === 'object') {
-          setSettings(prev => {
-            const merged = { ...prev, ...data };
-            try {
-              localStorage.setItem(`barangay_notification_settings_${targetBrgy.toLowerCase()}`, JSON.stringify(merged));
-            } catch {}
-            return merged;
+          setSettings({
+            ...DEFAULT_SETTINGS,
+            ...data,
+            barangay_name: targetBrgy,
+            sms_sender_name: data.sms_sender_name || `Brgy${targetBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`
           });
+          try {
+            localStorage.setItem(`barangay_notification_settings_${targetBrgy.toLowerCase()}`, JSON.stringify({
+              ...data,
+              barangay_name: targetBrgy
+            }));
+          } catch {}
         }
       })
       .catch(() => {
-        // Graceful fallback to cached state
+        // Fallback to local cache for this specific barangay
+        try {
+          const cached = localStorage.getItem(`barangay_notification_settings_${targetBrgy.toLowerCase()}`);
+          if (cached) {
+            setSettings(prev => ({ ...prev, ...JSON.parse(cached), barangay_name: targetBrgy }));
+          }
+        } catch {}
       })
       .finally(() => setLoading(false));
   }, [userBarangay]);
@@ -99,23 +111,27 @@ export default function NotificationSettingsPanel() {
   };
 
   const handleSave = async () => {
-    if (!settings.barangay_name.trim()) {
+    const targetBrgy = userBarangay;
+    if (!targetBrgy) {
       toast.error('Barangay name is required.');
       return;
     }
     setSaving(true);
-    const targetBrgy = settings.barangay_name.trim();
+    const payload = {
+      ...settings,
+      barangay_name: targetBrgy
+    };
 
-    // 1. Immediately synchronize EmailJS service config locally for this specific barangay
+    // 1. Immediately synchronize EmailJS service config locally strictly for this specific barangay
     saveEmailJsConfig({
       serviceId: settings.emailjs_service_id.trim(),
       templateId: settings.emailjs_template_id.trim(),
       publicKey: settings.emailjs_public_key.trim(),
     }, targetBrgy);
 
-    // 2. Persist to local cache for this specific barangay only
+    // 2. Persist to local cache strictly for this specific barangay
     try {
-      localStorage.setItem(`barangay_notification_settings_${targetBrgy.toLowerCase()}`, JSON.stringify(settings));
+      localStorage.setItem(`barangay_notification_settings_${targetBrgy.toLowerCase()}`, JSON.stringify(payload));
     } catch {}
 
     // 3. Persist to MySQL backend for this specific barangay
@@ -123,16 +139,16 @@ export default function NotificationSettingsPanel() {
       const res = await fetch(`${API_BASE}/api/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Credentials for ${targetBrgy} saved successfully.`);
+        toast.success(`Credentials for Barangay ${targetBrgy} saved successfully.`);
       } else {
         toast.error(data.message || 'Failed to save settings.');
       }
     } catch {
-      toast.success(`Settings for ${targetBrgy} updated successfully (Active Locally).`);
+      toast.success(`Settings for Barangay ${targetBrgy} updated successfully (Active Locally).`);
     } finally {
       setSaving(false);
     }
@@ -587,17 +603,22 @@ export default function NotificationSettingsPanel() {
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Barangay Name <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Barangay Jurisdiction <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Lock size={10} /> Locked to Account Jurisdiction
+                  </span>
+                </div>
                 <input
                   type="text"
-                  value={settings.barangay_name}
-                  onChange={(e) => handleChange('barangay_name', e.target.value)}
-                  placeholder="e.g. Pianing"
-                  className="w-full h-10 px-3.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-500 bg-white"
+                  value={`Barangay ${userBarangay}`}
+                  readOnly
+                  disabled
+                  className="w-full h-10 px-3.5 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold cursor-not-allowed select-none"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">Official name of your barangay jurisdiction.</p>
+                <p className="text-[11px] text-slate-400 mt-1">Official jurisdiction assigned to this Super Administrator account.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

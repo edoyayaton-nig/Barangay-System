@@ -727,24 +727,24 @@ setTimeout(migrateDatabase, 1000);
 // Barangay Settings API Routes (SuperAdmin + SuperMegaAdmin only)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// GET /api/settings — fetch current barangay settings (supports ?barangay=Antongalon)
+// GET /api/settings — fetch current barangay settings (strictly isolated per barangay jurisdiction)
 app.get('/api/settings', async (req, res) => {
   const pool = getPool();
   const rawBrgy = (req.query.barangay || '').toString().trim();
-  const reqBrgy = rawBrgy.replace(/^Barangay\s+/i, '');
+  const cleanBrgy = rawBrgy.replace(/^Barangay\s+/i, '').trim();
+
   if (pool && getStatus().connected) {
     try {
-      let rows;
-      if (reqBrgy) {
-        [rows] = await pool.query(
-          'SELECT * FROM barangay_settings WHERE LOWER(barangay_name) = LOWER(?) OR LOWER(barangay_name) = LOWER(?) LIMIT 1',
-          [reqBrgy, `Barangay ${reqBrgy}`]
+      if (cleanBrgy) {
+        const [rows] = await pool.query(
+          "SELECT * FROM barangay_settings WHERE LOWER(TRIM(REPLACE(barangay_name, 'Barangay ', ''))) = LOWER(TRIM(?)) LIMIT 1",
+          [cleanBrgy]
         );
         if (rows && rows.length > 0) return res.json(rows[0]);
 
-        // If specific barangay requested but not in DB yet, return clean isolated settings for that barangay
+        // If specific barangay requested but not in DB yet, return clean isolated blank settings for that barangay
         return res.json({
-          barangay_name: `Barangay ${reqBrgy}`,
+          barangay_name: cleanBrgy,
           municipality: 'Butuan City',
           province: 'Agusan del Norte',
           emailjs_service_id: '',
@@ -752,22 +752,22 @@ app.get('/api/settings', async (req, res) => {
           emailjs_public_key: '',
           emailjs_private_key: '',
           sms_api_key: '',
-          sms_sender_name: `Brgy${reqBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`
+          sms_sender_name: `Brgy${cleanBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`
         });
       }
 
-      // No specific barangay requested (e.g. system default)
-      [rows] = await pool.query('SELECT * FROM barangay_settings ORDER BY id ASC LIMIT 1');
+      // No specific barangay requested — default to Pianing row if exists, else blank
+      const [rows] = await pool.query("SELECT * FROM barangay_settings WHERE LOWER(TRIM(REPLACE(barangay_name, 'Barangay ', ''))) = 'pianing' LIMIT 1");
       if (rows && rows.length > 0) return res.json(rows[0]);
     } catch (e) {
       console.warn('[Settings GET] DB error:', e.message);
     }
   }
 
-  // Fallback:
-  if (reqBrgy && reqBrgy.toLowerCase() !== 'pianing') {
+  // Fallback if DB is unavailable
+  if (cleanBrgy && cleanBrgy.toLowerCase() !== 'pianing') {
     return res.json({
-      barangay_name: `Barangay ${reqBrgy}`,
+      barangay_name: cleanBrgy,
       municipality: 'Butuan City',
       province: 'Agusan del Norte',
       emailjs_service_id: '',
@@ -775,12 +775,12 @@ app.get('/api/settings', async (req, res) => {
       emailjs_public_key: '',
       emailjs_private_key: '',
       sms_api_key: '',
-      sms_sender_name: `Brgy${reqBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`
+      sms_sender_name: `Brgy${cleanBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`
     });
   }
 
   return res.json({
-    barangay_name: reqBrgy ? `Barangay ${reqBrgy}` : (process.env.VITE_BARANGAY_NAME || 'Barangay Pianing'),
+    barangay_name: cleanBrgy || (process.env.VITE_BARANGAY_NAME || 'Pianing').replace(/^Barangay\s+/i, ''),
     municipality: 'Butuan City',
     province: 'Agusan del Norte',
     emailjs_service_id: process.env.VITE_EMAILJS_SERVICE_ID || '',
@@ -806,29 +806,33 @@ app.get('/api/settings/all', async (req, res) => {
   return res.json([]);
 });
 
-// POST /api/settings — save barangay settings (scoped by barangay_name)
+// POST /api/settings — save barangay settings (strictly scoped by normalized barangay_name)
 app.post('/api/settings', async (req, res) => {
   const { barangay_name, municipality, province, emailjs_service_id, emailjs_template_id, emailjs_public_key, emailjs_private_key, sms_api_key, sms_sender_name } = req.body;
   if (!barangay_name || !barangay_name.trim()) {
     return res.status(400).json({ success: false, message: 'Barangay name is required.' });
   }
-  const cleanBrgy = barangay_name.trim().replace(/^Barangay\s+/i, '');
+  const cleanBrgy = barangay_name.trim().replace(/^Barangay\s+/i, '').trim();
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
       const [existing] = await pool.query(
-        'SELECT id FROM barangay_settings WHERE LOWER(barangay_name) = LOWER(?) OR LOWER(barangay_name) = LOWER(?) LIMIT 1',
-        [cleanBrgy, `Barangay ${cleanBrgy}`]
+        "SELECT id FROM barangay_settings WHERE LOWER(TRIM(REPLACE(barangay_name, 'Barangay ', ''))) = LOWER(TRIM(?)) LIMIT 1",
+        [cleanBrgy]
       );
+      const mCity = municipality || 'Butuan City';
+      const mProv = province || 'Agusan del Norte';
+      const mSender = sms_sender_name || `Brgy${cleanBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`;
+
       if (existing && existing.length > 0) {
         await pool.query(
           'UPDATE barangay_settings SET barangay_name=?, municipality=?, province=?, emailjs_service_id=?, emailjs_template_id=?, emailjs_public_key=?, emailjs_private_key=?, sms_api_key=?, sms_sender_name=?, updated_at=NOW() WHERE id=?',
-          [cleanBrgy, municipality||'', province||'', emailjs_service_id||'', emailjs_template_id||'', emailjs_public_key||'', emailjs_private_key||'', sms_api_key||'', sms_sender_name||'BrgySystem', existing[0].id]
+          [cleanBrgy, mCity, mProv, emailjs_service_id||'', emailjs_template_id||'', emailjs_public_key||'', emailjs_private_key||'', sms_api_key||'', mSender, existing[0].id]
         );
       } else {
         await pool.query(
           'INSERT INTO barangay_settings (barangay_name, municipality, province, emailjs_service_id, emailjs_template_id, emailjs_public_key, emailjs_private_key, sms_api_key, sms_sender_name) VALUES (?,?,?,?,?,?,?,?,?)',
-          [cleanBrgy, municipality||'', province||'', emailjs_service_id||'', emailjs_template_id||'', emailjs_public_key||'', emailjs_private_key||'', sms_api_key||'', sms_sender_name||'BrgySystem']
+          [cleanBrgy, mCity, mProv, emailjs_service_id||'', emailjs_template_id||'', emailjs_public_key||'', emailjs_private_key||'', sms_api_key||'', mSender]
         );
       }
       return res.json({ success: true, message: `Settings for Barangay ${cleanBrgy} saved successfully.` });

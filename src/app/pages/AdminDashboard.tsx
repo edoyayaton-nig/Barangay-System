@@ -454,10 +454,45 @@ export default function AdminDashboard() {
   const [editUserPhone, setEditUserPhone] = useState('');
   const [editUserStatus, setEditUserStatus] = useState<'Active' | 'Inactive' | 'Archived'>('Active');
 
+  // Cryptographically secure password generator
+  const generateSecurePassword = () => {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghijkmnopqrstuvwxyz';
+    const digits = '23456789';
+    const symbols = '!@#$%&*';
+    const all = upper + lower + digits + symbols;
+    
+    const getRandomChar = (charset: string) => {
+      const array = new Uint32Array(1);
+      crypto.getRandomValues(array);
+      return charset[array[0] % charset.length];
+    };
+
+    const pwd = [
+      getRandomChar(upper),
+      getRandomChar(upper),
+      getRandomChar(lower),
+      getRandomChar(lower),
+      getRandomChar(digits),
+      getRandomChar(digits),
+      getRandomChar(symbols),
+      getRandomChar(all),
+      getRandomChar(all),
+      getRandomChar(all),
+    ];
+    for (let i = pwd.length - 1; i > 0; i--) {
+      const array = new Uint32Array(1);
+      crypto.getRandomValues(array);
+      const j = array[0] % (i + 1);
+      [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+    }
+    return pwd.join('');
+  };
+
   // Reset Password Modal State
   const [resetPassUser, setResetPassUser] = useState<SystemUser | null>(null);
   const [isResetPassOpen, setIsResetPassOpen] = useState(false);
-  const [newPassVal, setNewPassVal] = useState('123456');
+  const [newPassVal, setNewPassVal] = useState('');
 
   // Admin Profile Modal State
   const [isAdminProfileOpen, setIsAdminProfileOpen] = useState(false);
@@ -1533,7 +1568,8 @@ export default function AdminDashboard() {
         relationship_to_head: newResRelationship.trim() || (newResIsHead ? 'Head' : 'Member'),
         employment_status: newResEmployment as any
       });
-      // Reload to avoid duplicates (never manually push)
+      // Reload to avoid duplicates (never manually push) and refresh superadmin analytics
+      await loadData();
       const freshResidents = await apiService.getResidents(user?.barangay, selectedCensusPurok);
       setResidents(freshResidents);
       setStats(prev => ({ ...prev, totalResidents: freshResidents.length }));
@@ -2282,7 +2318,7 @@ export default function AdminDashboard() {
 
   const handleOpenResetPassword = (u: SystemUser) => {
     setResetPassUser(u);
-    setNewPassVal('TempP@ss1');
+    setNewPassVal(generateSecurePassword());
     setIsResetPassOpen(true);
   };
 
@@ -2545,6 +2581,64 @@ export default function AdminDashboard() {
   const brgyTotalResidentsCount = barangayResidents.length;
   const brgyActiveRecordsCount = barangayDocs.length;
 
+  // Dynamic Monthly Issuance Volume Stats (computed from live database documents)
+  const monthlyIssuanceStats = useMemo(() => {
+    const target = isSuperAdmin ? documents : barangayDocs;
+    const currentYear = new Date().getFullYear();
+    const months = [
+      { key: 0, label: 'Jan' },
+      { key: 1, label: 'Feb' },
+      { key: 2, label: 'Mar' },
+      { key: 3, label: 'Apr' },
+      { key: 4, label: 'May' },
+      { key: 5, label: 'Jun' },
+      { key: 6, label: 'Jul' },
+      { key: 7, label: 'Aug' },
+      { key: 8, label: 'Sep' },
+      { key: 9, label: 'Oct' },
+      { key: 10, label: 'Nov' },
+      { key: 11, label: 'Dec' },
+    ];
+    const counts = Array(12).fill(0);
+
+    target.forEach(doc => {
+      const rawDate = doc.requested_at || (doc as any).created_at;
+      if (rawDate) {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          counts[d.getMonth()]++;
+        }
+      }
+    });
+
+    const total = counts.reduce((acc, c) => acc + c, 0);
+    const highest = Math.max(...counts, 0);
+    const maxScale = highest <= 10 ? 10 : Math.ceil(highest / 10) * 10;
+
+    return {
+      total: total || target.length,
+      maxScale,
+      year: currentYear,
+      bars: months.map(m => ({
+        month: m.label,
+        val: counts[m.key]
+      }))
+    };
+  }, [isSuperAdmin, documents, barangayDocs]);
+
+  // Dynamic available barangays from database registry + client tenants with Butuan fallback
+  const availableBarangays = useMemo(() => {
+    const set = new Set<string>();
+    if (barangaysOverview && barangaysOverview.length > 0) {
+      barangaysOverview.forEach(b => {
+        const clean = (b.name || (b as any).barangay || '').replace(/^Barangay\s+/i, '').trim();
+        if (clean) set.add(clean);
+      });
+    }
+    BUTUAN_BARANGAYS.forEach(b => set.add(b));
+    return Array.from(set).sort();
+  }, [barangaysOverview]);
+
   const verifiedAccountsCount = barangayResidents.length;
   const [quickSearch, setQuickSearch] = useState('');
 
@@ -2569,6 +2663,8 @@ export default function AdminDashboard() {
     }] : []),
     ...(isSuperAdmin || hasUserPermission(user, 'can_view_census') ? [{ id: 'records', label: 'Census & Demographics', icon: Users }] : []),
     ...(isSuperAdmin || hasUserPermission(user, 'can_generate_reports') ? [{ id: 'reports', label: 'Analytics & Reports', icon: BarChart }] : []),
+    // Barangay Jurisdiction (86-Barangay Municipal Command Hub) — Super Admin only
+    ...(isSuperAdmin ? [{ id: 'barangays', label: 'Barangay Jurisdiction', icon: Building2 }] : []),
     // Activity Logs: Available to Superadmin (strictly scoped to their barangay) and permitted staff
     ...(isSuperAdmin || hasUserPermission(user, 'can_view_logs') ? [{ id: 'logs', label: 'Activity Logs', icon: History }] : []),
     // Category Manager: REMOVED from Superadmin — Super Mega Admin only (via hasUserPermission explicit grant)
@@ -3095,57 +3191,57 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Card 3: Monthly Issuance Volume (Replacing "Sample Statistics") */}
+                  {/* Card 3: Monthly Issuance Volume (Dynamic Real Database Metrics) */}
                   <div className="bg-white rounded-2xl p-5 shadow-xs border border-slate-200/90 space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Monthly Issuance Volume</h4>
-                        <p className="text-[11px] text-slate-500">Official clearances & certificates (2026)</p>
+                        <p className="text-[11px] text-slate-500">Official clearances &amp; certificates ({monthlyIssuanceStats.year})</p>
                       </div>
-                      <span className="text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md">
-                        220 Total
+                      <span className="text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md font-mono">
+                        {monthlyIssuanceStats.total} Total
                       </span>
                     </div>
 
-                    <div className="relative h-40 pl-6 pr-1 pb-6 pt-2 border-b border-l border-slate-200">
-                      {/* Horizontal Grid lines */}
-                      <div className="absolute left-0 right-0 top-2 border-t border-slate-100 flex items-center">
-                        <span className="-ml-6 text-[10px] text-slate-400 font-mono">40</span>
-                      </div>
-                      <div className="absolute left-0 right-0 top-1/4 border-t border-slate-100 flex items-center">
-                        <span className="-ml-6 text-[10px] text-slate-400 font-mono">30</span>
-                      </div>
-                      <div className="absolute left-0 right-0 top-2/4 border-t border-slate-100 flex items-center">
-                        <span className="-ml-6 text-[10px] text-slate-400 font-mono">20</span>
-                      </div>
-                      <div className="absolute left-0 right-0 top-3/4 border-t border-slate-100 flex items-center">
-                        <span className="-ml-6 text-[10px] text-slate-400 font-mono">10</span>
-                      </div>
-                      <div className="absolute left-0 right-0 bottom-0 flex items-center">
-                        <span className="-ml-5 text-[10px] text-slate-400 font-mono">0</span>
+                    {/* Chart Container with dedicated Y-axis column to prevent overflow clipping */}
+                    <div className="flex h-44 pt-2 pb-6">
+                      {/* Left Column: Y-Axis Ticks neatly enclosed with dedicated margin */}
+                      <div className="w-8 pr-2 flex flex-col justify-between text-right text-[10px] text-slate-400 font-mono select-none">
+                        <span>{monthlyIssuanceStats.maxScale}</span>
+                        <span>{Math.round(monthlyIssuanceStats.maxScale * 0.75)}</span>
+                        <span>{Math.round(monthlyIssuanceStats.maxScale * 0.5)}</span>
+                        <span>{Math.round(monthlyIssuanceStats.maxScale * 0.25)}</span>
+                        <span>0</span>
                       </div>
 
-                      {/* Vertical Formal Slate/Blue Bars */}
-                      <div className="flex items-end justify-between h-full gap-2 relative z-10">
-                        {[
-                          { month: 'Jan', val: 16 },
-                          { month: 'Feb', val: 30 },
-                          { month: 'Mar', val: 24 },
-                          { month: 'May', val: 38 },
-                          { month: 'Jul', val: 25 },
-                          { month: 'Aug', val: 27 },
-                          { month: 'Nov', val: 36 },
-                          { month: 'Dec', val: 25 },
-                        ].map((bar, i) => (
-                          <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group">
-                            <div
-                              className="w-full max-w-[16px] bg-slate-800 rounded-t-sm group-hover:bg-blue-600 transition-all cursor-pointer shadow-2xs"
-                              style={{ height: `${(bar.val / 40) * 100}%` }}
-                              title={`${bar.month}: ${bar.val} requests processed`}
-                            />
-                            <span className="text-[9px] text-slate-500 font-medium absolute -bottom-5">{bar.month}</span>
-                          </div>
-                        ))}
+                      {/* Right Column: Chart Canvas & Vertical Bars */}
+                      <div className="flex-1 relative border-b border-l border-slate-200">
+                        {/* Horizontal Grid lines */}
+                        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                          <div className="border-t border-slate-100 w-full" />
+                          <div className="border-t border-slate-100 w-full" />
+                          <div className="border-t border-slate-100 w-full" />
+                          <div className="border-t border-slate-100 w-full" />
+                          <div className="w-full" />
+                        </div>
+
+                        {/* Vertical Dynamic Bars */}
+                        <div className="flex items-end justify-between h-full px-1 gap-1 relative z-10">
+                          {monthlyIssuanceStats.bars.map((bar, i) => (
+                            <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
+                              <div
+                                className={`w-full max-w-[14px] rounded-t-sm transition-all cursor-pointer shadow-2xs ${
+                                  bar.val > 0
+                                    ? 'bg-slate-800 group-hover:bg-blue-600'
+                                    : 'bg-slate-200/60 group-hover:bg-slate-300'
+                                }`}
+                                style={{ height: `${Math.max(bar.val > 0 ? 8 : 3, (bar.val / monthlyIssuanceStats.maxScale) * 100)}%` }}
+                                title={`${bar.month}: ${bar.val} requests processed`}
+                              />
+                              <span className="text-[9px] text-slate-500 font-medium absolute -bottom-5 select-none">{bar.month}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -5585,7 +5681,7 @@ export default function AdminDashboard() {
                       />
                       <datalist id="user-accounts-barangay-list">
                         <option value="all">All Barangays</option>
-                        {BUTUAN_BARANGAYS.map(b => (
+                        {availableBarangays.map(b => (
                           <option key={b} value={b}>Barangay {b}</option>
                         ))}
                       </datalist>
@@ -5720,7 +5816,7 @@ export default function AdminDashboard() {
                                     className="h-9 text-xs mt-1 bg-white"
                                   />
                                   <datalist id="add-user-barangay-datalist">
-                                    {BUTUAN_BARANGAYS.map(b => (
+                                    {availableBarangays.map(b => (
                                       <option key={b} value={b}>Barangay {b}</option>
                                     ))}
                                   </datalist>
@@ -6062,19 +6158,7 @@ export default function AdminDashboard() {
                                     </Button>
                                   )}
 
-                                  {/* Reset Password Button */}
-                                  {(isSuperAdmin || (user?.role === 'admin' && (u.role === 'staff' || u.role === 'bhw'))) && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleOpenResetPassword(u)}
-                                      className="h-7 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 cursor-pointer text-[11px] gap-1 rounded-lg"
-                                      title="Reset user password"
-                                    >
-                                      <Key size={12} />
-                                      <span className="hidden xl:inline">Reset</span>
-                                    </Button>
-                                  )}
+
 
                                   {/* Activate / Deactivate Button */}
                                   {(isSuperAdmin || (user?.role === 'admin' && (u.role === 'staff' || u.role === 'bhw'))) && (
@@ -6232,7 +6316,7 @@ export default function AdminDashboard() {
                               className="h-9 text-xs bg-white"
                             />
                             <datalist id="edit-user-barangay-datalist">
-                              {BUTUAN_BARANGAYS.map(b => (
+                              {availableBarangays.map(b => (
                                 <option key={b} value={b}>Barangay {b}</option>
                               ))}
                             </datalist>
@@ -6306,6 +6390,25 @@ export default function AdminDashboard() {
                         </div>
                         <p className="text-[10px] text-slate-400 mt-0.5">8+ chars, uppercase, number &amp; special symbol required</p>
                       </div>
+                      <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                        <span className="text-[11px] text-slate-500">Need to override user password directly?</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            if (editingUser) {
+                              const target = editingUser;
+                              setIsEditUserOpen(false);
+                              handleOpenResetPassword(target);
+                            }
+                          }}
+                          className="h-7 text-xs border-amber-300 text-amber-800 hover:bg-amber-50 cursor-pointer gap-1 font-medium"
+                        >
+                          <Key size={12} className="text-amber-600" />
+                          Reset Password
+                        </Button>
+                      </div>
                     </div>
 
                     <DialogFooter className="pt-3">
@@ -6334,18 +6437,52 @@ export default function AdminDashboard() {
                   </DialogHeader>
                   <form onSubmit={handleExecuteResetPassword} className="space-y-3 py-2">
                     <div>
-                      <Label className="text-xs font-semibold">New Password <span className="text-red-500">*</span></Label>
-                      <Input
-                        type="text"
-                        value={newPassVal}
-                        onChange={e => setNewPassVal(e.target.value)}
-                        required
-                        placeholder="Enter new password"
-                        className="h-9 text-xs font-mono mt-1"
-                      />
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold">New Temporary Password <span className="text-red-500">*</span></Label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pwd = generateSecurePassword();
+                            setNewPassVal(pwd);
+                            navigator.clipboard.writeText(pwd).then(() => {
+                              toast.success('Generated secure password & copied to clipboard!');
+                            });
+                          }}
+                          className="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <Sparkles size={11} />
+                          Generate Secure
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1 mt-1">
+                        <Input
+                          type="text"
+                          value={newPassVal}
+                          onChange={e => setNewPassVal(e.target.value)}
+                          required
+                          placeholder="Enter or generate new password"
+                          className="h-9 text-xs font-mono"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (newPassVal) {
+                              navigator.clipboard.writeText(newPassVal).then(() => {
+                                toast.success('Password copied to clipboard!');
+                              });
+                            }
+                          }}
+                          className="h-9 px-2 text-slate-600 hover:text-slate-900 shrink-0 cursor-pointer"
+                          title="Copy to clipboard"
+                        >
+                          <Copy size={13} />
+                        </Button>
+                      </div>
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      Default suggestion: <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-700">123456</code>. Inform the user of their new password so they can log in.
+                      Cryptographically secure temporary password. Copy and share securely with the user.
                     </p>
                     <DialogFooter className="pt-2">
                       <Button type="button" variant="outline" onClick={() => setIsResetPassOpen(false)} className="text-xs">
@@ -6400,6 +6537,9 @@ export default function AdminDashboard() {
                       size="sm"
                       onClick={() => {
                         setResAccBarangay(user?.barangay || 'Pianing');
+                        const securePass = generateSecurePassword();
+                        setResAccPassword(securePass);
+                        setResAccShowPassword(true);
                         setIsCreateResidentUserOpen(true);
                       }}
                       className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 font-semibold h-9 px-3 rounded-xl shadow-xs cursor-pointer"
@@ -6960,17 +7100,37 @@ export default function AdminDashboard() {
                           };
                         });
 
-                        const municipalChartData = ['Pianing', 'Libertad', 'Ampayon', 'Doongan', 'Villa Kananga', 'Baan Riverside'].map((bName, idx) => {
-                          const count = residents.filter(r => (r.barangay || '').toLowerCase() === bName.toLowerCase()).length;
-                          const pct = residents.length > 0 ? Math.round((count / residents.length) * 100) : 0;
-                          const colors = ['#4F46E5', '#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777'];
-                          return {
-                            name: bName,
-                            count,
-                            pct,
-                            color: colors[idx % colors.length],
-                          };
-                        });
+                        const municipalChartData = (() => {
+                          const countsMap: Record<string, number> = {};
+                          residents.forEach(r => {
+                            const b = (r.barangay || 'Pianing').replace(/^Barangay\s+/i, '').trim();
+                            if (b) {
+                              countsMap[b] = (countsMap[b] || 0) + 1;
+                            }
+                          });
+
+                          // Ensure known client and key Butuan barangays exist
+                          ['Pianing', 'Libertad', 'Ampayon', 'Doongan', 'Villa Kananga', 'Baan Riverside'].forEach(b => {
+                            if (countsMap[b] === undefined) countsMap[b] = 0;
+                          });
+
+                          const totalR = residents.length;
+                          const colors = ['#4F46E5', '#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777', '#0891B2', '#475569'];
+
+                          return Object.entries(countsMap)
+                            .map(([name, count]) => ({
+                              name,
+                              count,
+                              pct: totalR > 0 ? Math.round((count / totalR) * 100) : 0,
+                              color: '#4F46E5'
+                            }))
+                            .sort((a, b) => b.count - a.count)
+                            .slice(0, 8)
+                            .map((item, idx) => ({
+                              ...item,
+                              color: colors[idx % colors.length]
+                            }));
+                        })();
 
                         return (
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -8657,7 +8817,7 @@ export default function AdminDashboard() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-60">
-                      {BUTUAN_BARANGAYS.map(b => (
+                      {availableBarangays.map(b => (
                         <SelectItem key={b} value={b}>Barangay {b}</SelectItem>
                       ))}
                     </SelectContent>
@@ -9184,25 +9344,60 @@ export default function AdminDashboard() {
                 <div>
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-semibold text-slate-700">Initial Password *</Label>
-                    <button
-                      type="button"
-                      onClick={() => setResAccShowPassword(prev => !prev)}
-                      className="text-[11px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
-                    >
-                      {resAccShowPassword ? 'Hide' : 'Show'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const pwd = generateSecurePassword();
+                          setResAccPassword(pwd);
+                          setResAccShowPassword(true);
+                          navigator.clipboard.writeText(pwd).then(() => {
+                            toast.success('Generated secure password & copied to clipboard!');
+                          }).catch(() => {
+                            toast.success('Generated secure password: ' + pwd);
+                          });
+                        }}
+                        className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <Sparkles size={11} />
+                        Generate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setResAccShowPassword(prev => !prev)}
+                        className="text-[11px] text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
+                      >
+                        {resAccShowPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="relative mt-1">
+                  <div className="relative mt-1 flex items-center gap-1">
                     <Input
                       type={resAccShowPassword ? 'text' : 'password'}
                       value={resAccPassword}
                       onChange={e => setResAccPassword(e.target.value)}
-                      placeholder="Enter secure password"
-                      className="text-xs font-mono bg-white border-slate-300 pr-8"
+                      placeholder="Click Generate or enter password"
+                      className="text-xs font-mono bg-white border-slate-300"
                       required
                     />
+                    {resAccPassword && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(resAccPassword).then(() => {
+                            toast.success('Password copied to clipboard!');
+                          });
+                        }}
+                        className="h-9 px-2 text-slate-600 hover:text-slate-900 shrink-0 cursor-pointer"
+                        title="Copy password to clipboard"
+                      >
+                        <Copy size={13} />
+                      </Button>
+                    )}
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Min. 6 chars with uppercase, lowercase, digit &amp; symbol.</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Min. 8 chars with uppercase, lowercase, digit &amp; symbol.</p>
                 </div>
 
                 <div className="sm:col-span-2">
@@ -9359,7 +9554,7 @@ export default function AdminDashboard() {
                     <Select value={resAccBarangay || 'Pianing'} onValueChange={setResAccBarangay}>
                       <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue /></SelectTrigger>
                       <SelectContent className="max-h-60">
-                        {BUTUAN_BARANGAYS.map(b => (
+                        {availableBarangays.map(b => (
                           <SelectItem key={b} value={b}>Barangay {b}</SelectItem>
                         ))}
                       </SelectContent>

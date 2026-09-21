@@ -21,8 +21,19 @@ const DEFAULT_CONFIG: EmailJsConfig = {
 // Retrieve configuration (strictly scoped per barangay jurisdiction)
 export function getEmailJsConfig(barangayName?: string): EmailJsConfig {
   try {
-    if (barangayName) {
-      const cleanBrgy = barangayName.replace(/^Barangay\s+/i, '').trim().toLowerCase();
+    let target = barangayName;
+    if (!target) {
+      try {
+        const uStr = localStorage.getItem('barangay_user');
+        if (uStr) {
+          const u = JSON.parse(uStr);
+          if (u?.barangay) target = u.barangay;
+        }
+      } catch {}
+    }
+
+    if (target) {
+      const cleanBrgy = target.replace(/^Barangay\s+/i, '').trim().toLowerCase();
       // 1. Check barangay-specific emailjs_config cache
       const brgySaved = localStorage.getItem(`emailjs_config_${cleanBrgy}`);
       if (brgySaved) {
@@ -49,36 +60,41 @@ export function getEmailJsConfig(barangayName?: string): EmailJsConfig {
         }
       }
 
-      // 3. No credentials saved for this barangay — return blank (isolated) so it doesn't inherit another barangay's credentials
+      // 3. For Pianing only, fallback to .env default if not yet customized
+      if (cleanBrgy === 'pianing') {
+        return DEFAULT_CONFIG;
+      }
+
+      // 4. Any other barangay without saved credentials gets completely blank credentials
       return {
         serviceId: '',
         templateId: '',
         publicKey: ''
       };
     }
-
-    const saved = localStorage.getItem('emailjs_config');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        serviceId: parsed.serviceId || '',
-        templateId: parsed.templateId || '',
-        publicKey: parsed.publicKey || '',
-      };
-    }
   } catch {}
-  return DEFAULT_CONFIG;
+  return {
+    serviceId: '',
+    templateId: '',
+    publicKey: ''
+  };
 }
 
 export function saveEmailJsConfig(config: Partial<EmailJsConfig>, barangayName?: string) {
-  const current = getEmailJsConfig(barangayName);
-  const updated = { ...current, ...config };
-  if (barangayName) {
-    const cleanBrgy = barangayName.replace(/^Barangay\s+/i, '').trim().toLowerCase();
-    localStorage.setItem(`emailjs_config_${cleanBrgy}`, JSON.stringify(updated));
-  } else {
-    localStorage.setItem('emailjs_config', JSON.stringify(updated));
+  let target = barangayName;
+  if (!target) {
+    try {
+      const uStr = localStorage.getItem('barangay_user');
+      if (uStr) {
+        const u = JSON.parse(uStr);
+        if (u?.barangay) target = u.barangay;
+      }
+    } catch {}
   }
+  const cleanBrgy = (target || 'pianing').replace(/^Barangay\s+/i, '').trim().toLowerCase();
+  const current = getEmailJsConfig(cleanBrgy);
+  const updated = { ...current, ...config };
+  localStorage.setItem(`emailjs_config_${cleanBrgy}`, JSON.stringify(updated));
   return updated;
 }
 
