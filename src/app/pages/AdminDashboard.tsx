@@ -199,11 +199,11 @@ export default function AdminDashboard() {
   // Staff Schedule Creator Modal State
   const [isPostScheduleModalOpen, setIsPostScheduleModalOpen] = useState(false);
   const [newScheduleTitle, setNewScheduleTitle] = useState('');
-  const [newScheduleServiceType, setNewScheduleServiceType] = useState('Pre-Marriage Counseling (PMC)');
-  const [newScheduleDay, setNewScheduleDay] = useState('Every Wednesday');
-  const [newScheduleTime, setNewScheduleTime] = useState('8:30 AM - 11:30 AM');
-  const [newScheduleLocation, setNewScheduleLocation] = useState('Barangay Pianing Health Center');
-  const [newScheduleSlots, setNewScheduleSlots] = useState('20');
+  const [newScheduleServiceType, setNewScheduleServiceType] = useState('');
+  const [newScheduleDay, setNewScheduleDay] = useState('');
+  const [newScheduleTime, setNewScheduleTime] = useState('');
+  const [newScheduleLocation, setNewScheduleLocation] = useState('');
+  const [newScheduleSlots, setNewScheduleSlots] = useState('');
   const [newScheduleBhw, setNewScheduleBhw] = useState('');
   const [stats, setStats] = useState({
     pendingDocs: 0,
@@ -3631,7 +3631,9 @@ export default function AdminDashboard() {
                         {(populationStats?.total_population ?? residents.length).toLocaleString()}
                       </div>
                       <p className="text-[11px] text-slate-500 font-medium">
-                        Official barangay civil registry records
+                        {(populationStats as any)?.total_registry_records
+                          ? `${(populationStats?.total_population ?? residents.length)} Verified • ${(populationStats as any).pending_verifications || 0} Pending (${(populationStats as any).total_registry_records} in Registry)`
+                          : 'Official verified civil census records'}
                       </p>
                     </div>
 
@@ -7266,9 +7268,23 @@ export default function AdminDashboard() {
                   const pendingVerifications = targetResidents.filter(r => r.verification_status === 'Pending' || !r.verification_status).length;
                   const verificationRate = totalPop > 0 ? Math.round((verifiedResidents / totalPop) * 100) : 0;
 
-                  const activeUsers = users.length;
-                  const adminUsers = users.filter(u => u.role === 'admin' || u.role === 'superadmin').length;
-                  const clinicalStaff = users.filter(u => u.role === 'nurse' || u.role === 'bhw').length;
+                  // Real staff directory personnel (strictly excludes ordinary resident accounts)
+                  const staffRoleList = ['admin', 'superadmin', 'super_mega_admin', 'staff', 'nurse', 'bhw'];
+                  const allStaffUsers = users.filter(u => staffRoleList.includes((u.role || '').toLowerCase()));
+                  const targetStaff = isSuperAdmin
+                    ? (userBarangay ? allStaffUsers.filter(u => !u.barangay || u.barangay.toLowerCase().includes(userBarangay.toLowerCase()) || u.role === 'superadmin' || u.role === 'super_mega_admin') : allStaffUsers)
+                    : allStaffUsers.filter(u => (u.barangay || '').toLowerCase().includes((userBarangay || '').toLowerCase()));
+                  const activeStaffCount = targetStaff.length;
+                  const adminUsers = targetStaff.filter(u => u.role === 'admin' || u.role === 'superadmin' || u.role === 'super_mega_admin').length;
+                  const clinicalStaff = targetStaff.filter(u => u.role === 'nurse' || u.role === 'bhw').length;
+                  const clerkStaff = targetStaff.filter(u => u.role === 'staff').length;
+
+                  // Real live audit events breakdown
+                  const realAuditCount = activityLogs.length;
+                  const auditDocsCount = activityLogs.filter(l => l.action_type === 'Document').length;
+                  const auditHealthCount = activityLogs.filter(l => l.action_type === 'Health').length;
+                  const auditResCount = activityLogs.filter(l => l.action_type === 'Resident').length;
+                  const auditSecCount = activityLogs.filter(l => ['Security', 'System', 'Auth'].includes(l.action_type || '')).length;
 
                   return (
                     <>
@@ -7277,7 +7293,7 @@ export default function AdminDashboard() {
                         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-semibold text-slate-600">
-                              {isSuperAdmin ? 'Total City Population' : 'Barangay Population'}
+                              {isSuperAdmin && !userBarangay ? 'Total City Population' : `Barangay ${userBarangay || 'Pianing'} Population`}
                             </span>
                             <Users size={16} className="text-blue-600" />
                           </div>
@@ -7312,11 +7328,11 @@ export default function AdminDashboard() {
                             {isSuperAdmin ? <UserCheck size={16} className="text-purple-600" /> : <ShieldCheck size={16} className="text-indigo-600" />}
                           </div>
                           <p className="text-3xl font-extrabold text-slate-900">
-                            {isSuperAdmin ? activeUsers : `${verificationRate}%`}
+                            {isSuperAdmin ? activeStaffCount : `${verificationRate}%`}
                           </p>
                           <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
                             {isSuperAdmin ? (
-                              <span>{adminUsers} Admins • {clinicalStaff} Healthcare Staff</span>
+                              <span>{adminUsers} Admins • {clinicalStaff} Health • {clerkStaff} Clerks</span>
                             ) : (
                               <span>{verifiedResidents} Verified • {pendingVerifications} Pending</span>
                             )}
@@ -7326,16 +7342,18 @@ export default function AdminDashboard() {
                         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-semibold text-slate-600">
-                              {isSuperAdmin ? 'Security Audit Events' : 'Civil Households'}
+                              {isSuperMegaAdmin ? 'Security Audit Events' : (isSuperAdmin ? 'Operational Audit Trail' : 'Civil Households')}
                             </span>
                             <Activity size={16} className="text-amber-600" />
                           </div>
                           <p className="text-3xl font-extrabold text-slate-900">
-                            {isSuperAdmin ? activityLogs.length : (censusStats?.total_households ?? censusHouseholds.length)}
+                            {isSuperMegaAdmin ? auditSecCount : (isSuperAdmin ? realAuditCount : (censusStats?.total_households ?? censusHouseholds.length))}
                           </p>
                           <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
-                            {isSuperAdmin ? (
-                              <span className="text-emerald-700 font-semibold">100% Audit Logging Active</span>
+                            {isSuperMegaAdmin ? (
+                              <span>{auditSecCount} Security &amp; Auth logged</span>
+                            ) : isSuperAdmin ? (
+                              <span>{auditDocsCount} Docs • {auditHealthCount} Health • {auditResCount} Residents</span>
                             ) : (
                               <span>{censusStats?.total_families ?? censusHouseholds.length} Families registered</span>
                             )}

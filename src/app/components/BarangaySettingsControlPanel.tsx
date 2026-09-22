@@ -276,7 +276,7 @@ export default function BarangaySettingsControlPanel() {
   });
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('doc_ready');
   const [previewMode, setPreviewMode] = useState<'email' | 'sms'>('email');
-  const [testEmailAddress, setTestEmailAddress] = useState('resident.test@butuancity.gov.ph');
+  const [testEmailAddress, setTestEmailAddress] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
 
   // ── Client Barangays State ─────────────────────────────────

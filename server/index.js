@@ -753,7 +753,7 @@ app.get('/api/settings', async (req, res) => {
           emailjs_public_key: '',
           emailjs_private_key: '',
           sms_api_key: '',
-          sms_sender_name: `Brgy${cleanBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`
+          sms_sender_name: ''
         });
       }
 
@@ -776,7 +776,7 @@ app.get('/api/settings', async (req, res) => {
       emailjs_public_key: '',
       emailjs_private_key: '',
       sms_api_key: '',
-      sms_sender_name: `Brgy${cleanBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`
+      sms_sender_name: ''
     });
   }
 
@@ -789,7 +789,7 @@ app.get('/api/settings', async (req, res) => {
     emailjs_public_key: process.env.VITE_EMAILJS_PUBLIC_KEY || '',
     emailjs_private_key: process.env.VITE_EMAILJS_PRIVATE_KEY || '',
     sms_api_key: process.env.SEMAPHORE_API_KEY || '',
-    sms_sender_name: 'BrgyPianing'
+    sms_sender_name: ''
   });
 });
 
@@ -823,7 +823,7 @@ app.post('/api/settings', async (req, res) => {
       );
       const mCity = municipality || 'Butuan City';
       const mProv = province || 'Agusan del Norte';
-      const mSender = sms_sender_name || `Brgy${cleanBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`;
+      const mSender = sms_sender_name || '';
 
       if (existing && existing.length > 0) {
         await pool.query(
@@ -6244,44 +6244,58 @@ app.get('/api/stats/population', async (req, res) => {
         filterParams = [barangay.trim()];
       }
 
-      const [totalRows] = await pool.query(`SELECT COUNT(*) as total FROM residents ${filterSql}`, filterParams);
-      const total = totalRows[0]?.total || 0;
+      // Calculate total verified residents (inhabitants recognized in active civil census)
+      const verifiedClause = "LOWER(COALESCE(verification_status, '')) IN ('verified', 'active')";
+      const baseFilter = filterSql ? `${filterSql} AND ${verifiedClause}` : `WHERE ${verifiedClause}`;
+
+      const [verifiedRows] = await pool.query(`SELECT COUNT(*) as total FROM residents ${baseFilter}`, filterParams);
+      const total = verifiedRows[0]?.total || 0;
+
+      // Also get total registry count including pending applicants
+      const [allRows] = await pool.query(`SELECT COUNT(*) as total FROM residents ${filterSql}`, filterParams);
+      const totalAll = allRows[0]?.total || 0;
+
+      const [pendingRows] = await pool.query(
+        `SELECT COUNT(*) as cnt FROM residents ${filterSql ? filterSql + ' AND' : ' WHERE'} LOWER(COALESCE(verification_status, '')) LIKE '%pending%'`,
+        filterParams
+      );
+      const pendingCount = pendingRows[0]?.cnt || 0;
 
       const [onlineRows] = await pool.query(
-        `SELECT COUNT(*) as online_cnt FROM residents ${filterSql ? filterSql + ' AND' : ' WHERE'} email IS NOT NULL AND email != '' AND email NOT LIKE '%@resident.local'`,
+        `SELECT COUNT(*) as online_cnt FROM residents ${baseFilter} AND email IS NOT NULL AND email != '' AND email NOT LIKE '%@resident.local'`,
         filterParams
       );
       const online = onlineRows[0]?.online_cnt || 0;
 
       const [votersRows] = await pool.query(
-        `SELECT COUNT(*) as cnt FROM residents ${filterSql ? filterSql + ' AND' : ' WHERE'} TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) >= 18`,
+        `SELECT COUNT(*) as cnt FROM residents ${baseFilter} AND TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) >= 18`,
         filterParams
       );
       const voters = votersRows[0]?.cnt || 0;
 
       const [seniorsRows] = await pool.query(
-        `SELECT COUNT(*) as cnt FROM residents ${filterSql ? filterSql + ' AND' : ' WHERE'} TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) >= 60`,
+        `SELECT COUNT(*) as cnt FROM residents ${baseFilter} AND TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) >= 60`,
         filterParams
       );
       const seniors = seniorsRows[0]?.cnt || 0;
 
       const [minorsRows] = await pool.query(
-        `SELECT COUNT(*) as cnt FROM residents ${filterSql ? filterSql + ' AND' : ' WHERE'} TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) < 18`,
+        `SELECT COUNT(*) as cnt FROM residents ${baseFilter} AND TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) < 18`,
         filterParams
       );
       const minors = minorsRows[0]?.cnt || 0;
 
       const [maleRows] = await pool.query(
-        `SELECT COUNT(*) as cnt FROM residents ${filterSql ? filterSql + ' AND' : ' WHERE'} gender = 'Male'`,
+        `SELECT COUNT(*) as cnt FROM residents ${baseFilter} AND gender = 'Male'`,
         filterParams
       );
       const [femaleRows] = await pool.query(
-        `SELECT COUNT(*) as cnt FROM residents ${filterSql ? filterSql + ' AND' : ' WHERE'} gender = 'Female'`,
+        `SELECT COUNT(*) as cnt FROM residents ${baseFilter} AND gender = 'Female'`,
         filterParams
       );
 
       const [purokRows] = await pool.query(
-        `SELECT COALESCE(NULLIF(purok, ''), '1') as purok_name, COUNT(*) as count FROM residents ${filterSql} GROUP BY purok_name ORDER BY purok_name ASC`,
+        `SELECT COALESCE(NULLIF(purok, ''), '1') as purok_name, COUNT(*) as count FROM residents ${baseFilter} GROUP BY purok_name ORDER BY purok_name ASC`,
         filterParams
       );
 
@@ -6289,6 +6303,9 @@ app.get('/api/stats/population', async (req, res) => {
         success: true,
         barangay: barangay || 'All',
         total_population: total,
+        total_registry_records: totalAll,
+        pending_verifications: pendingCount,
+        unverified_count: Math.max(0, totalAll - total - pendingCount),
         online_registered: online,
         adoption_rate: total > 0 ? Math.round((online / total) * 100) : 0,
         registered_voters: voters,

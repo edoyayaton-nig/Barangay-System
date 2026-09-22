@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Save, Eye, EyeOff, Send, CheckCircle2, AlertCircle, RefreshCw,
   Building, Mail, Smartphone, Sparkles, ExternalLink, ShieldCheck,
-  RotateCcw, Info, Copy, Check, Code2, Key, HelpCircle, Layers
+  RotateCcw, Info, Copy, Check, Code2, Key, HelpCircle, Layers, Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { saveEmailJsConfig } from '../../services/emailJsService';
@@ -50,7 +50,7 @@ export default function NotificationSettingsPanel() {
     return {
       ...DEFAULT_SETTINGS,
       barangay_name: userBarangay,
-      sms_sender_name: userBarangay ? `Brgy${userBarangay.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}` : 'BrgySystem'
+      sms_sender_name: ''
     };
   });
   const [loading, setLoading] = useState(false);
@@ -75,7 +75,7 @@ export default function NotificationSettingsPanel() {
             ...DEFAULT_SETTINGS,
             ...data,
             barangay_name: targetBrgy,
-            sms_sender_name: data.sms_sender_name || `Brgy${targetBrgy.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7)}`
+            sms_sender_name: data.sms_sender_name || ''
           });
           try {
             localStorage.setItem(`barangay_notification_settings_${targetBrgy.toLowerCase()}`, JSON.stringify({
@@ -405,7 +405,7 @@ export default function NotificationSettingsPanel() {
                     type="text"
                     value={settings.sms_sender_name}
                     onChange={(e) => handleChange('sms_sender_name', e.target.value)}
-                    placeholder="e.g. BrgyPianing"
+                    placeholder="Optional sender name (max 11 chars)"
                     maxLength={11}
                     className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 font-mono bg-white focus:outline-none focus:border-indigo-500"
                   />
