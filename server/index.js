@@ -145,7 +145,8 @@ let mockData = {
     { id: 2, user_name: 'Barangay Captain Juan Dela Cruz', user_role: 'admin', action: 'Approved Resident Registration', action_type: 'Resident', barangay: 'Pianing', details: 'Verified resident account with government ID verification.', timestamp: '09/04/2026 09:15 AM' },
     { id: 3, user_name: 'Barangay Clerk Ana Reyes', user_role: 'staff', action: 'Issued Barangay ID DOC-2026-004', action_type: 'Document', barangay: 'Pianing', details: 'Official photo ID generated and released.', timestamp: '09/04/2026 09:45 AM' },
     { id: 4, user_name: 'Nurse Maria Santos', user_role: 'bhw', action: 'Recorded Infant Immunization (BCG)', action_type: 'Health', barangay: 'Pianing', details: 'Completed BCG dose 1 administration at Pianing Health Center.', timestamp: '09/04/2026 10:00 AM' },
-    { id: 5, user_name: 'Super Admin Rodrigo Lim', user_role: 'superadmin', action: 'System Health & Connectivity Check', action_type: 'System', barangay: 'All (City-Wide)', details: 'Live database and SMS gateway operational status checked.', timestamp: '09/04/2026 10:30 AM' }
+    { id: 5, user_name: 'Super Admin Rodrigo Lim', user_role: 'superadmin', action: 'System Health & Connectivity Check', action_type: 'System', barangay: 'All (City-Wide)', details: 'Live database and SMS gateway operational status checked.', timestamp: '09/04/2026 10:30 AM' },
+    { id: 6, user_name: 'Super Admin Rodrigo Lim', user_role: 'superadmin', action: 'Created Staff Account: Ana Reyes', action_type: 'Staff', barangay: 'Pianing', details: 'Registered new Barangay Clerk personnel account.', timestamp: '09/04/2026 11:00 AM' }
   ],
   pendingRegistrations: [],
   appointments: [],
@@ -1076,7 +1077,17 @@ async function logActivity(data) {
 }
 
 app.get('/api/activity-logs', async (req, res) => {
-  const { barangay, action_type, search, role } = req.query;
+  const { barangay, action_type, search, role, caller_role } = req.query;
+
+  // Role-based restriction: ONLY super_mega_admin has access to system-level audit logs
+  const systemLevelTypes = ['Security', 'System', 'User', 'Category', 'Auth', 'Registration'];
+  const isSuperMegaAdmin = caller_role === 'super_mega_admin';
+
+  // If non-super_mega_admin requested a restricted action_type, return empty
+  if (!isSuperMegaAdmin && action_type && action_type !== 'All' && systemLevelTypes.includes(action_type)) {
+    return res.json([]);
+  }
+
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
@@ -1087,8 +1098,16 @@ app.get('/api/activity-logs', async (req, res) => {
         params.push(barangay);
       }
       if (action_type && action_type !== 'All') {
-        query += " AND action_type = ?";
-        params.push(action_type);
+        if (action_type === 'Staff') {
+          query += " AND (action_type = 'Staff' OR (action_type = 'User' AND (LOWER(user_role) IN ('staff', 'admin', 'bhw', 'nurse') OR details LIKE '%staff%' OR details LIKE '%admin%' OR details LIKE '%bhw%' OR details LIKE '%nurse%')))";
+        } else {
+          query += " AND action_type = ?";
+          params.push(action_type);
+        }
+      }
+      // Backend enforcement: exclude system-level logs for non-Super-Mega-Admin callers
+      if (!isSuperMegaAdmin) {
+        query += " AND action_type NOT IN ('Security', 'System', 'User', 'Category', 'Auth', 'Registration')";
       }
       if (role && role !== 'All') {
         query += " AND LOWER(user_role) = LOWER(?)";
@@ -1113,7 +1132,15 @@ app.get('/api/activity-logs', async (req, res) => {
     logs = logs.filter(l => !l.barangay || l.barangay === barangay || l.barangay === 'All (City-Wide)');
   }
   if (action_type && action_type !== 'All') {
-    logs = logs.filter(l => l.action_type === action_type);
+    if (action_type === 'Staff') {
+      logs = logs.filter(l => l.action_type === 'Staff' || (l.action_type === 'User' && ['staff', 'admin', 'bhw', 'nurse'].includes(l.user_role?.toLowerCase())));
+    } else {
+      logs = logs.filter(l => l.action_type === action_type);
+    }
+  }
+  // Backend enforcement on fallback too
+  if (!isSuperMegaAdmin) {
+    logs = logs.filter(l => !systemLevelTypes.includes(l.action_type));
   }
   if (role && role !== 'All') {
     logs = logs.filter(l => l.user_role?.toLowerCase() === role.toLowerCase());
@@ -2679,7 +2706,7 @@ app.post('/api/users', async (req, res) => {
         user_name: created_by || 'Super Administrator',
         user_role: 'superadmin',
         action: `Created ${userRole.toUpperCase()} Account: ${name.trim()}`,
-        action_type: 'User',
+        action_type: ['staff', 'admin', 'bhw', 'nurse'].includes(userRole.toLowerCase()) ? 'Staff' : (userRole.toLowerCase() === 'resident' ? 'Resident' : 'User'),
         barangay: userBarangay,
         details: `Created new ${userRole} account for ${cleanEmail} in Barangay ${userBarangay}.`
       }).catch(() => {});
@@ -2742,7 +2769,7 @@ app.post('/api/users', async (req, res) => {
     user_name: created_by || 'Super Administrator',
     user_role: 'superadmin',
     action: `Created ${userRole.toUpperCase()} Account: ${name.trim()}`,
-    action_type: 'User',
+    action_type: ['staff', 'admin', 'bhw', 'nurse'].includes(userRole.toLowerCase()) ? 'Staff' : (userRole.toLowerCase() === 'resident' ? 'Resident' : 'User'),
     barangay: userBarangay,
     details: `Created new ${userRole} account for ${cleanEmail} in Barangay ${userBarangay}.`
   }).catch(() => {});

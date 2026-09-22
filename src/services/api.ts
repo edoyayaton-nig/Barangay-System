@@ -891,12 +891,13 @@ export const apiService = {
   },
 
   // Audit & Activity History Logs
-  async getActivityLogs(params?: { barangay?: string; action_type?: string; search?: string; role?: string }): Promise<ActivityLog[]> {
+  async getActivityLogs(params?: { barangay?: string; action_type?: string; search?: string; role?: string; caller_role?: string }): Promise<ActivityLog[]> {
     const query = new URLSearchParams();
     if (params?.barangay) query.append('barangay', params.barangay);
     if (params?.action_type) query.append('action_type', params.action_type);
     if (params?.search) query.append('search', params.search);
     if (params?.role) query.append('role', params.role);
+    if (params?.caller_role) query.append('caller_role', params.caller_role);
     const queryString = query.toString() ? `?${query.toString()}` : '';
     const res = await fetch(`${API_BASE}/activity-logs${queryString}`);
     if (!res.ok) throw new Error('Failed to fetch activity logs');

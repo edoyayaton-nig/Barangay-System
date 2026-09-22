@@ -820,7 +820,7 @@ export default function AdminDashboard() {
         apiService.getAdminStats(activeBarangayParam),
         apiService.getPendingResidents(activeBarangayParam),
         apiService.getCategories().catch(() => []),
-        apiService.getActivityLogs().catch(() => []),
+        apiService.getActivityLogs({ barangay: activeBarangayParam, caller_role: user?.role }).catch(() => []),
         apiService.getClinicSchedules(activeBarangayParam).catch(() => []),
         apiService.getAppointments({ barangay: activeBarangayParam }).catch(() => []),
         apiService.getPopulationStats(activeBarangayParam).catch(() => null),
@@ -911,7 +911,8 @@ export default function AdminDashboard() {
         barangay: userBarangay,
         action_type: logActionTypeFilter !== 'All' ? logActionTypeFilter : undefined,
         role: logRoleFilter !== 'All' ? logRoleFilter : undefined,
-        search: logSearch || undefined
+        search: logSearch || undefined,
+        caller_role: user?.role  // backend enforces role-based log restrictions
       });
       setActivityLogs(data);
       if (showToast) {
@@ -934,13 +935,20 @@ export default function AdminDashboard() {
     }
     const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
     
-    // Filter displayed logs — strictly scoped to userBarangay
+    // Filter displayed logs — strictly scoped to userBarangay & role restrictions
     const displayedLogs = activityLogs.filter(log => {
+      if (!isSuperMegaAdmin && ['Category', 'User', 'Security', 'System', 'Auth', 'Registration'].includes(log.action_type || '')) {
+        return false;
+      }
       if (userBarangay && log.barangay && !log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) {
         return false;
       }
-      if (logActionTypeFilter !== 'All' && (log.action_type || 'General') !== logActionTypeFilter) {
-        return false;
+      if (logActionTypeFilter !== 'All') {
+        if (logActionTypeFilter === 'Staff') {
+          if (log.action_type !== 'Staff' && !(log.action_type === 'User' && ['staff', 'admin', 'bhw', 'nurse'].includes((log.user_role || '').toLowerCase()))) return false;
+        } else if ((log.action_type || 'General') !== logActionTypeFilter) {
+          return false;
+        }
       }
       if (logRoleFilter !== 'All' && log.user_role?.toLowerCase() !== logRoleFilter.toLowerCase()) {
         return false;
@@ -1145,6 +1153,14 @@ export default function AdminDashboard() {
       loadLogs();
     }
   }, [activeTab, isSuperAdmin]);
+
+  // Auto-reset restricted log filter if non-super_mega_admin has one selected
+  useEffect(() => {
+    const restrictedTypes = ['Security', 'System', 'User', 'Category', 'Auth', 'Registration'];
+    if (!isSuperMegaAdmin && restrictedTypes.includes(logActionTypeFilter)) {
+      setLogActionTypeFilter('All');
+    }
+  }, [isSuperMegaAdmin, logActionTypeFilter]);
 
   const setNewDocField = (key: string, val: string) => {
     setNewDocExtraFields(prev => ({ ...prev, [key]: val }));
@@ -1391,6 +1407,9 @@ export default function AdminDashboard() {
       const applicant = pendingResidents.find(r => r.id === id);
       await apiService.approveResident(id, user?.name || 'Admin Juan');
       toast.success('Resident application approved! Account is now Verified.');
+
+      // Refresh Purok Population Density after approval mutation
+      apiService.getPopulationStats(isSuperMegaAdmin ? undefined : userBarangay).then(p => { if (p) setPopulationStats(p); }).catch(() => {});
 
       // Automated In-App & EmailJS Notification to Resident's Gmail on Verification
       if (applicant && applicant.email) {
@@ -1654,6 +1673,8 @@ export default function AdminDashboard() {
       const freshResidents = await apiService.getResidents(user?.barangay, selectedCensusPurok);
       setResidents(freshResidents);
       setStats(prev => ({ ...prev, totalResidents: freshResidents.length }));
+      // Refresh Purok Population Density after new resident registration
+      apiService.getPopulationStats(isSuperMegaAdmin ? undefined : userBarangay).then(p => { if (p) setPopulationStats(p); }).catch(() => {});
       apiService.getCensusStats(user?.barangay, selectedCensusPurok).then(data => { if (data) setCensusStats(data); }).catch(() => {});
       apiService.getHouseholds(user?.barangay, selectedCensusPurok).then(data => { if (data) setCensusHouseholds(data); }).catch(() => {});
       toast.success('Resident registered in Population Census successfully');
@@ -5966,24 +5987,7 @@ export default function AdminDashboard() {
                     )}
                   </div>
 
-                  {/* Searchable Barangay Filter (Super Admin) */}
-                  {isSuperAdmin && (
-                    <div className="relative">
-                      <Input
-                        list="user-accounts-barangay-list"
-                        placeholder="Search Barangay..."
-                        value={userBarangayFilter === 'all' ? '' : userBarangayFilter}
-                        onChange={e => setUserBarangayFilter(e.target.value.trim() || 'all')}
-                        className="h-8.5 text-xs w-44 bg-slate-50 border-slate-200 rounded-xl"
-                      />
-                      <datalist id="user-accounts-barangay-list">
-                        <option value="all">All Barangays</option>
-                        {availableBarangays.map(b => (
-                          <option key={b} value={b}>Barangay {b}</option>
-                        ))}
-                      </datalist>
-                    </div>
-                  )}
+
 
                   {/* Add User Dialog */}
                   {(isSuperAdmin || user?.role === 'admin') && (
@@ -6086,7 +6090,7 @@ export default function AdminDashboard() {
                           </div>
 
                           {/* Role Row */}
-                          <div>
+                          <div className="space-y-1.5">
                             <Label className="text-xs font-semibold">System Role / Permissions <span className="text-red-500">*</span></Label>
                             <Select
                               value={newUserRole === 'resident' || (!isSuperAdmin && newUserRole === 'admin') ? 'staff' : newUserRole}
@@ -6094,12 +6098,27 @@ export default function AdminDashboard() {
                             >
                               <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                {isSuperAdmin && <SelectItem value="admin">Barangay Admin (Full Local Control)</SelectItem>}
+                                {isSuperAdmin && <SelectItem value="admin">Barangay Admin</SelectItem>}
                                 <SelectItem value="staff">Barangay Staff / Records Clerk</SelectItem>
                                 <SelectItem value="bhw">BHW (Community Health Worker)</SelectItem>
                                 <SelectItem value="nurse">Nurse (Health Center Nurse)</SelectItem>
                               </SelectContent>
                             </Select>
+                            {/* Role Description */}
+                            <div className="mt-2 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+                              {newUserRole === 'admin' && (
+                                <><span className="font-bold text-indigo-700 block mb-1">Barangay Admin</span>Full barangay operations: documents, residents, census analytics, official reports, health access, and pending approvals. <span className="text-red-500">Cannot</span> manage staff accounts or system settings.</>
+                              )}
+                              {newUserRole === 'staff' && (
+                                <><span className="font-bold text-sky-700 block mb-1">Barangay Staff / Records Clerk</span>Front-desk clerk: creates &amp; processes document requests and manages resident records. <span className="text-red-500">No access</span> to census, reports, health center, or activity logs.</>
+                              )}
+                              {newUserRole === 'bhw' && (
+                                <><span className="font-bold text-emerald-700 block mb-1">BHW — Community Health Worker</span>Field health worker: records immunizations, maternal health data, and clinic appointments. <span className="text-red-500">Health module only</span> — no document or resident registry access.</>
+                              )}
+                              {newUserRole === 'nurse' && (
+                                <><span className="font-bold text-teal-700 block mb-1">Nurse — Health Center Nurse</span>Clinical officer: full health center access — patient records, clinic schedules, appointments, and health analytics. <span className="text-red-500">No access</span> to barangay document services or resident registry.</>
+                              )}
+                            </div>
                           </div>
 
                           {/* Password & Confirm Password Container */}
@@ -8195,7 +8214,11 @@ export default function AdminDashboard() {
               {/* Metric Stat Cards */}
               {(() => {
                 const scopedLogs = activityLogs.filter(log => {
-                  // Strictly scoped to their own barangay only
+                  if (isSuperMegaAdmin) return true;
+                  // Filter out system-level logs for non-super_mega_admin
+                  if (['Category', 'User', 'Security', 'System', 'Auth', 'Registration'].includes(log.action_type || '')) {
+                    return false;
+                  }
                   if (userBarangay) {
                     if (!log.barangay || !log.barangay.toLowerCase().includes(userBarangay.toLowerCase())) return false;
                   }
@@ -8203,7 +8226,8 @@ export default function AdminDashboard() {
                 });
                 const docEventsCount = scopedLogs.filter(l => l.action_type === 'Document').length;
                 const residentEventsCount = scopedLogs.filter(l => l.action_type === 'Resident').length;
-                const systemSecurityCount = scopedLogs.filter(l => ['Category', 'User', 'Security', 'System'].includes(l.action_type || '')).length;
+                const healthEventsCount = scopedLogs.filter(l => l.action_type === 'Health').length;
+                const systemSecurityCount = scopedLogs.filter(l => ['Category', 'User', 'Security', 'System', 'Auth', 'Registration'].includes(l.action_type || '')).length;
 
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -8240,16 +8264,29 @@ export default function AdminDashboard() {
                       </CardContent>
                     </Card>
 
-                    <Card className="border-purple-200 bg-purple-50/40">
-                      <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                          <p className="text-[11px] font-bold text-purple-700 uppercase">Security &amp; System</p>
-                          <p className="text-2xl font-bold text-purple-950">{systemSecurityCount}</p>
-                          <p className="text-[10px] text-purple-600 mt-0.5">Categories, Logins &amp; Users</p>
-                        </div>
-                        <ShieldCheck size={26} className="text-purple-500 opacity-60" />
-                      </CardContent>
-                    </Card>
+                    {isSuperMegaAdmin ? (
+                      <Card className="border-purple-200 bg-purple-50/40">
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div>
+                            <p className="text-[11px] font-bold text-purple-700 uppercase">Security &amp; System</p>
+                            <p className="text-2xl font-bold text-purple-950">{systemSecurityCount}</p>
+                            <p className="text-[10px] text-purple-600 mt-0.5">Categories, Logins &amp; Users</p>
+                          </div>
+                          <ShieldCheck size={26} className="text-purple-500 opacity-60" />
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <Card className="border-teal-200 bg-teal-50/40">
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div>
+                            <p className="text-[11px] font-bold text-teal-700 uppercase">Health Center Records</p>
+                            <p className="text-2xl font-bold text-teal-950">{healthEventsCount}</p>
+                            <p className="text-[10px] text-teal-600 mt-0.5">Clinical Consultations &amp; Schedules</p>
+                          </div>
+                          <Activity size={26} className="text-teal-500 opacity-60" />
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 );
               })()}
@@ -8271,20 +8308,34 @@ export default function AdminDashboard() {
 
                     {/* Filter Dropdowns */}
                     <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                      {/* Action Type Filter */}
-                      <Select value={logActionTypeFilter} onValueChange={setLogActionTypeFilter}>
+                      {/* Action Type Filter — role-restricted options */}
+                      <Select
+                        value={logActionTypeFilter}
+                        onValueChange={(val) => {
+                          // Non-Super-Mega-Admins cannot select restricted system-level categories
+                          const restricted = ['Security', 'System', 'User', 'Category', 'Auth', 'Registration'];
+                          if (!isSuperMegaAdmin && restricted.includes(val)) return;
+                          setLogActionTypeFilter(val);
+                        }}
+                      >
                         <SelectTrigger className="h-9 text-xs w-36">
                           <SelectValue placeholder="Action Type" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="All">All Event Types</SelectItem>
-                          <SelectItem value="Document">📄 Document</SelectItem>
                           <SelectItem value="Resident">👤 Resident</SelectItem>
-                          <SelectItem value="Category">⚙️ Category</SelectItem>
-                          <SelectItem value="User">👥 User Account</SelectItem>
+                          <SelectItem value="Staff">🧑‍💼 Staff</SelectItem>
+                          <SelectItem value="Document">📄 Document</SelectItem>
                           <SelectItem value="Health">🏥 Health</SelectItem>
-                          <SelectItem value="Security">🛡️ Security</SelectItem>
-                          <SelectItem value="System">🔔 System</SelectItem>
+                          {/* Super Mega Admin only — system-level audit categories */}
+                          {isSuperMegaAdmin && (
+                            <>
+                              <SelectItem value="Category">⚙️ Category</SelectItem>
+                              <SelectItem value="User">👥 User Account</SelectItem>
+                              <SelectItem value="Security">🛡️ Security</SelectItem>
+                              <SelectItem value="System">🔔 System</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
 
@@ -8343,8 +8394,15 @@ export default function AdminDashboard() {
                   <Badge variant="outline" className="text-xs font-mono">
                     {(() => {
                       const displayed = activityLogs.filter(log => {
+                        if (!isSuperMegaAdmin && ['Category', 'User', 'Security', 'System', 'Auth', 'Registration'].includes(log.action_type || '')) return false;
                         if (userBarangay && (!log.barangay || !log.barangay.toLowerCase().includes(userBarangay.toLowerCase()))) return false;
-                        if (logActionTypeFilter !== 'All' && (log.action_type || 'General') !== logActionTypeFilter) return false;
+                        if (logActionTypeFilter !== 'All') {
+                          if (logActionTypeFilter === 'Staff') {
+                            if (log.action_type !== 'Staff' && !(log.action_type === 'User' && ['staff', 'admin', 'bhw', 'nurse'].includes((log.user_role || '').toLowerCase()))) return false;
+                          } else if ((log.action_type || 'General') !== logActionTypeFilter) {
+                            return false;
+                          }
+                        }
                         if (logRoleFilter !== 'All' && log.user_role?.toLowerCase() !== logRoleFilter.toLowerCase()) return false;
                         if (logSearch.trim()) {
                           const q = logSearch.toLowerCase();
@@ -8379,8 +8437,15 @@ export default function AdminDashboard() {
                       <TableBody>
                         {(() => {
                           const displayedLogs = activityLogs.filter(log => {
+                            if (!isSuperMegaAdmin && ['Category', 'User', 'Security', 'System', 'Auth', 'Registration'].includes(log.action_type || '')) return false;
                             if (userBarangay && (!log.barangay || !log.barangay.toLowerCase().includes(userBarangay.toLowerCase()))) return false;
-                            if (logActionTypeFilter !== 'All' && (log.action_type || 'General') !== logActionTypeFilter) return false;
+                            if (logActionTypeFilter !== 'All') {
+                              if (logActionTypeFilter === 'Staff') {
+                                if (log.action_type !== 'Staff' && !(log.action_type === 'User' && ['staff', 'admin', 'bhw', 'nurse'].includes((log.user_role || '').toLowerCase()))) return false;
+                              } else if ((log.action_type || 'General') !== logActionTypeFilter) {
+                                return false;
+                              }
+                            }
                             if (logRoleFilter !== 'All' && log.user_role?.toLowerCase() !== logRoleFilter.toLowerCase()) return false;
                             if (logSearch.trim()) {
                               const q = logSearch.toLowerCase();
@@ -8418,10 +8483,12 @@ export default function AdminDashboard() {
                             const actionBadgeColor =
                               actionType === 'Document' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                               actionType === 'Resident' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              actionType === 'Staff' ? 'bg-sky-50 text-sky-700 border-sky-200' :
                               actionType === 'Category' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                               actionType === 'User' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                               actionType === 'Health' ? 'bg-teal-50 text-teal-700 border-teal-200' :
                               actionType === 'Security' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                              actionType === 'System' ? 'bg-slate-50 text-slate-700 border-slate-200' :
                               'bg-slate-100 text-slate-700 border-slate-200';
 
                             return (
