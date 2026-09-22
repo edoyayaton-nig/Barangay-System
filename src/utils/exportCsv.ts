@@ -44,6 +44,13 @@ import html2pdf from 'html2pdf.js';
 import { jsPDF } from 'jspdf';
 import { PIANING_LOGO_BASE64, BUTUAN_LOGO_BASE64 } from '../app/components/officialLogos';
 
+export interface OfficialReportTable {
+  title: string;
+  headers: string[];
+  rows: (string | number)[][];
+  colWidths?: number[];
+}
+
 export interface OfficialReportOptions {
   title: string;
   subtitle: string;
@@ -54,7 +61,58 @@ export interface OfficialReportOptions {
   orientation?: 'portrait' | 'landscape';
   barangay?: string;
   stats?: { label: string; value: string | number; color?: string }[];
-  tables?: { title: string; headers: string[]; rows: (string | number)[][] }[];
+  tables?: OfficialReportTable[];
+}
+
+/**
+ * Computes calibrated width percentages for table columns.
+ * Specifically handles Resident Demographics with exact ratios:
+ * ID: 5%, First Name: 12%, Last Name: 15%, Gender: 8%, Address: 25%, Phone: 15%, Email: 20%
+ */
+export function getColumnWidthPercentages(headers: string[], customWidths?: number[]): number[] {
+  if (customWidths && customWidths.length === headers.length) {
+    const sum = customWidths.reduce((a, b) => a + b, 0);
+    return customWidths.map(w => (w / sum) * 100);
+  }
+
+  const normHeaders = headers.map(h => h.toLowerCase().trim());
+  const hasId = normHeaders.includes('id');
+  const hasFirst = normHeaders.some(h => h.includes('first'));
+  const hasLast = normHeaders.some(h => h.includes('last'));
+  const hasAddress = normHeaders.some(h => h.includes('address'));
+  const hasPhone = normHeaders.some(h => h.includes('phone') || h.includes('contact'));
+  const hasEmail = normHeaders.some(h => h.includes('email'));
+
+  if (hasId && hasFirst && hasLast && hasAddress && hasPhone && hasEmail) {
+    return headers.map(h => {
+      const lower = h.toLowerCase().trim();
+      if (lower === 'id') return 5;
+      if (lower.includes('first')) return 12;
+      if (lower.includes('last')) return 15;
+      if (lower.includes('gender') || lower.includes('sex')) return 8;
+      if (lower.includes('address')) return 25;
+      if (lower.includes('phone') || lower.includes('contact')) return 15;
+      if (lower.includes('email')) return 20;
+      return 10;
+    });
+  }
+
+  // Universal heuristic fallback for other administrative tables
+  const weights = headers.map(h => {
+    const lower = h.toLowerCase().trim();
+    if (lower === 'id' || lower === '#') return 5;
+    if (lower.includes('code') || lower.includes('dose') || lower.includes('unit')) return 10;
+    if (lower.includes('gender') || lower.includes('sex') || lower.includes('age') || lower.includes('bp') || lower.includes('risk')) return 8;
+    if (lower.includes('address')) return 25;
+    if (lower.includes('email')) return 20;
+    if (lower.includes('phone') || lower.includes('contact')) return 15;
+    if (lower.includes('name') || lower.includes('patient') || lower.includes('mother') || lower.includes('child')) return 16;
+    if (lower.includes('date') || lower.includes('status') || lower.includes('category') || lower.includes('vaccine') || lower.includes('program')) return 13;
+    return 12;
+  });
+
+  const total = weights.reduce((a, b) => a + b, 0);
+  return weights.map(w => (w / total) * 100);
 }
 
 /**
@@ -110,15 +168,20 @@ export function buildReportBodyHtml(options: OfficialReportOptions): string {
 
   const tablesHtml = tables.map((t, index) => {
     const romanNumeral = stats.length > 0 ? (index === 0 ? 'II' : 'III') : (index === 0 ? 'I' : 'II');
+    const colPercentages = getColumnWidthPercentages(t.headers, (t as any).colWidths);
+
     return `
       <div style="margin-bottom: 20px;">
         <div style="font-size: 9.5pt; font-weight: bold; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1.5px solid #0f172a; padding-bottom: 3px; margin-bottom: 8px;">
           ${romanNumeral}. ${t.title}
         </div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 8pt; text-align: left;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 8pt; text-align: left; table-layout: fixed;">
           <thead>
             <tr style="background: #f1f5f9;">
-              ${t.headers.map(h => `<th style="padding: 5px 7px; font-weight: bold; color: #0f172a; border: 1px solid #cbd5e1; text-transform: uppercase; font-size: 7.5pt;">${h}</th>`).join('')}
+              ${t.headers.map((h, hIdx) => {
+                const widthPct = colPercentages[hIdx].toFixed(1);
+                return `<th style="width: ${widthPct}%; padding: 6px 8px; font-weight: bold; color: #0f172a; border: 1px solid #cbd5e1; text-transform: uppercase; font-size: 7.5pt; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; vertical-align: middle;">${h}</th>`;
+              }).join('')}
             </tr>
           </thead>
           <tbody>
@@ -126,7 +189,13 @@ export function buildReportBodyHtml(options: OfficialReportOptions): string {
               <tr><td colspan="${t.headers.length}" style="text-align: center; padding: 12px; color: #64748b; border: 1px solid #cbd5e1;">No records found.</td></tr>
             ` : t.rows.map((row, i) => `
               <tr style="background: ${i % 2 === 1 ? '#f8fafc' : '#ffffff'};">
-                ${row.map(cell => `<td style="padding: 4px 7px; color: #1e293b; border: 1px solid #e2e8f0;">${cell}</td>`).join('')}
+                ${row.map((cell, cIdx) => {
+                  const widthPct = colPercentages[cIdx].toFixed(1);
+                  const hLower = (t.headers[cIdx] || '').toLowerCase();
+                  const isBreakAll = hLower.includes('email') || hLower.includes('address');
+                  const wordBreakStyle = isBreakAll ? 'word-break: break-all; word-wrap: break-word; overflow-wrap: break-word;' : 'word-wrap: break-word; overflow-wrap: break-word;';
+                  return `<td style="width: ${widthPct}%; padding: 5px 8px; color: #1e293b; border: 1px solid #cbd5e1; ${wordBreakStyle} vertical-align: top; line-height: 1.35;">${cell ?? ''}</td>`;
+                }).join('')}
               </tr>
             `).join('')}
           </tbody>
@@ -546,38 +615,83 @@ export function generateDirectJsPdfReport(options: OfficialReportOptions, orient
       y += 4.5;
 
       const numCols = table.headers.length || 1;
-      const cellWidth = contentWidth / numCols;
+      const colPercentages = getColumnWidthPercentages(table.headers, table.colWidths);
+      const colWidths = colPercentages.map(pct => (pct / 100) * contentWidth);
+
+      // Precalculate exact column X offsets
+      const colXPositions: number[] = [];
+      let currentX = marginX;
+      for (let c = 0; c < numCols; c++) {
+        colXPositions.push(currentX);
+        currentX += colWidths[c];
+      }
+
       const headerHeight = 6.5;
 
-      // Table header
+      // Table header background
       doc.setFillColor(241, 245, 249);
       doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.2);
       doc.rect(marginX, y, contentWidth, headerHeight, 'FD');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
       doc.setTextColor(15, 23, 42);
+      
       table.headers.forEach((h, hIdx) => {
-        const hText = String(h).slice(0, 30);
-        doc.text(hText, marginX + (hIdx * cellWidth) + 2, y + 4.5);
+        const cX = colXPositions[hIdx];
+        if (hIdx > 0) {
+          doc.line(cX, y, cX, y + headerHeight);
+        }
+        const hText = String(h);
+        doc.text(hText, cX + 2.5, y + 4.5);
       });
       y += headerHeight;
 
       // Rows
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
-      const rowHeight = 5.8;
 
       if (table.rows.length === 0) {
+        const emptyHeight = 6;
         doc.setFillColor(255, 255, 255);
-        doc.rect(marginX, y, contentWidth, rowHeight, 'FD');
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.2);
+        doc.rect(marginX, y, contentWidth, emptyHeight, 'FD');
         doc.setTextColor(148, 163, 184);
         doc.text('No records found.', pageWidth / 2, y + 4, { align: 'center' });
-        y += rowHeight;
+        y += emptyHeight;
       } else {
         table.rows.forEach((row, rIdx) => {
-          if (y > pageHeight - 25) {
+          // Pre-wrap text for each cell and determine dynamic row height
+          const cellLinesList: string[][] = row.map((cell, cIdx) => {
+            const usableWidth = colWidths[cIdx] - 4; // 2mm padding on left & right
+            const rawText = String(cell ?? '');
+            return doc.splitTextToSize(rawText, Math.max(usableWidth, 8));
+          });
+
+          const maxLines = Math.max(...cellLinesList.map(lines => lines.length), 1);
+          const dynamicRowHeight = Math.max(5.8, 3.2 + (maxLines * 3.0));
+
+          if (y + dynamicRowHeight > pageHeight - 25) {
             doc.addPage();
             y = 15;
+
+            // Re-render table header on page split
+            doc.setFillColor(241, 245, 249);
+            doc.setDrawColor(203, 213, 225);
+            doc.setLineWidth(0.2);
+            doc.rect(marginX, y, contentWidth, headerHeight, 'FD');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7.5);
+            doc.setTextColor(15, 23, 42);
+            table.headers.forEach((h, hIdx) => {
+              const cX = colXPositions[hIdx];
+              if (hIdx > 0) doc.line(cX, y, cX, y + headerHeight);
+              doc.text(String(h), cX + 2.5, y + 4.5);
+            });
+            y += headerHeight;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7);
           }
 
           if (rIdx % 2 === 1) {
@@ -585,14 +699,24 @@ export function generateDirectJsPdfReport(options: OfficialReportOptions, orient
           } else {
             doc.setFillColor(255, 255, 255);
           }
-          doc.rect(marginX, y, contentWidth, rowHeight, 'FD');
+          doc.setDrawColor(203, 213, 225);
+          doc.setLineWidth(0.2);
+          doc.rect(marginX, y, contentWidth, dynamicRowHeight, 'FD');
           doc.setTextColor(30, 41, 59);
 
-          row.forEach((cell, cIdx) => {
-            const cellText = String(cell ?? '').slice(0, 35);
-            doc.text(cellText, marginX + (cIdx * cellWidth) + 2, y + 4);
+          // Draw distinct column boundaries and wrapped text
+          row.forEach((_, cIdx) => {
+            const cX = colXPositions[cIdx];
+            if (cIdx > 0) {
+              doc.line(cX, y, cX, y + dynamicRowHeight);
+            }
+            const lines = cellLinesList[cIdx];
+            lines.forEach((lineText: string, lIdx: number) => {
+              doc.text(lineText, cX + 2.5, y + 3.8 + (lIdx * 3.0));
+            });
           });
-          y += rowHeight;
+
+          y += dynamicRowHeight;
         });
       }
       y += 5;

@@ -23,3 +23,14 @@ html, body, #root {
 [data-radix-focus-guard] {
   pointer-events: none !important;
 }
+
+/* Prevent Chrome / Edge autofill from painting light blue backgrounds in inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: inherit !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

@@ -398,7 +398,7 @@ export default function CensusEntryTab({
   const handleExportPdf = () => {
     const activePurokLabel =
       selectedPurok === 'all'
-        ? 'All Puroks (1 to 7)'
+        ? 'All Puroks (1 to 6)'
         : `Purok ${selectedPurok}`;
 
     downloadOfficialPdf({
@@ -674,7 +674,7 @@ export default function CensusEntryTab({
           </span>
         </button>
 
-        {[1, 2, 3, 4, 5, 6, 7].map(p => {
+        {[1, 2, 3, 4, 5, 6].map(p => {
           const pData = censusStats?.purok_breakdown?.find(b =>
             b.purok.includes(String(p))
           );
@@ -1325,7 +1325,7 @@ export default function CensusEntryTab({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {[1, 2, 3, 4, 5, 6, 7].map(p => (
+                    {[1, 2, 3, 4, 5, 6].map(p => (
                       <SelectItem key={p} value={String(p)}>
                         Purok {p}
                       </SelectItem>

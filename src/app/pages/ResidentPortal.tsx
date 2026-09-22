@@ -262,24 +262,24 @@ export default function ResidentPortal() {
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-4 py-3 shadow-xs">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-teal-200 flex items-center justify-center">
-              <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
+            <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-indigo-200 flex items-center justify-center">
+              <img src="/assets/pianing-logo.png" alt={`Barangay ${residentBrgy}`} className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Barangay {residentBrgy}</h1>
-              <span className="text-xs text-teal-600 font-semibold">Resident Portal</span>
+              <span className="text-xs text-indigo-600 font-semibold">Resident Portal Gateway</span>
             </div>
           </div>
 
           {/* Quick Barangay Contact Pill in Navbar */}
-          <div className="hidden md:flex items-center gap-3 text-xs bg-teal-50/70 border border-teal-200/80 px-3 py-1.5 rounded-xl">
-            <a href={`tel:${getBarangayContact(residentBrgy).replace(/[^0-9+]/g, '')}`} className="flex items-center gap-1.5 text-teal-800 hover:text-teal-950 font-medium transition-colors cursor-pointer" title="Barangay Official Hotline">
-              <Phone size={13} className="text-teal-600 shrink-0" />
+          <div className="hidden md:flex items-center gap-3 text-xs bg-indigo-50/70 border border-indigo-200/80 px-3 py-1.5 rounded-xl">
+            <a href={`tel:${getBarangayContact(residentBrgy).replace(/[^0-9+]/g, '')}`} className="flex items-center gap-1.5 text-indigo-800 hover:text-indigo-950 font-medium transition-colors cursor-pointer" title="Barangay Official Hotline">
+              <Phone size={13} className="text-indigo-600 shrink-0" />
               <span className="font-mono font-bold text-[11px]">{getBarangayContact(residentBrgy)}</span>
             </a>
-            <span className="text-teal-300">|</span>
-            <a href={`mailto:${getBarangayEmail(residentBrgy)}`} className="flex items-center gap-1.5 text-teal-800 hover:text-teal-950 font-medium transition-colors cursor-pointer" title="Official Barangay Gmail">
-              <Mail size={13} className="text-teal-600 shrink-0" />
+            <span className="text-indigo-300">|</span>
+            <a href={`mailto:${getBarangayEmail(residentBrgy)}`} className="flex items-center gap-1.5 text-indigo-800 hover:text-indigo-950 font-medium transition-colors cursor-pointer" title="Official Barangay Gmail">
+              <Mail size={13} className="text-indigo-600 shrink-0" />
               <span className="truncate max-w-[200px] text-[11px]">{getBarangayEmail(residentBrgy)}</span>
             </a>
           </div>
@@ -290,7 +290,7 @@ export default function ResidentPortal() {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsProfileModalOpen(true)}
-                className="flex items-center gap-1.5 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-400"
+                className="flex items-center gap-1.5 text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400"
               >
                 <Settings size={14} />
                 <span>Profile Settings</span>
@@ -522,181 +522,15 @@ export default function ResidentPortal() {
           </Card>
         </div>
 
-        {/* Clinic Schedule & Appointment Reservation */}
-        <Card className="border-violet-200 bg-gradient-to-br from-white to-violet-50/50">
-          <CardHeader>
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <CalendarPlus className="text-violet-600" size={18} />
-                📅 Book a Clinic Appointment
-              </CardTitle>
-              <Badge variant="outline" className="text-[10px] bg-violet-50 border-violet-200 text-violet-700">
-                {clinicSchedules.length} active schedule{clinicSchedules.length !== 1 ? 's' : ''}
-              </Badge>
-            </div>
-            <CardDescription className="text-xs text-slate-600 leading-relaxed">
-              View the nurse-posted weekly clinic schedules for Barangay {residentBrgy} and reserve your appointment slot.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {clinicSchedules.length === 0 ? (
-              <div className="text-center py-6 text-slate-400">
-                <Calendar size={32} className="mx-auto mb-2 opacity-40" />
-                <p className="text-xs">No clinic schedules posted yet for Barangay {residentBrgy}.</p>
-                <p className="text-[11px] text-slate-400 mt-1">Check back later or contact your barangay health center directly.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {clinicSchedules.map(sch => (
-                  <div key={sch.id} className="flex items-center justify-between gap-3 bg-white border border-violet-100 rounded-xl px-4 py-3 shadow-xs hover:border-violet-300 hover:shadow-sm transition-all">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-900">{sch.title || sch.service_type}</p>
-                      <div className="flex flex-wrap gap-2 mt-1 text-[11px] text-slate-500">
-                        <span className="flex items-center gap-1"><Clock size={11} /> {sch.day_of_week || (sch as any).day} · {sch.time_slot}</span>
-                        {sch.location && <span className="flex items-center gap-1"><MapPin size={11} /> {sch.location}</span>}
-                      </div>
-                      {(sch as any).bhw_in_charge && <p className="text-[10px] text-violet-600 font-medium mt-0.5">👩‍⚕️ {(sch as any).bhw_in_charge}</p>}
-                    </div>
-                    <Button
-                      size="sm"
-                      disabled={!isVerified}
-                      onClick={() => {
-                        if (!isVerified) {
-                          toast.error('Residency verification required', {
-                            description: 'Only verified residents can reserve health center appointment slots.'
-                          });
-                          return;
-                        }
-                        setSelectedSchedule(sch);
-                        setIsBookingOpen(true);
-                      }}
-                      className={`shrink-0 text-[11px] h-8 px-3 rounded-lg font-semibold gap-1 ${
-                        !isVerified
-                          ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-                          : 'bg-violet-600 hover:bg-violet-700 text-white cursor-pointer'
-                      }`}
-                      title={!isVerified ? 'Residency verification required by Barangay Officials' : 'Reserve appointment slot'}
-                    >
-                      {!isVerified ? <Lock size={12} /> : <CalendarPlus size={13} />}
-                      {!isVerified ? 'Verification Required' : 'Reserve'}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
 
-            {/* My Bookings */}
-            {myBookings.length > 0 && (
-              <div className="mt-2">
-                <p className="text-[11px] font-bold text-slate-700 mb-1.5 uppercase tracking-wide">My Appointment Requests</p>
-                <div className="space-y-1.5">
-                  {myBookings.slice(0, 5).map((b, i) => (
-                    <div key={b.id || i} className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <span className="font-semibold text-slate-800">{b.service_type}</span>
-                          <span className="text-slate-500 ml-2">— Requested: {formatApptDate(b.preferred_date || b.scheduled_date || b.appointment_date)}</span>
-                        </div>
-                        <Badge className={`text-[10px] border-0 shrink-0 ${b.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : b.status === 'Completed' ? 'bg-blue-100 text-blue-800' : b.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
-                          {b.status === 'Approved' ? 'Confirmed' : b.status || 'Pending'}
-                        </Badge>
-                      </div>
-                      {(b.status === 'Approved' || b.status === 'Completed') && (b.scheduled_date || b.scheduled_time) && (
-                        <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-md p-1.5 text-[11px] text-emerald-900 flex items-center justify-between flex-wrap gap-1">
-                          <span className="font-medium flex items-center gap-1">
-                            <Clock size={11} className="text-emerald-700" /> Confirmed Slot: <strong>{formatApptDate(b.scheduled_date)}</strong> at <strong>{b.scheduled_time || '09:00 AM'}</strong>
-                          </span>
-                          {b.attending_bhw && <span className="text-[10px] text-emerald-700">Attending: {b.attending_bhw}</span>}
-                        </div>
-                      )}
-                      {b.bhw_notes && (
-                        <p className="text-[10px] text-slate-600 bg-white/70 p-1.5 rounded border border-slate-200/60 italic">
-                          Nurse note: {b.bhw_notes}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Requests Table Summary */}
-        <Card className="border-slate-200 bg-white">
-          <CardHeader>
-            <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <FileText className="text-teal-600" size={18} />
-              Recent Barangay Requests Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="text-xs">Request Code</TableHead>
-                  <TableHead className="text-xs">Document Type</TableHead>
-                  <TableHead className="text-xs">Purpose</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
-                  <TableHead className="text-xs">Submitted Date</TableHead>
-                  <TableHead className="text-xs text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {documents.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-xs py-8 text-slate-400">
-                      No active requests found. Click on one of the portals above to submit a request.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  documents.map((doc, idx) => (
-                    <TableRow key={`res-doc-${doc.id || doc.request_code || idx}-${idx}`} className="text-xs">
-                      <TableCell className="font-mono font-semibold text-teal-600">{doc.request_code}</TableCell>
-                      <TableCell className="font-semibold text-slate-900">{doc.document_type}</TableCell>
-                      <TableCell className="text-slate-500">{doc.purpose || '-'}</TableCell>
-                      <TableCell>
-                        <Badge className={
-                          doc.status === 'Completed' ? 'bg-emerald-600 text-white' :
-                          doc.status === 'Ready for Pickup' ? 'bg-indigo-600 text-white' :
-                          doc.status === 'Processing' ? 'bg-amber-500 text-white' :
-                          doc.status === 'Rejected' ? 'bg-red-500 text-white' :
-                          'bg-orange-500 text-white'
-                        }>
-                          {doc.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-slate-400 text-[11px]">{doc.requested_at || 'Today'}</TableCell>
-                      <TableCell className="text-right">
-                        {doc.status === 'Ready for Pickup' ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-md shadow-xs animate-pulse">
-                            <CheckCircle2 size={12} className="text-indigo-600" />
-                            Ready for Pickup at Hall
-                          </span>
-                        ) : doc.status === 'Completed' ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
-                            <CheckCircle2 size={12} className="text-emerald-600" />
-                            Claimed / Completed
-                          </span>
-                        ) : doc.status === 'Processing' ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
-                            <Clock size={12} />
-                            In Preparation
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md">
-                            <Clock size={12} />
-                            Pending Processing
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        {/* Civic Privacy & Security Footer */}
+        <div className="pt-6 border-t border-slate-200/80 dark:border-slate-800 text-xs text-slate-500 flex flex-wrap items-center justify-center gap-4 text-center">
+          <span className="flex items-center gap-1.5"><Shield size={14} className="text-indigo-600" /> Authorized Resident Access Only</span>
+          <span>•</span>
+          <span>Barangay {residentBrgy} Citizen Portal</span>
+          <span>•</span>
+          <span>Republic Act No. 10173 (Data Privacy Act)</span>
+        </div>
       </main>
 
       {/* Embedded Floating Resident Assistant Chatbot */}

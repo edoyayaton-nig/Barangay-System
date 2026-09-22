@@ -380,7 +380,7 @@ export default function ProfileSettingsModal({
                         <SelectValue placeholder="Select Purok" />
                       </SelectTrigger>
                       <SelectContent>
-                        {[1, 2, 3, 4, 5, 6, 7].map(num => (
+                        {[1, 2, 3, 4, 5, 6].map(num => (
                           <SelectItem key={num} value={String(num)}>
                             Purok {num}
                           </SelectItem>

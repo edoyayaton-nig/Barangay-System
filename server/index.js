@@ -3031,18 +3031,22 @@ app.get('/api/residents/:id/full-profile', async (req, res) => {
     try {
       const [[resident]] = await pool.query("SELECT * FROM residents WHERE id = ?", [id]);
       if (resident) {
-        if (!resident.profile_photo && resident.email) {
+        let user = null;
+        if (resident.email) {
           try {
-            const [[userRow]] = await pool.query("SELECT profile_photo FROM users WHERE LOWER(email) = LOWER(?)", [resident.email]);
-            if (userRow?.profile_photo) {
-              resident.profile_photo = userRow.profile_photo;
+            const [[userRow]] = await pool.query("SELECT id, name, email, role, status, created_at, last_login, profile_photo FROM users WHERE LOWER(email) = LOWER(?)", [resident.email]);
+            if (userRow) {
+              user = userRow;
+              if (userRow.profile_photo && !resident.profile_photo) {
+                resident.profile_photo = userRow.profile_photo;
+              }
             }
           } catch {}
         }
         const [documents] = await pool.query("SELECT * FROM document_requests WHERE resident_id = ?", [id]);
         const [maternal] = await pool.query("SELECT * FROM maternal_records WHERE resident_id = ?", [id]);
         const [immunizations] = await pool.query("SELECT * FROM immunizations WHERE child_name LIKE ?", [`%${resident.first_name}%`]);
-        return res.json({ resident, documents, maternal, immunizations });
+        return res.json({ resident, documents, maternal, immunizations, user });
       }
     } catch (err) {
       console.warn('MySQL full-profile error:', err.message);
@@ -3050,17 +3054,21 @@ app.get('/api/residents/:id/full-profile', async (req, res) => {
   }
 
   const resident = mockData.residents.find(r => r.id === id) || mockData.residents[0];
-  if (resident && !resident.profile_photo && resident.email) {
+  let user = null;
+  if (resident && resident.email) {
     const matchedUser = (mockData.users || []).find(u => (u.email || '').toLowerCase() === resident.email.toLowerCase());
-    if (matchedUser?.profile_photo) {
-      resident.profile_photo = matchedUser.profile_photo;
+    if (matchedUser) {
+      user = matchedUser;
+      if (matchedUser.profile_photo && !resident.profile_photo) {
+        resident.profile_photo = matchedUser.profile_photo;
+      }
     }
   }
-  const documents = mockData.documents.filter(d => d.resident_id === resident.id || d.resident_name.includes(resident.first_name));
-  const maternal = mockData.maternal.filter(m => m.resident_id === resident.id || m.mother_name.includes(resident.first_name));
-  const immunizations = mockData.immunizations.filter(i => i.child_name.includes(resident.first_name) || i.child_name.includes(resident.last_name));
+  const documents = mockData.documents.filter(d => d.resident_id === resident?.id || d.resident_name.includes(resident?.first_name || ''));
+  const maternal = mockData.maternal.filter(m => m.resident_id === resident?.id || m.mother_name.includes(resident?.first_name || ''));
+  const immunizations = mockData.immunizations.filter(i => i.child_name.includes(resident?.first_name || '') || i.child_name.includes(resident?.last_name || ''));
 
-  res.json({ resident, documents, maternal, immunizations });
+  res.json({ resident, documents, maternal, immunizations, user });
 });
 
 // GET /api/auth/check-status?email=xxx  — live verification status for resident portals
@@ -3168,12 +3176,14 @@ app.get('/api/stats/admin', async (req, res) => {
 
       const [[pendingDocs]] = await pool.query(`SELECT COUNT(*) as count FROM document_requests WHERE status = 'Pending'${docWhere}`, params);
       const [[processedDocs]] = await pool.query(`SELECT COUNT(*) as count FROM document_requests WHERE status = 'Completed' AND DATE(processed_at) = CURDATE()${docWhere}`, params);
+      const [[totalCompleted]] = await pool.query(`SELECT COUNT(*) as count FROM document_requests WHERE status = 'Completed'${docWhere}`, params);
       const verifiedClause = resWhere ? `${resWhere} AND LOWER(COALESCE(verification_status, 'verified')) = 'verified'` : ` WHERE LOWER(COALESCE(verification_status, 'verified')) = 'verified'`;
       const [[totalResidents]] = await pool.query(`SELECT COUNT(*) as count FROM residents${verifiedClause}`, resWhere ? [barangay.trim(), `%${barangay.trim()}%`] : []);
       const [[activeRecords]] = await pool.query(`SELECT COUNT(*) as count FROM document_requests WHERE 1=1${docWhere}`, params);
       return res.json({
         pendingDocs: pendingDocs.count,
         processedToday: processedDocs.count,
+        totalIssued: totalCompleted.count,
         totalResidents: totalResidents.count,
         activeRecords: activeRecords.count
       });
@@ -3192,6 +3202,7 @@ app.get('/api/stats/admin', async (req, res) => {
   res.json({
     pendingDocs: docs.filter(d => d.status === 'Pending').length,
     processedToday: docs.filter(d => d.status === 'Completed').length,
+    totalIssued: docs.filter(d => d.status === 'Completed').length,
     totalResidents: resList.length,
     activeRecords: docs.length
   });
@@ -3478,7 +3489,10 @@ app.get('/api/documents', async (req, res) => {
                r.date_of_birth AS resident_birth_date,
                TIMESTAMPDIFF(YEAR, r.date_of_birth, CURDATE()) AS resident_age
         FROM document_requests d
-        LEFT JOIN residents r ON (d.resident_id = r.id OR (d.email != '' AND LOWER(d.email) = LOWER(r.email)))
+        LEFT JOIN residents r ON (
+          (d.resident_id > 0 AND d.resident_id = r.id)
+          OR ((d.resident_id IS NULL OR d.resident_id = 0) AND d.email != '' AND LOWER(d.email) = LOWER(r.email))
+        )
       `;
       const params = [];
       const whereConditions = [];
@@ -3509,7 +3523,15 @@ app.get('/api/documents', async (req, res) => {
       }
       query += ` ORDER BY d.id DESC`;
       const [rows] = await pool.query(query, params);
-      return res.json(rows);
+      const seenDocIds = new Set();
+      const uniqueRows = [];
+      for (const row of rows) {
+        if (!seenDocIds.has(row.id)) {
+          seenDocIds.add(row.id);
+          uniqueRows.push(row);
+        }
+      }
+      return res.json(uniqueRows);
     } catch (err) {
       console.warn('MySQL documents fetch error:', err.message);
     }

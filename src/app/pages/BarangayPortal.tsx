@@ -45,6 +45,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Popover, PopoverTrigger, PopoverContent } from '../components/ui/popover';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
@@ -708,24 +709,115 @@ export default function BarangayPortal() {
           <div className="flex items-center gap-2">
             {/* Notification Center Trigger */}
             {user && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { setIsNotificationsOpen(true); }}
-                className="relative flex items-center gap-1.5 text-xs border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
-                title="View Document Status & Verification Notifications"
-              >
-                <Bell
-                  size={14}
-                  className={notifications.filter(n => !n.is_read).length > 0 ? 'text-indigo-600' : 'text-slate-500'}
-                />
-                <span className="hidden sm:inline">Notifications</span>
-                {notifications.filter(n => !n.is_read).length > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-xs animate-pulse">
-                    {notifications.filter(n => !n.is_read).length}
-                  </span>
-                )}
-              </Button>
+              <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="relative flex items-center gap-1.5 text-xs border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
+                    title="View Document Status & Verification Notifications"
+                  >
+                    <Bell
+                      size={14}
+                      className={notifications.filter(n => !n.is_read).length > 0 ? 'text-indigo-600' : 'text-slate-500'}
+                    />
+                    <span className="hidden sm:inline">Notifications</span>
+                    {notifications.filter(n => !n.is_read).length > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-xs animate-pulse">
+                        {notifications.filter(n => !n.is_read).length}
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-[90vw] sm:w-96 p-0 max-h-[80vh] overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                        <Bell className="text-indigo-600" size={16} />
+                        Notifications &amp; Status
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Live updates for your document requests &amp; account.
+                      </p>
+                    </div>
+                    <button
+                      onClick={markAllNotifsRead}
+                      className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold whitespace-nowrap hover:underline mt-0.5 cursor-pointer"
+                      title="Mark all notifications as read"
+                    >
+                      ✓ Mark Read
+                    </button>
+                  </div>
+
+                  <div className="p-3 space-y-2 text-xs max-h-[60vh] overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="text-center py-8 text-slate-400">
+                        <Bell size={28} className="mx-auto mb-2 opacity-30" />
+                        <p className="text-xs font-medium text-slate-500">No notifications yet</p>
+                        <p className="text-[10px] text-slate-400 mt-1">Updates on document requests will appear here.</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => {
+                        const isRead = notif.is_read;
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => markNotifRead(notif.id)}
+                            className={`p-3 rounded-xl border transition-all cursor-pointer space-y-1 ${
+                              isRead
+                                ? 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-200/70 dark:border-slate-800 opacity-75'
+                                : 'bg-indigo-50/60 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 shadow-xs'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`flex items-center gap-1.5 ${isRead ? 'font-medium text-slate-700 dark:text-slate-300' : 'font-bold text-slate-900 dark:text-white'}`}>
+                                {!isRead && <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full shrink-0" />}
+                                {notif.status_badge === 'Completed' ? (
+                                  <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                                ) : notif.status_badge === 'Action Needed' || notif.status_badge === 'Rejected' ? (
+                                  <XCircle size={14} className="text-red-600 shrink-0" />
+                                ) : (
+                                  <Clock size={14} className="text-indigo-600 shrink-0" />
+                                )}
+                                <span className="truncate max-w-[170px]">{notif.title}</span>
+                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {notif.status_badge && (
+                                  <Badge className={`text-[9px] px-1.5 py-0.5 ${
+                                    notif.badge_color === 'emerald' ? 'bg-emerald-600 text-white' :
+                                    notif.badge_color === 'red' ? 'bg-red-600 text-white' :
+                                    notif.badge_color === 'amber' ? 'bg-amber-600 text-white' :
+                                    'bg-indigo-600 text-white'
+                                  }`}>
+                                    {notif.status_badge}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                              {notif.message}
+                            </p>
+                            {notif.ref_code && (
+                              <p className="text-[10px] text-indigo-600 font-mono">
+                                Ref Code: {notif.ref_code}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <Button size="sm" variant="ghost" onClick={markAllNotifsRead} className="text-[11px] h-7 px-2">
+                      ✓ Mark all as read
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setIsNotificationsOpen(false)} className="text-[11px] h-7 px-2">
+                      Close
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
 
             {user && (
@@ -1239,102 +1331,7 @@ export default function BarangayPortal() {
 
       <BarangayChatbot />
 
-      {/* Resident Notifications Center Modal */}
-      <Dialog open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
-        <DialogContent className="bg-white dark:bg-slate-900 max-w-lg max-h-[88vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <DialogTitle className="text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-                  <Bell className="text-indigo-600" size={18} />
-                  Resident Notifications &amp; Status Updates
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 mt-0.5">
-                  Live updates for your document requests, clearance approvals, and account status.
-                </DialogDescription>
-              </div>
-              <button
-                onClick={markAllNotifsRead}
-                className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold whitespace-nowrap hover:underline mt-1 cursor-pointer"
-                title="Mark all notifications as read"
-              >
-                ✓ Mark All Read
-              </button>
-            </div>
-          </DialogHeader>
-
-          <div className="space-y-2.5 py-2 text-xs">
-            {notifications.length === 0 ? (
-              <div className="text-center py-10 text-slate-400">
-                <Bell size={32} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm font-medium text-slate-500">No notifications yet</p>
-                <p className="text-[11px] text-slate-400 mt-1">When your document requests are updated or need attention, they will appear here permanently.</p>
-              </div>
-            ) : (
-              notifications.map((notif) => {
-                const isRead = notif.is_read;
-                return (
-                  <div
-                    key={notif.id}
-                    onClick={() => markNotifRead(notif.id)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer space-y-1.5 ${
-                      isRead
-                        ? 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-200/70 dark:border-slate-800 opacity-75'
-                        : 'bg-indigo-50/60 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 shadow-xs'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`flex items-center gap-1.5 ${isRead ? 'font-medium text-slate-700 dark:text-slate-300' : 'font-bold text-slate-900 dark:text-white'}`}>
-                        {!isRead && <span className="w-2 h-2 bg-indigo-600 rounded-full shrink-0" />}
-                        {notif.status_badge === 'Completed' ? (
-                          <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
-                        ) : notif.status_badge === 'Action Needed' || notif.status_badge === 'Rejected' ? (
-                          <XCircle size={15} className="text-red-600 shrink-0" />
-                        ) : (
-                          <Clock size={15} className="text-indigo-600 shrink-0" />
-                        )}
-                        {notif.title}
-                      </span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {notif.status_badge && (
-                          <Badge className={`text-[10px] ${
-                            notif.badge_color === 'emerald' ? 'bg-emerald-600 text-white' :
-                            notif.badge_color === 'red' ? 'bg-red-600 text-white' :
-                            notif.badge_color === 'amber' ? 'bg-amber-600 text-white' :
-                            'bg-indigo-600 text-white'
-                          }`}>
-                            {notif.status_badge}
-                          </Badge>
-                        )}
-                        <span className="text-[9px] text-slate-400 font-mono">
-                          {isRead ? 'Read' : 'New'}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      {notif.message}
-                    </p>
-                    {notif.ref_code && (
-                      <p className="text-[10px] text-indigo-600 font-mono">
-                        Ref Code: {notif.ref_code}
-                      </p>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button size="sm" variant="outline" onClick={markAllNotifsRead} className="text-xs gap-1.5">
-              ✓ Mark All as Read
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setIsNotificationsOpen(false)} className="text-xs">
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      
 
       <TermsAndPrivacyModal
         isOpen={isTermsOpen}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Crown, Database, History, Users, BarChart2, LogOut,
@@ -117,6 +117,16 @@ export default function SuperMegaAdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'system' | 'logs' | 'users' | 'reports' | 'profile-settings'>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Main content scroll container ref — auto-scroll to top on tab change
+  const mainContentRef = useRef<HTMLElement>(null);
+
+  // Scroll to top whenever the active sidebar tab changes
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [activeTab]);
 
   // ── Data ──────────────────────────────────────────────────
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
@@ -753,7 +763,7 @@ export default function SuperMegaAdminDashboard() {
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 min-w-0 h-full overflow-y-auto p-4 sm:p-6 space-y-6">
+        <main ref={mainContentRef} className="flex-1 min-w-0 h-full overflow-y-auto p-4 sm:p-6 space-y-6">
 
           {/* Welcome banner */}
           <div style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}18, ${ACCENT_CYAN}10)`, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 20px' }}

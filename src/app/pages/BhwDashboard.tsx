@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Baby,
@@ -75,6 +75,16 @@ export default function BhwDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Main content scroll container ref — auto-scroll to top on tab change
+  const mainContentRef = useRef<HTMLElement>(null);
+
+  // Scroll to top whenever the active sidebar tab changes
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [activeTab]);
 
   // User session state
   const [user, setUser] = useState<any>(null);
@@ -1166,7 +1176,7 @@ export default function BhwDashboard() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
+        <main ref={mainContentRef} className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
           {isVisitorMode && (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
               <div className="flex items-start gap-3">

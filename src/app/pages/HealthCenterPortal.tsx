@@ -46,6 +46,7 @@ import TermsAndPrivacyModal from '../components/TermsAndPrivacyModal';
 import SuperAdminNavigationDock from '../components/SuperAdminNavigationDock';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Popover, PopoverTrigger, PopoverContent } from '../components/ui/popover';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { getUpcomingOperatingDates, formatOperatingDaysSummary } from '../../utils/scheduleDateUtils';
@@ -466,16 +467,64 @@ export default function HealthCenterPortal() {
 
           <div className="flex items-center gap-2">
             {user && (
-              <button
-                onClick={() => setIsNotificationsOpen(true)}
-                className="relative w-9 h-9 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 flex items-center justify-center transition-colors cursor-pointer"
-                title="Notifications"
-              >
-                <Bell size={16} className="text-slate-600" />
-                {nextUpcomingVisit && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-600 rounded-full text-white text-[9px] font-bold flex items-center justify-center">1</span>
-                )}
-              </button>
+              <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className="relative w-9 h-9 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 flex items-center justify-center transition-colors cursor-pointer"
+                    title="Notifications"
+                  >
+                    <Bell size={16} className="text-slate-600" />
+                    {nextUpcomingVisit && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-600 rounded-full text-white text-[9px] font-bold flex items-center justify-center">1</span>
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-[90vw] sm:w-96 p-0 max-h-[80vh] overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                        <Bell className="text-emerald-600" size={16} /> Health Notifications
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Your revisit schedule and account updates.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2.5 p-3 text-xs max-h-[60vh] overflow-y-auto">
+                    {nextUpcomingVisit ? (
+                      <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-emerald-900 dark:text-emerald-300 text-xs flex items-center gap-1.5">
+                            <CalendarCheck size={13} className="text-emerald-600" /> {nextUpcomingVisit.service_type}
+                          </span>
+                          <Badge className="bg-emerald-600 text-white text-[10px]">Confirmed</Badge>
+                        </div>
+                        <p className="text-xs text-emerald-800 dark:text-emerald-200">
+                          <strong>{new Date(nextUpcomingVisit.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</strong>
+                          {' '}at <strong>{nextUpcomingVisit.time}</strong>
+                        </p>
+                        {nextUpcomingVisit.instructions && (
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 italic">{nextUpcomingVisit.instructions}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-center text-slate-400 text-xs py-8">
+                        No upcoming revisits. Walk in to the Health Center to get started.
+                      </div>
+                    )}
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                          <BadgeCheck size={13} className="text-blue-600" /> Account Verified
+                        </span>
+                        <span className="text-[10px] text-slate-400">Active</span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Your resident account is active and verified by Barangay {user?.barangay || 'Pianing'}.</p>
+                    </div>
+                  </div>
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                    <Button size="sm" variant="ghost" onClick={() => setIsNotificationsOpen(false)} className="text-xs h-7 px-3">Close</Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
             {user && (
               <button
@@ -1431,52 +1480,7 @@ export default function HealthCenterPortal() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Notifications Modal ─── */}
-      <Dialog open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
-        <DialogContent className="bg-white max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2 text-slate-900">
-              <Bell className="text-emerald-600" size={17} /> Health Notifications
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">Your revisit schedule and account updates.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2.5 py-2">
-            {nextUpcomingVisit ? (
-              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-emerald-900 text-xs flex items-center gap-1.5">
-                    <CalendarCheck size={13} className="text-emerald-600" /> {nextUpcomingVisit.service_type}
-                  </span>
-                  <Badge className="bg-emerald-600 text-white text-[10px]">Confirmed</Badge>
-                </div>
-                <p className="text-xs text-emerald-800">
-                  <strong>{new Date(nextUpcomingVisit.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</strong>
-                  {' '}at <strong>{nextUpcomingVisit.time}</strong>
-                </p>
-                {nextUpcomingVisit.instructions && (
-                  <p className="text-[11px] text-emerald-700 italic">{nextUpcomingVisit.instructions}</p>
-                )}
-              </div>
-            ) : (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-slate-400 text-xs py-8">
-                No upcoming revisits. Walk in to the Health Center to get started.
-              </div>
-            )}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                  <BadgeCheck size={13} className="text-blue-600" /> Account Verified
-                </span>
-                <span className="text-[10px] text-slate-400">Active</span>
-              </div>
-              <p className="text-xs text-slate-500">Your resident account is active and verified by Barangay {user?.barangay || 'Pianing'}.</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button size="sm" variant="outline" onClick={() => setIsNotificationsOpen(false)} className="text-xs">Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      
 
       {/* ─── Make an Appointment / Reserve Slot Modal ─── */}
       <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>

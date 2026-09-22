@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Stethoscope, Heart, Baby, Activity, CalendarCheck, Clock,
@@ -137,6 +137,15 @@ export default function NurseDashboard() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
 
+  // Main content scroll container ref — auto-scroll to top on tab change
+  const mainContentRef = useRef<HTMLElement>(null);
+
+  // Scroll to top whenever the active sidebar tab changes
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [activeTab]);
   // User session
   const [user, setUser] = useState<any>(() => {
     try {
@@ -1758,7 +1767,7 @@ export default function NurseDashboard() {
         </aside>
 
         {/* Main Content View */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
+        <main ref={mainContentRef} className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
 
           {/* ═══ OVERVIEW ═══════════════════════════════════════════════════ */}
           {activeTab === 'overview' && (

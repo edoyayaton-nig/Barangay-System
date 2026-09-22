@@ -181,6 +181,13 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('user-profile-updated', handleProfileSync);
   }, []);
 
+  // Scroll main content area to top whenever the active sidebar tab changes
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [activeTab]);
+
   // Dynamic Data States
   const [documents, setDocuments] = useState<DocumentRequest[]>([]);
   const [residents, setResidents] = useState<Resident[]>([]);
@@ -269,13 +276,13 @@ export default function AdminDashboard() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
 
   // Issue Document State
-  const [selectedResidentForDoc, setSelectedResidentForDoc] = useState<string>('manual');
+  const [selectedResidentForDoc, setSelectedResidentForDoc] = useState<string>('');
   const [newDocResidentId, setNewDocResidentId] = useState<number | null>(null);
   const [newDocName, setNewDocName] = useState('');
-  const [newDocType, setNewDocType] = useState('Barangay Clearance');
-  const [newDocGender, setNewDocGender] = useState<'Male' | 'Female'>('Male');
-  const [newDocCivilStatus, setNewDocCivilStatus] = useState('Single');
-  const [newDocPurok, setNewDocPurok] = useState('Purok 1');
+  const [newDocType, setNewDocType] = useState('');
+  const [newDocGender, setNewDocGender] = useState<'Male' | 'Female' | ''>('');
+  const [newDocCivilStatus, setNewDocCivilStatus] = useState('');
+  const [newDocPurok, setNewDocPurok] = useState('');
   const [newDocAge, setNewDocAge] = useState('');
   const [newDocAddress, setNewDocAddress] = useState('');
   const [newDocPurpose, setNewDocPurpose] = useState('');
@@ -288,11 +295,11 @@ export default function AdminDashboard() {
   const [newResBarangay, setNewResBarangay] = useState<string>(user?.barangay || 'Pianing');
   const [newResDOB, setNewResDOB] = useState('');
   const [newResPurok, setNewResPurok] = useState('');
-  const [newResGender, setNewResGender] = useState<'Male' | 'Female'>('Male');
+  const [newResGender, setNewResGender] = useState<'Male' | 'Female' | ''>('');
   const [newResPhone, setNewResPhone] = useState('');
-  const [newResCivilStatus, setNewResCivilStatus] = useState('Single');
+  const [newResCivilStatus, setNewResCivilStatus] = useState('');
   const [newResYearsOfResidency, setNewResYearsOfResidency] = useState('');
-  const [newResIdType, setNewResIdType] = useState('Philippine National ID (PhilSys)');
+  const [newResIdType, setNewResIdType] = useState('');
   const [newResIdPhoto, setNewResIdPhoto] = useState<string | null>(null);
   const [newResIdFileName, setNewResIdFileName] = useState('');
 
@@ -310,7 +317,7 @@ export default function AdminDashboard() {
   const [newResFamilyName, setNewResFamilyName] = useState('');
   const [newResIsHead, setNewResIsHead] = useState(true);
   const [newResRelationship, setNewResRelationship] = useState('Head');
-  const [newResEmployment, setNewResEmployment] = useState('Employed');
+  const [newResEmployment, setNewResEmployment] = useState('');
 
   // Dedicated Resident System User Account Creation Modal State
   const [isCreateResidentUserOpen, setIsCreateResidentUserOpen] = useState(false);
@@ -321,17 +328,19 @@ export default function AdminDashboard() {
   const [resAccEmail, setResAccEmail] = useState('');
   const [resAccPassword, setResAccPassword] = useState('');
   const [resAccShowPassword, setResAccShowPassword] = useState(false);
+  const [resAccConfirmPassword, setResAccConfirmPassword] = useState('');
+  const [resAccShowConfirmPassword, setResAccShowConfirmPassword] = useState(false);
   const [resAccPhone, setResAccPhone] = useState('');
   const [resAccDOB, setResAccDOB] = useState('');
-  const [resAccGender, setResAccGender] = useState<'Male' | 'Female'>('Male');
-  const [resAccCivilStatus, setResAccCivilStatus] = useState('Single');
-  const [resAccEmployment, setResAccEmployment] = useState('Employed');
+  const [resAccGender, setResAccGender] = useState<'Male' | 'Female' | ''>('');
+  const [resAccCivilStatus, setResAccCivilStatus] = useState('');
+  const [resAccEmployment, setResAccEmployment] = useState('');
   const [resAccResidencyYears, setResAccResidencyYears] = useState('');
-  const [resAccPurok, setResAccPurok] = useState('1');
+  const [resAccPurok, setResAccPurok] = useState('');
   const [resAccCity, setResAccCity] = useState('Butuan City');
   const [resAccHouseholdNum, setResAccHouseholdNum] = useState('');
   const [resAccBarangay, setResAccBarangay] = useState<string>(user?.barangay || 'Pianing');
-  const [resAccIdType, setResAccIdType] = useState('Philippine National ID (PhilSys)');
+  const [resAccIdType, setResAccIdType] = useState('');
   const [resAccIdPhoto, setResAccIdPhoto] = useState<string | null>(null);
   const [resAccIdFileName, setResAccIdFileName] = useState('');
   const [resAccLinkedCensusId, setResAccLinkedCensusId] = useState<number | null>(null);
@@ -403,6 +412,8 @@ export default function AdminDashboard() {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [showNewUserPass, setShowNewUserPass] = useState(false);
+  const [newUserConfirmPassword, setNewUserConfirmPassword] = useState('');
+  const [showNewUserConfirmPass, setShowNewUserConfirmPass] = useState(false);
   const [newUserRole, setNewUserRole] = useState<'superadmin' | 'admin' | 'staff' | 'bhw' | 'nurse' | 'resident'>('staff');
   const [newUserBarangay, setNewUserBarangay] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
@@ -447,8 +458,10 @@ export default function AdminDashboard() {
   const [editUserEmail, setEditUserEmail] = useState('');
   const [editUserCurrentPassword, setEditUserCurrentPassword] = useState('');
   const [editUserPassword, setEditUserPassword] = useState('');
+  const [editUserConfirmPassword, setEditUserConfirmPassword] = useState('');
   const [showEditUserCurrentPass, setShowEditUserCurrentPass] = useState(false);
   const [showEditUserPass, setShowEditUserPass] = useState(false);
+  const [showEditUserConfirmPass, setShowEditUserConfirmPass] = useState(false);
   const [editUserRole, setEditUserRole] = useState<'superadmin' | 'admin' | 'staff' | 'bhw' | 'nurse' | 'resident'>('staff');
   const [editUserBarangay, setEditUserBarangay] = useState('Pianing');
   const [editUserPhone, setEditUserPhone] = useState('');
@@ -493,6 +506,59 @@ export default function AdminDashboard() {
   const [resetPassUser, setResetPassUser] = useState<SystemUser | null>(null);
   const [isResetPassOpen, setIsResetPassOpen] = useState(false);
   const [newPassVal, setNewPassVal] = useState('');
+  const [newPassConfirmVal, setNewPassConfirmVal] = useState('');
+  const [showNewPassConfirm, setShowNewPassConfirm] = useState(false);
+
+  // Permanent Delete Confirm Dialog States in Archive
+  const [deleteUserConfirmOpen, setDeleteUserConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<SystemUser | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+
+  const [deleteResidentConfirmOpen, setDeleteResidentConfirmOpen] = useState(false);
+  const [residentToDelete, setResidentToDelete] = useState<Resident | null>(null);
+  const [isDeletingResident, setIsDeletingResident] = useState(false);
+
+  const handlePermanentDeleteUser = (u: SystemUser) => {
+    setUserToDelete(u);
+    setDeleteUserConfirmOpen(true);
+  };
+
+  const executePermanentDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsDeletingUser(true);
+    try {
+      await apiService.deleteUser(userToDelete.id);
+      toast.success(`Account for ${userToDelete.name} has been permanently deleted.`);
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      setDeleteUserConfirmOpen(false);
+      setUserToDelete(null);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to permanently delete user account.');
+    } finally {
+      setIsDeletingUser(false);
+    }
+  };
+
+  const handlePermanentDeleteResident = (res: Resident) => {
+    setResidentToDelete(res);
+    setDeleteResidentConfirmOpen(true);
+  };
+
+  const executePermanentDeleteResident = async () => {
+    if (!residentToDelete) return;
+    setIsDeletingResident(true);
+    try {
+      await apiService.purgeResident(residentToDelete.id);
+      toast.success(`Resident record for ${residentToDelete.first_name} ${residentToDelete.last_name} has been permanently purged.`);
+      setResidents(prev => prev.filter(r => r.id !== residentToDelete.id));
+      setDeleteResidentConfirmOpen(false);
+      setResidentToDelete(null);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to permanently purge resident record.');
+    } finally {
+      setIsDeletingResident(false);
+    }
+  };
 
   // Admin Profile Modal State
   const [isAdminProfileOpen, setIsAdminProfileOpen] = useState(false);
@@ -506,6 +572,9 @@ export default function AdminDashboard() {
   // Staff Info Viewer Modal State (When admin clicks staff name)
   const [selectedStaffInfo, setSelectedStaffInfo] = useState<SystemUser | null>(null);
   const staffFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Main content scroll container ref — used to auto-scroll to top on tab change
+  const mainContentRef = useRef<HTMLElement>(null);
 
   // SMS Correction Notice Modal State (Notify applicant regarding ID, Birthday, Name, or Address discrepancy)
   const [smsApplicantModal, setSmsApplicantModal] = useState<PendingResident | null>(null);
@@ -1083,12 +1152,12 @@ export default function AdminDashboard() {
 
   const handleSelectResidentForDoc = (val: string) => {
     setSelectedResidentForDoc(val);
-    if (val === 'manual') {
+    if (val === 'manual' || !val) {
       setNewDocResidentId(null);
       setNewDocName('');
-      setNewDocGender('Male');
-      setNewDocCivilStatus('Single');
-      setNewDocPurok('Purok 1');
+      setNewDocGender('');
+      setNewDocCivilStatus('');
+      setNewDocPurok('');
       setNewDocAge('');
       setNewDocAddress('');
       return;
@@ -1097,11 +1166,11 @@ export default function AdminDashboard() {
     if (r) {
       setNewDocResidentId(r.id);
       setNewDocName(`${r.first_name} ${r.last_name}`.trim());
-      setNewDocGender((r.gender === 'Female' ? 'Female' : 'Male') as any);
-      setNewDocCivilStatus(r.civil_status || 'Single');
-      setNewDocPurok(r.purok || 'Purok 1');
+      setNewDocGender((r.gender === 'Female' ? 'Female' : r.gender === 'Male' ? 'Male' : '') as any);
+      setNewDocCivilStatus(r.civil_status || '');
+      setNewDocPurok(r.purok ? (r.purok.startsWith('Purok') ? r.purok : `Purok ${r.purok}`) : '');
       setNewDocAge(r.age ? String(r.age) : '');
-      setNewDocAddress(r.address || `Purok ${r.purok || '1'}, Barangay ${r.barangay || 'Pianing'}, Butuan City`);
+      setNewDocAddress(r.address || `Purok ${r.purok || ''}, Barangay ${r.barangay || 'Pianing'}, Butuan City`);
     }
   };
 
@@ -1144,6 +1213,10 @@ export default function AdminDashboard() {
   };
 
   const handleSaveAndPrintDoc = async (markAsCompleted = false) => {
+    if (!newDocType) {
+      toast.error('Please select a document type');
+      return;
+    }
     if (!newDocName.trim()) {
       toast.error('Resident name is required');
       return;
@@ -1205,10 +1278,17 @@ export default function AdminDashboard() {
       }
 
       // Reset form
-      setSelectedResidentForDoc('manual');
+      setSelectedResidentForDoc('');
       setNewDocResidentId(null);
       setNewDocName('');
+      setNewDocType('');
+      setNewDocGender('');
+      setNewDocCivilStatus('');
+      setNewDocPurok('');
+      setNewDocAge('');
+      setNewDocAddress('');
       setNewDocPurpose('');
+      setNewDocDuration('');
       setNewDocExtraFields({});
     } catch (err) {
       toast.error('Could not issue document request');
@@ -1234,6 +1314,7 @@ export default function AdminDashboard() {
     try {
       await apiService.updateDocumentStatus(id, nextStatus, user?.name || 'Admin Juan');
       setDocuments(documents.map(d => d.id === id ? { ...d, status: nextStatus as any, processed_at: new Date().toLocaleTimeString(), processed_by: user?.name || 'Admin Juan' } : d));
+      loadData(false);
       
       if (nextStatus === 'Completed') {
         toast.success(`Document Completed & Archived`, {
@@ -1582,26 +1663,55 @@ export default function AdminDashboard() {
         ch.close();
       } catch {}
       setIsAddResidentOpen(false);
-      setNewResFirstName('');
-      setNewResMiddleName('');
-      setNewResLastName('');
-      setNewResDOB('');
-      setNewResPurok('');
-      setNewResPhone('');
-      setNewResCivilStatus('Single');
-      setNewResYearsOfResidency('');
-      setNewResHouseholdNum('');
-      setNewResFamilyName('');
-      setNewResIsHead(true);
-      setNewResRelationship('Head');
-      setNewResEmployment('Employed');
-      setNewResIdType('Philippine National ID (PhilSys)');
-      setNewResIdPhoto(null);
-      setNewResIdFileName('');
+      resetAddResidentForm();
     } catch (err) {
       toast.error('Could not register resident');
     }
   };
+
+  // Reset resident demographic & identity input fields
+  const resetResidentFields = () => {
+    setNewResFirstName('');
+    setNewResMiddleName('');
+    setNewResLastName('');
+    setNewResDOB('');
+    setNewResGender('');
+    setNewResCivilStatus('');
+    setNewResYearsOfResidency('');
+    setNewResPhone('');
+    setNewResEmployment('');
+    setNewResIdType('');
+    setNewResIdPhoto(null);
+    setNewResIdFileName('');
+  };
+
+  // Full reset of Census Add Resident Modal form state
+  const resetAddResidentForm = (targetPurok?: string) => {
+    const p = targetPurok || (selectedCensusPurok === 'all' ? '1' : selectedCensusPurok);
+    const cleanP = p.replace(/purok\s*/i, '').trim() || '1';
+    const existingInP = censusHouseholds.filter(h => 
+      (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP || 
+      (h.household_number || '').includes(`HH-P${cleanP}`)
+    );
+    const autoHh = `HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`;
+    
+    setAddResidentMode('new_household');
+    setNewResPurok(cleanP);
+    setNewResHouseholdNum(autoHh);
+    setNewResFamilyName('');
+    setNewResIsHead(true);
+    setNewResRelationship('Head');
+    setHouseholdSearchQuery('');
+    setIsHouseholdDropdownOpen(false);
+    resetResidentFields();
+  };
+
+  // Auto-reset add resident modal form whenever switching sidebar tabs
+  useEffect(() => {
+    if (!isAddResidentOpen) {
+      resetAddResidentForm();
+    }
+  }, [activeTab]);
 
   // Filtered households for the searchable combobox in Census Add Resident modal
   const filteredHouseholdsList = useMemo(() => {
@@ -1609,11 +1719,20 @@ export default function AdminDashboard() {
     return censusHouseholds.filter(h => {
       const matchPurok = !newResPurok || newResPurok === 'all' || h.purok.includes(newResPurok) || h.household_number.includes(`HH-P${newResPurok}`);
       if (!q) return matchPurok;
-      const matchText = (h.household_number || '').toLowerCase().includes(q) ||
-        (h.family_name || '').toLowerCase().includes(q) ||
-        (h.head_name || '').toLowerCase().includes(q) ||
-        (h.purok || '').toLowerCase().includes(q);
-      return matchText;
+      const hNum = (h.household_number || '').toLowerCase();
+      const fName = (h.family_name || '').toLowerCase();
+      const headName = (h.head_name || '').toLowerCase();
+      const purokStr = (h.purok || '').toLowerCase();
+      const combined = `${hNum} ${fName} ${headName} ${purokStr}`;
+      
+      const matchText = hNum.includes(q) ||
+        fName.includes(q) ||
+        headName.includes(q) ||
+        purokStr.includes(q) ||
+        combined.includes(q) ||
+        (hNum && q.includes(hNum)) ||
+        (fName && q.includes(fName));
+      return matchPurok && matchText;
     });
   }, [censusHouseholds, householdSearchQuery, newResPurok]);
 
@@ -1711,6 +1830,11 @@ export default function AdminDashboard() {
       return;
     }
 
+    if (resAccPassword.trim() !== resAccConfirmPassword.trim()) {
+      toast.error('Passwords do not match. Please re-enter and confirm.');
+      return;
+    }
+
     let cleanPhone = resAccPhone.trim().replace(/\D/g, '');
     if (cleanPhone.startsWith('639')) {
       cleanPhone = '0' + cleanPhone.slice(2);
@@ -1791,16 +1915,18 @@ export default function AdminDashboard() {
       setResAccLastName('');
       setResAccEmail('');
       setResAccPassword('');
+      setResAccConfirmPassword('');
+      setResAccShowConfirmPassword(false);
       setResAccPhone('');
       setResAccDOB('');
-      setResAccGender('Male');
-      setResAccCivilStatus('Single');
-      setResAccEmployment('Employed');
+      setResAccGender('');
+      setResAccCivilStatus('');
+      setResAccEmployment('');
       setResAccResidencyYears('');
-      setResAccPurok('1');
+      setResAccPurok('');
       setResAccCity('Butuan City');
       setResAccHouseholdNum('');
-      setResAccIdType('Philippine National ID (PhilSys)');
+      setResAccIdType('');
       setResAccIdPhoto(null);
       setResAccIdFileName('');
       setResAccLinkedCensusId(null);
@@ -1884,7 +2010,7 @@ export default function AdminDashboard() {
     const cleanMiddle = newUserMiddleName.trim();
     const cleanLast = newUserLastName.trim();
     const fullName = `${cleanFirst} ${cleanMiddle ? cleanMiddle + ' ' : ''}${cleanLast}`.trim();
-    const assignedBarangay = user?.role === 'superadmin' ? (newUserBarangay || 'Pianing') : (user?.barangay || 'Pianing');
+    const assignedBarangay = user?.barangay || 'Pianing';
 
     // Role Access Rule: Only Super Admin can create Barangay Admin accounts
     if (newUserRole === 'admin' && !isSuperAdmin) {
@@ -1903,6 +2029,11 @@ export default function AdminDashboard() {
         toast.error(`Barangay ${assignedBarangay} already has an active Administrator (${existingAdmin.name}). Only 1 Admin per Barangay is allowed.`);
         return;
       }
+    }
+
+    if (newUserPassword.trim() !== newUserConfirmPassword.trim()) {
+      toast.error('Passwords do not match. Please re-enter and confirm.');
+      return;
     }
 
     const passCheck = validatePasswordComplexity(newUserPassword);
@@ -1934,6 +2065,8 @@ export default function AdminDashboard() {
       setNewUserLastName('');
       setNewUserEmail('');
       setNewUserPassword('');
+      setNewUserConfirmPassword('');
+      setShowNewUserConfirmPass(false);
       setNewUserPhone('');
       setNewUserEmployeeId('');
       setNewUserJobTitle('');
@@ -2218,7 +2351,9 @@ export default function AdminDashboard() {
     setEditUserName(u.name);
     setEditUserEmail(u.email);
     setEditUserPassword('');
+    setEditUserConfirmPassword('');
     setShowEditUserPass(false);
+    setShowEditUserConfirmPass(false);
     setEditUserRole(u.role);
     setEditUserBarangay(u.barangay || 'Pianing');
     setEditUserPhone(u.phone || '');
@@ -2260,6 +2395,10 @@ export default function AdminDashboard() {
     }
 
     if (editUserPassword.trim()) {
+      if (editUserPassword.trim() !== editUserConfirmPassword.trim()) {
+        toast.error('New passwords do not match. Please re-enter and confirm.');
+        return;
+      }
       // Must provide current password before setting a new one
       if (!editUserCurrentPassword.trim()) {
         toast.error('Please enter the current password before setting a new password.');
@@ -2311,6 +2450,8 @@ export default function AdminDashboard() {
       setEditingUser(null);
       setEditUserCurrentPassword('');
       setEditUserPassword('');
+      setEditUserConfirmPassword('');
+      setShowEditUserConfirmPass(false);
     } catch {
       toast.error('Failed to update user details');
     }
@@ -2318,13 +2459,19 @@ export default function AdminDashboard() {
 
   const handleOpenResetPassword = (u: SystemUser) => {
     setResetPassUser(u);
-    setNewPassVal(generateSecurePassword());
+    setNewPassVal('');
+    setNewPassConfirmVal('');
     setIsResetPassOpen(true);
   };
 
   const handleExecuteResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetPassUser) return;
+
+    if (newPassVal.trim() !== newPassConfirmVal.trim()) {
+      toast.error('Passwords do not match. Please re-enter and confirm.');
+      return;
+    }
     
     const passCheck = validatePasswordComplexity(newPassVal);
     if (!passCheck.isValid) {
@@ -2343,6 +2490,8 @@ export default function AdminDashboard() {
       }
       setIsResetPassOpen(false);
       setResetPassUser(null);
+      setNewPassVal('');
+      setNewPassConfirmVal('');
     } catch {
       toast.error('Failed to reset user password');
     }
@@ -2661,10 +2810,9 @@ export default function AdminDashboard() {
       badge: brgyPendingDocsCount > 0 ? brgyPendingDocsCount : undefined,
       badgeColor: 'bg-red-600 text-white'
     }] : []),
-    ...(isSuperAdmin || hasUserPermission(user, 'can_view_census') ? [{ id: 'records', label: 'Census & Demographics', icon: Users }] : []),
+    // Census & Demographics: available to Superadmin, Admin, and Staff
+    ...(isSuperAdmin || isAdmin || isStaff || hasUserPermission(user, 'can_view_census') ? [{ id: 'records', label: 'Census & Demographics', icon: Database }] : []),
     ...(isSuperAdmin || hasUserPermission(user, 'can_generate_reports') ? [{ id: 'reports', label: 'Analytics & Reports', icon: BarChart }] : []),
-    // Barangay Jurisdiction (86-Barangay Municipal Command Hub) — Super Admin only
-    ...(isSuperAdmin ? [{ id: 'barangays', label: 'Barangay Jurisdiction', icon: Building2 }] : []),
     // Activity Logs: Available to Superadmin (strictly scoped to their barangay) and permitted staff
     ...(isSuperAdmin || hasUserPermission(user, 'can_view_logs') ? [{ id: 'logs', label: 'Activity Logs', icon: History }] : []),
     // Category Manager: REMOVED from Superadmin — Super Mega Admin only (via hasUserPermission explicit grant)
@@ -2900,7 +3048,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
+        <main ref={mainContentRef} className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
           {/* Removed visitor mode alert per user request */}
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
@@ -2944,15 +3092,17 @@ export default function AdminDashboard() {
                           setNewUserLastName('');
                           setNewUserEmail('');
                           setNewUserPassword('');
+                          setNewUserConfirmPassword('');
                           setNewUserPhone('');
                           setShowNewUserPass(false);
+                          setShowNewUserConfirmPass(false);
                           setNewUserRole('staff');
                           setIsAddUserOpen(true);
                         }}
                         className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold h-8.5 px-3.5 gap-1.5 shadow-xs cursor-pointer rounded-xl"
                       >
                         <UserPlus size={14} />
-                        Add User Account
+                        Add Staff
                       </Button>
                       <Button
                         size="sm"
@@ -3061,7 +3211,24 @@ export default function AdminDashboard() {
                   {(isSuperAdmin || hasUserPermission(user, 'can_create_document')) && (
                     <Dialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
                       <DialogTrigger asChild>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 shadow-xs cursor-pointer">
+                        <Button
+                          onClick={() => {
+                            setSelectedResidentForDoc('');
+                            setNewDocResidentId(null);
+                            setNewDocName('');
+                            setNewDocType('');
+                            setNewDocGender('');
+                            setNewDocCivilStatus('');
+                            setNewDocPurok('');
+                            setNewDocAge('');
+                            setNewDocAddress('');
+                            setNewDocPurpose('');
+                            setNewDocDuration('');
+                            setNewDocExtraFields({});
+                            setIsAddDocOpen(true);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 shadow-xs cursor-pointer"
+                        >
                           <PlusCircle size={15} />
                           New Document Request
                         </Button>
@@ -3079,7 +3246,7 @@ export default function AdminDashboard() {
                           <div className="space-y-1.5">
                             <Label className="text-xs">Document Type</Label>
                             <Select value={newDocType} onValueChange={setNewDocType}>
-                              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="w-full"><SelectValue placeholder="Select Document Type" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Barangay Clearance">Barangay Clearance</SelectItem>
                                 <SelectItem value="Certificate of Residency">Certificate of Residency</SelectItem>
@@ -3622,7 +3789,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* KPI Summary Counter Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
                   <div className="bg-slate-50/80 border border-slate-200/90 rounded-xl p-3.5">
                     <span className="text-[11px] text-slate-500 font-medium block">Pending Verification Queue</span>
                     <span className="text-2xl font-extrabold text-slate-900 block mt-0.5">{myPendingResidents.length}</span>
@@ -3632,11 +3799,6 @@ export default function AdminDashboard() {
                     <span className="text-[11px] text-slate-500 font-medium block">Accredited Citizen Accounts</span>
                     <span className="text-2xl font-extrabold text-slate-900 block mt-0.5">{verifiedAccountsCount}</span>
                     <span className="text-[10px] text-emerald-700 font-medium mt-0.5 block">Verified barangay residents</span>
-                  </div>
-                  <div className="bg-slate-50/80 border border-slate-200/90 rounded-xl p-3.5 col-span-2 sm:col-span-1">
-                    <span className="text-[11px] text-slate-500 font-medium block">Total Barangay Census Records</span>
-                    <span className="text-2xl font-extrabold text-slate-900 block mt-0.5">{residents.length}</span>
-                    <span className="text-[10px] text-slate-500 font-medium mt-0.5 block">Civil registry population</span>
                   </div>
                 </div>
               </div>
@@ -3811,7 +3973,13 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* KPI Summary Counter Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-100">
+                  <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 shadow-2xs">
+                    <p className="text-[11px] text-emerald-800 font-bold uppercase tracking-wider">Total Documents Issued</p>
+                    <p className="text-2xl font-black text-emerald-700 mt-0.5">
+                      {(stats as any)?.totalIssued ?? documents.filter(d => d.status === 'Completed').length}
+                    </p>
+                  </div>
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
                     <p className="text-[11px] text-slate-500 font-medium">Total Active Queue</p>
                     <p className="text-2xl font-bold text-slate-900 mt-0.5">{activeDocuments.length}</p>
@@ -3829,8 +3997,8 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                    <p className="text-[11px] text-emerald-700 font-medium">Ready for Pickup</p>
-                    <p className="text-2xl font-bold text-emerald-600 mt-0.5">
+                    <p className="text-[11px] text-blue-700 font-medium">Ready for Pickup</p>
+                    <p className="text-2xl font-bold text-blue-600 mt-0.5">
                       {activeDocuments.filter(d => d.status === 'Ready for Pickup').length}
                     </p>
                   </div>
@@ -3846,7 +4014,24 @@ export default function AdminDashboard() {
                 {(isSuperAdmin || hasUserPermission(user, 'can_create_document')) && (
                   <Dialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 shadow-sm">
+                      <Button
+                        onClick={() => {
+                          setSelectedResidentForDoc('');
+                          setNewDocResidentId(null);
+                          setNewDocName('');
+                          setNewDocType('');
+                          setNewDocGender('');
+                          setNewDocCivilStatus('');
+                          setNewDocPurok('');
+                          setNewDocAge('');
+                          setNewDocAddress('');
+                          setNewDocPurpose('');
+                          setNewDocDuration('');
+                          setNewDocExtraFields({});
+                          setIsAddDocOpen(true);
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 shadow-sm cursor-pointer"
+                      >
                       <PlusCircle size={15} />
                       Issue Document Request
                     </Button>
@@ -3864,7 +4049,7 @@ export default function AdminDashboard() {
                         <Label className="text-xs font-semibold text-slate-700">Select Resident (Auto-fills Demographics)</Label>
                         <Select value={selectedResidentForDoc} onValueChange={handleSelectResidentForDoc}>
                           <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="Choose a registered resident or manual..." />
+                            <SelectValue placeholder="Select Resident / Walk-in Constituent..." />
                           </SelectTrigger>
                           <SelectContent className="max-h-56">
                             <SelectItem value="manual">✍️ Manual / Walk-in Constituent</SelectItem>
@@ -3899,7 +4084,7 @@ export default function AdminDashboard() {
                             <div className="space-y-1">
                               <Label className="text-[11px] text-slate-600">Gender</Label>
                               <Select value={newDocGender} onValueChange={(v: any) => setNewDocGender(v)}>
-                                <SelectTrigger className="h-8 text-xs bg-white"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Gender" /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="Male">Male</SelectItem>
                                   <SelectItem value="Female">Female</SelectItem>
@@ -3909,7 +4094,7 @@ export default function AdminDashboard() {
                             <div className="space-y-1">
                               <Label className="text-[11px] text-slate-600">Civil Status</Label>
                               <Select value={newDocCivilStatus} onValueChange={setNewDocCivilStatus}>
-                                <SelectTrigger className="h-8 text-xs bg-white"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="Single">Single</SelectItem>
                                   <SelectItem value="Married">Married</SelectItem>
@@ -3924,12 +4109,14 @@ export default function AdminDashboard() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div className="space-y-1">
                             <Label className="text-[11px] text-slate-600">Purok / Zone</Label>
-                            <Input
-                              value={newDocPurok}
-                              onChange={e => setNewDocPurok(e.target.value)}
-                              placeholder="e.g. Purok 1"
-                              className="h-8 text-xs bg-white"
-                            />
+                            <Select value={newDocPurok} onValueChange={setNewDocPurok}>
+                              <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Purok" /></SelectTrigger>
+                              <SelectContent>
+                                {[1, 2, 3, 4, 5, 6].map(p => (
+                                  <SelectItem key={`purok-doc-${p}`} value={`Purok ${p}`}>Purok {p}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div className="space-y-1">
                             <Label className="text-[11px] text-slate-600">Age / Date of Birth</Label>
@@ -3947,7 +4134,7 @@ export default function AdminDashboard() {
                       <div className="space-y-1">
                         <Label className="text-xs font-semibold text-slate-700">Document Type <span className="text-red-500">*</span></Label>
                         <Select value={newDocType} onValueChange={handleNewDocTypeChange}>
-                          <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Document Type" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Barangay Clearance">Barangay Clearance</SelectItem>
                             <SelectItem value="Certificate of Residency">Certificate of Residency</SelectItem>
@@ -4786,9 +4973,22 @@ export default function AdminDashboard() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button size="sm" variant="outline" onClick={() => openResidentProfile(res.id)} className="h-7 text-[11px] gap-1 cursor-pointer">
-                                  <Eye size={12} /> Profile
-                                </Button>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Button size="sm" variant="outline" onClick={() => openResidentProfile(res.id)} className="h-7 text-[11px] gap-1 cursor-pointer">
+                                    <Eye size={12} /> Profile
+                                  </Button>
+                                  {isSuperAdmin && (
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => handlePermanentDeleteResident(res)}
+                                      className="h-7 px-2.5 bg-rose-600 hover:bg-rose-700 text-white cursor-pointer text-[11px] font-bold gap-1 shadow-xs"
+                                      title="Permanently purge resident record"
+                                    >
+                                      <Trash2 size={12} /> Delete
+                                    </Button>
+                                  )}
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))
@@ -4899,15 +5099,27 @@ export default function AdminDashboard() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleArchiveUser(u)}
-                                  className="h-7 px-3 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer text-[11px] font-bold gap-1.5 shadow-sm"
-                                  title="Restore user account to Active"
-                                >
-                                  <RotateCcw size={12} />
-                                  Restore Account
-                                </Button>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleArchiveUser(u)}
+                                    className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer text-[11px] font-bold gap-1 shadow-xs"
+                                    title="Restore user account to Active"
+                                  >
+                                    <RotateCcw size={12} />
+                                    Restore
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handlePermanentDeleteUser(u)}
+                                    className="h-7 px-2.5 bg-rose-600 hover:bg-rose-700 text-white cursor-pointer text-[11px] font-bold gap-1 shadow-xs"
+                                    title="Permanently delete user account"
+                                  >
+                                    <Trash2 size={12} />
+                                    Delete
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))
@@ -4921,6 +5133,93 @@ export default function AdminDashboard() {
           )}
 
               {/* ── NOTIFICATION SETTINGS SUB-TAB ── */}
+              {/* PERMANENT DELETE USER CONFIRMATION DIALOG */}
+              <Dialog open={deleteUserConfirmOpen} onOpenChange={setDeleteUserConfirmOpen}>
+                <DialogContent className="max-w-md bg-white border border-rose-200 p-6 rounded-2xl shadow-xl">
+                  <DialogHeader>
+                    <div className="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center mb-2">
+                      <Trash2 size={22} />
+                    </div>
+                    <DialogTitle className="text-base font-bold text-slate-900">
+                      Permanently Delete User Account?
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-slate-500 mt-1">
+                      Are you sure you want to permanently remove <strong className="text-slate-800">{userToDelete?.name}</strong> (<span className="font-mono">{userToDelete?.email}</span>)?
+                      This account and its login credentials will be irreversibly purged from the system.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2 mt-2">
+                    <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+                    <span><strong>Warning:</strong> This action cannot be undone. Historical audit logs will retain the user name for audit compliance.</span>
+                  </div>
+                  <DialogFooter className="mt-4 flex gap-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteUserConfirmOpen(false)}
+                      className="text-xs h-8"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      disabled={isDeletingUser}
+                      onClick={executePermanentDeleteUser}
+                      className="text-xs h-8 px-4 bg-rose-600 hover:bg-rose-700 text-white font-semibold gap-1.5 cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                      {isDeletingUser ? 'Deleting...' : 'Permanently Delete'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* PERMANENT DELETE RESIDENT CONFIRMATION DIALOG */}
+              <Dialog open={deleteResidentConfirmOpen} onOpenChange={setDeleteResidentConfirmOpen}>
+                <DialogContent className="max-w-md bg-white border border-rose-200 p-6 rounded-2xl shadow-xl">
+                  <DialogHeader>
+                    <div className="w-11 h-11 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center mb-2">
+                      <Trash2 size={22} />
+                    </div>
+                    <DialogTitle className="text-base font-bold text-slate-900">
+                      Permanently Purge Resident Record?
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-slate-500 mt-1">
+                      Are you sure you want to permanently purge the resident record for <strong className="text-slate-800">{residentToDelete?.first_name} {residentToDelete?.last_name}</strong>?
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2 mt-2">
+                    <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+                    <span><strong>Warning:</strong> This constituent record and associated census registration data will be permanently removed.</span>
+                  </div>
+                  <DialogFooter className="mt-4 flex gap-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteResidentConfirmOpen(false)}
+                      className="text-xs h-8"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      disabled={isDeletingResident}
+                      onClick={executePermanentDeleteResident}
+                      className="text-xs h-8 px-4 bg-rose-600 hover:bg-rose-700 text-white font-semibold gap-1.5 cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                      {isDeletingResident ? 'Purging...' : 'Permanently Purge'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
               {settingsSubTab === 'notifications' && (
                 <NotificationSettingsPanel />
               )}
@@ -4968,7 +5267,7 @@ export default function AdminDashboard() {
 
                   <Button
                     onClick={() => {
-                      const activePurokLabel = selectedCensusPurok === 'all' ? 'All Puroks (1 to 7)' : `Purok ${selectedCensusPurok}`;
+                      const activePurokLabel = selectedCensusPurok === 'all' ? 'All Puroks (1 to 6)' : `Purok ${selectedCensusPurok}`;
                       downloadOfficialPdf({
                         title: 'Barangay Population & Household Census Report',
                         subtitle: `Barangay ${userBarangay || 'Pianing'}, Butuan City — ${activePurokLabel}`,
@@ -5024,13 +5323,7 @@ export default function AdminDashboard() {
                   <Button
                     onClick={() => {
                       setNewResBarangay(user?.barangay || 'Pianing');
-                      if (!newResHouseholdNum) {
-                        const p = selectedCensusPurok === 'all' ? '1' : selectedCensusPurok;
-                        setNewResPurok(p);
-                        const cleanP = p.replace(/purok\s*/i, '').trim();
-                        const existingInP = censusHouseholds.filter(h => h.purok.includes(cleanP) || h.household_number.includes(`HH-P${cleanP}`));
-                        setNewResHouseholdNum(`HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`);
-                      }
+                      resetAddResidentForm();
                       setIsAddResidentOpen(true);
                     }}
                     className="bg-blue-600 hover:bg-blue-700 text-white text-xs shadow-xs h-9 cursor-pointer font-semibold"
@@ -5224,12 +5517,16 @@ export default function AdminDashboard() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => {
+                                  resetResidentFields();
                                   setAddResidentMode('existing_household');
+                                  const cleanP = (hh.purok || '1').replace(/purok\s*/i, '').trim();
+                                  setNewResPurok(cleanP);
                                   setNewResHouseholdNum(hh.household_number);
                                   setNewResFamilyName(hh.family_name);
-                                  setNewResPurok(hh.purok.replace(/purok\s*/i, '').trim());
                                   setNewResIsHead(false);
                                   setNewResRelationship('Son');
+                                  setHouseholdSearchQuery(`${hh.household_number} - ${hh.family_name} Family`);
+                                  setIsHouseholdDropdownOpen(false);
                                   setIsAddResidentOpen(true);
                                 }}
                                 className="h-8 text-xs font-semibold text-blue-700 border-blue-200 hover:bg-blue-50 cursor-pointer shadow-xs rounded-lg"
@@ -5699,22 +5996,24 @@ export default function AdminDashboard() {
                             setNewUserLastName('');
                             setNewUserEmail('');
                             setNewUserPassword('');
+                            setNewUserConfirmPassword('');
                             setNewUserPhone('');
                             setShowNewUserPass(false);
+                            setShowNewUserConfirmPass(false);
                             setNewUserRole('staff');
                             setIsAddUserOpen(true);
                           }}
                           className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 gap-1.5 shadow-xs cursor-pointer"
                         >
                           <UserPlus size={14} />
-                          {isSuperAdmin ? 'Add User Account' : 'Add Staff'}
+                          Add Staff
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="bg-white max-w-xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle className="flex items-center gap-2 text-slate-900 mt-1">
                             <UserPlus className="text-indigo-600" size={18} />
-                            {isSuperAdmin ? 'Add User Account' : 'Add Staff Member'}
+                            Add Staff Member
                           </DialogTitle>
                           <DialogDescription className="text-xs text-slate-500">
                             Create official credentials and role-based access for barangay personnel.
@@ -5786,123 +6085,74 @@ export default function AdminDashboard() {
                             </div>
                           </div>
 
-                          {/* Role & Jurisdiction Row */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-xs font-semibold">System Role / Permissions <span className="text-red-500">*</span></Label>
-                              <Select
-                                value={newUserRole === 'resident' || (!isSuperAdmin && newUserRole === 'admin') ? 'staff' : newUserRole}
-                                onValueChange={(val: 'admin' | 'staff' | 'bhw' | 'nurse') => setNewUserRole(val)}
-                              >
-                                <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {isSuperAdmin && <SelectItem value="admin">Barangay Admin (Full Local Control)</SelectItem>}
-                                  <SelectItem value="staff">Barangay Staff / Records Clerk</SelectItem>
-                                  <SelectItem value="bhw">BHW (Community Health Worker)</SelectItem>
-                                  <SelectItem value="nurse">Nurse (Health Center Nurse)</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-xs font-semibold">Assigned Barangay Jurisdiction <span className="text-red-500">*</span></Label>
-                              {isSuperAdmin || user?.role === 'superadmin' ? (
-                                <>
+                          {/* Role Row */}
+                          <div>
+                            <Label className="text-xs font-semibold">System Role / Permissions <span className="text-red-500">*</span></Label>
+                            <Select
+                              value={newUserRole === 'resident' || (!isSuperAdmin && newUserRole === 'admin') ? 'staff' : newUserRole}
+                              onValueChange={(val: 'admin' | 'staff' | 'bhw' | 'nurse') => setNewUserRole(val)}
+                            >
+                              <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {isSuperAdmin && <SelectItem value="admin">Barangay Admin (Full Local Control)</SelectItem>}
+                                <SelectItem value="staff">Barangay Staff / Records Clerk</SelectItem>
+                                <SelectItem value="bhw">BHW (Community Health Worker)</SelectItem>
+                                <SelectItem value="nurse">Nurse (Health Center Nurse)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Password & Confirm Password Container */}
+                          <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div>
+                                <Label className="text-xs font-bold text-slate-800">Account Access Password <span className="text-red-500">*</span></Label>
+                                <div className="relative mt-1">
                                   <Input
-                                    list="add-user-barangay-datalist"
-                                    value={newUserBarangay}
-                                    onChange={e => setNewUserBarangay(e.target.value)}
-                                    placeholder="Type Barangay (e.g. Pianing)"
+                                    type={showNewUserPass ? "text" : "password"}
+                                    value={newUserPassword}
+                                    onChange={e => setNewUserPassword(e.target.value)}
+                                    placeholder="Enter account password"
+                                    autoComplete="new-password"
                                     required
-                                    className="h-9 text-xs mt-1 bg-white"
+                                    minLength={6}
+                                    className="h-9 text-xs font-mono pr-8 bg-white"
                                   />
-                                  <datalist id="add-user-barangay-datalist">
-                                    {availableBarangays.map(b => (
-                                      <option key={b} value={b}>Barangay {b}</option>
-                                    ))}
-                                  </datalist>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="h-9 px-3 bg-slate-100 border border-slate-200 rounded-md flex items-center justify-between text-xs text-slate-700 font-semibold mt-1">
-                                    <span>Barangay {user?.barangay || 'Pianing'}</span>
-                                    <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-mono">Locked</span>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Staff Identity & Institutional Designation Row */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-xs font-semibold">Staff Badge / Employee ID No.</Label>
-                              <Input
-                                value={newUserEmployeeId}
-                                onChange={e => setNewUserEmployeeId(e.target.value)}
-                                placeholder="e.g. STAFF-2026-004"
-                                className="h-9 text-xs font-mono mt-1 uppercase"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs font-semibold">Designation / Department</Label>
-                              <Input
-                                value={newUserJobTitle}
-                                onChange={e => setNewUserJobTitle(e.target.value)}
-                                placeholder="e.g. Document Records Officer"
-                                className="h-9 text-xs mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Password & Security Credentials Container with 1-Click Generator */}
-                          <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-xs font-bold text-slate-800">Account Access Password <span className="text-red-500">*</span></Label>
-                              <button
-                                type="button"
-                                onClick={generateSecureStaffPassword}
-                                className="text-[11px] text-indigo-700 hover:text-indigo-900 font-bold flex items-center gap-1 bg-white hover:bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded shadow-xs cursor-pointer transition-all"
-                                title="Generate random secure password and copy to clipboard"
-                              >
-                                <Sparkles size={12} className="text-amber-500" />
-                                <span>Generate Secure Password</span>
-                              </button>
-                            </div>
-
-                            <div className="relative">
-                              <Input
-                                type={showNewUserPass ? "text" : "password"}
-                                value={newUserPassword}
-                                onChange={e => setNewUserPassword(e.target.value)}
-                                placeholder="Type or generate account password"
-                                autoComplete="new-password"
-                                required
-                                minLength={6}
-                                className="h-9 text-xs font-mono pr-16 bg-white"
-                              />
-                              <div className="absolute right-2 top-2 flex items-center gap-1.5">
-                                {newUserPassword && (
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      navigator.clipboard?.writeText(newUserPassword);
-                                      toast.success('Password copied to clipboard!');
-                                    }}
-                                    className="text-slate-400 hover:text-indigo-600 cursor-pointer"
-                                    title="Copy password"
+                                    onClick={() => setShowNewUserPass(!showNewUserPass)}
+                                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                    tabIndex={-1}
+                                    title={showNewUserPass ? "Hide password" : "Show password"}
                                   >
-                                    <Copy size={14} />
+                                    {showNewUserPass ? <EyeOff size={14} /> : <Eye size={14} />}
                                   </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => setShowNewUserPass(!showNewUserPass)}
-                                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
-                                  tabIndex={-1}
-                                  title={showNewUserPass ? "Hide password" : "Show password"}
-                                >
-                                  {showNewUserPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                                </button>
+                                </div>
+                              </div>
+
+                              <div>
+                                <Label className="text-xs font-bold text-slate-800">Confirm Password <span className="text-red-500">*</span></Label>
+                                <div className="relative mt-1">
+                                  <Input
+                                    type={showNewUserConfirmPass ? "text" : "password"}
+                                    value={newUserConfirmPassword}
+                                    onChange={e => setNewUserConfirmPassword(e.target.value)}
+                                    placeholder="Re-enter password"
+                                    autoComplete="new-password"
+                                    required
+                                    minLength={6}
+                                    className="h-9 text-xs font-mono pr-8 bg-white"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowNewUserConfirmPass(!showNewUserConfirmPass)}
+                                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                    tabIndex={-1}
+                                    title={showNewUserConfirmPass ? "Hide password" : "Show password"}
+                                  >
+                                    {showNewUserConfirmPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                                  </button>
+                                </div>
                               </div>
                             </div>
                             <p className="text-[10px] text-slate-500">
@@ -6390,6 +6640,29 @@ export default function AdminDashboard() {
                         </div>
                         <p className="text-[10px] text-slate-400 mt-0.5">8+ chars, uppercase, number &amp; special symbol required</p>
                       </div>
+                      {editUserPassword && (
+                        <div>
+                          <Label className="text-xs font-semibold text-slate-700">Confirm New Password <span className="text-red-500">*</span></Label>
+                          <div className="relative mt-1">
+                            <Input
+                              type={showEditUserConfirmPass ? "text" : "password"}
+                              value={editUserConfirmPassword}
+                              onChange={e => setEditUserConfirmPassword(e.target.value)}
+                              placeholder="Re-enter new password to confirm"
+                              className="h-9 text-xs font-mono pr-8 bg-white"
+                              required={!!editUserPassword}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowEditUserConfirmPass(!showEditUserConfirmPass)}
+                              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                              tabIndex={-1}
+                            >
+                              {showEditUserConfirmPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
                         <span className="text-[11px] text-slate-500">Need to override user password directly?</span>
                         <Button
@@ -6437,55 +6710,41 @@ export default function AdminDashboard() {
                   </DialogHeader>
                   <form onSubmit={handleExecuteResetPassword} className="space-y-3 py-2">
                     <div>
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold">New Temporary Password <span className="text-red-500">*</span></Label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const pwd = generateSecurePassword();
-                            setNewPassVal(pwd);
-                            navigator.clipboard.writeText(pwd).then(() => {
-                              toast.success('Generated secure password & copied to clipboard!');
-                            });
-                          }}
-                          className="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer inline-flex items-center gap-1"
-                        >
-                          <Sparkles size={11} />
-                          Generate Secure
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <Input
-                          type="text"
-                          value={newPassVal}
-                          onChange={e => setNewPassVal(e.target.value)}
-                          required
-                          placeholder="Enter or generate new password"
-                          className="h-9 text-xs font-mono"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (newPassVal) {
-                              navigator.clipboard.writeText(newPassVal).then(() => {
-                                toast.success('Password copied to clipboard!');
-                              });
-                            }
-                          }}
-                          className="h-9 px-2 text-slate-600 hover:text-slate-900 shrink-0 cursor-pointer"
-                          title="Copy to clipboard"
-                        >
-                          <Copy size={13} />
-                        </Button>
-                      </div>
+                      <Label className="text-xs font-semibold">New Password <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="password"
+                        value={newPassVal}
+                        onChange={e => setNewPassVal(e.target.value)}
+                        required
+                        placeholder="Enter new password"
+                        className="h-9 text-xs font-mono mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-semibold">Confirm New Password <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="password"
+                        value={newPassConfirmVal}
+                        onChange={e => setNewPassConfirmVal(e.target.value)}
+                        required
+                        placeholder="Re-enter new password"
+                        className="h-9 text-xs font-mono mt-1"
+                      />
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      Cryptographically secure temporary password. Copy and share securely with the user.
+                      Must meet complexity requirements: 6+ characters with uppercase, lowercase, number, and special character.
                     </p>
                     <DialogFooter className="pt-2">
-                      <Button type="button" variant="outline" onClick={() => setIsResetPassOpen(false)} className="text-xs">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setIsResetPassOpen(false);
+                          setNewPassVal('');
+                          setNewPassConfirmVal('');
+                        }}
+                        className="text-xs"
+                      >
                         Cancel
                       </Button>
                       <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white text-xs">
@@ -6537,9 +6796,28 @@ export default function AdminDashboard() {
                       size="sm"
                       onClick={() => {
                         setResAccBarangay(user?.barangay || 'Pianing');
-                        const securePass = generateSecurePassword();
-                        setResAccPassword(securePass);
-                        setResAccShowPassword(true);
+                        setResAccCensusMatch(null);
+                        setResAccLinkedCensusId(null);
+                        setResAccCensusSearch('');
+                        setResAccFirstName('');
+                        setResAccMiddleName('');
+                        setResAccLastName('');
+                        setResAccDOB('');
+                        setResAccGender('');
+                        setResAccCivilStatus('');
+                        setResAccEmployment('');
+                        setResAccResidencyYears('');
+                        setResAccPurok('');
+                        setResAccHouseholdNum('');
+                        setResAccIdType('');
+                        setResAccIdPhoto(null);
+                        setResAccIdFileName('');
+                        setResAccEmail('');
+                        setResAccPassword('');
+                        setResAccConfirmPassword('');
+                        setResAccShowPassword(false);
+                        setResAccShowConfirmPassword(false);
+                        setResAccPhone('');
                         setIsCreateResidentUserOpen(true);
                       }}
                       className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 font-semibold h-9 px-3 rounded-xl shadow-xs cursor-pointer"
@@ -6561,53 +6839,26 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* KPI Summary Metric Counters */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
                     <p className="text-[11px] text-slate-500 font-medium">Registered Residents</p>
                     <p className="text-2xl font-bold text-slate-900 mt-0.5">{barangayResidents.length}</p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                    <p className="text-[11px] text-emerald-700 font-medium">Verified Citizens</p>
+                    <p className="text-[11px] text-emerald-700 font-medium">Verified Residents</p>
                     <p className="text-2xl font-bold text-emerald-600 mt-0.5">{verifiedAccountsCount}</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                    <p className="text-[11px] text-indigo-700 font-medium">Census Population</p>
-                    <p className="text-2xl font-bold text-indigo-600 mt-0.5">{censusStats?.total_population ?? filteredResidents.length}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Action Bar: Verification Filter Tabs, Purok Select, Search */}
+              {/* Action Bar: Purok Select & Search only */}
               <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
-                <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl flex-wrap w-full lg:w-auto">
-                  <button
-                    onClick={() => setResidentStatusTab('all')}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                      residentStatusTab === 'all'
-                        ? 'bg-white text-blue-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Users size={14} />
-                    All Residents
-                    <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 font-mono font-bold">
-                      {barangayResidents.length}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setResidentStatusTab('verified')}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                      residentStatusTab === 'verified'
-                        ? 'bg-white text-emerald-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <CheckCircle2 size={14} />
-                    Verified Citizens
-                    <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono font-bold">
-                      {verifiedAccountsCount}
-                    </span>
-                  </button>
+                <div className="flex items-center gap-1.5">
+                  <Users size={15} className="text-blue-600 shrink-0" />
+                  <span className="text-sm font-bold text-slate-800">All Residents</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 font-mono font-bold text-slate-600">
+                    {barangayResidents.length}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
@@ -6617,8 +6868,8 @@ export default function AdminDashboard() {
                     onChange={e => setResidentPurokFilter(e.target.value)}
                     className="h-8.5 text-xs px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:bg-white cursor-pointer"
                   >
-                    <option value="all">All Puroks (1 to 7)</option>
-                    {[1, 2, 3, 4, 5, 6, 7].map(p => (
+                    <option value="all">All Puroks (1 to 6)</option>
+                    {[1, 2, 3, 4, 5, 6].map(p => (
                       <option key={p} value={`Purok ${p}`}>Purok {p}</option>
                     ))}
                   </select>
@@ -6670,10 +6921,13 @@ export default function AdminDashboard() {
                             if (residentStatusTab === 'verified' && !isVer) return false;
                             if (residentStatusTab === 'unverified' && isVer) return false;
 
-                            // 2. Purok filter
+                            // 2. Purok filter — normalize: "Purok 3" → "3", match against r.purok or r.address
                             if (residentPurokFilter !== 'all') {
-                              const pStr = (r.purok || r.address || '').toLowerCase();
-                              if (!pStr.includes(residentPurokFilter.toLowerCase())) return false;
+                              const filterDigit = residentPurokFilter.replace(/purok\s*/i, '').trim();
+                              const resPurok = (r.purok || '').toLowerCase().replace(/purok\s*/i, '').trim();
+                              const addrPurokMatch = (r.address || '').match(/purok\s*([0-9]+)/i);
+                              const addrPurok = addrPurokMatch ? addrPurokMatch[1] : '';
+                              if (resPurok !== filterDigit && addrPurok !== filterDigit && !resPurok.startsWith(filterDigit)) return false;
                             }
 
                             // 3. Search filter
@@ -6720,8 +6974,8 @@ export default function AdminDashboard() {
                             return (
                               <TableRow key={res.id} className="text-xs hover:bg-slate-50/70 transition-colors">
                                 <TableCell className="font-mono text-slate-500 font-bold">#{res.id}</TableCell>
-                                <TableCell>
-                                  <div className="font-bold text-slate-900">{fullName}</div>
+                                <TableCell className="cursor-pointer" onClick={() => openResidentProfile(res.id)}>
+                                  <div className="font-bold text-slate-900 hover:text-indigo-600 hover:underline transition-colors">{fullName}</div>
                                   <div className="text-[11px] text-slate-400">{res.email || 'No email registered'}</div>
                                 </TableCell>
                                 <TableCell className="font-mono text-slate-600">
@@ -6869,6 +7123,7 @@ export default function AdminDashboard() {
                         tables: [{
                           title: 'Resident Demographics',
                           headers: ['ID', 'First Name', 'Last Name', 'Gender', 'Address', 'Phone', 'Email'],
+                          colWidths: [5, 12, 15, 8, 25, 15, 20],
                           rows: targetResidents.map(r => [r.id, r.first_name, r.last_name, r.gender, r.address, r.phone || 'N/A', r.email || 'N/A'])
                         }]
                       });
@@ -7246,76 +7501,7 @@ export default function AdminDashboard() {
                             </div>
 
                             {/* Right: Role-Specific Distribution — Standard Bar Chart */}
-                            {isSuperAdmin ? (
-                              /* Super Admin Cross-Barangay Distribution */
-                              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-                                <div>
-                                  <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
-                                    <span className="flex items-center gap-2">
-                                      <Building2 size={16} className="text-purple-600" />
-                                      Municipal Population Distribution (City of Butuan)
-                                    </span>
-                                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
-                                      86 Barangays
-                                    </span>
-                                  </h4>
-
-                                  <div style={{ width: '100%', height: 180 }} className="my-2">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                      <RechartsBarChart
-                                        data={municipalChartData}
-                                        margin={{ top: 12, right: 10, left: -20, bottom: 0 }}
-                                      >
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                                        <XAxis
-                                          dataKey="name"
-                                          stroke="#94A3B8"
-                                          fontSize={10}
-                                          tickLine={false}
-                                          axisLine={{ stroke: '#E2E8F0' }}
-                                        />
-                                        <YAxis
-                                          stroke="#94A3B8"
-                                          fontSize={11}
-                                          tickLine={false}
-                                          axisLine={{ stroke: '#E2E8F0' }}
-                                          allowDecimals={false}
-                                        />
-                                        <RechartsTooltip
-                                          cursor={{ fill: 'rgba(99, 102, 241, 0.05)' }}
-                                          content={({ active, payload }) => {
-                                            if (active && payload && payload.length) {
-                                              const data = payload[0].payload;
-                                              return (
-                                                <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-lg text-xs">
-                                                  <p className="font-bold text-slate-900">Barangay {data.name}</p>
-                                                  <p className="text-slate-500 mt-0.5">
-                                                    <span className="font-extrabold text-indigo-600">{data.count}</span> residents ({data.pct}%)
-                                                  </p>
-                                                </div>
-                                              );
-                                            }
-                                            return null;
-                                          }}
-                                        />
-                                        <RechartsBar dataKey="count" radius={[5, 5, 0, 0]} barSize={24}>
-                                          {municipalChartData.map((entry, idx) => (
-                                            <Cell key={`muni-bar-${idx}`} fill={entry.count > 0 ? entry.color : '#E2E8F0'} />
-                                          ))}
-                                        </RechartsBar>
-                                      </RechartsBarChart>
-                                    </ResponsiveContainer>
-                                  </div>
-                                </div>
-
-                                <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 mt-3 text-xs text-purple-900 flex items-center justify-between">
-                                  <span><strong>Super Administrator Privilege:</strong> Full cross-barangay census oversight.</span>
-                                  <span className="font-bold text-purple-800 font-mono text-[11px]">{BUTUAN_BARANGAYS.length} Barangays Registered</span>
-                                </div>
-                              </div>
-                            ) : (
-                              /* Barangay Admin Purok Population Density — Standard Bar Chart */
-                              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                                 <div>
                                   <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
                                     <span className="flex items-center gap-2">
@@ -7327,11 +7513,11 @@ export default function AdminDashboard() {
                                     </span>
                                   </h4>
 
-                                  <div style={{ width: '100%', height: 180 }} className="my-2">
+                                  <div style={{ width: '100%', height: 180 }} className="my-2 overflow-hidden">
                                     <ResponsiveContainer width="100%" height="100%">
                                       <RechartsBarChart
                                         data={purokChartData}
-                                        margin={{ top: 12, right: 10, left: -20, bottom: 0 }}
+                                        margin={{ top: 12, right: 15, left: 10, bottom: 0 }}
                                       >
                                         <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
                                         <XAxis
@@ -7347,6 +7533,7 @@ export default function AdminDashboard() {
                                           tickLine={false}
                                           axisLine={{ stroke: '#E2E8F0' }}
                                           allowDecimals={false}
+                                          width={34}
                                         />
                                         <RechartsTooltip
                                           cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
@@ -7386,7 +7573,6 @@ export default function AdminDashboard() {
                                   </div>
                                 </div>
                               </div>
-                            )}
                           </div>
                         );
                       })()}
@@ -8172,15 +8358,22 @@ export default function AdminDashboard() {
                   </Badge>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <Table>
+                     <div className="overflow-x-auto">
+                    <Table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
+                      <colgroup>
+                        <col style={{ width: '190px' }} />
+                        <col />
+                        <col style={{ width: '115px' }} />
+                        <col style={{ width: '125px' }} />
+                        <col style={{ width: '155px' }} />
+                      </colgroup>
                       <TableHeader>
-                        <TableRow className="bg-slate-50 text-xs">
-                          <TableHead className="font-bold w-[200px] shrink-0">Actor / User</TableHead>
-                          <TableHead className="font-bold min-w-[260px]">Event &amp; Action</TableHead>
-                          <TableHead className="font-bold text-center w-[110px] shrink-0">Category</TableHead>
-                          <TableHead className="font-bold text-center w-[120px] shrink-0">Barangay Scope</TableHead>
-                          <TableHead className="font-bold text-right w-[150px] shrink-0">Timestamp</TableHead>
+                        <TableRow className="bg-slate-50 text-xs border-b border-slate-200">
+                          <TableHead className="font-bold text-slate-700 text-left px-3 py-3 w-[190px]">Actor / User</TableHead>
+                          <TableHead className="font-bold text-slate-700 text-left px-3 py-3">Event &amp; Action</TableHead>
+                          <TableHead className="font-bold text-slate-700 text-center px-2 py-3 w-[115px]">Category</TableHead>
+                          <TableHead className="font-bold text-slate-700 text-center px-2 py-3 w-[125px]">Barangay Scope</TableHead>
+                          <TableHead className="font-bold text-slate-700 text-right px-3 py-3 w-[155px]">Timestamp</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -8797,7 +8990,15 @@ export default function AdminDashboard() {
       />
 
       {/* Register Resident / Add Resident Modal */}
-      <Dialog open={isAddResidentOpen} onOpenChange={setIsAddResidentOpen}>
+      <Dialog
+        open={isAddResidentOpen}
+        onOpenChange={(open) => {
+          setIsAddResidentOpen(open);
+          if (!open) {
+            resetAddResidentForm();
+          }
+        }}
+      >
         <DialogContent className="bg-white max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-5 rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-slate-900">Register Resident / Household</DialogTitle>
@@ -8806,33 +9007,6 @@ export default function AdminDashboard() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateResident} className="space-y-4 py-2">
-            {/* Dynamic Barangay Jurisdiction */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl">
-              <div className="flex items-center gap-2">
-                <Building2 size={16} className="text-blue-600 shrink-0" />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Barangay Jurisdiction:</span>
-                {isSuperAdmin ? (
-                  <Select value={newResBarangay || user?.barangay || 'Pianing'} onValueChange={setNewResBarangay}>
-                    <SelectTrigger className="text-xs bg-white dark:bg-slate-900 h-8 w-48 font-semibold text-slate-900 dark:text-white border-slate-300 dark:border-slate-700">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {availableBarangays.map(b => (
-                        <SelectItem key={b} value={b}>Barangay {b}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800 font-bold px-2.5 py-0.5">
-                    Barangay {user?.barangay || 'Pianing'}
-                  </Badge>
-                )}
-              </div>
-              <span className="text-[11px] text-slate-500 font-medium">
-                City of Butuan • Population Registry
-              </span>
-            </div>
-
             {/* Step 1: Purok & Household Assignment */}
             <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-3">
               <div className="flex items-center justify-between">
@@ -8843,8 +9017,14 @@ export default function AdminDashboard() {
                     onClick={() => {
                       setAddResidentMode('new_household');
                       const cleanP = (newResPurok || '1').replace(/purok\s*/i, '').trim();
-                      const existingInP = censusHouseholds.filter(h => h.purok.includes(cleanP) || h.household_number.includes(`HH-P${cleanP}`));
+                      const existingInP = censusHouseholds.filter(h => 
+                        (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP || 
+                        (h.household_number || '').includes(`HH-P${cleanP}`)
+                      );
                       setNewResHouseholdNum(`HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`);
+                      setNewResFamilyName('');
+                      setHouseholdSearchQuery('');
+                      setIsHouseholdDropdownOpen(false);
                       setNewResIsHead(true);
                       setNewResRelationship('Head');
                     }}
@@ -8859,11 +9039,20 @@ export default function AdminDashboard() {
                       setNewResIsHead(false);
                       setNewResRelationship('Spouse');
                       const p = (newResPurok || '1').replace(/purok\s*/i, '').trim();
-                      const hhInP = censusHouseholds.filter(h => h.purok.includes(p) || h.household_number.includes(`HH-P${p}`));
+                      const hhInP = censusHouseholds.filter(h => 
+                        (h.purok || '').replace(/purok\s*/i, '').trim() === p || 
+                        (h.household_number || '').includes(`HH-P${p}`)
+                      );
                       if (hhInP.length > 0) {
                         setNewResHouseholdNum(hhInP[0].household_number);
                         setNewResFamilyName(hhInP[0].family_name);
+                        setHouseholdSearchQuery(`${hhInP[0].household_number} - ${hhInP[0].family_name} Family`);
+                      } else {
+                        setNewResHouseholdNum('');
+                        setNewResFamilyName('');
+                        setHouseholdSearchQuery('');
                       }
+                      setIsHouseholdDropdownOpen(false);
                     }}
                     className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${addResidentMode === 'existing_household' ? 'bg-blue-600 text-white font-semibold' : 'bg-slate-200 text-slate-700'}`}
                   >
@@ -8876,24 +9065,36 @@ export default function AdminDashboard() {
                 <div>
                   <Label className="text-xs font-semibold">Purok *</Label>
                   <Select
-                    value={newResPurok || '1'}
+                    value={newResPurok}
                     onValueChange={(val) => {
                       setNewResPurok(val);
+                      const cleanP = val.replace(/purok\s*/i, '').trim();
                       if (addResidentMode === 'new_household') {
-                        const existingInP = censusHouseholds.filter(h => h.purok.includes(val) || h.household_number.includes(`HH-P${val}`));
-                        setNewResHouseholdNum(`HH-P${val}-${String(existingInP.length + 1).padStart(3, '0')}`);
+                        const existingInP = censusHouseholds.filter(h => 
+                          (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP || 
+                          (h.household_number || '').includes(`HH-P${cleanP}`)
+                        );
+                        setNewResHouseholdNum(`HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`);
                       } else {
-                        const hhInP = censusHouseholds.filter(h => h.purok.includes(val) || h.household_number.includes(`HH-P${val}`));
+                        const hhInP = censusHouseholds.filter(h => 
+                          (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP || 
+                          (h.household_number || '').includes(`HH-P${cleanP}`)
+                        );
                         if (hhInP.length > 0) {
                           setNewResHouseholdNum(hhInP[0].household_number);
                           setNewResFamilyName(hhInP[0].family_name);
+                          setHouseholdSearchQuery(`${hhInP[0].household_number} - ${hhInP[0].family_name} Family`);
+                        } else {
+                          setNewResHouseholdNum('');
+                          setNewResFamilyName('');
+                          setHouseholdSearchQuery('');
                         }
                       }
                     }}
                   >
-                    <SelectTrigger className="text-xs bg-white"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="text-xs bg-white"><SelectValue placeholder="Select Purok" /></SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7].map(p => (
+                      {[1, 2, 3, 4, 5, 6].map(p => (
                         <SelectItem key={`p-sel-${p}`} value={String(p)}>Purok {p}</SelectItem>
                       ))}
                     </SelectContent>
@@ -9026,7 +9227,19 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                 <div>
                   <Label className="text-xs font-semibold">Relationship to Household Head</Label>
-                  <Select value={newResRelationship} onValueChange={setNewResRelationship}>
+                  <Select
+                    value={newResRelationship}
+                    onValueChange={(val) => {
+                      setNewResRelationship(val);
+                      // Auto-uncheck & disable head checkbox for dependent relations
+                      const dependentRelations = ['Spouse', 'Son', 'Daughter', 'Parent', 'Grandparent', 'Grandson', 'Granddaughter', 'Relative', 'Other'];
+                      if (dependentRelations.includes(val)) {
+                        setNewResIsHead(false);
+                      } else if (val === 'Head') {
+                        setNewResIsHead(true);
+                      }
+                    }}
+                  >
                     <SelectTrigger className="text-xs bg-white"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Head">Head of Family</SelectItem>
@@ -9047,13 +9260,14 @@ export default function AdminDashboard() {
                     type="checkbox"
                     id="is_head_checkbox"
                     checked={newResIsHead}
+                    disabled={['Spouse', 'Son', 'Daughter', 'Parent', 'Grandparent', 'Grandson', 'Granddaughter', 'Relative', 'Other'].includes(newResRelationship)}
                     onChange={e => {
                       setNewResIsHead(e.target.checked);
                       if (e.target.checked) setNewResRelationship('Head');
                     }}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   />
-                  <label htmlFor="is_head_checkbox" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                  <label htmlFor="is_head_checkbox" className={`text-xs font-semibold cursor-pointer ${['Spouse', 'Son', 'Daughter', 'Parent', 'Grandparent', 'Grandson', 'Granddaughter', 'Relative', 'Other'].includes(newResRelationship) ? 'text-slate-400' : 'text-slate-700'}`}>
                     Set as Primary Head of Household
                   </label>
                 </div>
@@ -9096,7 +9310,7 @@ export default function AdminDashboard() {
               <div>
                 <Label className="text-xs font-semibold">Gender *</Label>
                 <Select value={newResGender} onValueChange={(val: any) => setNewResGender(val)}>
-                  <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="text-xs"><SelectValue placeholder="Select Gender" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Male">Male</SelectItem>
                     <SelectItem value="Female">Female</SelectItem>
@@ -9107,7 +9321,7 @@ export default function AdminDashboard() {
               <div>
                 <Label className="text-xs font-semibold">Civil Status</Label>
                 <Select value={newResCivilStatus} onValueChange={setNewResCivilStatus}>
-                  <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="text-xs"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Single">Single</SelectItem>
                     <SelectItem value="Married">Married</SelectItem>
@@ -9150,7 +9364,7 @@ export default function AdminDashboard() {
               <div>
                 <Label className="text-xs font-semibold">Employment Status *</Label>
                 <Select value={newResEmployment} onValueChange={setNewResEmployment}>
-                  <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="text-xs"><SelectValue placeholder="Select Employment Status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Employed">Employed (Have Work)</SelectItem>
                     <SelectItem value="Self-Employed">Self-Employed / Business</SelectItem>
@@ -9231,8 +9445,26 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => {
+                    // Full reset of all census-autofilled fields
                     setResAccCensusMatch(null);
                     setResAccLinkedCensusId(null);
+                    setResAccCensusSearch('');
+                    setResAccFirstName('');
+                    setResAccMiddleName('');
+                    setResAccLastName('');
+                    setResAccDOB('');
+                    setResAccGender('');
+                    setResAccCivilStatus('');
+                    setResAccPhone('');
+                    setResAccEmail('');
+                    setResAccPurok('');
+                    setResAccHouseholdNum('');
+                    setResAccEmployment('');
+                    setResAccResidencyYears('');
+                    setResAccIdType('');
+                    setResAccIdPhoto(null);
+                    setResAccIdFileName('');
+                    if (resAccFileInputRef.current) resAccFileInputRef.current.value = '';
                   }}
                   className="text-[11px] text-red-600 hover:text-red-700 font-semibold cursor-pointer"
                 >
@@ -9316,7 +9548,7 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <form onSubmit={handleCreateResidentUser} className="space-y-4 pt-1">
+          <form onSubmit={handleCreateResidentUser} autoComplete="off" className="space-y-4 pt-1">
             {/* Step 1: Login Credentials */}
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
               <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -9331,6 +9563,8 @@ export default function AdminDashboard() {
                     <Mail size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
                     <Input
                       type="email"
+                      name="res_reg_portal_login_email"
+                      autoComplete="new-off"
                       value={resAccEmail}
                       onChange={e => setResAccEmail(e.target.value)}
                       placeholder="citizen@resident.barangay.ph"
@@ -9344,60 +9578,52 @@ export default function AdminDashboard() {
                 <div>
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-semibold text-slate-700">Initial Password *</Label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const pwd = generateSecurePassword();
-                          setResAccPassword(pwd);
-                          setResAccShowPassword(true);
-                          navigator.clipboard.writeText(pwd).then(() => {
-                            toast.success('Generated secure password & copied to clipboard!');
-                          }).catch(() => {
-                            toast.success('Generated secure password: ' + pwd);
-                          });
-                        }}
-                        className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <Sparkles size={11} />
-                        Generate
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setResAccShowPassword(prev => !prev)}
-                        className="text-[11px] text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
-                      >
-                        {resAccShowPassword ? 'Hide' : 'Show'}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setResAccShowPassword(prev => !prev)}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
+                    >
+                      {resAccShowPassword ? 'Hide' : 'Show'}
+                    </button>
                   </div>
-                  <div className="relative mt-1 flex items-center gap-1">
+                  <div className="relative mt-1">
                     <Input
                       type={resAccShowPassword ? 'text' : 'password'}
+                      name="res_reg_portal_login_pass"
+                      autoComplete="new-password"
                       value={resAccPassword}
                       onChange={e => setResAccPassword(e.target.value)}
-                      placeholder="Click Generate or enter password"
+                      placeholder="Enter resident password"
                       className="text-xs font-mono bg-white border-slate-300"
                       required
                     />
-                    {resAccPassword && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(resAccPassword).then(() => {
-                            toast.success('Password copied to clipboard!');
-                          });
-                        }}
-                        className="h-9 px-2 text-slate-600 hover:text-slate-900 shrink-0 cursor-pointer"
-                        title="Copy password to clipboard"
-                      >
-                        <Copy size={13} />
-                      </Button>
-                    )}
                   </div>
                   <p className="text-[10px] text-slate-500 mt-0.5">Min. 8 chars with uppercase, lowercase, digit &amp; symbol.</p>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-slate-700">Confirm Password *</Label>
+                    <button
+                      type="button"
+                      onClick={() => setResAccShowConfirmPassword(prev => !prev)}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
+                    >
+                      {resAccShowConfirmPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <div className="relative mt-1">
+                    <Input
+                      type={resAccShowConfirmPassword ? 'text' : 'password'}
+                      name="res_reg_portal_confirm_pass"
+                      autoComplete="new-password"
+                      value={resAccConfirmPassword}
+                      onChange={e => setResAccConfirmPassword(e.target.value)}
+                      placeholder="Re-enter password to confirm"
+                      className="text-xs font-mono bg-white border-slate-300"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div className="sm:col-span-2">
@@ -9488,7 +9714,7 @@ export default function AdminDashboard() {
                 <div>
                   <Label className="text-xs font-semibold text-slate-700">Gender</Label>
                   <Select value={resAccGender} onValueChange={(val: any) => setResAccGender(val)}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Gender" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Male">Male</SelectItem>
                       <SelectItem value="Female">Female</SelectItem>
@@ -9498,7 +9724,7 @@ export default function AdminDashboard() {
                 <div>
                   <Label className="text-xs font-semibold text-slate-700">Civil Status</Label>
                   <Select value={resAccCivilStatus} onValueChange={setResAccCivilStatus}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Single">Single</SelectItem>
                       <SelectItem value="Married">Married</SelectItem>
@@ -9514,7 +9740,7 @@ export default function AdminDashboard() {
                 <div>
                   <Label className="text-xs font-semibold text-slate-700">Employment Status</Label>
                   <Select value={resAccEmployment} onValueChange={setResAccEmployment}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Employment Status" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Employed">Employed</SelectItem>
                       <SelectItem value="Self-Employed">Self-Employed / Business</SelectItem>
@@ -9540,79 +9766,25 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Step 3: Location & Household Assignment */}
+            {/* Step 3: Location Assignment */}
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
               <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <Building2 size={14} className="text-blue-600" />
-                Step 3: Barangay, Purok &amp; City
+                Step 3: Location Details
               </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Barangay *</Label>
-                  {isSuperAdmin ? (
-                    <Select value={resAccBarangay || 'Pianing'} onValueChange={setResAccBarangay}>
-                      <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue /></SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {availableBarangays.map(b => (
-                          <SelectItem key={b} value={b}>Barangay {b}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      value={`Barangay ${user?.barangay || 'Pianing'}`}
-                      disabled
-                      className="text-xs mt-1 bg-slate-100 text-slate-700 border-slate-200 font-medium"
-                    />
-                  )}
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Purok *</Label>
-                  <Select value={resAccPurok} onValueChange={setResAccPurok}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7].map(p => (
-                        <SelectItem key={`p-${p}`} value={String(p)}>Purok {p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold text-slate-700">City / Municipality</Label>
-                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
-                      Static Jurisdiction
-                    </span>
-                  </div>
-                  <Input
-                    value="Butuan City"
-                    readOnly
-                    disabled
-                    className="text-xs mt-1 bg-slate-100/90 border-slate-200 font-bold text-slate-700 cursor-not-allowed select-none"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-0.5">Fixed to local municipal jurisdiction (Butuan City)</p>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold text-slate-700">Census Household #</Label>
-                    <span className="text-[10px] text-slate-400 font-normal">From Census Only</span>
-                  </div>
-                  {resAccHouseholdNum ? (
-                    <div className="mt-1 flex items-center justify-between px-3 py-2 bg-emerald-50/80 border border-emerald-200 rounded-lg text-xs">
-                      <span className="font-mono font-bold text-emerald-800">{resAccHouseholdNum}</span>
-                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                        Auto-linked from Census
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="mt-1 flex items-center justify-between px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500">
-                      <span className="font-mono text-[11px] text-slate-400">Unassigned (Optional)</span>
-                      <span className="text-[10px] text-slate-400">Census Managed Only</span>
-                    </div>
-                  )}
-                  <p className="text-[10px] text-slate-400 mt-0.5">Household numbers originate exclusively from the Census Registry</p>
-                </div>
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Purok *</Label>
+                <Select value={resAccPurok} onValueChange={setResAccPurok}>
+                  <SelectTrigger className="text-xs mt-1 bg-white border-slate-300">
+                    <SelectValue placeholder="Select Purok" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6].map(p => (
+                      <SelectItem key={`p-${p}`} value={String(p)}>Purok {p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -9728,6 +9900,7 @@ export default function AdminDashboard() {
         isOpen={printModalOpen}
         onClose={() => setPrintModalOpen(false)}
         document={selectedPrintDoc}
+        onStatusUpdated={() => loadData(false)}
       />
 
       {/* Document Info / Specifics Viewer Modal */}

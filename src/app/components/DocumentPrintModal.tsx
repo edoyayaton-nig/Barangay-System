@@ -10,6 +10,7 @@ interface DocumentPrintModalProps {
   isOpen: boolean;
   onClose: () => void;
   document: DocumentRequest | null;
+  onStatusUpdated?: () => void;
 }
 
 function parseFields(doc: DocumentRequest): Record<string, string> {
@@ -792,7 +793,7 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
 }
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
-export default function DocumentPrintModal({ isOpen, onClose, document: docItem }: DocumentPrintModalProps) {
+export default function DocumentPrintModal({ isOpen, onClose, document: docItem, onStatusUpdated }: DocumentPrintModalProps) {
   const printFrameRef = useRef<HTMLIFrameElement | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [downloading, setDownloading] = useState(false);
@@ -804,6 +805,7 @@ export default function DocumentPrintModal({ isOpen, onClose, document: docItem 
       const fileName = `${(docItem.document_type || 'document').replace(/\s+/g, '_')}_${docItem.request_code || docItem.id}.pdf`;
       await apiService.downloadDocumentPdf(docItem.id, fileName);
       toast.success('Official PDF downloaded successfully');
+      if (onStatusUpdated) onStatusUpdated();
     } catch (err) {
       console.error('PDF download error:', err);
       toast.error('Failed to download PDF');
@@ -819,6 +821,7 @@ export default function DocumentPrintModal({ isOpen, onClose, document: docItem 
       document.body.style.pointerEvents = 'auto';
       window.focus();
     } catch {}
+    if (onStatusUpdated) onStatusUpdated();
     onClose();
   };
 
@@ -880,6 +883,7 @@ export default function DocumentPrintModal({ isOpen, onClose, document: docItem 
         if (f) f.remove();
         window.focus();
       } catch {}
+      if (onStatusUpdated) onStatusUpdated();
     };
 
     setTimeout(() => {
