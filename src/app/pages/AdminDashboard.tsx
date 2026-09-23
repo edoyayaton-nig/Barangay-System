@@ -1195,36 +1195,30 @@ export default function AdminDashboard() {
     if (type === 'Certificate of Land Occupancy' || type === 'Land Occupancy' || type === 'Actual Occupancy') {
       setNewDocExtraFields(prev => ({
         ...prev,
-        'Land Area': prev['Land Area'] || 'Nine Hundred Thirty-One (931)',
-        'Lot Number': prev['Lot Number'] || '1005',
-        'Survey Info': prev['Survey Info'] || 'PLS-74',
-        'Occupancy Since': prev['Occupancy Since'] || "1970's"
+        'Land Area': prev['Land Area'] || '',
+        'Lot Number': prev['Lot Number'] || '',
+        'Survey Info': prev['Survey Info'] || '',
+        'Occupancy Since': prev['Occupancy Since'] || ''
       }));
-      setNewDocPurpose('whatever legal purposes it may serve best');
     } else if (type === 'Certificate of Employment') {
       setNewDocExtraFields(prev => ({
         ...prev,
-        'Job Position': prev['Job Position'] || 'Barangay Worker',
-        'Employer': prev['Employer'] || 'Barangay Pianing',
-        'Start Date': prev['Start Date'] || 'January 2024',
-        'End Date': prev['End Date'] || 'Present'
+        'Job Position': prev['Job Position'] || '',
+        'Employer': prev['Employer'] || '',
+        'Start Date': prev['Start Date'] || '',
+        'End Date': prev['End Date'] || ''
       }));
-      setNewDocPurpose('statutory and official verification requirements');
     } else if (type === 'Business Clearance' || type === 'Business Permit') {
       setNewDocExtraFields(prev => ({
         ...prev,
         'Business Name': prev['Business Name'] || '',
-        'Nature of Business': prev['Nature of Business'] || 'General Merchandise / Retail'
+        'Nature of Business': prev['Nature of Business'] || ''
       }));
-      setNewDocPurpose('Business Permit application');
     } else if (type === 'Certificate of Residency') {
       setNewDocExtraFields(prev => ({
         ...prev,
-        'Duration of Residence': prev['Duration of Residence'] || '5 years'
+        'Duration of Residence': prev['Duration of Residence'] || ''
       }));
-      setNewDocPurpose('whatever legal purpose it may serve best');
-    } else if (type === 'Good Moral Clearance') {
-      setNewDocPurpose('employment application');
     }
   };
 
@@ -1238,12 +1232,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    let finalPurpose = newDocPurpose;
-    if (newDocType === 'Certificate of Land Occupancy' || newDocType === 'Actual Occupancy') {
-      finalPurpose = 'whatever legal purposes it may serve best';
-    } else if (newDocType === 'Certificate of Employment') {
-      finalPurpose = 'statutory and official verification requirements';
-    }
+    const finalPurpose = newDocPurpose.trim() || 'General / Official Verification';
 
     const payloadExtra: Record<string, string> = {
       ...newDocExtraFields,
@@ -3230,63 +3219,27 @@ export default function AdminDashboard() {
                   </Button>
 
                   {(isSuperAdmin || hasUserPermission(user, 'can_create_document')) && (
-                    <Dialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          onClick={() => {
-                            setSelectedResidentForDoc('');
-                            setNewDocResidentId(null);
-                            setNewDocName('');
-                            setNewDocType('');
-                            setNewDocGender('');
-                            setNewDocCivilStatus('');
-                            setNewDocPurok('');
-                            setNewDocAge('');
-                            setNewDocAddress('');
-                            setNewDocPurpose('');
-                            setNewDocDuration('');
-                            setNewDocExtraFields({});
-                            setIsAddDocOpen(true);
-                          }}
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 shadow-xs cursor-pointer"
-                        >
-                          <PlusCircle size={15} />
-                          New Document Request
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="bg-white">
-                        <DialogHeader>
-                          <DialogTitle>Issue New Clearance / Certificate</DialogTitle>
-                          <DialogDescription className="text-xs">Create a new document request in the database.</DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleCreateDocument} className="space-y-4 py-2">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Resident Name</Label>
-                            <Input value={newDocName} onChange={e => setNewDocName(e.target.value)} placeholder="e.g. Juan Dela Cruz" required />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Document Type</Label>
-                            <Select value={newDocType} onValueChange={setNewDocType}>
-                              <SelectTrigger className="w-full"><SelectValue placeholder="Select Document Type" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Barangay Clearance">Barangay Clearance</SelectItem>
-                                <SelectItem value="Certificate of Residency">Certificate of Residency</SelectItem>
-                                <SelectItem value="Business Permit">Business Permit</SelectItem>
-                                <SelectItem value="Certificate of Indigency">Certificate of Indigency</SelectItem>
-                                <SelectItem value="Barangay ID">Barangay ID</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Purpose</Label>
-                            <Input value={newDocPurpose} onChange={e => setNewDocPurpose(e.target.value)} placeholder="e.g. Employment / Local Permit" />
-                          </div>
-                          <DialogFooter>
-                            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Save Request</Button>
-                          </DialogFooter>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
+                    <Button
+                      onClick={() => {
+                        setSelectedResidentForDoc('');
+                        setNewDocResidentId(null);
+                        setNewDocName('');
+                        setNewDocType('');
+                        setNewDocGender('');
+                        setNewDocCivilStatus('');
+                        setNewDocPurok('');
+                        setNewDocAge('');
+                        setNewDocAddress('');
+                        setNewDocPurpose('');
+                        setNewDocDuration('');
+                        setNewDocExtraFields({});
+                        setIsAddDocOpen(true);
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <PlusCircle size={15} />
+                      New Document Request
+                    </Button>
                   )}
                 </div>
               </div>
@@ -4035,353 +3988,81 @@ export default function AdminDashboard() {
                 </div>
 
                 {(isSuperAdmin || hasUserPermission(user, 'can_create_document')) && (
-                  <Dialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        onClick={() => {
-                          setSelectedResidentForDoc('');
-                          setNewDocResidentId(null);
-                          setNewDocName('');
-                          setNewDocType('');
-                          setNewDocGender('');
-                          setNewDocCivilStatus('');
-                          setNewDocPurok('');
-                          setNewDocAge('');
-                          setNewDocAddress('');
-                          setNewDocPurpose('');
-                          setNewDocDuration('');
-                          setNewDocExtraFields({});
-                          setIsAddDocOpen(true);
-                        }}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 shadow-sm cursor-pointer"
-                      >
-                      <PlusCircle size={15} />
-                      Issue Document Request
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="text-base font-bold text-slate-900">Issue &amp; Process Barangay Document</DialogTitle>
-                      <DialogDescription className="text-xs text-slate-500">
-                        Fill in document parameters, auto-fill resident profile, and print or archive directly into completed records.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleCreateDocument} className="space-y-4 py-2 text-xs">
-                      {/* 1. Select Resident or Manual Walk-in */}
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold text-slate-700">Select Resident (Auto-fills Demographics)</Label>
-                        <Select value={selectedResidentForDoc} onValueChange={handleSelectResidentForDoc}>
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="Select Resident / Walk-in Constituent..." />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-56">
-                            <SelectItem value="manual">✍️ Manual / Walk-in Constituent</SelectItem>
-                            {residents.map(r => (
-                              <SelectItem key={`res-opt-${r.id}`} value={String(r.id)}>
-                                {r.first_name} {r.last_name} ({r.purok ? (r.purok.startsWith('Purok') ? r.purok : `Purok ${r.purok}`) : 'Pianing'} • {r.gender})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* 2. Resident Profile Card */}
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">Resident Information</span>
-                          <span className="text-[10px] text-slate-400">Used for certificate variables</span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-[11px] text-slate-600">Full Name <span className="text-red-500">*</span></Label>
-                            <Input
-                              value={newDocName}
-                              onChange={e => setNewDocName(e.target.value)}
-                              placeholder="e.g. Juan Dela Cruz"
-                              required
-                              className="h-8 text-xs bg-white"
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <div className="space-y-1">
-                              <Label className="text-[11px] text-slate-600">Gender</Label>
-                              <Select value={newDocGender} onValueChange={(v: any) => setNewDocGender(v)}>
-                                <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Gender" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Male">Male</SelectItem>
-                                  <SelectItem value="Female">Female</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-[11px] text-slate-600">Civil Status</Label>
-                              <Select value={newDocCivilStatus} onValueChange={setNewDocCivilStatus}>
-                                <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Single">Single</SelectItem>
-                                  <SelectItem value="Married">Married</SelectItem>
-                                  <SelectItem value="Widowed">Widowed</SelectItem>
-                                  <SelectItem value="Separated">Separated</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-[11px] text-slate-600">Purok / Zone</Label>
-                            <Select value={newDocPurok} onValueChange={setNewDocPurok}>
-                              <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Purok" /></SelectTrigger>
-                              <SelectContent>
-                                {[1, 2, 3, 4, 5, 6].map(p => (
-                                  <SelectItem key={`purok-doc-${p}`} value={`Purok ${p}`}>Purok {p}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-[11px] text-slate-600">Age / Date of Birth</Label>
-                            <Input
-                              value={newDocAge}
-                              onChange={e => setNewDocAge(e.target.value)}
-                              placeholder="e.g. 28 yrs old"
-                              className="h-8 text-xs bg-white"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 3. Document Type Selection */}
-                      <div className="space-y-1">
-                        <Label className="text-xs font-semibold text-slate-700">Document Type <span className="text-red-500">*</span></Label>
-                        <Select value={newDocType} onValueChange={handleNewDocTypeChange}>
-                          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Document Type" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Barangay Clearance">Barangay Clearance</SelectItem>
-                            <SelectItem value="Certificate of Residency">Certificate of Residency</SelectItem>
-                            <SelectItem value="Certificate of Indigency">Certificate of Indigency</SelectItem>
-                            <SelectItem value="Good Moral Clearance">Good Moral Clearance</SelectItem>
-                            <SelectItem value="Business Clearance">Business Clearance</SelectItem>
-                            <SelectItem value="Business Permit">Business Permit</SelectItem>
-                            <SelectItem value="Certificate of Employment">Certificate of Employment</SelectItem>
-                            <SelectItem value="Certificate of Land Occupancy">Certificate of Land Occupancy (Actual Occupancy)</SelectItem>
-                            <SelectItem value="Barangay ID">Barangay ID</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* 4. Dynamic Document Fields (Matches Resident Portal exactly) */}
-                      {/* For Certificate of Land Occupancy */}
-                      {(newDocType === 'Certificate of Land Occupancy' || newDocType === 'Actual Occupancy') && (
-                        <div className="space-y-2.5 bg-amber-50/70 border border-amber-200 rounded-xl p-3">
-                          <span className="font-bold text-amber-900 text-[11px] uppercase tracking-wide">Land Occupancy Details</span>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-slate-700">Parcel Land Area (in Words &amp; Figures) <span className="text-red-500">*</span></Label>
-                            <Input
-                              value={newDocExtraFields['Land Area'] || ''}
-                              onChange={e => setNewDocField('Land Area', e.target.value)}
-                              placeholder="e.g. Nine Hundred Thirty-One (931)"
-                              required
-                              className="h-8 text-xs bg-white"
-                            />
-                            <p className="text-[10px] text-slate-400">e.g. Nine Hundred Thirty-One (931)</p>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-slate-700">Lot Number (Lot #) <span className="text-red-500">*</span></Label>
-                              <Input
-                                value={newDocExtraFields['Lot Number'] || ''}
-                                onChange={e => setNewDocField('Lot Number', e.target.value)}
-                                placeholder="e.g. 1005"
-                                required
-                                className="h-8 text-xs bg-white"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-slate-700">Survey Info</Label>
-                              <Input
-                                value={newDocExtraFields['Survey Info'] || ''}
-                                onChange={e => setNewDocField('Survey Info', e.target.value)}
-                                placeholder="e.g. PLS-74"
-                                className="h-8 text-xs bg-white"
-                              />
-                            </div>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-slate-700">Year Started <span className="text-red-500">*</span></Label>
-                            <Input
-                              value={newDocExtraFields['Occupancy Since'] || ''}
-                              onChange={e => setNewDocField('Occupancy Since', e.target.value)}
-                              placeholder="e.g. 1970's (or 1995)"
-                              required
-                              className="h-8 text-xs bg-white"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* For Certificate of Employment */}
-                      {newDocType === 'Certificate of Employment' && (
-                        <div className="space-y-2.5 bg-blue-50/70 border border-blue-200 rounded-xl p-3">
-                          <span className="font-bold text-blue-900 text-[11px] uppercase tracking-wide">Employment Details</span>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-slate-700">Job Position <span className="text-red-500">*</span></Label>
-                              <Input
-                                value={newDocExtraFields['Job Position'] || ''}
-                                onChange={e => setNewDocField('Job Position', e.target.value)}
-                                placeholder="e.g. Barangay Tanod"
-                                required
-                                className="h-8 text-xs bg-white"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-slate-700">Employer / Office <span className="text-red-500">*</span></Label>
-                              <Input
-                                value={newDocExtraFields['Employer'] || ''}
-                                onChange={e => setNewDocField('Employer', e.target.value)}
-                                placeholder="e.g. Barangay Pianing"
-                                required
-                                className="h-8 text-xs bg-white"
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-slate-700">Start Date <span className="text-red-500">*</span></Label>
-                              <Input
-                                value={newDocExtraFields['Start Date'] || ''}
-                                onChange={e => setNewDocField('Start Date', e.target.value)}
-                                placeholder="e.g. January 2022"
-                                required
-                                className="h-8 text-xs bg-white"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-slate-700">End Date <span className="text-red-500">*</span></Label>
-                              <Input
-                                value={newDocExtraFields['End Date'] || ''}
-                                onChange={e => setNewDocField('End Date', e.target.value)}
-                                placeholder="e.g. Present"
-                                required
-                                className="h-8 text-xs bg-white"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* For Business Clearance / Permit */}
-                      {(newDocType === 'Business Clearance' || newDocType === 'Business Permit') && (
-                        <div className="space-y-2 bg-emerald-50/70 border border-emerald-200 rounded-xl p-3">
-                          <span className="font-bold text-emerald-900 text-[11px] uppercase tracking-wide">Business Details</span>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-slate-700">Business / Store Name <span className="text-red-500">*</span></Label>
-                              <Input
-                                value={newDocExtraFields['Business Name'] || ''}
-                                onChange={e => setNewDocField('Business Name', e.target.value)}
-                                placeholder="e.g. Dela Cruz Store"
-                                required
-                                className="h-8 text-xs bg-white"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-slate-700">Nature of Business</Label>
-                              <Input
-                                value={newDocExtraFields['Nature of Business'] || ''}
-                                onChange={e => setNewDocField('Nature of Business', e.target.value)}
-                                placeholder="e.g. Sari-sari / Retail"
-                                className="h-8 text-xs bg-white"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* For Certificate of Residency */}
-                      {newDocType === 'Certificate of Residency' && (
-                        <div className="space-y-1">
-                          <Label className="text-xs text-slate-700">Years of Residency / Living in Barangay</Label>
-                          <Input
-                            value={newDocExtraFields['Duration of Residence'] || ''}
-                            onChange={e => setNewDocField('Duration of Residence', e.target.value)}
-                            placeholder="e.g. 5 years (or since 2019)"
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                      )}
-
-                      {/* Purpose */}
-                      {newDocType !== 'Certificate of Employment' && newDocType !== 'Certificate of Land Occupancy' && newDocType !== 'Actual Occupancy' && (
-                        <div className="space-y-1">
-                          <Label className="text-xs font-semibold text-slate-700">
-                            {newDocType === 'Good Moral Clearance' ? 'Purpose / Application To Support' : 'State Purpose'} <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            value={newDocPurpose}
-                            onChange={e => setNewDocPurpose(e.target.value)}
-                            placeholder={newDocType === 'Good Moral Clearance' ? 'e.g. Employment application / PRC Board Examination' : 'e.g. Bank Account / Loan / School Requirement'}
-                            required
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                      )}
-
-                      <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-100">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => handleSaveAndPrintDoc(false)}
-                          className="text-xs border-slate-300 hover:bg-slate-50 w-full sm:w-auto"
-                        >
-                          Save to Active Queue (Pending)
-                        </Button>
-                        <Button
-                          type="button"
-                          onClick={() => handleSaveAndPrintDoc(true)}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 shadow-sm w-full sm:w-auto"
-                        >
-                          <Printer size={13} />
-                          Save, Print &amp; Archive (Completed)
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+                  <Button
+                    onClick={() => {
+                      setSelectedResidentForDoc('');
+                      setNewDocResidentId(null);
+                      setNewDocName('');
+                      setNewDocType('');
+                      setNewDocGender('');
+                      setNewDocCivilStatus('');
+                      setNewDocPurok('');
+                      setNewDocAge('');
+                      setNewDocAddress('');
+                      setNewDocPurpose('');
+                      setNewDocDuration('');
+                      setNewDocExtraFields({});
+                      setIsAddDocOpen(true);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <PlusCircle size={15} />
+                    Issue Document Request
+                  </Button>
                 )}
               </div>
 
               {/* Action Bar: Category Pills, Search, and PDF Export */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
                 {/* Document Type Category Filter Pills */}
-                <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl flex-wrap">
-                  {[
-                    { id: 'all', label: 'All Documents', count: activeDocuments.length },
-                    { id: 'Clearance', label: 'Clearance', count: activeDocuments.filter(d => d.document_type.includes('Clearance')).length },
-                    { id: 'Residency', label: 'Residency', count: activeDocuments.filter(d => d.document_type.includes('Residency')).length },
-                    { id: 'Indigency', label: 'Indigency', count: activeDocuments.filter(d => d.document_type.includes('Indigency')).length },
-                    { id: 'Business', label: 'Business', count: activeDocuments.filter(d => d.document_type.includes('Business')).length }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setDocTypeFilter(tab.id)}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                        docTypeFilter === tab.id
-                          ? 'bg-white text-blue-700 shadow-xs font-bold'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <span>{tab.label}</span>
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                        docTypeFilter === tab.id ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700'
-                      }`}>
-                        {tab.count}
-                      </span>
-                    </button>
-                  ))}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl flex-wrap">
+                    {[
+                      { id: 'all', label: 'All Documents', count: activeDocuments.length },
+                      { id: 'Clearance', label: 'Clearance', count: activeDocuments.filter(d => d.document_type.includes('Clearance')).length },
+                      { id: 'Residency', label: 'Residency', count: activeDocuments.filter(d => d.document_type.includes('Residency')).length },
+                      { id: 'Indigency', label: 'Indigency', count: activeDocuments.filter(d => d.document_type.includes('Indigency')).length },
+                      { id: 'Business', label: 'Business', count: activeDocuments.filter(d => d.document_type.includes('Business')).length }
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setDocTypeFilter(tab.id)}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                          docTypeFilter === tab.id
+                            ? 'bg-white text-blue-700 shadow-xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <span>{tab.label}</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                          docTypeFilter === tab.id ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          {tab.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Status Filter Pills */}
+                  <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl flex-wrap">
+                    {[
+                      { id: 'all', label: 'All Status' },
+                      { id: 'Pending', label: 'Pending' },
+                      { id: 'Processing', label: 'Processing' },
+                      { id: 'Ready for Pickup', label: 'Ready' },
+                    ].map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => setDocStatusFilter(s.id)}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                          docStatusFilter === s.id
+                            ? 'bg-white shadow-xs font-bold ' + (s.id === 'Pending' ? 'text-amber-700' : s.id === 'Processing' ? 'text-indigo-700' : s.id === 'Ready for Pickup' ? 'text-blue-700' : 'text-slate-700')
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Search Bar & PDF Export */}
@@ -4403,29 +4084,6 @@ export default function AdminDashboard() {
                       </button>
                     )}
                   </div>
-
-                  <Button
-                    onClick={() => {
-                      downloadOfficialPdf({
-                        title: 'Active Document Requests',
-                        subtitle: `Barangay ${user?.barangay || 'Pianing'} — Active Clearance Queue`,
-                        filename: `Barangay_Clearance_Requests_${new Date().toISOString().slice(0, 10)}`,
-                        preparedBy: user?.name || 'Admin',
-                        preparedByTitle: 'Barangay Administrator',
-                        tables: [{
-                          title: 'Document Requests Queue',
-                          headers: ['Code', 'Resident', 'Document Type', 'Purpose', 'Status', 'Requested At'],
-                          rows: filteredDocuments.map(d => [d.request_code || '-', d.resident_name || '-', d.document_type || '-', d.purpose || '-', d.status || '-', d.requested_at || '-'])
-                        }]
-                      });
-                      toast.success('Document requests PDF downloaded');
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs gap-1.5 h-9 border-slate-300 hover:bg-slate-50 rounded-xl cursor-pointer shrink-0"
-                  >
-                    <Download size={14} /> Download PDF
-                  </Button>
                 </div>
               </div>
 
@@ -9122,21 +8780,10 @@ export default function AdminDashboard() {
                     onClick={() => {
                       setAddResidentMode('existing_household');
                       setNewResIsHead(false);
-                      setNewResRelationship('Spouse');
-                      const p = (newResPurok || '1').replace(/purok\s*/i, '').trim();
-                      const hhInP = censusHouseholds.filter(h => 
-                        (h.purok || '').replace(/purok\s*/i, '').trim() === p || 
-                        (h.household_number || '').includes(`HH-P${p}`)
-                      );
-                      if (hhInP.length > 0) {
-                        setNewResHouseholdNum(hhInP[0].household_number);
-                        setNewResFamilyName(hhInP[0].family_name);
-                        setHouseholdSearchQuery(`${hhInP[0].household_number} - ${hhInP[0].family_name} Family`);
-                      } else {
-                        setNewResHouseholdNum('');
-                        setNewResFamilyName('');
-                        setHouseholdSearchQuery('');
-                      }
+                      setNewResRelationship('');
+                      setNewResHouseholdNum('');
+                      setNewResFamilyName('');
+                      setHouseholdSearchQuery('');
                       setIsHouseholdDropdownOpen(false);
                     }}
                     className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${addResidentMode === 'existing_household' ? 'bg-blue-600 text-white font-semibold' : 'bg-slate-200 text-slate-700'}`}
@@ -9161,19 +8808,9 @@ export default function AdminDashboard() {
                         );
                         setNewResHouseholdNum(`HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`);
                       } else {
-                        const hhInP = censusHouseholds.filter(h => 
-                          (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP || 
-                          (h.household_number || '').includes(`HH-P${cleanP}`)
-                        );
-                        if (hhInP.length > 0) {
-                          setNewResHouseholdNum(hhInP[0].household_number);
-                          setNewResFamilyName(hhInP[0].family_name);
-                          setHouseholdSearchQuery(`${hhInP[0].household_number} - ${hhInP[0].family_name} Family`);
-                        } else {
-                          setNewResHouseholdNum('');
-                          setNewResFamilyName('');
-                          setHouseholdSearchQuery('');
-                        }
+                        setNewResHouseholdNum('');
+                        setNewResFamilyName('');
+                        setHouseholdSearchQuery('');
                       }
                     }}
                   >
@@ -10717,6 +10354,313 @@ export default function AdminDashboard() {
               </DialogFooter>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Global Issue & Process Barangay Document Modal */}
+      <Dialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
+        <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">Issue &amp; Process Barangay Document</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Fill in document parameters, auto-fill resident profile, and print or archive directly into completed records.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateDocument} className="space-y-4 py-2 text-xs">
+            {/* 1. Select Resident or Manual Walk-in */}
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-slate-700">Select Resident (Auto-fills Demographics)</Label>
+              <Select value={selectedResidentForDoc} onValueChange={handleSelectResidentForDoc}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="Select Resident / Walk-in Constituent..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-56">
+                  <SelectItem value="manual">✍️ Manual / Walk-in Constituent</SelectItem>
+                  {residents.map(r => (
+                    <SelectItem key={`res-opt-${r.id}`} value={String(r.id)}>
+                      {r.first_name} {r.last_name} ({r.purok ? (r.purok.startsWith('Purok') ? r.purok : `Purok ${r.purok}`) : 'Pianing'} • {r.gender})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 2. Resident Profile Card */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">Resident Information</span>
+                <span className="text-[10px] text-slate-400">Used for certificate variables</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-slate-600">Full Name <span className="text-red-500">*</span></Label>
+                  <Input
+                    value={newDocName}
+                    onChange={e => setNewDocName(e.target.value)}
+                    placeholder="e.g. Juan Dela Cruz"
+                    required
+                    className="h-8 text-xs bg-white"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-slate-600">Gender</Label>
+                    <Select value={newDocGender} onValueChange={(v: any) => setNewDocGender(v)}>
+                      <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Gender" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-slate-600">Civil Status</Label>
+                    <Select value={newDocCivilStatus} onValueChange={setNewDocCivilStatus}>
+                      <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Single">Single</SelectItem>
+                        <SelectItem value="Married">Married</SelectItem>
+                        <SelectItem value="Widowed">Widowed</SelectItem>
+                        <SelectItem value="Separated">Separated</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-slate-600">Purok / Zone</Label>
+                  <Select value={newDocPurok} onValueChange={setNewDocPurok}>
+                    <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Purok" /></SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6].map(p => (
+                        <SelectItem key={`purok-doc-${p}`} value={`Purok ${p}`}>Purok {p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-slate-600">Age / Date of Birth</Label>
+                  <Input
+                    value={newDocAge}
+                    onChange={e => setNewDocAge(e.target.value)}
+                    placeholder="e.g. 28 yrs old"
+                    className="h-8 text-xs bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Document Type Selection */}
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-slate-700">Document Type <span className="text-red-500">*</span></Label>
+              <Select value={newDocType} onValueChange={handleNewDocTypeChange}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Document Type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Barangay Clearance">Barangay Clearance</SelectItem>
+                  <SelectItem value="Certificate of Residency">Certificate of Residency</SelectItem>
+                  <SelectItem value="Certificate of Indigency">Certificate of Indigency</SelectItem>
+                  <SelectItem value="Good Moral Clearance">Good Moral Clearance</SelectItem>
+                  <SelectItem value="Business Clearance">Business Clearance</SelectItem>
+                  <SelectItem value="Business Permit">Business Permit</SelectItem>
+                  <SelectItem value="Certificate of Employment">Certificate of Employment</SelectItem>
+                  <SelectItem value="Certificate of Land Occupancy">Certificate of Land Occupancy (Actual Occupancy)</SelectItem>
+                  <SelectItem value="Barangay ID">Barangay ID</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 4. Dynamic Document Fields (Matches Resident Portal exactly) */}
+            {/* For Certificate of Land Occupancy */}
+            {(newDocType === 'Certificate of Land Occupancy' || newDocType === 'Actual Occupancy') && (
+              <div className="space-y-2.5 bg-amber-50/70 border border-amber-200 rounded-xl p-3">
+                <span className="font-bold text-amber-900 text-[11px] uppercase tracking-wide">Land Occupancy Details</span>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-700">Parcel Land Area (in Words &amp; Figures) <span className="text-red-500">*</span></Label>
+                  <Input
+                    value={newDocExtraFields['Land Area'] || ''}
+                    onChange={e => setNewDocField('Land Area', e.target.value)}
+                    placeholder="e.g. Nine Hundred Thirty-One (931)"
+                    required
+                    className="h-8 text-xs bg-white"
+                  />
+                  <p className="text-[10px] text-slate-400">e.g. Nine Hundred Thirty-One (931)</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700">Lot Number (Lot #) <span className="text-red-500">*</span></Label>
+                    <Input
+                      value={newDocExtraFields['Lot Number'] || ''}
+                      onChange={e => setNewDocField('Lot Number', e.target.value)}
+                      placeholder="e.g. 1005"
+                      required
+                      className="h-8 text-xs bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700">Survey Info</Label>
+                    <Input
+                      value={newDocExtraFields['Survey Info'] || ''}
+                      onChange={e => setNewDocField('Survey Info', e.target.value)}
+                      placeholder="e.g. PLS-74"
+                      className="h-8 text-xs bg-white"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-slate-700">Year Started <span className="text-red-500">*</span></Label>
+                  <Input
+                    value={newDocExtraFields['Occupancy Since'] || ''}
+                    onChange={e => setNewDocField('Occupancy Since', e.target.value)}
+                    placeholder="e.g. 1970's (or 1995)"
+                    required
+                    className="h-8 text-xs bg-white"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* For Certificate of Employment */}
+            {newDocType === 'Certificate of Employment' && (
+              <div className="space-y-2.5 bg-blue-50/70 border border-blue-200 rounded-xl p-3">
+                <span className="font-bold text-blue-900 text-[11px] uppercase tracking-wide">Employment Details</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700">Job Position <span className="text-red-500">*</span></Label>
+                    <Input
+                      value={newDocExtraFields['Job Position'] || ''}
+                      onChange={e => setNewDocField('Job Position', e.target.value)}
+                      placeholder="e.g. Barangay Tanod"
+                      required
+                      className="h-8 text-xs bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700">Employer / Office <span className="text-red-500">*</span></Label>
+                    <Input
+                      value={newDocExtraFields['Employer'] || ''}
+                      onChange={e => setNewDocField('Employer', e.target.value)}
+                      placeholder="e.g. Barangay Pianing"
+                      required
+                      className="h-8 text-xs bg-white"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700">Start Date <span className="text-red-500">*</span></Label>
+                    <Input
+                      value={newDocExtraFields['Start Date'] || ''}
+                      onChange={e => setNewDocField('Start Date', e.target.value)}
+                      placeholder="e.g. January 2022"
+                      required
+                      className="h-8 text-xs bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700">End Date <span className="text-red-500">*</span></Label>
+                    <Input
+                      value={newDocExtraFields['End Date'] || ''}
+                      onChange={e => setNewDocField('End Date', e.target.value)}
+                      placeholder="e.g. Present"
+                      required
+                      className="h-8 text-xs bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* For Business Clearance / Permit */}
+            {(newDocType === 'Business Clearance' || newDocType === 'Business Permit') && (
+              <div className="space-y-2 bg-emerald-50/70 border border-emerald-200 rounded-xl p-3">
+                <span className="font-bold text-emerald-900 text-[11px] uppercase tracking-wide">Business Details</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700">Business / Store Name <span className="text-red-500">*</span></Label>
+                    <Input
+                      value={newDocExtraFields['Business Name'] || ''}
+                      onChange={e => setNewDocField('Business Name', e.target.value)}
+                      placeholder="e.g. Dela Cruz Store"
+                      required
+                      className="h-8 text-xs bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-700">Nature of Business</Label>
+                    <Input
+                      value={newDocExtraFields['Nature of Business'] || ''}
+                      onChange={e => setNewDocField('Nature of Business', e.target.value)}
+                      placeholder="e.g. Sari-sari / Retail"
+                      className="h-8 text-xs bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* For Certificate of Residency */}
+            {newDocType === 'Certificate of Residency' && (
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-700">Years of Residency / Living in Barangay</Label>
+                <Input
+                  value={newDocExtraFields['Duration of Residence'] || ''}
+                  onChange={e => setNewDocField('Duration of Residence', e.target.value)}
+                  placeholder="e.g. 5 years (or since 2019)"
+                  className="h-8 text-xs"
+                />
+              </div>
+            )}
+
+            {/* Purpose */}
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-slate-700">
+                {newDocType === 'Good Moral Clearance' ? 'Purpose / Application To Support' : 'State Purpose'} <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                value={newDocPurpose}
+                onChange={e => setNewDocPurpose(e.target.value)}
+                placeholder={
+                  newDocType === 'Good Moral Clearance'
+                    ? 'e.g. Employment application / PRC Board Examination'
+                    : newDocType === 'Certificate of Employment'
+                    ? 'e.g. Proof of employment / Loan / Bank Requirement'
+                    : (newDocType === 'Certificate of Land Occupancy' || newDocType === 'Actual Occupancy')
+                    ? 'e.g. Proof of land occupancy / Utility Connection'
+                    : (newDocType === 'Business Clearance' || newDocType === 'Business Permit')
+                    ? 'e.g. Business permit application / Renewal / Mayor\'s Permit'
+                    : newDocType === 'Certificate of Indigency'
+                    ? 'e.g. Medical Assistance / Scholarship / Burial / Legal Aid'
+                    : newDocType === 'Certificate of Residency'
+                    ? 'e.g. Postal ID / School Requirement / Police Clearance'
+                    : 'e.g. Bank Account / Loan / School Requirement / Employment'
+                }
+                required
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleSaveAndPrintDoc(false)}
+                className="text-xs border-slate-300 hover:bg-slate-50 w-full sm:w-auto"
+              >
+                Save to Active Queue (Pending)
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleSaveAndPrintDoc(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 shadow-sm w-full sm:w-auto"
+              >
+                <Printer size={13} />
+                Save, Print &amp; Archive (Completed)
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

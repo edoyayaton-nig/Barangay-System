@@ -6695,13 +6695,16 @@ async function runOneDayAdvanceScheduler() {
       }
       
       if (apt.resident_email && apt.resident_email.includes('@')) {
-        sendImmunizationReminderEmail({
+        sendAppointmentStatusEmail({
           to: apt.resident_email,
-          childName: patientName,
-          parentName: patientName,
-          vaccineName: service,
-          doseNumber: 1,
-          dueDate: 'Tomorrow'
+          recipientName: patientName,
+          serviceType: service,
+          appointmentCode: apt.appointment_code || 'APPT-REMINDER',
+          status: 'Approved',
+          scheduledDate: apt.scheduled_date || apt.preferred_date || 'Tomorrow',
+          scheduledTime: time,
+          bhwNotes: apt.bhw_notes || 'Automated 1-Day Advance Reminder: Please arrive 10 minutes before your slot.',
+          attendingBhw: apt.attending_bhw || 'Health Center Duty Staff'
         }).catch(() => {});
       }
 
@@ -6728,6 +6731,19 @@ async function runOneDayAdvanceScheduler() {
           [patientName, patientPhone, smsText]
         ).catch(() => {});
       }
+
+      const motherEmail = mat.email || mat.resident_email;
+      if (motherEmail && motherEmail.includes('@')) {
+        sendMaternalReminderEmail({
+          to: motherEmail,
+          motherName: patientName,
+          nextVisit: mat.next_visit_date || 'Tomorrow',
+          pregnancyStatus: mat.pregnancy_status || 'Prenatal Check-up',
+          riskLevel: mat.risk_level || 'Low',
+          notes: mat.next_visit_note || 'Please bring your mother-baby record book.'
+        }).catch(() => {});
+      }
+
       await pool.query("UPDATE maternal_records SET one_day_alert_sent = 1 WHERE id = ?", [mat.id]).catch(() => {});
       dispatchedCount++;
     }
@@ -6753,6 +6769,18 @@ async function runOneDayAdvanceScheduler() {
           "INSERT INTO sms_notifications (recipient_name, recipient_phone, type, message, status, sent_at) VALUES (?, ?, '1-Day Advance Reminder', ?, 'Sent', NOW())",
           [childName, patientPhone, smsText]
         ).catch(() => {});
+      }
+
+      const parentEmail = imm.parent_email || imm.resident_email;
+      if (parentEmail && parentEmail.includes('@')) {
+        sendImmunizationReminderEmail({
+          to: parentEmail,
+          childName: childName,
+          parentName: imm.parent_name || 'Guardian',
+          vaccineName: vaccine,
+          doseNumber: dose,
+          dueDate: imm.due_date || 'Tomorrow'
+        }).catch(() => {});
       }
       await pool.query("UPDATE immunizations SET one_day_alert_sent = 1 WHERE id = ?", [imm.id]).catch(() => {});
       dispatchedCount++;
@@ -7203,7 +7231,7 @@ app.get('/api/archives/clinical', async (req, res) => {
 });
 
 // Manual 1-Day Scheduler Trigger (for testing & immediate dispatch)
-app.post('/api/scheduler/run-1day-reminders', async (req, res) => {
+app.post(['/api/scheduler/run-1day-reminders', '/api/scheduler/run-reminders'], async (req, res) => {
   const result = await runOneDayAdvanceScheduler();
   res.json({ success: true, ...result });
 });

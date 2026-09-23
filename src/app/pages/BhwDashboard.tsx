@@ -132,12 +132,12 @@ export default function BhwDashboard() {
   // Post Clinic Schedule Modal State
   const [isPostScheduleOpen, setIsPostScheduleOpen] = useState(false);
   const [newScheduleTitle, setNewScheduleTitle] = useState('');
-  const [newScheduleServiceType, setNewScheduleServiceType] = useState('Pre-Marriage Counseling (PMC)');
-  const [newScheduleDay, setNewScheduleDay] = useState('Every Wednesday');
-  const [newScheduleTime, setNewScheduleTime] = useState('8:30 AM - 11:30 AM');
-  const [newScheduleLocation, setNewScheduleLocation] = useState('Barangay Pianing Health Center');
-  const [newScheduleSlots, setNewScheduleSlots] = useState('20');
-  const [newScheduleBhw, setNewScheduleBhw] = useState('Nurse Maria Santos');
+  const [newScheduleServiceType, setNewScheduleServiceType] = useState('');
+  const [newScheduleDay, setNewScheduleDay] = useState('');
+  const [newScheduleTime, setNewScheduleTime] = useState('');
+  const [newScheduleLocation, setNewScheduleLocation] = useState('');
+  const [newScheduleSlots, setNewScheduleSlots] = useState('');
+  const [newScheduleBhw, setNewScheduleBhw] = useState('');
 
   const [stats, setStats] = useState({
     childrenMonitored: 0,
@@ -223,19 +223,19 @@ export default function BhwDashboard() {
   const [newChildMiddleName, setNewChildMiddleName] = useState('');
   const [newChildLastName, setNewChildLastName] = useState('');
   const [newChildName, setNewChildName] = useState('');
-  const [newChildGender, setNewChildGender] = useState<'Male' | 'Female'>('Male');
+  const [newChildGender, setNewChildGender] = useState<'Male' | 'Female' | ''>('');
   const [newGuardianName, setNewGuardianName] = useState('');
   const [newParentPhone, setNewParentPhone] = useState('');
-  const [newChildAge, setNewChildAge] = useState('6');
-  const [newChildWeight, setNewChildWeight] = useState('7.8');
-  const [newChildHeight, setNewChildHeight] = useState('66');
-  const [newVaccineName, setNewVaccineName] = useState('Pentavalent (DPT-HepB-Hib)');
+  const [newChildAge, setNewChildAge] = useState('');
+  const [newChildWeight, setNewChildWeight] = useState('');
+  const [newChildHeight, setNewChildHeight] = useState('');
+  const [newVaccineName, setNewVaccineName] = useState('');
   const [newCustomVaccine, setNewCustomVaccine] = useState('');
-  const [newDoseNumber, setNewDoseNumber] = useState('Dose 1');
-  const [newBatchLot, setNewBatchLot] = useState(`LOT-${new Date().getFullYear()}-X9`);
+  const [newDoseNumber, setNewDoseNumber] = useState('');
+  const [newBatchLot, setNewBatchLot] = useState('');
   const [newDateGiven, setNewDateGiven] = useState(new Date().toISOString().split('T')[0]);
   const [newDueDate, setNewDueDate] = useState('');
-  const [newRemarks, setNewRemarks] = useState('Cleared for routine vaccination');
+  const [newRemarks, setNewRemarks] = useState('');
   const [newImmStatus, setNewImmStatus] = useState('Completed');
 
   // Maternal Form states
@@ -244,18 +244,18 @@ export default function BhwDashboard() {
   const [newMotherLastName, setNewMotherLastName] = useState('');
   const [newMotherName, setNewMotherName] = useState('');
   const [newMotherPhone, setNewMotherPhone] = useState('');
-  const [newMotherAge, setNewMotherAge] = useState('28');
-  const [newMotherVisitType, setNewMotherVisitType] = useState('1st Visit (Initial Booking)');
-  const [newMotherGestationalWeeks, setNewMotherGestationalWeeks] = useState('14');
-  const [newMotherBpSys, setNewMotherBpSys] = useState('110');
-  const [newMotherBpDia, setNewMotherBpDia] = useState('70');
-  const [newMotherWeight, setNewMotherWeight] = useState('56');
-  const [newMotherFundicHeight, setNewMotherFundicHeight] = useState('16');
-  const [newMotherFetalHeartTone, setNewMotherFetalHeartTone] = useState('142');
+  const [newMotherAge, setNewMotherAge] = useState('');
+  const [newMotherVisitType, setNewMotherVisitType] = useState('');
+  const [newMotherGestationalWeeks, setNewMotherGestationalWeeks] = useState('');
+  const [newMotherBpSys, setNewMotherBpSys] = useState('');
+  const [newMotherBpDia, setNewMotherBpDia] = useState('');
+  const [newMotherWeight, setNewMotherWeight] = useState('');
+  const [newMotherFundicHeight, setNewMotherFundicHeight] = useState('');
+  const [newMotherFetalHeartTone, setNewMotherFetalHeartTone] = useState('');
   const [newMotherIronSupplements, setNewMotherIronSupplements] = useState(true);
-  const [newMotherNotes, setNewMotherNotes] = useState('Routine checkup, healthy fetal movement observed.');
-  const [newPregnancyStatus, setNewPregnancyStatus] = useState('Prenatal - 1st Trimester');
-  const [newNextVisit, setNewNextVisit] = useState('2026-05-20');
+  const [newMotherNotes, setNewMotherNotes] = useState('');
+  const [newPregnancyStatus, setNewPregnancyStatus] = useState('');
+  const [newNextVisit, setNewNextVisit] = useState('');
   const [newRiskLevel, setNewRiskLevel] = useState<'Low' | 'Moderate' | 'High'>('Low');
 
   // BP Evaluation Helper
@@ -422,6 +422,12 @@ export default function BhwDashboard() {
 
       setIsPostScheduleOpen(false);
       setNewScheduleTitle('');
+      setNewScheduleServiceType('');
+      setNewScheduleDay('');
+      setNewScheduleTime('');
+      setNewScheduleLocation('');
+      setNewScheduleSlots('');
+      setNewScheduleBhw('');
       loadData();
       triggerHealthSync();
     } catch {
@@ -599,12 +605,15 @@ export default function BhwDashboard() {
       setNewGuardianName('');
       setNewParentPhone('');
       setNewCustomVaccine('');
-      setNewChildAge('6');
-      setNewChildWeight('7.8');
-      setNewChildHeight('66');
-      setNewBatchLot(`LOT-${new Date().getFullYear()}-X9`);
+      setNewChildGender('');
+      setNewVaccineName('');
+      setNewDoseNumber('');
+      setNewChildAge('');
+      setNewChildWeight('');
+      setNewChildHeight('');
+      setNewBatchLot('');
       setNewDueDate('');
-      setNewRemarks('Cleared for routine vaccination');
+      setNewRemarks('');
       loadData();
     } catch (err) {
       toast.error('Could not create immunization record');
@@ -739,7 +748,17 @@ export default function BhwDashboard() {
       setNewMotherLastName('');
       setNewMotherName('');
       setNewMotherPhone('');
-      setNewMotherNotes('Routine checkup, healthy fetal movement observed.');
+      setNewMotherAge('');
+      setNewMotherVisitType('');
+      setNewMotherGestationalWeeks('');
+      setNewMotherBpSys('');
+      setNewMotherBpDia('');
+      setNewMotherWeight('');
+      setNewMotherFundicHeight('');
+      setNewMotherFetalHeartTone('');
+      setNewMotherNotes('');
+      setNewPregnancyStatus('');
+      setNewNextVisit('');
       loadData();
     } catch (err) {
       toast.error('Could not add maternal record');
@@ -940,9 +959,8 @@ export default function BhwDashboard() {
     { id: 'immunization', label: 'Immunization Tracking', icon: Syringe },
     { id: 'maternal', label: 'Maternal Health', icon: Heart },
     { id: 'inventory', label: 'Vaccines & Medicine Supply', icon: Pill },
-    { id: 'records', label: 'Records', icon: ClipboardList },
+    { id: 'records', label: 'Archive', icon: ClipboardList },
     { id: 'census', label: 'Populations & Census Registry', icon: Users },
-    { id: 'notifications', label: 'Gmail Notification Hub', icon: Bell },
     { id: 'reports', label: 'Health Reports & Analytics', icon: BarChart },
     { id: 'profile', label: 'Profile Settings', icon: UserCheck },
   ];
@@ -1897,7 +1915,7 @@ export default function BhwDashboard() {
                       <Label className="text-xs font-semibold">Health Service / Program</Label>
                       <Select value={newScheduleServiceType} onValueChange={setNewScheduleServiceType}>
                         <SelectTrigger className="mt-1 h-9 text-xs">
-                          <SelectValue />
+                          <SelectValue placeholder="Select health service / program..." />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Pre-Marriage Counseling (PMC)">Pre-Marriage Counseling (PMC)</SelectItem>
@@ -2435,7 +2453,7 @@ export default function BhwDashboard() {
                           <div>
                             <Label className="text-xs font-semibold text-slate-700">Visit Sequence</Label>
                             <Select value={newMotherVisitType} onValueChange={setNewMotherVisitType}>
-                              <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-9 text-xs mt-1"><SelectValue placeholder="Select visit sequence..." /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="1st Visit (Initial Booking)">1st Visit (Initial Booking)</SelectItem>
                                 <SelectItem value="2nd Visit (Follow-up / Ultrasound)">⭐ 2nd Visit (Follow-up / Ultrasound)</SelectItem>
@@ -2449,7 +2467,7 @@ export default function BhwDashboard() {
                           <div>
                             <Label className="text-xs font-semibold text-slate-700">Pregnancy Trimester</Label>
                             <Select value={newPregnancyStatus} onValueChange={setNewPregnancyStatus}>
-                              <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-9 text-xs mt-1"><SelectValue placeholder="Select trimester/stage..." /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Prenatal - 1st Trimester">Prenatal - 1st Trimester</SelectItem>
                                 <SelectItem value="Prenatal - 2nd Trimester">Prenatal - 2nd Trimester</SelectItem>
@@ -2640,6 +2658,7 @@ export default function BhwDashboard() {
                           <TableHead className="text-xs font-bold">Age &amp; Gestation</TableHead>
                           <TableHead className="text-xs font-bold">Visit Sequence</TableHead>
                           <TableHead className="text-xs font-bold">Blood Pressure</TableHead>
+                          <TableHead className="text-xs font-bold">Meds Given</TableHead>
                           <TableHead className="text-xs font-bold">Risk Level</TableHead>
                           <TableHead className="text-xs font-bold">Last Visit</TableHead>
                           <TableHead className="text-xs font-bold">Next Visit Schedule</TableHead>
@@ -2649,7 +2668,7 @@ export default function BhwDashboard() {
                       <TableBody>
                         {filteredMaternalRecords.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={8} className="text-center py-10 text-xs text-slate-400">
+                            <TableCell colSpan={9} className="text-center py-10 text-xs text-slate-400">
                               No maternal records match your query. Click "+ Add Maternal Record" to register an encounter.
                             </TableCell>
                           </TableRow>
@@ -2670,7 +2689,7 @@ export default function BhwDashboard() {
                                       {mat.mother_name}
                                     </button>
                                     <p className="text-[11px] text-slate-500 font-mono">
-                                      {(mat as any).phone || (mat as any).contact_number || '09171234567'}
+                                      {(mat as any).phone || (mat as any).contact_number || '—'}
                                     </p>
                                   </div>
                                 </TableCell>
@@ -2697,8 +2716,13 @@ export default function BhwDashboard() {
                                       {bp}
                                     </span>
                                   ) : (
-                                    <span className="text-[11px] text-slate-400 italic">110/70 mmHg</span>
+                                    <span className="text-[11px] text-slate-400 italic">—</span>
                                   )}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px] block">
+                                    {(mat as any).prescribed_meds || (mat as any).medications || ((mat as any).iron_folic_given ? 'Iron + Folic Acid' : '—')}
+                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   <Badge className={
@@ -2716,7 +2740,7 @@ export default function BhwDashboard() {
                                     variant="outline"
                                     onClick={() => {
                                       setSmsRecipientName(mat.mother_name);
-                                      setSmsPhone((mat as any).phone || (mat as any).contact_number || '09171234567');
+                                      setSmsPhone((mat as any).phone || (mat as any).contact_number || '');
                                       setSmsMessage(`Reminder: Mrs. ${mat.mother_name}, your prenatal checkup is scheduled at Barangay Pianing Health Center on ${mat.next_visit || 'this week'}. Please bring your mother book.`);
                                       setIsSendSmsOpen(true);
                                     }}
@@ -3105,22 +3129,34 @@ export default function BhwDashboard() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3 text-xs">
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span>BCG Vaccine Coverage</span>
-                      <span className="font-bold text-emerald-600">98.5%</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span>Hepatitis B Initial Dose</span>
-                      <span className="font-bold text-emerald-600">94.2%</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span>DPT Booster Compliance</span>
-                      <span className="font-bold text-amber-600">89.0%</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span>MMR Vaccine Compliance</span>
-                      <span className="font-bold text-amber-600">87.5%</span>
-                    </div>
+                    {(() => {
+                      const calcCoverage = (re: RegExp) => {
+                        const target = immunizations.filter(i => re.test(i.vaccine_name || ''));
+                        if (target.length === 0) return '0.0%';
+                        const completed = target.filter(i => i.status === 'Completed').length;
+                        return `${((completed / target.length) * 100).toFixed(1)}% (${completed}/${target.length})`;
+                      };
+                      return (
+                        <>
+                          <div className="flex justify-between items-center py-2 border-b">
+                            <span>BCG Vaccine Coverage</span>
+                            <span className="font-bold text-emerald-600">{calcCoverage(/bcg/i)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2 border-b">
+                            <span>Hepatitis B Initial Dose</span>
+                            <span className="font-bold text-emerald-600">{calcCoverage(/hep/i)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2 border-b">
+                            <span>DPT / Pentavalent Booster</span>
+                            <span className="font-bold text-amber-600">{calcCoverage(/dpt|penta/i)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-2">
+                            <span>MMR / Measles Compliance</span>
+                            <span className="font-bold text-amber-600">{calcCoverage(/mmr|measles/i)}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
 
@@ -3138,7 +3174,12 @@ export default function BhwDashboard() {
                     </div>
                     <div className="flex justify-between items-center py-2 border-b">
                       <span>Postnatal Care Checks</span>
-                      <span className="font-bold font-mono text-emerald-600">34</span>
+                      <span className="font-bold font-mono text-emerald-600">
+                        {maternalRecords.filter(m => 
+                          (m.pregnancy_status || '').toLowerCase().includes('post') || 
+                          ((m as any).visit_type || '').toLowerCase().includes('post')
+                        ).length}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center py-2">
                       <span>High Risk Pregnancy Monitoring</span>
@@ -3469,30 +3510,15 @@ export default function BhwDashboard() {
             <div className="grid grid-cols-3 gap-2.5">
               <div>
                 <Label className="text-xs font-semibold text-slate-700">Sex <span className="text-rose-500">*</span></Label>
-                <div className="grid grid-cols-2 gap-1 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setNewChildGender('Male')}
-                    className={`h-9 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                      newChildGender === 'Male'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span>👦</span> Male
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewChildGender('Female')}
-                    className={`h-9 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                      newChildGender === 'Female'
-                        ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span>👧</span> Female
-                  </button>
-                </div>
+                <Select value={newChildGender} onValueChange={(val: any) => setNewChildGender(val)}>
+                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl bg-white border-slate-200">
+                    <SelectValue placeholder="Select Gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="col-span-2">
                 <Label className="text-xs font-semibold text-slate-700">Parent / Guardian Name <span className="text-rose-500">*</span></Label>
@@ -3571,7 +3597,7 @@ export default function BhwDashboard() {
                 <div>
                   <Label className="text-[11px] font-semibold text-slate-700">Vaccine Type</Label>
                   <Select value={newVaccineName} onValueChange={setNewVaccineName}>
-                    <SelectTrigger className="h-9 text-xs mt-1 rounded-xl bg-white"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-xs mt-1 rounded-xl bg-white"><SelectValue placeholder="Select vaccine..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="BCG">BCG (Tuberculosis)</SelectItem>
                       <SelectItem value="Hepatitis B">Hepatitis B (Birth Dose)</SelectItem>
@@ -3590,7 +3616,7 @@ export default function BhwDashboard() {
                 <div>
                   <Label className="text-[11px] font-semibold text-slate-700">Dose Number</Label>
                   <Select value={newDoseNumber} onValueChange={setNewDoseNumber}>
-                    <SelectTrigger className="h-9 text-xs mt-1 rounded-xl bg-white"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-xs mt-1 rounded-xl bg-white"><SelectValue placeholder="Select dose..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Dose 1">Dose 1</SelectItem>
                       <SelectItem value="Dose 2">⭐ Dose 2 (Follow-up)</SelectItem>

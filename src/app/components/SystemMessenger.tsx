@@ -25,7 +25,7 @@ interface SystemMessengerProps {
 }
 
 // Only barangay staff roles — superadmin and residents are excluded from 1-to-1 chat
-const BARANGAY_STAFF_ROLES = ['admin', 'staff', 'bhw'];
+const BARANGAY_STAFF_ROLES = ['admin', 'staff', 'bhw', 'nurse', 'superadmin'];
 
 const getRoleBadge = (role: string) => {
   switch (role?.toLowerCase()) {
@@ -81,6 +81,48 @@ export default function SystemMessenger({ currentUserRole, currentUserName, curr
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [avatars, setAvatars] = useState<Record<string, string>>(getStoredAvatars);
+
+  // Draggable button position (bottom-right by default)
+  const [btnPos, setBtnPos] = useState({ x: window.innerWidth - 72, y: window.innerHeight - 72 });
+  const dragRef = useRef({ dragging: false, startX: 0, startY: 0, originX: 0, originY: 0, moved: false });
+
+  const handleDragStart = (clientX: number, clientY: number) => {
+    dragRef.current = { dragging: true, startX: clientX, startY: clientY, originX: btnPos.x, originY: btnPos.y, moved: false };
+  };
+
+  const handleDragMove = (clientX: number, clientY: number) => {
+    if (!dragRef.current.dragging) return;
+    const dx = clientX - dragRef.current.startX;
+    const dy = clientY - dragRef.current.startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragRef.current.moved = true;
+    const newX = Math.max(0, Math.min(window.innerWidth - 52, dragRef.current.originX + dx));
+    const newY = Math.max(0, Math.min(window.innerHeight - 52, dragRef.current.originY + dy));
+    setBtnPos({ x: newX, y: newY });
+  };
+
+  const handleDragEnd = (onClickFn: () => void) => {
+    if (!dragRef.current.dragging) return;
+    dragRef.current.dragging = false;
+    if (!dragRef.current.moved) onClickFn();
+  };
+
+  // Global mouse/touch move + up listeners
+  React.useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => handleDragMove(e.clientX, e.clientY);
+    const onMouseUp = () => { dragRef.current.dragging = false; };
+    const onTouchMove = (e: TouchEvent) => { const t = e.touches[0]; handleDragMove(t.clientX, t.clientY); };
+    const onTouchEnd = () => { dragRef.current.dragging = false; };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [btnPos]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -330,27 +372,62 @@ export default function SystemMessenger({ currentUserRole, currentUserName, curr
 
   return (
     <>
-      {/* Floating Staff Messenger Trigger */}
+      {/* Floating Staff Messenger Trigger — Draggable */}
       <button
-        onClick={() => { setIsOpen(o => !o); if (!isOpen) { fetchMessages(); fetchMembers(); } }}
-        className="fixed bottom-5 right-5 z-40 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-full shadow-lg border border-slate-700/60 flex items-center gap-2.5 cursor-pointer transition-all hover:shadow-xl active:scale-95"
-        title={`Barangay ${myBarangay} Staff Communications`}
+        onMouseDown={e => { e.preventDefault(); handleDragStart(e.clientX, e.clientY); }}
+        onMouseUp={() => handleDragEnd(() => { setIsOpen(o => !o); if (!isOpen) { fetchMessages(); fetchMembers(); } })}
+        onTouchStart={e => { const t = e.touches[0]; handleDragStart(t.clientX, t.clientY); }}
+        onTouchEnd={() => handleDragEnd(() => { setIsOpen(o => !o); if (!isOpen) { fetchMessages(); fetchMembers(); } })}
+        style={{ left: btnPos.x, top: btnPos.y }}
+        className="fixed z-40 bg-slate-900 hover:bg-slate-800 text-white w-12 h-12 rounded-full shadow-lg border border-slate-700/60 flex items-center justify-center cursor-grab active:cursor-grabbing transition-shadow hover:shadow-xl select-none"
+        title={`Barangay ${myBarangay} Staff Communications — drag to move`}
       >
-        <div className="relative flex items-center justify-center">
-          <MessageSquare size={16} className="text-slate-200" />
+        <div className="relative flex items-center justify-center pointer-events-none">
+          <MessageSquare size={18} className="text-slate-200" />
           {totalUnreadCount > 0 && (
             <span className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center shadow border-2 border-slate-900">
               {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
             </span>
           )}
         </div>
-        <span className="text-xs font-semibold tracking-wide">Staff Chat</span>
       </button>
 
-      {/* Chat Popup Window */}
-      {isOpen && (
-        <div className="fixed bottom-20 right-5 z-50 w-full max-w-sm sm:max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-          style={{ height: '540px' }}>
+      {/* Chat Popup Window — smart viewport-aware positioning */}
+      {isOpen && (() => {
+        const POPUP_W = 400;
+        const POPUP_H = 540;
+        const BTN_SIZE = 52;
+        const GAP = 8;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        // Prefer opening ABOVE the button; fall back to below if not enough room
+        const spaceAbove = btnPos.y - GAP;
+        const spaceBelow = vh - (btnPos.y + BTN_SIZE) - GAP;
+        let popTop: number;
+        if (spaceAbove >= POPUP_H) {
+          popTop = btnPos.y - POPUP_H - GAP;
+        } else if (spaceBelow >= POPUP_H) {
+          popTop = btnPos.y + BTN_SIZE + GAP;
+        } else {
+          // Center vertically in viewport as last resort
+          popTop = Math.max(GAP, (vh - POPUP_H) / 2);
+        }
+
+        // Prefer aligning popup left edge with button; clamp to viewport
+        let popLeft = btnPos.x;
+        if (popLeft + POPUP_W > vw - GAP) popLeft = vw - POPUP_W - GAP;
+        if (popLeft < GAP) popLeft = GAP;
+
+        return (
+          <div
+            className="fixed z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{
+              width: `min(${POPUP_W}px, calc(100vw - 16px))`,
+              height: `${POPUP_H}px`,
+              left: popLeft,
+              top: popTop,
+            }}>
 
           {/* Header */}
           <div className="bg-gradient-to-r from-indigo-600 to-blue-700 text-white px-3.5 py-3 flex items-center justify-between shrink-0 shadow-xs">
@@ -585,7 +662,8 @@ export default function SystemMessenger({ currentUserRole, currentUserName, curr
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
     </>
   );
 }

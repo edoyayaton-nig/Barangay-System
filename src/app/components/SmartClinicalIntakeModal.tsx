@@ -95,13 +95,13 @@ export default function SmartClinicalIntakeModal({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
 
-  // Triage Vitals
-  const [bpSystolic, setBpSystolic] = useState('120');
-  const [bpDiastolic, setBpDiastolic] = useState('80');
-  const [temp, setTemp] = useState('36.5');
+  // Triage Vitals (Starts empty for fresh user entry)
+  const [bpSystolic, setBpSystolic] = useState('');
+  const [bpDiastolic, setBpDiastolic] = useState('');
+  const [temp, setTemp] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
-  const [heartRate, setHeartRate] = useState('75');
+  const [heartRate, setHeartRate] = useState('');
 
   // Primary Program Selection
   const [selectedProgram, setSelectedProgram] = useState<'Consultation' | 'Prenatal' | 'Family Planning' | 'NIP Immunization'>('Consultation');
@@ -117,11 +117,11 @@ export default function SmartClinicalIntakeModal({
   const [treatment, setTreatment] = useState('');
   const [prescribedList, setPrescribedList] = useState<PrescribedItem[]>([]);
   const [medInputName, setMedInputName] = useState('');
-  const [medInputDosage, setMedInputDosage] = useState('500mg');
-  const [medInputQty, setMedInputQty] = useState('1'); // Starting from 1 with full freedom
-  const [medInputFreq, setMedInputFreq] = useState('3x daily after meals');
-  const [medInputDuration, setMedInputDuration] = useState('7 days');
-  const [medInputInstructions, setMedInputInstructions] = useState('Take with a full glass of water');
+  const [medInputDosage, setMedInputDosage] = useState('');
+  const [medInputQty, setMedInputQty] = useState('1'); // Unrestricted freedom
+  const [medInputFreq, setMedInputFreq] = useState('');
+  const [medInputDuration, setMedInputDuration] = useState('');
+  const [medInputInstructions, setMedInputInstructions] = useState('');
 
   const defaultInventory: InventoryItem[] = [
     { id: 1, item_name: 'Paracetamol 500mg', category: 'Essential Medicine', stock: 800, unit: 'tablets', expiry_date: '2027-05-30', status: 'In Stock' },
@@ -143,41 +143,53 @@ export default function SmartClinicalIntakeModal({
       null;
   }, [medInputName, activeCatalog]);
 
+  // Auto-detect strength/dosage in selected medicine name
+  const isDosageInName = useMemo(() => {
+    if (!medInputName) return false;
+    return /\b\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|nebules?)\b/i.test(medInputName);
+  }, [medInputName]);
+
+  const extractedDosage = useMemo(() => {
+    if (!medInputName) return '';
+    const match = medInputName.match(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|nebules?)\b/i);
+    return match ? match[0] : '';
+  }, [medInputName]);
+
   // Adolescent Health Consultation fields
-  const [adolescentStage, setAdolescentStage] = useState('Mid Adolescent (15-17 yrs)');
-  const [adolescentFocus, setAdolescentFocus] = useState('Pubertal Guidance & Mental Wellness');
-  const [adolescentGuardian, setAdolescentGuardian] = useState('Accompanied by Parent/Guardian');
+  const [adolescentStage, setAdolescentStage] = useState('');
+  const [adolescentFocus, setAdolescentFocus] = useState('');
+  const [adolescentGuardian, setAdolescentGuardian] = useState('');
   const [adolescentNotes, setAdolescentNotes] = useState('');
 
   // Teenage Pregnancy Prevention fields
-  const [teenRiskAssessment, setTeenRiskAssessment] = useState('Low Risk / Preventive Counseling');
-  const [teenCounselingTopic, setTeenCounselingTopic] = useState('Abstinence & Dual Protection Counseling');
-  const [teenSupportReferred, setTeenSupportReferred] = useState('Barangay Youth Health Peer Group');
+  const [teenRiskAssessment, setTeenRiskAssessment] = useState('');
+  const [teenCounselingTopic, setTeenCounselingTopic] = useState('');
+  const [teenSupportReferred, setTeenSupportReferred] = useState('');
 
   // NTP (TB-DOTS) fields
-  const [tbSputumStatus, setTbSputumStatus] = useState('GeneXpert / AFB Pending');
-  const [tbCategory, setTbCategory] = useState('Category I (New Pulmonary TB)');
-  const [tbPhase, setTbPhase] = useState('Intensive Phase (2 Months RHZE)');
-  const [tbAdherencePartner, setTbAdherencePartner] = useState('Assigned BHW Treatment Partner');
+  const [tbSputumStatus, setTbSputumStatus] = useState('');
+  const [tbCategory, setTbCategory] = useState('');
+  const [tbPhase, setTbPhase] = useState('');
+  const [tbAdherencePartner, setTbAdherencePartner] = useState('');
 
   // Prenatal fields
   const [lmp, setLmp] = useState('');
   const [edd, setEdd] = useState('');
   const [aogWeeks, setAogWeeks] = useState('');
-  const [gravida, setGravida] = useState('1');
-  const [para, setPara] = useState('0');
-  const [fetalHeartRate, setFetalHeartRate] = useState('140');
-  const [fundicHeight, setFundicHeight] = useState('20');
+  const [gravida, setGravida] = useState('');
+  const [para, setPara] = useState('');
+  const [fetalHeartRate, setFetalHeartRate] = useState('');
+  const [fundicHeight, setFundicHeight] = useState('');
 
   // Family Planning fields
-  const [fpMethod, setFpMethod] = useState('DMPA Injectable (Depo)');
-  const [fpClientType, setFpClientType] = useState('Current User');
+  const [fpMethod, setFpMethod] = useState('');
+  const [fpClientType, setFpClientType] = useState('');
   const [fpNextSupply, setFpNextSupply] = useState('');
 
   // NIP Immunization fields
-  const [vaccineName, setVaccineName] = useState('Pentavalent (DPT-HepB-Hib)');
+  const [vaccineName, setVaccineName] = useState('');
   const [customVaccine, setCustomVaccine] = useState('');
-  const [doseNumber, setDoseNumber] = useState('1');
+  const [doseNumber, setDoseNumber] = useState('');
   const [nextDueDate, setNextDueDate] = useState('');
 
   // Follow-up
@@ -269,15 +281,17 @@ export default function SmartClinicalIntakeModal({
     const item: PrescribedItem = {
       id: String(Date.now()),
       name: medInputName.trim(),
-      dosage: medInputDosage.trim(),
-      frequency: medInputFreq.trim(),
-      duration: medInputDuration.trim(),
+      dosage: medInputDosage.trim() || (isDosageInName ? extractedDosage : ''),
+      frequency: medInputFreq.trim() || 'As directed',
+      duration: medInputDuration.trim() || 'Course completion',
       instructions: medInputInstructions.trim(),
       quantity: qtyNum,
       unit: selectedIntakeInvItem?.unit || 'units'
     };
     setPrescribedList(prev => [...prev, item]);
     setMedInputName('');
+    setMedInputDosage('');
+    setMedInputFreq('');
     setMedInputQty('1');
     toast.success(`Added ${qtyNum}x ${item.name} to prescription`);
   };
@@ -295,9 +309,9 @@ export default function SmartClinicalIntakeModal({
 
     setIsSubmitting(true);
     try {
-      const cleanSys = bpSystolic.replace(/\D/g, '') || '120';
-      const cleanDia = bpDiastolic.replace(/\D/g, '') || '80';
-      const bpValue = `${cleanSys}/${cleanDia} mmHg`;
+      const cleanSys = bpSystolic.replace(/\D/g, '');
+      const cleanDia = bpDiastolic.replace(/\D/g, '');
+      const bpValue = (cleanSys && cleanDia) ? `${cleanSys}/${cleanDia} mmHg` : (cleanSys || cleanDia ? `${cleanSys || cleanDia} mmHg` : '');
 
       // Determine program label and diagnosis/treatment synthesis
       const actualProgram = selectedProgram === 'Consultation' ? consultProgram : selectedProgram;
@@ -871,7 +885,7 @@ export default function SmartClinicalIntakeModal({
                       <div>
                         <Label className="text-[11px] font-semibold text-slate-700">Pubertal Stage</Label>
                         <Select value={adolescentStage} onValueChange={setAdolescentStage}>
-                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue placeholder="Select pubertal stage..." /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Early Adolescent (10-14 yrs)">Early Adolescent (10-14 yrs)</SelectItem>
                             <SelectItem value="Mid Adolescent (15-17 yrs)">Mid Adolescent (15-17 yrs)</SelectItem>
@@ -882,7 +896,7 @@ export default function SmartClinicalIntakeModal({
                       <div>
                         <Label className="text-[11px] font-semibold text-slate-700">Counseling Focus</Label>
                         <Select value={adolescentFocus} onValueChange={setAdolescentFocus}>
-                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue placeholder="Select counseling focus..." /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Pubertal Guidance & Mental Wellness">Pubertal Guidance &amp; Mental Wellness</SelectItem>
                             <SelectItem value="Nutrition & Healthy Lifestyle">Nutrition &amp; Healthy Lifestyle</SelectItem>
@@ -905,7 +919,7 @@ export default function SmartClinicalIntakeModal({
                       <div>
                         <Label className="text-[11px] font-semibold text-slate-700">Risk Assessment</Label>
                         <Select value={teenRiskAssessment} onValueChange={setTeenRiskAssessment}>
-                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue placeholder="Select risk assessment..." /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Low Risk / Preventive Counseling">Low Risk / Preventive Counseling</SelectItem>
                             <SelectItem value="Moderate Risk / Sexually Active Youth">Moderate Risk / Sexually Active</SelectItem>
@@ -916,7 +930,7 @@ export default function SmartClinicalIntakeModal({
                       <div>
                         <Label className="text-[11px] font-semibold text-slate-700">Counseling Given</Label>
                         <Select value={teenCounselingTopic} onValueChange={setTeenCounselingTopic}>
-                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue placeholder="Select counseling given..." /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Abstinence & Dual Protection Counseling">Abstinence &amp; Dual Protection</SelectItem>
                             <SelectItem value="Adolescent Reproductive Health Rights">Reproductive Health Education</SelectItem>
@@ -938,7 +952,7 @@ export default function SmartClinicalIntakeModal({
                       <div>
                         <Label className="text-[11px] font-semibold text-slate-700">Sputum / GeneXpert Status</Label>
                         <Select value={tbSputumStatus} onValueChange={setTbSputumStatus}>
-                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue placeholder="Select sputum status..." /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="GeneXpert Positive (MTB Detected)">GeneXpert Positive (MTB Detected)</SelectItem>
                             <SelectItem value="GeneXpert Negative (Not Detected)">GeneXpert Negative (Not Detected)</SelectItem>
@@ -950,7 +964,7 @@ export default function SmartClinicalIntakeModal({
                       <div>
                         <Label className="text-[11px] font-semibold text-slate-700">Treatment Phase</Label>
                         <Select value={tbPhase} onValueChange={setTbPhase}>
-                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-8 text-xs bg-white mt-1"><SelectValue placeholder="Select treatment phase..." /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Intensive Phase (2 Months RHZE)">Intensive Phase (2 Mos RHZE)</SelectItem>
                             <SelectItem value="Continuation Phase (4 Months RH)">Continuation Phase (4 Mos RH)</SelectItem>
@@ -1021,6 +1035,12 @@ export default function SmartClinicalIntakeModal({
                       onValueChange={(val) => {
                         setMedInputName(val);
                         setMedInputQty('1');
+                        const match = val.match(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|nebules?)\b/i);
+                        if (match) {
+                          setMedInputDosage(match[0]);
+                        } else {
+                          setMedInputDosage('');
+                        }
                       }}
                     >
                       <SelectTrigger className="h-9.5 text-xs bg-white rounded-xl border-slate-200 shadow-xs focus:ring-2 focus:ring-teal-500">
@@ -1108,13 +1128,28 @@ export default function SmartClinicalIntakeModal({
                       </div>
                     </div>
 
-                    <div className="pt-1">
-                      <Input
-                        value={medInputDosage}
-                        onChange={e => setMedInputDosage(e.target.value)}
-                        placeholder="Dosage & instructions (e.g. 500mg, 1 tablet 3x daily after meals)"
-                        className="h-8 text-xs bg-white rounded-lg border-slate-200 shadow-2xs"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <Label className="text-[11px] font-semibold text-slate-600 block mb-0.5">
+                          Dosage / Strength {isDosageInName && <span className="text-[10px] text-teal-600 font-normal">(Auto-locked from item)</span>}
+                        </Label>
+                        <Input
+                          value={medInputDosage}
+                          onChange={e => setMedInputDosage(e.target.value)}
+                          disabled={isDosageInName}
+                          placeholder="e.g. 500mg"
+                          className={`h-8 text-xs rounded-lg border-slate-200 shadow-2xs ${isDosageInName ? 'bg-slate-100 text-slate-700 cursor-not-allowed font-medium' : 'bg-white'}`}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Frequency & Instructions</Label>
+                        <Input
+                          value={medInputFreq}
+                          onChange={e => setMedInputFreq(e.target.value)}
+                          placeholder="e.g., Take 1 tablet every 8 hours after meals"
+                          className="h-8 text-xs bg-white rounded-lg border-slate-200 shadow-2xs"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -1208,11 +1243,11 @@ export default function SmartClinicalIntakeModal({
                 <div className="grid grid-cols-4 gap-2">
                   <div>
                     <Label className="text-xs font-semibold">Gravida (G)</Label>
-                    <Input value={gravida} onChange={e => setGravida(e.target.value)} className="h-9 text-xs mt-1 bg-white text-center font-mono rounded-xl" />
+                    <Input value={gravida} onChange={e => setGravida(e.target.value)} placeholder="e.g. 1" className="h-9 text-xs mt-1 bg-white text-center font-mono rounded-xl" />
                   </div>
                   <div>
                     <Label className="text-xs font-semibold">Para (P)</Label>
-                    <Input value={para} onChange={e => setPara(e.target.value)} className="h-9 text-xs mt-1 bg-white text-center font-mono rounded-xl" />
+                    <Input value={para} onChange={e => setPara(e.target.value)} placeholder="e.g. 0" className="h-9 text-xs mt-1 bg-white text-center font-mono rounded-xl" />
                   </div>
                   <div>
                     <Label className="text-xs font-semibold">Fetal Heart (bpm)</Label>
@@ -1238,7 +1273,7 @@ export default function SmartClinicalIntakeModal({
                   <div>
                     <Label className="text-xs font-semibold">FP Method Provided <span className="text-red-500">*</span></Label>
                     <Select value={fpMethod} onValueChange={setFpMethod}>
-                      <SelectTrigger className="h-9 text-xs mt-1 bg-white rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-9 text-xs mt-1 bg-white rounded-xl"><SelectValue placeholder="Select FP method..." /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="DMPA Injectable (Depo)">DMPA Injectable (Depo-Provera 3-Month)</SelectItem>
                         <SelectItem value="Oral Contraceptive Pills (Combined)">Oral Contraceptive Pills (Combined)</SelectItem>
@@ -1252,7 +1287,7 @@ export default function SmartClinicalIntakeModal({
                   <div>
                     <Label className="text-xs font-semibold">Client Status</Label>
                     <Select value={fpClientType} onValueChange={setFpClientType}>
-                      <SelectTrigger className="h-9 text-xs mt-1 bg-white rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-9 text-xs mt-1 bg-white rounded-xl"><SelectValue placeholder="Select client status..." /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Current User">Current User (Resupply / Routine)</SelectItem>
                         <SelectItem value="New Acceptor">New Acceptor (First Time)</SelectItem>
@@ -1276,7 +1311,7 @@ export default function SmartClinicalIntakeModal({
                   <div>
                     <Label className="text-xs font-semibold">Vaccine Administered <span className="text-red-500">*</span></Label>
                     <Select value={vaccineName} onValueChange={setVaccineName}>
-                      <SelectTrigger className="h-9 text-xs mt-1 bg-white rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-9 text-xs mt-1 bg-white rounded-xl"><SelectValue placeholder="Select vaccine..." /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="BCG (Birth)">
                           BCG {availableInventory.find(i => i.item_name.toLowerCase().includes('bcg')) ? `(Stock: ${availableInventory.find(i => i.item_name.toLowerCase().includes('bcg'))?.stock} vials)` : ''}

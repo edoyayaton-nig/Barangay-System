@@ -15,7 +15,7 @@ import {
 import { exportToCsv, printOfficialReport, downloadOfficialPdf } from '../../utils/exportCsv';
 import PatientDetailModal, { PatientRecordData } from '../components/PatientDetailModal';
 import SmartClinicalIntakeModal from '../components/SmartClinicalIntakeModal';
-import GmailNotificationHub from '../components/GmailNotificationHub';
+import SystemMessenger from '../components/SystemMessenger';
 import ClinicalArchivesHub from '../components/ClinicalArchivesHub';
 import ProfileSettingsView from '../components/ProfileSettingsView';
 import SmsDetailsModal from '../components/SmsDetailsModal';
@@ -281,38 +281,38 @@ export default function NurseDashboard() {
   const [cAge, setCAge] = useState('');
   const [cGender, setCGender] = useState<'Male'|'Female'>('Female');
   const [cProgram, setCProgram] = useState<'General Consultation' | 'Adolescent Health' | 'Family Planning' | 'Teenage Pregnancy Prevention' | 'NTP (TB-DOTS)'>('General Consultation');
-  // Fixed Dual BP Inputs
-  const [cBpSys, setCBpSys] = useState('120');
-  const [cBpDia, setCBpDia] = useState('80');
-  const [cTemp, setCTemp] = useState('36.5');
+  // Fixed Dual BP Inputs (Starts clean for fresh input)
+  const [cBpSys, setCBpSys] = useState('');
+  const [cBpDia, setCBpDia] = useState('');
+  const [cTemp, setCTemp] = useState('');
   const [cWeight, setCWeight] = useState('');
-  const [cHR, setCHR] = useState('75');
+  const [cHR, setCHR] = useState('');
   const [cComplaint, setCComplaint] = useState('');
   const [cDiagnosis, setCDiagnosis] = useState('');
   // Dynamic Prescription Builder
   const [cPrescriptions, setCPrescriptions] = useState<PrescribedMedItem[]>([]);
   const [medName, setMedName] = useState('');
-  const [medDose, setMedDose] = useState('500mg');
+  const [medDose, setMedDose] = useState('');
   const [medQty, setMedQty] = useState('1'); // Starting from 1 with unrestricted freedom
-  const [medFreq, setMedFreq] = useState('3x daily after meals');
-  const [medDuration, setMedDuration] = useState('7 days');
-  const [medInst, setMedInst] = useState('Take with plenty of water');
+  const [medFreq, setMedFreq] = useState('');
+  const [medDuration, setMedDuration] = useState('');
+  const [medInst, setMedInst] = useState('');
   const [patientModalTab, setPatientModalTab] = useState<'overview' | 'consultations' | 'maternal' | 'immunizations'>('overview');
   // Specialized Program Fields
-  const [cAdolescentStage, setCAdolescentStage] = useState('Mid Adolescent (15-17 yrs)');
-  const [cAdolescentFocus, setCAdolescentFocus] = useState('Pubertal Guidance & Mental Wellness');
-  const [cTeenSchool, setCTeenSchool] = useState('Enrolled in High School');
-  const [cTeenRisk, setCTeenRisk] = useState('Low Risk / Preventive Counseling');
-  const [cTeenGuardian, setCTeenGuardian] = useState('Accompanied by Guardian');
-  const [cFpClientType, setCFpClientType] = useState('New Acceptor');
-  const [cFpMethod, setCFpMethod] = useState('DMPA Injectable (Depo)');
+  const [cAdolescentStage, setCAdolescentStage] = useState('');
+  const [cAdolescentFocus, setCAdolescentFocus] = useState('');
+  const [cTeenSchool, setCTeenSchool] = useState('');
+  const [cTeenRisk, setCTeenRisk] = useState('');
+  const [cTeenGuardian, setCTeenGuardian] = useState('');
+  const [cFpClientType, setCFpClientType] = useState('');
+  const [cFpMethod, setCFpMethod] = useState('');
   const [cFpLmp, setCFpLmp] = useState('');
   const [cFpNextSupply, setCFpNextSupply] = useState('');
   const [cFpNotes, setCFpNotes] = useState('');
   const [cTbRegNo, setCTbRegNo] = useState('');
-  const [cTbCategory, setCTbCategory] = useState('New Pulmonary Case');
-  const [cTbSputum, setCTbSputum] = useState('GeneXpert / AFB Pending');
-  const [cTbPhase, setCTbPhase] = useState('Intensive Phase (2 Months RHZE)');
+  const [cTbCategory, setCTbCategory] = useState('');
+  const [cTbSputum, setCTbSputum] = useState('');
+  const [cTbPhase, setCTbPhase] = useState('');
   const [cTbPartner, setCTbPartner] = useState('');
 
   // ══ Prenatal Form State ══
@@ -322,26 +322,26 @@ export default function NurseDashboard() {
   const [pName, setPName] = useState('');
   const [pPhone, setPPhone] = useState('');
   const [pAge, setPAge] = useState('');
-  const [pGravida, setPGravida] = useState('G1');
-  const [pPara, setPPara] = useState('P0');
+  const [pGravida, setPGravida] = useState('');
+  const [pPara, setPPara] = useState('');
   const [pLmp, setPLmp] = useState('');
   const [pEdd, setPEdd] = useState('');
   const [pAog, setPAog] = useState('');
-  const [pVisitNum, setPVisitNum] = useState('1'); // default 1st visit
+  const [pVisitNum, setPVisitNum] = useState('');
   const [residents, setResidents] = useState<Resident[]>([]);
   const [pSearchFocus, setPSearchFocus] = useState(false);
   const [iSearchFocus, setISearchFocus] = useState(false);
   // Fixed Dual BP Inputs
-  const [pBpSys, setPBpSys] = useState('120');
-  const [pBpDia, setPBpDia] = useState('80');
+  const [pBpSys, setPBpSys] = useState('');
+  const [pBpDia, setPBpDia] = useState('');
   const [pWeight, setPWeight] = useState('');
-  const [pTemp, setPTemp] = useState('36.5');
+  const [pTemp, setPTemp] = useState('');
   const [pFhr, setPFhr] = useState('');
   const [pFh, setPFh] = useState('');
   const [pNextDate, setPNextDate] = useState('');
   const [pNextNote, setPNextNote] = useState('');
-  const [pMeds, setPMeds] = useState('FeSO4 + Folic Acid 400mcg daily');
-  const [pMedQty, setPMedQty] = useState('30'); // Freedom to start from 1 unit
+  const [pMeds, setPMeds] = useState('');
+  const [pMedQty, setPMedQty] = useState('30');
 
   // ══ Immunization Form State ══
   const [iChildFirstName, setIChildFirstName] = useState('');
@@ -350,18 +350,18 @@ export default function NurseDashboard() {
   const [iChild, setIChild] = useState('');
   const [iPhone, setIPhone] = useState('');
   const [iAge, setIAge] = useState('');
-  const [iGender, setIGender] = useState('Male');
+  const [iGender, setIGender] = useState('');
   const [iGuardian, setIGuardian] = useState('');
   const [iWeight, setIWeight] = useState('');
   const [iHeight, setIHeight] = useState('');
-  const [iVaccine, setIVaccine] = useState('Pentavalent (DPT-HepB-Hib)');
+  const [iVaccine, setIVaccine] = useState('');
   const [iCustomVaccine, setICustomVaccine] = useState('');
-  const [iVaccineQty, setIVaccineQty] = useState('1'); // Starting from 1 with full freedom
-  const [iDose, setIDose] = useState('Dose 1');
+  const [iVaccineQty, setIVaccineQty] = useState('1');
+  const [iDose, setIDose] = useState('');
   const [iBatch, setIBatch] = useState('');
   const [iDateGiven, setIDateGiven] = useState(new Date().toISOString().split('T')[0]);
   const [iNextDue, setINextDue] = useState('');
-  const [iRemarks, setIRemarks] = useState('Cleared for routine vaccination');
+  const [iRemarks, setIRemarks] = useState('');
 
   // ══ Inventory & Schedule Form States ══
   const [invName, setInvName] = useState('');
@@ -371,10 +371,10 @@ export default function NurseDashboard() {
   const [invExpiry, setInvExpiry] = useState('');
   const [invFilter, setInvFilter] = useState<'all' | 'vaccine' | 'medicine'>('all');
   const [sTitle, setSTitle] = useState('');
-  const [sService, setSService] = useState('Prenatal Care');
-  const [sDay, setSDay] = useState('Every Monday');
-  const [sTime, setSTime] = useState('8:00 AM – 12:00 PM & 1:00 PM – 4:00 PM');
-  const [sLocation, setSLocation] = useState(`Barangay ${nurseBarangay} Health Center`);
+  const [sService, setSService] = useState('');
+  const [sDay, setSDay] = useState('');
+  const [sTime, setSTime] = useState('');
+  const [sLocation, setSLocation] = useState('');
 
   // Helper: Live BP category
   const getBpCategory = (sys: string, dia: string) => {
@@ -387,6 +387,18 @@ export default function NurseDashboard() {
     if (s >= 120 && d < 80) return { label: 'Elevated BP', color: 'bg-yellow-100 text-yellow-800' };
     return { label: 'Normal BP', color: 'bg-emerald-100 text-emerald-800 font-semibold' };
   };
+
+  // Auto-detect strength/dosage in selected medicine name
+  const isMedDoseInName = useMemo(() => {
+    if (!medName) return false;
+    return /\b\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|nebules?)\b/i.test(medName);
+  }, [medName]);
+
+  const extractedMedDose = useMemo(() => {
+    if (!medName) return '';
+    const match = medName.match(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|nebules?)\b/i);
+    return match ? match[0] : '';
+  }, [medName]);
 
   // Find currently selected medicine in live inventory
   const selectedInventoryItem = useMemo(() => {
@@ -420,7 +432,7 @@ export default function NurseDashboard() {
   // Add medicine to prescription with unrestricted quantity (starting from 1) & stock validation
   const handleAddMedToRx = () => {
     if (!medName.trim()) {
-      toast.error('Please select or enter medication name');
+      toast.error('Please enter or select a medicine');
       return;
     }
     const qtyNum = parseInt(medQty, 10);
@@ -435,9 +447,9 @@ export default function NurseDashboard() {
     const item: PrescribedMedItem = {
       id: String(Date.now()),
       name: medName.trim(),
-      dosage: medDose.trim(),
-      frequency: medFreq.trim(),
-      duration: medDuration.trim(),
+      dosage: medDose.trim() || (isMedDoseInName ? extractedMedDose : ''),
+      frequency: medFreq.trim() || 'As directed',
+      duration: medDuration.trim() || 'Course completion',
       instructions: medInst.trim(),
       quantity: qtyNum,
       unit: selectedInventoryItem?.unit || 'units'
@@ -797,17 +809,17 @@ export default function NurseDashboard() {
     setCAge(pData.age ? String(pData.age) : '');
     setCGender((pData.gender as any) || 'Female');
     setCProgram('General Consultation');
-    setCBpSys('120');
-    setCBpDia('80');
-    setCTemp(pData.temp || '36.5');
+    setCBpSys('');
+    setCBpDia('');
+    setCTemp('');
     setCWeight(pData.weight ? String(pData.weight) : '');
-    setCHR('78');
-    setCComplaint('Follow-up Checkup / Return Visit');
+    setCHR('');
+    setCComplaint('');
     setCDiagnosis('');
     setCPrescriptions([]);
     setIsPatientModalOpen(false);
     setIsNewConsultOpen(true);
-    toast.info(`Pre-filled return visit consultation for ${pData.name}`);
+    toast.info(`Opened return visit consultation for ${pData.name}`);
   };
 
   // ══ Submit Handlers with Immediate Optimistic Updates ══
@@ -816,9 +828,9 @@ export default function NurseDashboard() {
     e.preventDefault();
     if (!cName.trim()) { toast.error('Patient name is required'); return; }
 
-    const cleanSys = cBpSys.replace(/\D/g, '') || '120';
-    const cleanDia = cBpDia.replace(/\D/g, '') || '80';
-    const bpString = `${cleanSys}/${cleanDia} mmHg`;
+    const cleanSys = cBpSys.replace(/\D/g, '');
+    const cleanDia = cBpDia.replace(/\D/g, '');
+    const bpString = (cleanSys && cleanDia) ? `${cleanSys}/${cleanDia} mmHg` : (cleanSys || cleanDia ? `${cleanSys || cleanDia} mmHg` : '');
 
     const formattedRx = cPrescriptions.length > 0
       ? cPrescriptions.map(m => `${m.name} ${m.dosage} (Qty: ${m.quantity || 1} ${m.unit || 'units'}) [${m.frequency}, ${m.duration}] - ${m.instructions}`).join('; ')
@@ -1339,11 +1351,34 @@ export default function NurseDashboard() {
     setApptToCompleteId(apt.id);
     setCName(apt.resident_name);
     setCPhone(apt.resident_phone || '');
-    setCComplaint(`Booked Appointment (${apt.service_type})${apt.resident_notes ? `: ${apt.resident_notes}` : ''}`);
-    setCBpSys('120');
-    setCBpDia('80');
-    setCTemp('36.5');
-    setCHR('75');
+    setCComplaint('');
+    setCDiagnosis('');
+    setCBpSys('');
+    setCBpDia('');
+    setCTemp('');
+    setCWeight('');
+    setCHR('');
+    setCPrescriptions([]);
+    setMedName('');
+    setMedDose('');
+    setMedFreq('');
+    setMedDuration('');
+    setMedInst('');
+    setCAdolescentStage('');
+    setCAdolescentFocus('');
+    setCTeenSchool('');
+    setCTeenRisk('');
+    setCTeenGuardian('');
+    setCFpClientType('');
+    setCFpMethod('');
+    setCFpLmp('');
+    setCFpNextSupply('');
+    setCFpNotes('');
+    setCTbRegNo('');
+    setCTbCategory('');
+    setCTbSputum('');
+    setCTbPhase('');
+    setCTbPartner('');
 
     // Auto-fill Age & Gender from patient / resident registry
     try {
@@ -1476,25 +1511,64 @@ export default function NurseDashboard() {
     setISearchFocus(false);
   };
 
+  const openNewConsultModal = () => {
+    setCName('');
+    setCPhone('');
+    setCAge('');
+    setCGender('Female');
+    setCProgram('General Consultation');
+    setCBpSys('');
+    setCBpDia('');
+    setCTemp('');
+    setCWeight('');
+    setCHR('');
+    setCComplaint('');
+    setCDiagnosis('');
+    setCPrescriptions([]);
+    setMedName('');
+    setMedDose('');
+    setMedQty('1');
+    setMedFreq('');
+    setMedDuration('');
+    setMedInst('');
+    setCAdolescentStage('');
+    setCAdolescentFocus('');
+    setCTeenSchool('');
+    setCTeenRisk('');
+    setCTeenGuardian('');
+    setCFpClientType('');
+    setCFpMethod('');
+    setCFpLmp('');
+    setCFpNextSupply('');
+    setCFpNotes('');
+    setCTbRegNo('');
+    setCTbCategory('');
+    setCTbSputum('');
+    setCTbPhase('');
+    setCTbPartner('');
+    setIsNewConsultOpen(true);
+  };
+
   const openNewPrenatalModal = () => {
     setPFirstName('');
     setPMiddleName('');
     setPLastName('');
     setPPhone('');
     setPAge('');
-    setPVisitNum('1'); // Default to 1st Visit
-    setPGravida('G1');
-    setPPara('P0');
+    setPVisitNum('');
+    setPGravida('');
+    setPPara('');
     setPLmp('');
     setPEdd('');
-    setPBpSys('120');
-    setPBpDia('80');
+    setPBpSys('');
+    setPBpDia('');
     setPWeight('');
-    setPTemp('36.5');
+    setPTemp('');
     setPFhr('');
     setPFh('');
     setPNextDate('');
     setPNextNote('');
+    setPMeds('');
     setPSearchFocus(false);
     setIsNewPrenatalOpen(true);
   };
@@ -1506,14 +1580,49 @@ export default function NurseDashboard() {
     setIChild('');
     setIPhone('');
     setIAge('');
-    setIGender('Male');
+    setIGender('');
     setIGuardian('');
     setIWeight('');
     setIHeight('');
-    setIVaccine('Pentavalent (DPT-HepB-Hib)');
-    setIDose('Dose 1');
+    setIVaccine('');
+    setIDose('');
+    setIRemarks('');
     setISearchFocus(false);
     setIsNewImmunOpen(true);
+  };
+
+  // Helper to detect if appointment is a 2nd, 3rd, or subsequent visit
+  const getResidentEncounterCount = (residentName: string, residentPhone?: string) => {
+    if (!residentName) return 0;
+    const nameLower = residentName.toLowerCase().trim();
+    const phoneClean = residentPhone ? residentPhone.replace(/\D/g, '') : '';
+
+    const consultCount = consultations.filter(c => 
+      (c.patient_name || '').toLowerCase().trim() === nameLower ||
+      (phoneClean && (c.contact_number || '').replace(/\D/g, '').includes(phoneClean))
+    ).length;
+
+    const prenatalCount = prenatalRecords.filter(p =>
+      (p.patient_name || '').toLowerCase().trim() === nameLower ||
+      (phoneClean && (p.contact_number || '').replace(/\D/g, '').includes(phoneClean))
+    ).length;
+
+    const completedApptCount = appointments.filter(a =>
+      a.status === 'Completed' && (
+        (a.resident_name || '').toLowerCase().trim() === nameLower ||
+        (phoneClean && (a.resident_phone || '').replace(/\D/g, '').includes(phoneClean))
+      )
+    ).length;
+
+    return consultCount + prenatalCount + completedApptCount;
+  };
+
+  const isFollowUpAppointment = (apt: HealthAppointment) => {
+    const s = `${apt.service_type || ''} ${apt.resident_notes || ''}`.toLowerCase();
+    if (s.includes('follow-up') || s.includes('follow up') || s.includes('return') || s.includes('2nd') || s.includes('3rd')) {
+      return true;
+    }
+    return getResidentEncounterCount(apt.resident_name, apt.resident_phone) >= 1;
   };
 
   const menuItems = [
@@ -1526,8 +1635,7 @@ export default function NurseDashboard() {
     { id: 'inventory', label: 'Vaccines & Medicine Supply', icon: Pill },
     { id: 'census', label: 'Populations & Census Registry', icon: Users },
     { id: 'reports', label: 'Health Reports & Analytics', icon: BarChart3 },
-    { id: 'records', label: 'Records', icon: ClipboardList },
-    { id: 'sms', label: 'Gmail Notification Hub', icon: Bell },
+    { id: 'records', label: 'Archive', icon: ClipboardList },
     { id: 'profile', label: 'Profile Settings', icon: UserCircle },
   ];
 
@@ -1574,17 +1682,20 @@ export default function NurseDashboard() {
 
   const filteredAppointments = useMemo(() => {
     return appointments.filter(a => {
+      // Main table strictly displays newly scheduled / pending appointments (Pending or Approved)
+      const isActive = a.status === 'Pending' || a.status === 'Approved';
+      if (!isActive) return false;
+
       const q = apptSearch.toLowerCase().trim();
       const matchSearch = !q ||
         (a.resident_name || '').toLowerCase().includes(q) ||
         (a.appointment_code || '').toLowerCase().includes(q) ||
         (a.service_type || '').toLowerCase().includes(q) ||
         (a.resident_phone || '').includes(q);
-      const matchStatus = apptStatusFilter === 'all' || a.status === apptStatusFilter;
       const matchService = apptServiceFilter === 'all' || (a.service_type || '').toLowerCase().includes(apptServiceFilter.toLowerCase());
-      return matchSearch && matchStatus && matchService;
+      return matchSearch && matchService;
     });
-  }, [appointments, apptSearch, apptStatusFilter, apptServiceFilter]);
+  }, [appointments, apptSearch, apptServiceFilter]);
 
   const cBpStatus = getBpCategory(cBpSys, cBpDia);
   const pBpStatus = getBpCategory(pBpSys, pBpDia);
@@ -2377,6 +2488,7 @@ export default function NurseDashboard() {
                       <TableHead className="text-xs font-bold text-slate-700">Visit Number</TableHead>
                       <TableHead className="text-xs font-bold text-slate-700">AOG / EDD</TableHead>
                       <TableHead className="text-xs font-bold text-slate-700">Vitals &amp; FHR</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-700">Medication Given</TableHead>
                       <TableHead className="text-xs font-bold text-slate-700">Next Scheduled Visit</TableHead>
                       <TableHead className="text-xs font-bold text-slate-700">Schedule Status</TableHead>
                       <TableHead className="text-xs font-bold text-slate-700 text-right">Actions</TableHead>
@@ -2420,6 +2532,12 @@ export default function NurseDashboard() {
                           </TableCell>
 
                           <TableCell>
+                            <span className="font-medium text-slate-800 text-[11px] block">
+                              {r.prescribed_meds || (r.iron_folic_given ? 'Iron + Folic Acid' : '—')}
+                            </span>
+                          </TableCell>
+
+                          <TableCell>
                             <span className={`font-semibold font-mono ${isOverdue ? 'text-red-700' : isDueSoon ? 'text-amber-700' : 'text-slate-800'}`}>
                               {r.next_visit_date}
                             </span>
@@ -2449,7 +2567,7 @@ export default function NurseDashboard() {
                     })}
                     {filteredMaternal.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-xs py-10 text-slate-400">
+                        <TableCell colSpan={8} className="text-center text-xs py-10 text-slate-400">
                           No maternal records match the selected filter.
                         </TableCell>
                       </TableRow>
@@ -2760,19 +2878,6 @@ export default function NurseDashboard() {
                       <SelectItem value="TB-DOTS">NTP (TB-DOTS)</SelectItem>
                     </SelectContent>
                   </Select>
-
-                  <Select value={apptStatusFilter} onValueChange={v => setApptStatusFilter(v as any)}>
-                    <SelectTrigger className="w-[130px] h-9 text-xs bg-slate-50 border-slate-200 rounded-xl">
-                      <SelectValue placeholder="All Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Approved">Approved</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 
@@ -2902,15 +3007,17 @@ export default function NurseDashboard() {
                                       >
                                         <Stethoscope size={11} /> Consult
                                       </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleUpdateApptStatus(apt.id, 'Cancelled', 'Patient did not return for scheduled slot')}
-                                        className="h-7 text-[11px] border-rose-200 text-rose-700 hover:bg-rose-50 gap-1 rounded-lg cursor-pointer font-medium"
-                                        title="Mark as Did Not Return / Cancel and move to Records"
-                                      >
-                                        <XCircle size={11} /> Did Not Return
-                                      </Button>
+                                      {isFollowUpAppointment(apt) && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleUpdateApptStatus(apt.id, 'Cancelled', 'Patient did not return for scheduled slot')}
+                                          className="h-7 text-[11px] border-rose-200 text-rose-700 hover:bg-rose-50 gap-1 rounded-lg cursor-pointer font-medium"
+                                          title="Mark as Did Not Return / Cancel and move to Records"
+                                        >
+                                          <XCircle size={11} /> Did Not Return
+                                        </Button>
+                                      )}
                                       <Button
                                         size="sm"
                                         onClick={() => handleUpdateApptStatus(apt.id, 'Completed')}
@@ -3639,14 +3746,14 @@ export default function NurseDashboard() {
               <div>
                 <Label className="text-xs font-semibold text-slate-700">Gender</Label>
                 <Select value={cGender} onValueChange={v => setCGender(v as any)}>
-                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl border-slate-200"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl border-slate-200"><SelectValue placeholder="Select gender" /></SelectTrigger>
                   <SelectContent><SelectItem value="Female">Female</SelectItem><SelectItem value="Male">Male</SelectItem></SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-xs font-semibold text-slate-700">Consultation Program</Label>
                 <Select value={cProgram} onValueChange={(v: any) => setCProgram(v)}>
-                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl border-slate-200"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl border-slate-200"><SelectValue placeholder="Select program" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="General Consultation">General Medical Consultation</SelectItem>
                     <SelectItem value="Family Planning">Family Planning Counseling</SelectItem>
@@ -3737,7 +3844,17 @@ export default function NurseDashboard() {
                         <span className="text-[10px] text-slate-400">Select medicine to check stock</span>
                       )}
                     </div>
-                    <Select value={medName} onValueChange={val => { setMedName(val); setMedQty('1'); }}>
+                    <Select value={medName} onValueChange={val => { 
+                      setMedName(val); 
+                      setMedQty('1');
+                      const doseMatch = val.match(/\b\d+(\.\d+)?\s*(mg|g|ml|mcg|iu|%)\b/i);
+                      if (doseMatch) {
+                        setMedDose(doseMatch[0]);
+                      } else {
+                        setMedDose('');
+                      }
+                      setMedFreq('');
+                    }}>
                       <SelectTrigger className="h-9 text-xs bg-white rounded-xl border-slate-200 shadow-2xs">
                         <SelectValue placeholder="Select medicine from inventory stock..." />
                       </SelectTrigger>
@@ -3819,12 +3936,13 @@ export default function NurseDashboard() {
                         value={medDose}
                         onChange={e => setMedDose(e.target.value)}
                         placeholder="Dosage (e.g. 500mg, 1 tablet)"
-                        className="h-7.5 text-xs bg-slate-50 rounded-lg border-slate-200"
+                        disabled={isMedDoseInName}
+                        className={`h-7.5 text-xs bg-slate-50 rounded-lg border-slate-200 ${isMedDoseInName ? 'bg-slate-100 cursor-not-allowed text-slate-600 font-semibold' : ''}`}
                       />
                       <Input
                         value={medFreq}
                         onChange={e => setMedFreq(e.target.value)}
-                        placeholder="Frequency (e.g. 3x daily after meals)"
+                        placeholder="e.g., Take 1 tablet every 8 hours after meals"
                         className="h-7.5 text-xs bg-slate-50 rounded-lg border-slate-200"
                       />
                     </div>
@@ -4568,30 +4686,15 @@ export default function NurseDashboard() {
             <div className="grid grid-cols-3 gap-2.5">
               <div>
                 <Label className="text-xs font-semibold text-slate-700">Sex <span className="text-rose-500">*</span></Label>
-                <div className="grid grid-cols-2 gap-1 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIGender('Male')}
-                    className={`h-9 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                      iGender === 'Male'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span>👦</span> Male
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIGender('Female')}
-                    className={`h-9 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                      iGender === 'Female'
-                        ? 'bg-pink-600 text-white border-pink-600 shadow-xs'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span>👧</span> Female
-                  </button>
-                </div>
+                <Select value={iGender} onValueChange={setIGender}>
+                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl bg-white border-slate-200">
+                    <SelectValue placeholder="Select Gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="col-span-2">
                 <Label className="text-xs font-semibold text-slate-700">Guardian Name <span className="text-rose-500">*</span></Label>
@@ -5019,6 +5122,15 @@ export default function NurseDashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Intra-System Messenger (floating Staff Chat) */}
+      <SystemMessenger
+        currentUserRole="nurse"
+        currentUserName={nurseName}
+        currentUserEmail={user?.email}
+        currentUserId={user?.id}
+        currentUserBarangay={nurseBarangay}
+      />
     </div>
   );
 }

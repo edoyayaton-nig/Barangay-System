@@ -233,16 +233,8 @@ export default function CensusEntryTab({
       const autoHh = computeAutoHouseholdNum(newPurok, households, residents);
       setFHouseholdNum(autoHh);
     } else {
-      const cleanP = newPurok.replace(/purok\s*/i, '').trim();
-      const inP = households.filter(
-        h =>
-          (h.purok || '').includes(cleanP) ||
-          (h.household_number || '').includes(`HH-P${cleanP}`)
-      );
-      if (inP.length > 0) {
-        setFHouseholdNum(inP[0].household_number);
-        setFFamilyName(inP[0].family_name);
-      }
+      setFHouseholdNum('');
+      setFFamilyName('');
     }
   };
 
@@ -1172,14 +1164,10 @@ export default function CensusEntryTab({
                   type="button"
                   onClick={() => {
                     setAddMode('existing_household');
-                    const cleanP = (fPurok || '1').replace(/purok\s*/i, '').trim();
-                    const inP = households.filter(h => (h.purok || '').includes(cleanP));
-                    if (inP.length > 0) {
-                      setFHouseholdNum(inP[0].household_number);
-                      setFFamilyName(inP[0].family_name);
-                    }
+                    setFHouseholdNum('');
+                    setFFamilyName('');
                     setFIsHead(false);
-                    setFRelationship('Son');
+                    setFRelationship('');
                   }}
                   className={`p-2 rounded-lg text-xs font-semibold border transition-all text-left cursor-pointer ${
                     addMode === 'existing_household'

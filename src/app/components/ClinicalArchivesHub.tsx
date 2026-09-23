@@ -22,6 +22,7 @@ import {
   MapPin,
   CalendarCheck,
   ArrowUpDown,
+  Download,
   X
 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
@@ -38,7 +39,7 @@ import {
   DialogFooter
 } from './ui/dialog';
 import { apiService } from '../../services/api';
-import { printOfficialReport } from '../../utils/exportCsv';
+import { downloadOfficialPdf } from '../../utils/exportCsv';
 import { toast } from 'sonner';
 
 interface ClinicalArchivesHubProps {
@@ -96,6 +97,8 @@ export default function ClinicalArchivesHub({
     }
   };
 
+  const [selectedRecordKeys, setSelectedRecordKeys] = useState<string[]>([]);
+
   // Metrics calculation
   const totalCompletedAppointments = archivesData.appointments.filter(a => a.status === 'Completed').length;
   const totalCancelledAppointments = archivesData.appointments.filter(a => a.status === 'Cancelled' || a.status === 'No Show').length;
@@ -112,6 +115,7 @@ export default function ClinicalArchivesHub({
     archivesData.consultations.forEach(c => {
       list.push({
         ...c,
+        recordKey: `consult-${c.id}`,
         recordCategory: 'consultation',
         categoryLabel: c.program_type || 'General Consultation',
         patientName: c.patient_name || 'Anonymous Resident',
@@ -126,6 +130,7 @@ export default function ClinicalArchivesHub({
     archivesData.maternal.forEach(m => {
       list.push({
         ...m,
+        recordKey: `mat-${m.id}`,
         recordCategory: 'maternal',
         categoryLabel: 'Maternal & Prenatal Care',
         patientName: m.mother_name || 'Maternal Patient',
@@ -140,6 +145,7 @@ export default function ClinicalArchivesHub({
     archivesData.immunizations.forEach(i => {
       list.push({
         ...i,
+        recordKey: `imm-${i.id}`,
         recordCategory: 'immunization',
         categoryLabel: `NIP Vaccine: ${i.vaccine_name || i.vaccine_given || 'Standard'}`,
         patientName: i.child_name || 'Infant Record',
@@ -155,6 +161,7 @@ export default function ClinicalArchivesHub({
       const isCancelled = a.status === 'Cancelled' || a.status === 'No Show';
       list.push({
         ...a,
+        recordKey: `appt-${a.id}`,
         recordCategory: 'appointment',
         categoryLabel: `Appointment: ${a.service_type || 'Clinic Visit'}`,
         patientName: a.resident_name || 'Resident Applicant',
@@ -216,21 +223,36 @@ export default function ClinicalArchivesHub({
     return result;
   }, [unifiedRecords, activeCategory, statusFilter, searchQuery]);
 
+  const toggleSelectAll = () => {
+    if (selectedRecordKeys.length === filteredRecords.length && filteredRecords.length > 0) {
+      setSelectedRecordKeys([]);
+    } else {
+      setSelectedRecordKeys(filteredRecords.map(r => r.recordKey));
+    }
+  };
+
+  const toggleSelectRecord = (key: string) => {
+    setSelectedRecordKeys(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
   const handleOpenDetailModal = (record: any) => {
     setSelectedRecord(record);
     setIsDetailModalOpen(true);
   };
 
-  const handlePrintCertificate = (item: any) => {
+  const handleDownloadSinglePdf = async (item: any) => {
     const pName = item.patientName || item.patient_name || item.child_name || item.mother_name || item.resident_name || 'Resident';
     const cPhone = item.contactPhone || item.contact_number || item.parent_phone || item.resident_phone || 'N/A';
     const sType = item.categoryLabel || item.program_type || item.service_type || 'Clinical Care';
     const rDate = item.recordDate || item.encounter_date || item.date_administered || item.scheduled_date || 'Official Record';
     const staff = item.attendingStaff || item.attending_worker || item.attending_nurse || item.attending_bhw || 'Barangay Healthcare Personnel';
 
-    printOfficialReport({
+    await downloadOfficialPdf({
       title: 'BARANGAY HEALTH CENTER CLINICAL RECORD SUMMARY',
       subtitle: `Official Health Record Dossier — Barangay ${barangay}`,
+      filename: `Medical_Record_${pName.replace(/\s+/g, '_')}`,
       preparedBy: staff,
       preparedByTitle: 'Attending Healthcare Officer',
       department: 'Barangay Health Center Records Division',
@@ -247,7 +269,7 @@ export default function ClinicalArchivesHub({
           ['Encounter Category', sType],
           ['Encounter Date', String(rDate)],
           ['Status', item.status || 'Completed'],
-          ['Clinical Vitals', `BP: ${item.bp || '120/80'} | Temp: ${item.temp || '36.5'}°C | Wt: ${item.weight || '—'}kg`],
+          ['Clinical Vitals', `BP: ${item.bp || '—'} | Temp: ${item.temp ? `${item.temp}°C` : '—'} | Wt: ${item.weight ? `${item.weight}kg` : '—'}`],
           ['Diagnosis / Subject', item.diagnosis || item.chief_complaint || item.detailsSummary || 'General assessment'],
           ['Medications / Prescriptions', item.prescribed_meds || item.treatment || 'Consultation counseling'],
           ['Notes / Remarks', item.bhw_notes || item.remarks || item.detailsSummary || 'Official clinical record'],
@@ -255,7 +277,45 @@ export default function ClinicalArchivesHub({
         ]
       }]
     });
-    toast.success(`Official Record printed for ${pName}`);
+    toast.success(`Official Record PDF downloaded for ${pName}`);
+  };
+
+  const handleBulkDownloadPdf = async () => {
+    const targetRecords = selectedRecordKeys.length > 0
+      ? filteredRecords.filter(r => selectedRecordKeys.includes(r.recordKey))
+      : filteredRecords;
+
+    if (targetRecords.length === 0) {
+      toast.error('No records available to export');
+      return;
+    }
+
+    await downloadOfficialPdf({
+      title: 'BARANGAY HEALTH CENTER CLINICAL ARCHIVE REPORT',
+      subtitle: `Official Health Center Registry (${targetRecords.length} Records) — Barangay ${barangay}`,
+      filename: `Clinical_Archive_Records_${barangay}_${new Date().toISOString().slice(0, 10)}`,
+      preparedBy: 'Clinical Records Administrator',
+      preparedByTitle: 'Records Division',
+      department: 'Barangay Health Services',
+      stats: [
+        { label: 'Exported Records', value: targetRecords.length, color: '#0d9488' },
+        { label: 'Completed', value: targetRecords.filter(s => s.status === 'Completed').length, color: '#2563eb' },
+        { label: 'Cancelled / No Show', value: targetRecords.filter(s => s.status === 'Cancelled').length, color: '#e11d48' }
+      ],
+      tables: [{
+        title: 'Archived Medical & Clinic Encounters',
+        headers: ['Patient Name', 'Category', 'Record Date', 'Status', 'Findings / Details', 'Attending Staff'],
+        rows: targetRecords.map(s => [
+          s.patientName || 'Resident',
+          s.categoryLabel || s.recordCategory,
+          String(s.recordDate || 'Recent'),
+          s.status || 'Completed',
+          s.detailsSummary || s.diagnosis || 'Standard encounter',
+          s.attendingStaff || 'BHW / Nurse'
+        ])
+      }]
+    });
+    toast.success(`Exported ${targetRecords.length} clinical records as PDF`);
   };
 
   return (
@@ -484,6 +544,23 @@ export default function ClinicalArchivesHub({
               <ArrowUpDown size={13} />
               <span className="hidden sm:inline">{sortOrder === 'desc' ? 'Newest' : 'Oldest'}</span>
             </button>
+
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleBulkDownloadPdf}
+              className={`h-9 px-3 text-xs rounded-xl flex items-center gap-1.5 cursor-pointer font-bold shadow-xs transition-all ${
+                selectedRecordKeys.length > 0
+                  ? 'bg-teal-600 hover:bg-teal-700 text-white'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+              }`}
+              title={selectedRecordKeys.length > 0 ? `Download ${selectedRecordKeys.length} selected records as PDF` : 'Download all filtered records as PDF'}
+            >
+              <Download size={13} />
+              {selectedRecordKeys.length > 0
+                ? `Download PDF (Selected: ${selectedRecordKeys.length})`
+                : `Download PDF (${filteredRecords.length})`}
+            </Button>
           </div>
         </div>
       </div>
@@ -495,6 +572,15 @@ export default function ClinicalArchivesHub({
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/80 border-b border-slate-200">
+                  <TableHead className="w-10 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      checked={filteredRecords.length > 0 && selectedRecordKeys.length === filteredRecords.length}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                      aria-label="Select all records"
+                    />
+                  </TableHead>
                   <TableHead className="text-xs font-bold text-slate-700 py-3">Patient Dossier</TableHead>
                   <TableHead className="text-xs font-bold text-slate-700 py-3">Service Category</TableHead>
                   <TableHead className="text-xs font-bold text-slate-700 py-3">Record Date</TableHead>
@@ -506,7 +592,7 @@ export default function ClinicalArchivesHub({
               <TableBody>
                 {filteredRecords.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-14">
+                    <TableCell colSpan={7} className="text-center py-14">
                       <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
                         <ClipboardList size={24} />
                       </div>
@@ -520,7 +606,16 @@ export default function ClinicalArchivesHub({
                   </TableRow>
                 ) : (
                   filteredRecords.map((rec, idx) => (
-                    <TableRow key={idx} className="text-xs hover:bg-slate-50/70 transition-colors">
+                    <TableRow key={rec.recordKey || idx} className="text-xs hover:bg-slate-50/70 transition-colors">
+                      <TableCell className="w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedRecordKeys.includes(rec.recordKey)}
+                          onChange={() => toggleSelectRecord(rec.recordKey)}
+                          className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                          aria-label={`Select ${rec.patientName}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2.5">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
@@ -629,12 +724,12 @@ export default function ClinicalArchivesHub({
                           </Button>
                           <Button
                             size="sm"
-                            variant="ghost"
-                            onClick={() => handlePrintCertificate(rec)}
-                            className="h-7 text-[11px] text-teal-700 hover:text-teal-800 hover:bg-teal-50 gap-1 rounded-lg cursor-pointer"
-                            title="Print official medical record report"
+                            variant="outline"
+                            onClick={() => handleDownloadSinglePdf(rec)}
+                            className="h-7 text-[11px] border-teal-200 text-teal-700 hover:text-teal-800 hover:bg-teal-50 gap-1 rounded-lg cursor-pointer font-medium"
+                            title="Download official medical record PDF"
                           >
-                            <Printer size={11} /> Print
+                            <Download size={11} /> Download PDF
                           </Button>
                         </div>
                       </TableCell>
@@ -800,12 +895,12 @@ export default function ClinicalArchivesHub({
               <Button
                 size="sm"
                 onClick={() => {
-                  handlePrintCertificate(selectedRecord);
+                  handleDownloadSinglePdf(selectedRecord);
                   setIsDetailModalOpen(false);
                 }}
                 className="bg-teal-700 hover:bg-teal-800 text-white text-xs gap-1.5 cursor-pointer shadow-xs rounded-xl"
               >
-                <Printer size={13} /> Print Official Record
+                <Download size={13} /> Download PDF Record
               </Button>
             )}
           </DialogFooter>
