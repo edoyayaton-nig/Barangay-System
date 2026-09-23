@@ -156,6 +156,12 @@ export default function HealthCenterPortal() {
   const [myBookings, setMyBookings] = useState<HealthAppointment[]>([]);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
 
+  // Appointment Cancellation State
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<HealthAppointment | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancellingLoading, setIsCancellingLoading] = useState(false);
+
   // Available dates strictly restricted to the schedule's operating days (Monday only, Wed only, etc.)
   const availableOperatingDates = useMemo(() => {
     return getUpcomingOperatingDates(selectedSchedule?.day_of_week, 10);
@@ -339,6 +345,42 @@ export default function HealthCenterPortal() {
       toast.error(err.message || 'Failed to submit appointment request. Verification required.');
     } finally {
       setIsBookingLoading(false);
+    }
+  };
+
+  const handleConfirmCancelAppointment = async () => {
+    if (!appointmentToCancel?.id) return;
+    setIsCancellingLoading(true);
+    try {
+      const reasonText = cancelReason.trim()
+        ? `Cancelled by resident: ${cancelReason.trim()}`
+        : 'Cancelled by resident via portal';
+      await apiService.cancelAppointment(Number(appointmentToCancel.id), reasonText);
+
+      // Update state locally
+      setAppointments(prev =>
+        prev.map(a =>
+          a.id === appointmentToCancel.id
+            ? { ...a, status: 'Cancelled', bhw_notes: reasonText }
+            : a
+        )
+      );
+      setMyBookings(prev =>
+        prev.map(b =>
+          b.id === appointmentToCancel.id
+            ? { ...b, status: 'Cancelled', bhw_notes: reasonText }
+            : b
+        )
+      );
+
+      toast.success('Your clinic appointment has been cancelled successfully.');
+      setIsCancelModalOpen(false);
+      setAppointmentToCancel(null);
+      setCancelReason('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to cancel appointment. Please contact health station staff.');
+    } finally {
+      setIsCancellingLoading(false);
     }
   };
 
@@ -845,6 +887,25 @@ export default function HealthCenterPortal() {
                       <p className="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-slate-200/80 italic">
                         Nurse Note: &ldquo;{b.bhw_notes}&rdquo;
                       </p>
+                    )}
+
+                    {b.status !== 'Cancelled' && b.status !== 'Completed' && (
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 mt-1">
+                        <span className="text-[10px] text-slate-400">Need to cancel or release slot?</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setAppointmentToCancel(b);
+                            setCancelReason('');
+                            setIsCancelModalOpen(true);
+                          }}
+                          className="h-6 px-2 text-[11px] text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-semibold gap-1 rounded-lg cursor-pointer transition-colors"
+                        >
+                          <XCircle size={12} />
+                          <span>Cancel Schedule</span>
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -1698,6 +1759,86 @@ export default function HealthCenterPortal() {
         user={user}
         onProfileUpdated={(updated) => setUser(updated)}
       />
+
+      {/* Cancel Appointment Confirmation Modal */}
+      <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 space-y-4">
+          <DialogHeader>
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-slate-900 leading-tight">
+                  Cancel Clinic Appointment
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                  Are you sure you want to cancel this scheduled health visit?
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {appointmentToCancel && (
+            <div className="space-y-3 pt-1 text-xs">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 text-sm">{appointmentToCancel.service_type}</span>
+                  {appointmentToCancel.appointment_code && (
+                    <Badge variant="outline" className="text-[9px] font-mono">
+                      {appointmentToCancel.appointment_code}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-slate-600 flex items-center gap-1.5">
+                  <Calendar size={12} className="text-slate-400" />
+                  Scheduled Date: <strong>{formatApptDate(appointmentToCancel.scheduled_date || appointmentToCancel.preferred_date)}</strong>
+                  {appointmentToCancel.scheduled_time && <span>({appointmentToCancel.scheduled_time})</span>}
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Reason for Cancellation (Optional)</Label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="e.g. Schedule conflict, work matter, patient feeling better, or rescheduling to another date."
+                  className="w-full mt-1.5 p-3 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-rose-500 outline-none resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 text-[11px] text-amber-900">
+                <p className="font-semibold">Note on Clinic Slots:</p>
+                <p className="text-amber-800 mt-0.5">Cancelling releases this slot for other barangay residents. You can re-book whenever ready.</p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="pt-2 gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isCancellingLoading}
+              onClick={() => {
+                setIsCancelModalOpen(false);
+                setAppointmentToCancel(null);
+              }}
+              className="text-xs rounded-xl"
+            >
+              Keep Appointment
+            </Button>
+            <Button
+              type="button"
+              disabled={isCancellingLoading}
+              onClick={handleConfirmCancelAppointment}
+              className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl gap-1.5 cursor-pointer"
+            >
+              {isCancellingLoading ? 'Cancelling...' : 'Confirm Cancellation'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -267,6 +267,7 @@ export default function AdminDashboard() {
   const [logSearch, setLogSearch] = useState('');
   const [logActionTypeFilter, setLogActionTypeFilter] = useState('All');
   const [logRoleFilter, setLogRoleFilter] = useState('All');
+  const [selectedLogForModal, setSelectedLogForModal] = useState<ActivityLog | null>(null);
 
   // Barangay Settings sub-tab: 'archive' | 'notifications'
   const [settingsSubTab, setSettingsSubTab] = useState<'archive' | 'notifications'>('archive');
@@ -8095,18 +8096,18 @@ export default function AdminDashboard() {
                      <div className="overflow-x-auto">
                     <Table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                       <colgroup>
-                        <col style={{ width: '190px' }} />
+                        <col style={{ width: '180px' }} />
                         <col />
-                        <col style={{ width: '115px' }} />
-                        <col style={{ width: '125px' }} />
+                        <col style={{ width: '110px' }} />
+                        <col style={{ width: '120px' }} />
                         <col style={{ width: '155px' }} />
                       </colgroup>
                       <TableHeader>
                         <TableRow className="bg-slate-50 text-xs border-b border-slate-200">
-                          <TableHead className="font-bold text-slate-700 text-left px-3 py-3 w-[190px]">Actor / User</TableHead>
+                          <TableHead className="font-bold text-slate-700 text-left px-3 py-3 w-[180px]">Actor / User</TableHead>
                           <TableHead className="font-bold text-slate-700 text-left px-3 py-3">Event &amp; Action</TableHead>
-                          <TableHead className="font-bold text-slate-700 text-center px-2 py-3 w-[115px]">Category</TableHead>
-                          <TableHead className="font-bold text-slate-700 text-center px-2 py-3 w-[125px]">Barangay Scope</TableHead>
+                          <TableHead className="font-bold text-slate-700 text-center px-2 py-3 w-[110px]">Category</TableHead>
+                          <TableHead className="font-bold text-slate-700 text-center px-2 py-3 w-[120px]">Barangay Scope</TableHead>
                           <TableHead className="font-bold text-slate-700 text-right px-3 py-3 w-[155px]">Timestamp</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -8170,7 +8171,7 @@ export default function AdminDashboard() {
                             return (
                               <TableRow key={`log-${log.id || idx}`} className="text-xs hover:bg-slate-50/80 transition-colors">
                                 {/* Actor */}
-                                <TableCell className="py-3">
+                                <TableCell className="py-3 px-3">
                                   <div className="flex items-center gap-2.5">
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                                       role === 'superadmin' ? 'bg-purple-100 text-purple-700' :
@@ -8181,8 +8182,8 @@ export default function AdminDashboard() {
                                     }`}>
                                       {log.user_name ? log.user_name.charAt(0).toUpperCase() : 'U'}
                                     </div>
-                                    <div>
-                                      <p className="font-bold text-slate-900">{log.user_name || 'System Actor'}</p>
+                                    <div className="overflow-hidden">
+                                      <p className="font-bold text-slate-900 truncate max-w-[120px]">{log.user_name || 'System Actor'}</p>
                                       <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-semibold border ${roleBadgeColor}`}>
                                         {log.user_role ? log.user_role.toUpperCase() : 'USER'}
                                       </span>
@@ -8190,12 +8191,23 @@ export default function AdminDashboard() {
                                   </div>
                                 </TableCell>
 
-                                {/* Action & Details */}
-                                <TableCell className="max-w-md py-3 pr-4 break-words">
-                                  <p className="font-bold text-slate-900 leading-snug">{log.action}</p>
-                                  {log.details && (
-                                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed break-words">{log.details}</p>
-                                  )}
+                                {/* Event & Action (with View Action button) */}
+                                <TableCell className="py-3 px-3 overflow-hidden">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="font-semibold text-slate-900 leading-snug truncate" title={log.action}>
+                                      {log.action}
+                                    </p>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setSelectedLogForModal(log)}
+                                      className="h-7 px-2.5 text-xs text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 font-semibold gap-1 shrink-0 rounded-lg cursor-pointer transition-colors"
+                                      title="View complete event and action details"
+                                    >
+                                      <Eye size={13} />
+                                      <span>View Action</span>
+                                    </Button>
+                                  </div>
                                 </TableCell>
 
                                 {/* Category */}
@@ -8213,7 +8225,7 @@ export default function AdminDashboard() {
                                 </TableCell>
 
                                 {/* Timestamp */}
-                                <TableCell className="text-right py-3 whitespace-nowrap text-slate-500 text-[11px]">
+                                <TableCell className="text-right py-3 whitespace-nowrap text-slate-500 text-[11px] pr-3">
                                   <div className="flex items-center justify-end gap-1 font-mono">
                                     <Clock size={11} className="text-slate-400" />
                                     <span>{log.timestamp}</span>
@@ -8228,6 +8240,92 @@ export default function AdminDashboard() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Activity Log Event Details Modal */}
+              <Dialog open={!!selectedLogForModal} onOpenChange={(open) => { if (!open) setSelectedLogForModal(null); }}>
+                <DialogContent className="sm:max-w-lg bg-white rounded-3xl p-6 space-y-4">
+                  <DialogHeader>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                        <History size={18} />
+                      </div>
+                      <div>
+                        <DialogTitle className="text-base font-bold text-slate-900 leading-tight">
+                          Audit Log Event Details
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                          Recorded system transaction and security event log.
+                        </DialogDescription>
+                      </div>
+                    </div>
+                  </DialogHeader>
+
+                  {selectedLogForModal && (
+                    <div className="space-y-4 pt-1 text-xs">
+                      {/* Actor & Action Card */}
+                      <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-xs shadow-xs">
+                              {selectedLogForModal.user_name ? selectedLogForModal.user_name.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900 text-sm">{selectedLogForModal.user_name || 'System Actor'}</p>
+                              <p className="text-[11px] text-slate-500 font-mono">Barangay: {selectedLogForModal.barangay || 'Pianing'}</p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5">
+                            {selectedLogForModal.user_role || 'User'}
+                          </Badge>
+                        </div>
+
+                        <div className="border-t border-slate-200/80 pt-3">
+                          <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Event / Action</span>
+                          <p className="font-bold text-sm text-slate-900 mt-0.5 leading-snug">{selectedLogForModal.action}</p>
+                        </div>
+                      </div>
+
+                      {/* Meta Grid */}
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="bg-white border border-slate-200 rounded-2xl p-3">
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Category</span>
+                          <div className="mt-1">
+                            <Badge variant="secondary" className="text-xs font-semibold">
+                              {selectedLogForModal.action_type || 'General'}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="bg-white border border-slate-200 rounded-2xl p-3">
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Timestamp</span>
+                          <p className="text-xs font-mono font-medium text-slate-700 mt-1 flex items-center gap-1.5">
+                            <Clock size={12} className="text-slate-400" />
+                            {selectedLogForModal.timestamp}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Full Details Payload */}
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Full Event Payload &amp; Notes</span>
+                        <div className="bg-slate-900 text-slate-100 rounded-2xl p-4 font-mono text-[11px] leading-relaxed max-h-56 overflow-y-auto whitespace-pre-wrap break-words border border-slate-800 shadow-inner">
+                          {selectedLogForModal.details || 'No additional payload or metadata logged for this event.'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <DialogFooter className="pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setSelectedLogForModal(null)}
+                      className="text-xs rounded-xl"
+                    >
+                      Close
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
 

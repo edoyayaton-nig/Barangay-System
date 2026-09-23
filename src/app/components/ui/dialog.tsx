@@ -33,7 +33,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+>(({ className, children, onPointerDownOutside, onInteractOutside, onEscapeKeyDown, ...props }, ref) => {
   const hasCustomMaxW = typeof className === 'string' && (className.includes('max-w-') || className.includes('sm:max-w-'));
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -46,6 +46,18 @@ const DialogContent = React.forwardRef<
           !hasCustomMaxW && "sm:max-w-lg",
           className
         )}
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+          onPointerDownOutside?.(e);
+        }}
+        onInteractOutside={(e) => {
+          e.preventDefault();
+          onInteractOutside?.(e);
+        }}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+          onEscapeKeyDown?.(e);
+        }}
         {...props}
       >
         <DialogPrimitive.Description className="sr-only">Dialog Content Details</DialogPrimitive.Description>

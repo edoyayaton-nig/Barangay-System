@@ -178,7 +178,7 @@ export default function TermsAndPrivacyModal({
               </div>
 
               {/* Section 4: Citizen Data Subject Rights */}
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-3">
                 <div className="flex items-center gap-2 text-slate-900 font-bold text-xs">
                   <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold flex items-center justify-center">4</span>
                   <span className="uppercase tracking-wide">Your Rights under Section 16, RA 10173</span>
@@ -186,19 +186,30 @@ export default function TermsAndPrivacyModal({
                 <p className="text-slate-600 text-[11px] leading-relaxed">
                   As a resident data subject, you have the right to:
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10.5px] font-medium text-slate-700">
-                  <div className="bg-slate-50 border border-slate-200/70 p-2 rounded-lg text-center">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-medium text-slate-700">
+                  <div className="bg-slate-50 border border-slate-200/70 p-2.5 rounded-xl text-center font-semibold text-slate-800 hover:bg-slate-100/70 transition-colors">
                     Right to be Informed
                   </div>
-                  <div className="bg-slate-50 border border-slate-200/70 p-2 rounded-lg text-center">
+                  <div className="bg-slate-50 border border-slate-200/70 p-2.5 rounded-xl text-center font-semibold text-slate-800 hover:bg-slate-100/70 transition-colors">
                     Right to Access Records
                   </div>
-                  <div className="bg-slate-50 border border-slate-200/70 p-2 rounded-lg text-center">
+                  <div className="bg-slate-50 border border-slate-200/70 p-2.5 rounded-xl text-center font-semibold text-slate-800 hover:bg-slate-100/70 transition-colors">
                     Right to Rectify Data
                   </div>
-                  <div className="bg-slate-50 border border-slate-200/70 p-2 rounded-lg text-center">
+                  <div className="bg-slate-50 border border-slate-200/70 p-2.5 rounded-xl text-center font-semibold text-slate-800 hover:bg-slate-100/70 transition-colors">
                     Right to File Complaint
                   </div>
+                </div>
+
+                {/* Practical Resident Guidance under RA 10173 */}
+                <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3 text-[11px] text-blue-950 space-y-1.5 leading-relaxed">
+                  <p className="font-bold text-blue-900 flex items-center gap-1.5">
+                    <ShieldCheck size={14} className="text-blue-700 shrink-0" />
+                    Resident Protection &amp; Privacy Grievance Protocol
+                  </p>
+                  <p className="text-blue-900/90">
+                    If you believe your personal or medical data has been processed unlawfully or without authorization, you may file a formal privacy complaint directly with the <strong>Barangay Data Protection Officer (DPO)</strong> at the Barangay Hall or escalate to the <strong>National Privacy Commission (NPC)</strong> via complaints@privacy.gov.ph under Section 16 of Republic Act No. 10173.
+                  </p>
                 </div>
               </div>
             </div>

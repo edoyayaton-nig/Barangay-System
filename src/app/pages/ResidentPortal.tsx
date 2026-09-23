@@ -20,6 +20,7 @@ import {
   Calendar,
   MapPin,
   X,
+  XCircle,
   Lock
 } from 'lucide-react';
 import { getBarangayContact, getBarangayEmail } from '../../utils/barangays';
@@ -34,6 +35,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
+import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 
 function formatApptDate(dateStr?: string) {
@@ -68,6 +71,12 @@ export default function ResidentPortal() {
   const [isBookingLoading, setIsBookingLoading] = useState(false);
   const [myBookings, setMyBookings] = useState<any[]>([]);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+
+  // Appointment Cancellation State
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<any | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancellingLoading, setIsCancellingLoading] = useState(false);
 
   // Available dates strictly restricted to the schedule's operating days
   const availableOperatingDates = useMemo(() => {
@@ -250,6 +259,35 @@ export default function ResidentPortal() {
       setIsBookingLoading(false);
     }
   };
+
+  const handleConfirmCancelAppointment = async () => {
+    if (!appointmentToCancel?.id) return;
+    setIsCancellingLoading(true);
+    try {
+      const reasonText = cancelReason.trim()
+        ? `Cancelled by resident: ${cancelReason.trim()}`
+        : 'Cancelled by resident via portal';
+      await apiService.cancelAppointment(Number(appointmentToCancel.id), reasonText);
+
+      setMyBookings(prev =>
+        prev.map(b =>
+          b.id === appointmentToCancel.id
+            ? { ...b, status: 'Cancelled', bhw_notes: reasonText }
+            : b
+        )
+      );
+
+      toast.success('Your clinic appointment has been cancelled successfully.');
+      setIsCancelModalOpen(false);
+      setAppointmentToCancel(null);
+      setCancelReason('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to cancel appointment.');
+    } finally {
+      setIsCancellingLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans relative">
       {/* System Notice Banner (System Down / Maintenance / Advisory) */}
@@ -452,6 +490,65 @@ export default function ResidentPortal() {
               <span className="font-bold">Account Status: Verified Resident</span>
             </div>
             <Badge className="bg-emerald-600">Online Requests Unlocked</Badge>
+          </div>
+        )}
+
+        {/* Active Clinic Appointments Tracker */}
+        {myBookings.filter(b => b.status !== 'Cancelled').length > 0 && (
+          <div className="bg-white rounded-2xl border border-violet-100 p-4 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <CalendarPlus className="text-violet-600" size={15} /> Your Clinic Appointment Reservations ({myBookings.filter(b => b.status !== 'Cancelled').length})
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => navigate('/resident/health')}
+                className="h-6 px-2 text-[11px] text-violet-600 hover:text-violet-700 hover:bg-violet-50 font-semibold gap-1 rounded-lg cursor-pointer"
+              >
+                <span>Health Portal</span>
+                <ArrowRight size={11} />
+              </Button>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-2.5">
+              {myBookings.filter(b => b.status !== 'Cancelled').slice(0, 4).map((b, i) => (
+                <div key={b.id || i} className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs space-y-1.5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="font-bold text-slate-800">{b.service_type}</span>
+                      <Badge className={`text-[10px] border-0 shrink-0 ${
+                        b.status === 'Approved' ? 'bg-emerald-100 text-emerald-800 font-bold' :
+                        b.status === 'Completed' ? 'bg-blue-100 text-blue-800 font-bold' :
+                        'bg-amber-100 text-amber-800 font-bold'
+                      }`}>
+                        {b.status === 'Approved' ? 'Confirmed' : b.status || 'Pending'}
+                      </Badge>
+                    </div>
+                    <p className="text-slate-500 text-[11px] mt-1 flex items-center gap-1">
+                      <Clock size={11} className="text-slate-400" />
+                      Date: <strong>{formatApptDate(b.scheduled_date || b.preferred_date)}</strong>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 mt-2">
+                    <span className="text-[10px] text-slate-400">Need to cancel?</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setAppointmentToCancel(b);
+                        setCancelReason('');
+                        setIsCancelModalOpen(true);
+                      }}
+                      className="h-6 px-2 text-[11px] text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-semibold gap-1 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <XCircle size={12} />
+                      <span>Cancel Schedule</span>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -687,6 +784,86 @@ export default function ResidentPortal() {
         isOpen={isTermsOpen}
         onClose={() => setIsTermsOpen(false)}
       />
+
+      {/* Cancel Appointment Confirmation Modal */}
+      <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 space-y-4">
+          <DialogHeader>
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-slate-900 leading-tight">
+                  Cancel Clinic Appointment
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                  Are you sure you want to cancel this scheduled health visit?
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {appointmentToCancel && (
+            <div className="space-y-3 pt-1 text-xs">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 text-sm">{appointmentToCancel.service_type}</span>
+                  {appointmentToCancel.appointment_code && (
+                    <Badge variant="outline" className="text-[9px] font-mono">
+                      {appointmentToCancel.appointment_code}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-slate-600 flex items-center gap-1.5">
+                  <Calendar size={12} className="text-slate-400" />
+                  Scheduled Date: <strong>{formatApptDate(appointmentToCancel.scheduled_date || appointmentToCancel.preferred_date)}</strong>
+                  {appointmentToCancel.scheduled_time && <span>({appointmentToCancel.scheduled_time})</span>}
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold text-slate-700">Reason for Cancellation (Optional)</Label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="e.g. Schedule conflict, work matter, patient feeling better, or rescheduling."
+                  className="w-full mt-1.5 p-3 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-rose-500 outline-none resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 text-[11px] text-amber-900">
+                <p className="font-semibold">Note on Clinic Slots:</p>
+                <p className="text-amber-800 mt-0.5">Cancelling releases this slot for other barangay residents. You can re-book whenever ready.</p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="pt-2 gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isCancellingLoading}
+              onClick={() => {
+                setIsCancelModalOpen(false);
+                setAppointmentToCancel(null);
+              }}
+              className="text-xs rounded-xl"
+            >
+              Keep Appointment
+            </Button>
+            <Button
+              type="button"
+              disabled={isCancellingLoading}
+              onClick={handleConfirmCancelAppointment}
+              className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl gap-1.5 cursor-pointer"
+            >
+              {isCancellingLoading ? 'Cancelling...' : 'Confirm Cancellation'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

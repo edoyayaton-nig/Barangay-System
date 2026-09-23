@@ -20,14 +20,22 @@ export async function runMigration() {
 
   let connection;
   try {
+    const connectionUrl = process.env.MYSQL_URL || process.env.DATABASE_URL;
     // 1. Connect without selecting a database first
-    connection = await mysql.createConnection({
-      host,
-      port,
-      user,
-      password,
-      multipleStatements: true
-    });
+    if (connectionUrl) {
+      connection = await mysql.createConnection({
+        uri: connectionUrl,
+        multipleStatements: true
+      });
+    } else {
+      connection = await mysql.createConnection({
+        host,
+        port,
+        user,
+        password,
+        multipleStatements: true
+      });
+    }
 
     console.log(`✅ Connected to MySQL server.`);
 

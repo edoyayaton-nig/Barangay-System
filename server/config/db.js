@@ -22,7 +22,12 @@ let isConnected = false;
 let connectionError = null;
 
 try {
-  pool = mysql.createPool(dbConfig);
+  const connectionUrl = process.env.MYSQL_URL || process.env.DATABASE_URL;
+  if (connectionUrl) {
+    pool = mysql.createPool(connectionUrl);
+  } else {
+    pool = mysql.createPool(dbConfig);
+  }
 } catch (err) {
   console.warn('⚠️ [MySQL] Pool creation warning:', err.message);
   connectionError = err.message;
