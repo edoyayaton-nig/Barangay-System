@@ -1,6 +1,13 @@
-import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 dotenv.config();
+
+let nodemailerModule = null;
+try {
+  const mod = await import('nodemailer');
+  nodemailerModule = mod.default || mod;
+} catch {
+  // Nodemailer optional; will use EmailJS or simulation mode
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Email Service – Barangay Pianing Smart System
@@ -27,11 +34,12 @@ let transporter = null;
 
 function getTransporter() {
   if (transporter) return transporter;
+  if (!nodemailerModule) return null;
   if (!EMAIL_USER || !EMAIL_PASS || EMAIL_USER.includes('your_gmail') || EMAIL_PASS.includes('your_app_password')) {
     return null;
   }
   const cleanPass = EMAIL_PASS.replace(/\s+/g, '');
-  transporter = nodemailer.createTransport({
+  transporter = nodemailerModule.createTransport({
     host:   EMAIL_HOST,
     port:   EMAIL_PORT,
     secure: EMAIL_SECURE,

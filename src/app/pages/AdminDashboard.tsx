@@ -1656,7 +1656,8 @@ export default function AdminDashboard() {
         family_name: newResFamilyName.trim() || newResLastName.trim(),
         is_head_of_household: newResIsHead,
         relationship_to_head: newResRelationship.trim() || (newResIsHead ? 'Head' : 'Member'),
-        employment_status: newResEmployment as any
+        employment_status: newResEmployment as any,
+        is_census_only: true
       });
       // Reload to avoid duplicates (never manually push) and refresh superadmin analytics
       await loadData();
@@ -2685,8 +2686,9 @@ export default function AdminDashboard() {
     return matchesSearch && matchesType;
   });
 
-  // Resident Records — strictly verified inhabitants (excludes pending/unverified applicants)
+  // Resident Records — registered & verified citizens (excludes pending applicants and census-only inhabitants)
   const verifiedResidents = residents.filter(res => 
+    !res.is_census_only &&
     (res.verification_status === 'Verified' || (res as any).status === 'Verified' || (!res.verification_status && (res as any).status !== 'Pending')) &&
     res.verification_status !== 'Pending' && res.verification_status !== 'Pending_Review' && (res as any).status !== 'Pending'
   );
@@ -2698,8 +2700,15 @@ export default function AdminDashboard() {
     (res.phone || '').toLowerCase().includes(residentSearch.toLowerCase())
   );
 
-  // Census Inhabitants Roster — strictly isolated by barangay, selected census purok, and search
-  const censusFilteredResidents = barangayResidents.filter(res => {
+  // Census Inhabitants Roster — all verified inhabitants belonging to barangay (both registered citizens and census additions)
+  const allBarangayInhabitants = residents
+    .filter(res => 
+      (res.verification_status === 'Verified' || (res as any).status === 'Verified' || (!res.verification_status && (res as any).status !== 'Pending')) &&
+      res.verification_status !== 'Pending' && res.verification_status !== 'Pending_Review' && (res as any).status !== 'Pending'
+    )
+    .filter(res => belongsToMyBarangay(res.address || (res as any).barangay));
+
+  const censusFilteredResidents = allBarangayInhabitants.filter(res => {
     if (selectedCensusPurok !== 'all') {
       const cleanP = selectedCensusPurok.replace(/purok\s*/i, '').trim();
       const rPurok = (res.purok || '').toString().replace(/purok\s*/i, '').trim();

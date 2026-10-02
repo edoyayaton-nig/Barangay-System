@@ -54,6 +54,7 @@ export interface Resident {
   profile_photo?: string | null;
   years_of_residency?: string;
   id_type?: string;
+  is_census_only?: boolean | number;
 }
 
 export interface HouseholdGroup {

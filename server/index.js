@@ -117,37 +117,15 @@ let mockData = {
     { id: 1, name: 'Super Admin Rodrigo Lim', email: 'superadmin@barangay.gov', role: 'superadmin', status: 'Active', barangay: 'Pianing', phone: '09171112233', password_hash: '123', last_login: 'Never' },
     { id: 2, name: 'Barangay Admin Juan Dela Cruz', email: 'admin@barangay.gov', role: 'admin', status: 'Active', barangay: 'Pianing', phone: '09171234567', password_hash: '123', last_login: 'Never' },
     { id: 3, name: 'BHW Maria Santos', email: 'bhw@barangay.gov', role: 'bhw', status: 'Active', barangay: 'Pianing', phone: '09181234567', password_hash: '123', last_login: 'Never' },
-    { id: 4, name: 'Staff Ana Reyes', email: 'staff@barangay.gov', role: 'staff', status: 'Active', barangay: 'Pianing', phone: '09191234567', password_hash: '123', last_login: 'Never' },
-    { id: 5, name: 'Nurse Ligaya Santos', email: 'nurse@barangay.gov', role: 'nurse', status: 'Active', barangay: 'Pianing', phone: '09201234567', password_hash: '123', last_login: 'Never' },
-    { id: 6, name: 'Resident Juan Dela Cruz', email: 'resident@gmail.com', role: 'resident', status: 'Active', barangay: 'Pianing', phone: '09211234567', verification_status: 'Verified', password_hash: '123', last_login: 'Never' }
+    { id: 5, name: 'Nurse Ligaya Santos', email: 'nurse@barangay.gov', role: 'nurse', status: 'Active', barangay: 'Pianing', phone: '09201234567', password_hash: '123', last_login: 'Never' }
   ],
 
   residents: [],
   documents: [],
-  maternal: [
-    { id: 1, mother_name: 'Elena Ramos-Santos', patient_name: 'Elena Ramos-Santos', contact_number: '09171234567', age: 28, barangay: 'Pianing', gravida: 2, para: 1, lmp: '2026-01-10', edd: '2026-10-17', aog_weeks: '24', bp: '118/76', weight: '56.4', temp: '36.5', fetal_heart_rate: '148', fundic_height: '22', next_visit: '2026-09-18', next_visit_date: '2026-09-18', notes: 'Routine 2nd Trimester Check-up', prescribed_meds: 'FeSO4 60mg + Folic Acid 400mcg', attending_nurse: 'Nurse Maria Santos', last_visit: '2026-08-20', visit_number: 2, risk_level: 'Low', pregnancy_status: 'Prenatal - 2nd Trimester', status: 'Active' },
-    { id: 2, mother_name: 'Maricel Bautista', patient_name: 'Maricel Bautista', contact_number: '09189876543', age: 34, barangay: 'Pianing', gravida: 4, para: 3, lmp: '2025-12-15', edd: '2026-09-22', aog_weeks: '36', bp: '135/88', weight: '68.2', temp: '36.6', fetal_heart_rate: '152', fundic_height: '34', next_visit: '2026-09-10', next_visit_date: '2026-09-10', notes: '3rd Trimester Monitoring — High Blood Pressure Check', prescribed_meds: 'Methyldopa 250mg BID, Calcium Carbonate 500mg', attending_nurse: 'Nurse Maria Santos', last_visit: '2026-09-01', visit_number: 4, risk_level: 'Moderate', pregnancy_status: 'Prenatal - 3rd Trimester', status: 'Active' }
-  ],
-  immunizations: [
-    { id: 1, child_name: 'Baby Liam Kenneth Diaz', parent_phone: '09151234567', contact_number: '09151234567', age_months: '6', gender: 'Male', guardian_name: 'Maria Diaz', barangay: 'Pianing', weight_kg: '7.8', height_cm: '66', vaccine_name: 'Pentavalent (DPT-HepB-Hib)', dose_number: 2, batch_lot: 'LOT-2026-X9', date_administered: '2026-08-15', date_given: '2026-08-15', due_date: '2026-09-15', next_due_date: '2026-09-15', remarks: 'Tolerated well, no adverse reactions', administered_by: 'Nurse Maria Santos', status: 'Completed' },
-    { id: 2, child_name: 'Baby Sofia Grace Reyes', parent_phone: '09281234567', contact_number: '09281234567', age_months: '2', gender: 'Female', guardian_name: 'Lyn Reyes', barangay: 'Pianing', weight_kg: '4.5', height_cm: '54', vaccine_name: 'BCG', dose_number: 1, batch_lot: 'LOT-2026-BCG1', date_administered: '2026-07-10', date_given: '2026-07-10', due_date: '2026-08-10', next_due_date: '2026-08-10', remarks: 'Scar forming on left deltoid', administered_by: 'Nurse Maria Santos', status: 'Completed' },
-    { id: 3, child_name: 'Baby Ethan Gabriel Tan', parent_phone: '09193334455', contact_number: '09193334455', age_months: '4', gender: 'Male', guardian_name: 'Sarah Tan', barangay: 'Pianing', weight_kg: '6.2', height_cm: '62', vaccine_name: 'Oral Polio Vaccine (OPV)', dose_number: 2, batch_lot: 'LOT-2026-OPV2', date_administered: '2026-08-01', date_given: '2026-08-01', due_date: '2026-09-08', next_due_date: '2026-09-08', remarks: 'Scheduled for 2nd visit dose', administered_by: 'Nurse Maria Santos', status: 'Scheduled' }
-  ],
-  consultations: [
-    { id: 1, patient_name: 'Elena Ramos-Santos', contact_number: '09171234567', phone: '09171234567', age: '28', gender: 'Female', civil_status: 'Married', barangay: 'Pianing', purok: 'Purok 1', program_type: 'Prenatal Care', service_type: 'Prenatal Care', bp: '118/76 mmHg', temp: '36.5 °C', weight: '56.4 kg', heart_rate: '78 bpm', chief_complaint: 'Routine 2nd Trimester follow-up checkup', diagnosis: 'IUP 24 Weeks AOG, Cephalic, Normal vitals', treatment: 'FeSO4 60mg + Folic Acid 400mcg daily', prescribed_meds: 'FeSO4 60mg + Folic Acid 400mcg', attending_nurse: 'Nurse Maria Santos', attending_worker: 'Nurse Maria Santos', consultation_date: '2026-09-04', encounter_date: '2026-09-04', status: 'Completed' },
-    { id: 2, patient_name: 'Roberto Manalo', contact_number: '09289876543', phone: '09289876543', age: '58', gender: 'Male', civil_status: 'Married', barangay: 'Pianing', purok: 'Purok 2', program_type: 'General Consultation', service_type: 'General Consultation', bp: '135/85 mmHg', temp: '36.7 °C', weight: '68.0 kg', heart_rate: '82 bpm', chief_complaint: 'Occipital headache and dizziness monitoring', diagnosis: 'Stage 1 Hypertension, well-controlled', treatment: 'Amlodipine 5mg OD, low-sodium dietary advice', prescribed_meds: 'Amlodipine 5mg OD x 30 days', attending_nurse: 'Nurse Maria Santos', attending_worker: 'Nurse Maria Santos', consultation_date: '2026-09-04', encounter_date: '2026-09-04', status: 'Completed' },
-    { id: 3, patient_name: 'Angelica Mae Cruz', contact_number: '09165556677', phone: '09165556677', age: '17', gender: 'Female', civil_status: 'Single', barangay: 'Pianing', purok: 'Purok 3', program_type: 'Adolescent Health', service_type: 'Adolescent Health Consultation', bp: '110/70 mmHg', temp: '36.4 °C', weight: '48.0 kg', heart_rate: '74 bpm', chief_complaint: 'Adolescent health wellness & nutritional guidance', diagnosis: 'Healthy adolescent, mild iron deficiency anemia risk', treatment: 'Health counseling on balanced diet and hydration', prescribed_meds: 'Multivitamins with Iron 1 tab OD', attending_nurse: 'Nurse Maria Santos', attending_worker: 'Nurse Maria Santos', consultation_date: '2026-09-03', encounter_date: '2026-09-03', status: 'Completed' },
-    { id: 4, patient_name: 'Clarissa Fernandez', contact_number: '09178889900', phone: '09178889900', age: '26', gender: 'Female', civil_status: 'Married', barangay: 'Pianing', purok: 'Purok 4', program_type: 'Family Planning', service_type: 'Family Planning Services', bp: '115/75 mmHg', temp: '36.5 °C', weight: '53.0 kg', heart_rate: '76 bpm', chief_complaint: 'DMPA Injectable 3-month contraceptive refill', diagnosis: 'Family Planning Acceptor — DMPA Depo-Provera', treatment: 'DMPA 150mg IM administered at right deltoid', prescribed_meds: 'DMPA Injectable 150mg/mL vial', attending_nurse: 'Nurse Maria Santos', attending_worker: 'Nurse Maria Santos', consultation_date: '2026-09-02', encounter_date: '2026-09-02', next_visit_date: '2026-12-02', status: 'Completed' },
-    { id: 5, patient_name: 'Danilo Villanueva', contact_number: '09224445566', phone: '09224445566', age: '46', gender: 'Male', civil_status: 'Married', barangay: 'Pianing', purok: 'Purok 1', program_type: 'NTP (TB-DOTS)', service_type: 'NTP (National TB-DOTS Program)', bp: '120/80 mmHg', temp: '37.1 °C', weight: '55.0 kg', heart_rate: '80 bpm', chief_complaint: 'Chronic productive cough for 3 weeks with night sweats', diagnosis: 'Presumptive Pulmonary Tuberculosis — Sputum GeneXpert requested', treatment: 'Specimen collected for GeneXpert, TB health protocol counseling', prescribed_meds: 'TB Diagnostic Evaluation / Sputum Specimen', attending_nurse: 'Nurse Maria Santos', attending_worker: 'Nurse Maria Santos', consultation_date: '2026-09-01', encounter_date: '2026-09-01', next_visit_date: '2026-09-08', status: 'Completed' }
-  ],
-  logs: [
-    { id: 1, user_name: 'Super Admin Rodrigo Lim', user_role: 'superadmin', action: 'System Security Audit & Baseline Validation', action_type: 'Security', barangay: 'All (City-Wide)', details: 'Validated active services and role isolation protocols across all 86 barangays.', timestamp: '09/04/2026 08:30 AM' },
-    { id: 2, user_name: 'Barangay Captain Juan Dela Cruz', user_role: 'admin', action: 'Approved Resident Registration', action_type: 'Resident', barangay: 'Pianing', details: 'Verified resident account with government ID verification.', timestamp: '09/04/2026 09:15 AM' },
-    { id: 3, user_name: 'Barangay Clerk Ana Reyes', user_role: 'staff', action: 'Issued Barangay ID DOC-2026-004', action_type: 'Document', barangay: 'Pianing', details: 'Official photo ID generated and released.', timestamp: '09/04/2026 09:45 AM' },
-    { id: 4, user_name: 'Nurse Maria Santos', user_role: 'bhw', action: 'Recorded Infant Immunization (BCG)', action_type: 'Health', barangay: 'Pianing', details: 'Completed BCG dose 1 administration at Pianing Health Center.', timestamp: '09/04/2026 10:00 AM' },
-    { id: 5, user_name: 'Super Admin Rodrigo Lim', user_role: 'superadmin', action: 'System Health & Connectivity Check', action_type: 'System', barangay: 'All (City-Wide)', details: 'Live database and SMS gateway operational status checked.', timestamp: '09/04/2026 10:30 AM' },
-    { id: 6, user_name: 'Super Admin Rodrigo Lim', user_role: 'superadmin', action: 'Created Staff Account: Ana Reyes', action_type: 'Staff', barangay: 'Pianing', details: 'Registered new Barangay Clerk personnel account.', timestamp: '09/04/2026 11:00 AM' }
-  ],
+  maternal: [],
+  immunizations: [],
+  consultations: [],
+  logs: [],
   pendingRegistrations: [],
   appointments: [],
   clinicSchedules: [],
@@ -312,6 +290,7 @@ async function migrateDatabase() {
     await safeAddColumn(pool, 'residents', 'relationship_to_head', "VARCHAR(50) DEFAULT 'Member'");
     await safeAddColumn(pool, 'residents', 'employment_status', "VARCHAR(50) DEFAULT 'Employed'");
     await safeAddColumn(pool, 'residents', 'last_profile_update_note', "TEXT NULL");
+    await safeAddColumn(pool, 'residents', 'is_census_only', "TINYINT(1) DEFAULT 0");
 
     // SMS notifications columns
     await safeAddColumn(pool, 'sms_notifications', 'is_read', "TINYINT(1) DEFAULT 0");
@@ -415,28 +394,6 @@ async function migrateDatabase() {
       await safeAddColumn(pool, 'activity_logs', 'action_type', "VARCHAR(50) DEFAULT 'General'");
       await safeAddColumn(pool, 'activity_logs', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
       await safeAddColumn(pool, 'activity_logs', 'details', "TEXT NULL");
-
-      // Seed sample activity logs if table is empty
-      const [existingLogs] = await pool.query("SELECT COUNT(*) as count FROM activity_logs");
-      if (existingLogs && existingLogs[0]?.count === 0) {
-        const seedLogs = [
-          ['Super Admin Rodrigo Lim', 'superadmin', 'Configured Document Service Categories', 'Category', 'All (City-Wide)', 'Updated active status for Barangay Clearance and Good Moral Clearance'],
-          ['Barangay Captain Juan Dela Cruz', 'admin', 'Approved Resident Registration', 'Resident', 'Pianing', 'Verified resident account for Juan Dela Cruz with valid Postal ID'],
-          ['Barangay Clerk Ana Reyes', 'staff', 'Completed Barangay ID DOC-004', 'Document', 'Pianing', 'Issued official community ID card for Ana Reyes'],
-          ['Nurse Maria Santos', 'bhw', 'Administered BCG Vaccine', 'Health', 'Pianing', 'Administered BCG Dose 1 to Baby Maria Santos at Health Center'],
-          ['Super Admin Rodrigo Lim', 'superadmin', 'Created Barangay Administrator Account', 'User', 'Pianing', 'Generated administrative credentials for Captain Juan Dela Cruz'],
-          ['Barangay Captain Juan Dela Cruz', 'admin', 'Processed Certificate of Residency DOC-002', 'Document', 'Pianing', 'Validated residency records for Maria Santos (Purok 2)'],
-          ['Barangay Clerk Ana Reyes', 'staff', 'Broadcasted Health Alert SMS', 'System', 'Pianing', 'Sent SMS notification regarding upcoming immunization schedule to 45 registered parents'],
-          ['Admin Roberto Garcia', 'admin', 'Approved Business Clearance DOC-003', 'Document', 'Anticala', 'Approved commercial permit for Pedro Garcia Sari-Sari Store'],
-          ['Super Admin Rodrigo Lim', 'superadmin', 'System Security Audit Completed', 'Security', 'All (City-Wide)', 'Zero security anomalies detected across Pianing & Anticala nodes']
-        ];
-        for (const log of seedLogs) {
-          await pool.query(
-            "INSERT INTO activity_logs (user_name, user_role, action, action_type, barangay, details, timestamp) VALUES (?, ?, ?, ?, ?, ?, NOW() - INTERVAL FLOOR(RAND()*72) HOUR)",
-            log
-          );
-        }
-      }
     } catch (e) {
       console.warn('Activity logs migration warning:', e.message);
     }
@@ -473,21 +430,6 @@ async function migrateDatabase() {
       await safeAddColumn(pool, 'health_appointments', 'bhw_notes', "TEXT NULL");
       await safeAddColumn(pool, 'health_appointments', 'resident_notes', "TEXT NULL");
       await safeAddColumn(pool, 'health_appointments', 'attending_bhw', "VARCHAR(100) DEFAULT ''");
-
-      const [existingApts] = await pool.query("SELECT COUNT(*) as count FROM health_appointments");
-      if (existingApts && existingApts[0]?.count === 0) {
-        const seedApts = [
-          ['APT-2026-001', 1, 'Juan Dela Cruz', '09171234567', 'resident@gmail.com', 'Pianing', 'Pre-Marriage Counseling (PMC)', '2026-09-02', 'Morning (8:00 AM - 11:30 AM)', '2026-09-02', '09:00 AM', 'Approved', 'Confirmed slot for couple counseling seminar. Please bring Certificate of No Marriage (CENOMAR) and valid IDs.', 'Applying for marriage license at Butuan City Hall.', 'Nurse Maria Santos'],
-          ['APT-2026-002', 2, 'Maria Santos', '09182345678', 'maria.santos@gmail.com', 'Pianing', 'Prenatal Check-up', '2026-09-03', 'Morning (8:00 AM - 11:30 AM)', '2026-09-03', '10:00 AM', 'Approved', '3rd Trimester prenatal check-up scheduled.', 'Routine monthly checkup.', 'Nurse Maria Santos'],
-          ['APT-2026-003', 5, 'Teresa Ramos', '09215678901', 'teresa.ramos@gmail.com', 'Pianing', 'Child Immunization', '2026-09-04', 'Afternoon (1:00 PM - 4:00 PM)', null, null, 'Pending', '', 'Hepatitis B 2nd dose for infant.', '']
-        ];
-        for (const apt of seedApts) {
-          await pool.query(
-            "INSERT INTO health_appointments (appointment_code, resident_id, resident_name, resident_phone, resident_email, barangay, service_type, preferred_date, preferred_time, scheduled_date, scheduled_time, status, bhw_notes, resident_notes, attending_bhw) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            apt
-          );
-        }
-      }
     } catch (e) {
       console.warn('Health appointments migration warning:', e.message);
     }
@@ -3244,21 +3186,22 @@ app.get('/api/stats/bhw', async (req, res) => {
       const [[vaccinationsMonth]] = await pool.query("SELECT COUNT(*) as count FROM immunizations WHERE status = 'Completed'");
       const [[overdue]] = await pool.query("SELECT COUNT(*) as count FROM immunizations WHERE status = 'Overdue'");
       return res.json({
-        childrenMonitored: children.count || 245,
-        maternalRecords: maternal.count || 89,
-        vaccinationsMonth: vaccinationsMonth.count || 156,
-        overdueImmunizations: overdue.count || 12
+        childrenMonitored: Number(children?.count) || 0,
+        maternalRecords: Number(maternal?.count) || 0,
+        vaccinationsMonth: Number(vaccinationsMonth?.count) || 0,
+        overdueImmunizations: Number(overdue?.count) || 0
       });
     } catch (err) {
       console.warn('MySQL bhw stats query error:', err.message);
     }
   }
 
+  const uniqueChildren = new Set((mockData.immunizations || []).map(i => i.child_name).filter(Boolean));
   res.json({
-    childrenMonitored: 245,
-    maternalRecords: mockData.maternal.length,
-    vaccinationsMonth: mockData.immunizations.filter(i => i.status === 'Completed').length,
-    overdueImmunizations: mockData.immunizations.filter(i => i.status === 'Overdue').length
+    childrenMonitored: uniqueChildren.size,
+    maternalRecords: (mockData.maternal || []).length,
+    vaccinationsMonth: (mockData.immunizations || []).filter(i => i.status === 'Completed').length,
+    overdueImmunizations: (mockData.immunizations || []).filter(i => i.status === 'Overdue').length
   });
 });
 
@@ -3942,7 +3885,8 @@ app.get('/api/residents', async (req, res) => {
           relationship_to_head: r.relationship_to_head || 'Member',
           employment_status: r.employment_status || (age >= 60 ? 'Retired' : (age < 18 ? 'Student' : 'Employed')),
           is_senior: age >= 60,
-          is_child: age < 18
+          is_child: age < 18,
+          is_census_only: Boolean(r.is_census_only)
         };
       });
 
@@ -3971,7 +3915,8 @@ app.get('/api/residents', async (req, res) => {
       relationship_to_head: r.relationship_to_head || 'Member',
       employment_status: r.employment_status || (age >= 60 ? 'Retired' : (age < 18 ? 'Student' : 'Employed')),
       is_senior: age >= 60,
-      is_child: age < 18
+      is_child: age < 18,
+      is_census_only: Boolean(r.is_census_only)
     };
   });
   if (barangay && barangay.toLowerCase() !== 'all' && !barangay.toLowerCase().includes('city-wide')) {
@@ -4294,6 +4239,7 @@ app.post('/api/residents', async (req, res) => {
   const isHead = is_head_of_household ? 1 : 0;
   const relToHead = (relationship_to_head || (isHead ? 'Head' : 'Member')).trim();
   const cleanEmp = (employment_status || 'Employed').trim();
+  const isCensusOnly = Boolean(req.body.is_census_only);
 
   const pool = getPool();
   if (pool && getStatus().connected) {
@@ -4320,13 +4266,13 @@ app.post('/api/residents', async (req, res) => {
           first_name, middle_name, last_name, date_of_birth, gender, civil_status, 
           years_of_residency, address, purok, barangay, phone, email, id_type, 
           submitted_id, verification_status, linked_user_id,
-          household_number, family_name, is_head_of_household, relationship_to_head, employment_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Verified', ?, ?, ?, ?, ?, ?)`,
+          household_number, family_name, is_head_of_household, relationship_to_head, employment_status, is_census_only
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Verified', ?, ?, ?, ?, ?, ?, ?)`,
         [
           cleanFirst, cleanMiddle, cleanLast, date_of_birth || '2000-01-01', gender || 'Male', civil_status || 'Single',
           years_of_residency || null, residentAddress, residentPurok, residentBarangay, phone || '', residentEmail, id_type || 'Government ID',
           submitted_id || null, linkedUserId || null,
-          cleanHH, cleanFamilyName, isHead, relToHead, cleanEmp
+          cleanHH, cleanFamilyName, isHead, relToHead, cleanEmp, isCensusOnly ? 1 : 0
         ]
       );
 
@@ -4351,6 +4297,7 @@ app.post('/api/residents', async (req, res) => {
         is_head_of_household: Boolean(isHead),
         relationship_to_head: relToHead,
         employment_status: cleanEmp,
+        is_census_only: isCensusOnly,
         verification_status: 'Verified' 
       });
     } catch (err) {
@@ -4386,6 +4333,7 @@ app.post('/api/residents', async (req, res) => {
     is_head_of_household: Boolean(isHead),
     relationship_to_head: relToHead,
     employment_status: cleanEmp,
+    is_census_only: isCensusOnly,
     verification_status: 'Verified'
   };
   mockData.residents.unshift(newRes);
