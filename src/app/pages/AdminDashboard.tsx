@@ -289,6 +289,9 @@ export default function AdminDashboard() {
   const [newDocPurpose, setNewDocPurpose] = useState('');
   const [newDocDuration, setNewDocDuration] = useState('');
   const [newDocExtraFields, setNewDocExtraFields] = useState<Record<string, string>>({});
+  // Census name-search auto-fill
+  const [docNameSuggestions, setDocNameSuggestions] = useState<Resident[]>([]);
+  const [showDocNameSuggestions, setShowDocNameSuggestions] = useState(false);
 
   const [newResFirstName, setNewResFirstName] = useState('');
   const [newResMiddleName, setNewResMiddleName] = useState('');
@@ -1189,6 +1192,37 @@ export default function AdminDashboard() {
       setNewDocAge(r.age ? String(r.age) : '');
       setNewDocAddress(r.address || `Purok ${r.purok || ''}, Barangay ${r.barangay || 'Pianing'}, Butuan City`);
     }
+  };
+
+  // Auto-fill doc form from Census when typing a name
+  const handleDocNameInput = (val: string) => {
+    setNewDocName(val);
+    if (val.trim().length < 2) {
+      setDocNameSuggestions([]);
+      setShowDocNameSuggestions(false);
+      return;
+    }
+    const q = val.toLowerCase();
+    const matches = residents.filter(r => {
+      const full = `${r.first_name} ${r.middle_name || ''} ${r.last_name}`.toLowerCase();
+      return full.includes(q);
+    }).slice(0, 8);
+    setDocNameSuggestions(matches);
+    setShowDocNameSuggestions(matches.length > 0);
+  };
+
+  const applyDocCensusSuggestion = (r: Resident) => {
+    setNewDocResidentId(r.id);
+    setNewDocName(`${r.first_name} ${r.last_name}`.trim());
+    setNewDocGender((r.gender === 'Female' ? 'Female' : r.gender === 'Male' ? 'Male' : '') as any);
+    setNewDocCivilStatus(r.civil_status || '');
+    setNewDocPurok(r.purok ? (r.purok.startsWith('Purok') ? r.purok : `Purok ${r.purok}`) : '');
+    setNewDocAge(r.age ? String(r.age) : '');
+    setNewDocAddress(r.address || `Purok ${r.purok || ''}, Barangay ${r.barangay || 'Pianing'}, Butuan City`);
+    setShowDocNameSuggestions(false);
+    setDocNameSuggestions([]);
+    // Also sync the dropdown selector if they are a registered resident
+    if (!r.is_census_only) setSelectedResidentForDoc(String(r.id));
   };
 
   const handleNewDocTypeChange = (type: string) => {
@@ -10474,18 +10508,18 @@ export default function AdminDashboard() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateDocument} className="space-y-4 py-2 text-xs">
-            {/* 1. Select Resident or Manual Walk-in */}
+            {/* 1. Select Registered Resident or Manual Walk-in */}
             <div className="space-y-1">
-              <Label className="text-xs font-semibold text-slate-700">Select Resident (Auto-fills Demographics)</Label>
+              <Label className="text-xs font-semibold text-slate-700">Select Registered Resident <span className="text-slate-400 font-normal">(or type name below to search Census)</span></Label>
               <Select value={selectedResidentForDoc} onValueChange={handleSelectResidentForDoc}>
                 <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="Select Resident / Walk-in Constituent..." />
+                  <SelectValue placeholder="Select Registered Resident / Walk-in..." />
                 </SelectTrigger>
                 <SelectContent className="max-h-56">
                   <SelectItem value="manual">✍️ Manual / Walk-in Constituent</SelectItem>
-                  {residents.map(r => (
+                  {residents.filter(r => !r.is_census_only).map(r => (
                     <SelectItem key={`res-opt-${r.id}`} value={String(r.id)}>
-                      {r.first_name} {r.last_name} ({r.purok ? (r.purok.startsWith('Purok') ? r.purok : `Purok ${r.purok}`) : 'Pianing'} • {r.gender})
+                      👤 {r.first_name} {r.last_name} ({r.purok ? (r.purok.startsWith('Purok') ? r.purok : `Purok ${r.purok}`) : 'Pianing'} • {r.gender})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -10500,15 +10534,40 @@ export default function AdminDashboard() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-slate-600">Full Name <span className="text-red-500">*</span></Label>
+                <div className="space-y-1 relative">
+                  <Label className="text-[11px] text-slate-600">Full Name <span className="text-red-500">*</span> <span className="text-blue-500 font-normal">(type to search Census)</span></Label>
                   <Input
                     value={newDocName}
-                    onChange={e => setNewDocName(e.target.value)}
-                    placeholder="e.g. Juan Dela Cruz"
+                    onChange={e => handleDocNameInput(e.target.value)}
+                    onFocus={() => { if (docNameSuggestions.length > 0) setShowDocNameSuggestions(true); }}
+                    onBlur={() => setTimeout(() => setShowDocNameSuggestions(false), 180)}
+                    placeholder="Type name to search Census or enter manually..."
                     required
                     className="h-8 text-xs bg-white"
+                    autoComplete="off"
                   />
+                  {/* Census name suggestions dropdown */}
+                  {showDocNameSuggestions && docNameSuggestions.length > 0 && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-blue-200 rounded-lg shadow-xl overflow-hidden">
+                      <div className="px-2 py-1 bg-blue-50 border-b border-blue-100">
+                        <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">📋 Census / Resident Matches</span>
+                      </div>
+                      {docNameSuggestions.map(r => (
+                        <button
+                          key={`census-sug-${r.id}`}
+                          type="button"
+                          onMouseDown={() => applyDocCensusSuggestion(r)}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-100 last:border-0 flex items-center gap-2"
+                        >
+                          <span className="text-sm">{r.is_census_only ? '📋' : '👤'}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-slate-800 truncate">{r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}</div>
+                            <div className="text-[10px] text-slate-500">{r.purok ? `Purok ${r.purok}` : ''} • {r.gender || '—'} • {r.age ? `${r.age} yrs` : r.date_of_birth || '—'} {r.is_census_only ? '• Census Record' : '• Registered'}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   <div className="space-y-1">
