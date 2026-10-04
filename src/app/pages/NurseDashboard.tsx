@@ -579,11 +579,11 @@ export default function NurseDashboard() {
           fetal_heart_rate: m.fetal_heart_rate || '142',
           fundic_height: m.fundic_height || '21',
           next_visit_date: m.next_visit ? String(m.next_visit).split('T')[0] : (m.next_visit_date ? String(m.next_visit_date).split('T')[0] : ''),
-          next_visit_note: m.notes || 'Routine follow-up',
+          next_visit_note: m.next_visit_note || m.notes || 'Routine follow-up',
           prescribed_meds: m.prescribed_meds || 'FeSO4 + Folic Acid',
           attending_nurse: m.attending_nurse || nurseName,
           visit_date: m.last_visit ? String(m.last_visit).split('T')[0] : new Date().toISOString().split('T')[0],
-          visit_number: m.visit_number || (String(m.notes || '').includes('2nd') ? 2 : 1),
+          visit_number: Number(m.visit_number) || (String(m.next_visit_note || m.notes || '').includes('2nd') ? 2 : 1),
           sms_sent: Boolean(m.sms_sent)
         })));
       } else {
@@ -670,14 +670,14 @@ export default function NurseDashboard() {
     prenatalRecords.filter(r => {
       if (!r.next_visit_date) return false;
       const diff = (new Date(r.next_visit_date).getTime() - Date.now()) / 86400000;
-      return diff > 0 && diff <= 7;
+      return diff >= -1 && diff <= 30;
     }), [prenatalRecords]);
 
   const upcomingImmun = useMemo(() =>
     immunRecords.filter(r => {
       if (!r.next_due_date) return false;
       const diff = (new Date(r.next_due_date).getTime() - Date.now()) / 86400000;
-      return diff > 0 && diff <= 7;
+      return diff >= -1 && diff <= 30;
     }), [immunRecords]);
 
   // Combined Due Patients List for Safe Batch SMS Modal
@@ -1021,9 +1021,10 @@ export default function NurseDashboard() {
       fetal_heart_rate: pFhr ? `${pFhr} bpm` : '144 bpm',
       fundic_height: pFh ? `${pFh} cm` : '18 cm',
       next_visit_date: pNextDate,
-      visit_number: parseInt(pVisitNum, 10) || 2,
+      next_visit_note: pNextNote || (pVisitNum === '1' ? '2nd Visit Follow-up' : 'Routine follow-up'),
+      visit_number: parseInt(pVisitNum || '1', 10),
       prescribed_meds: finalPMeds,
-      remarks: pNextNote || 'Regular follow-up scheduled. Vital signs within normal limits.',
+      remarks: pNextNote || (pVisitNum === '1' ? '2nd Visit scheduled' : 'Regular follow-up scheduled. Vital signs within normal limits.'),
       attending_nurse: nurseName,
       sms_sent: false
     };
@@ -1049,7 +1050,8 @@ export default function NurseDashboard() {
         fetal_heart_rate: pFhr || '144',
         fundic_height: pFh || '18',
         next_visit_date: pNextDate,
-        visit_number: parseInt(pVisitNum, 10) || 2,
+        next_visit_note: pNextNote || (pVisitNum === '1' ? '2nd Visit Follow-up' : 'Routine follow-up'),
+        visit_number: parseInt(pVisitNum || '1', 10),
         prescribed_meds: finalPMeds,
         med_quantity: pMedQtyNum,
         attending_nurse: nurseName
@@ -1589,7 +1591,7 @@ export default function NurseDashboard() {
     setPLastName('');
     setPPhone('');
     setPAge('');
-    setPVisitNum('');
+    setPVisitNum('1');
     setPGravida('');
     setPPara('');
     setPLmp('');
@@ -1601,7 +1603,7 @@ export default function NurseDashboard() {
     setPFhr('');
     setPFh('');
     setPNextDate('');
-    setPNextNote('');
+    setPNextNote('2nd Visit (Mid-Gestation Follow-up)');
     setPMeds('');
     setPSearchFocus(false);
     setIsNewPrenatalOpen(true);
@@ -1687,8 +1689,14 @@ export default function NurseDashboard() {
       const matchSearch = !search || r.patient_name.toLowerCase().includes(search.toLowerCase()) || r.contact_number.includes(search);
       if (!matchSearch) return false;
       if (maternalFilterVisit === '1st') return r.visit_number === 1;
-      if (maternalFilterVisit === '2nd') return r.visit_number === 2;
-      if (maternalFilterVisit === '3rd') return r.visit_number >= 3;
+      if (maternalFilterVisit === '2nd') {
+        const isVisit2 = r.visit_number === 2;
+        const has2ndScheduled = (r.visit_number === 1 && Boolean(r.next_visit_date)) ||
+          (r.next_visit_note || '').toLowerCase().includes('2nd') ||
+          (r.remarks || '').toLowerCase().includes('2nd');
+        return isVisit2 || has2ndScheduled;
+      }
+      if (maternalFilterVisit === '3rd') return r.visit_number >= 3 || (r.next_visit_note || '').toLowerCase().includes('3rd');
       if (maternalFilterVisit === 'due') {
         const isOverdue = r.next_visit_date && new Date(r.next_visit_date) <= new Date();
         const isDueSoon = r.next_visit_date && (new Date(r.next_visit_date).getTime() - Date.now()) / 86400000 <= 7;
@@ -2483,7 +2491,7 @@ export default function NurseDashboard() {
                   {[
                     { id: 'all', label: 'All Mothers' },
                     { id: '1st', label: '1st Visit' },
-                    { id: '2nd', label: '⭐ 2nd Visit' },
+                    { id: '2nd', label: '⭐ 2nd Visit & Scheduled' },
                     { id: '3rd', label: '3rd+ Visit' },
                     { id: 'due', label: '⚠️ Overdue / Due Soon' }
                   ].map(f => (
@@ -2550,9 +2558,16 @@ export default function NurseDashboard() {
                           </TableCell>
 
                           <TableCell>
-                            <Badge className={`text-[10px] font-bold border ${isSecondVisit ? 'bg-purple-100 text-purple-900 border-purple-300' : 'bg-slate-100 text-slate-800 border-slate-200'}`}>
-                              {isSecondVisit ? '⭐ 2nd Visit' : `Visit #${r.visit_number}`}
-                            </Badge>
+                            <div className="space-y-1">
+                              <Badge className={`text-[10px] font-bold border ${isSecondVisit ? 'bg-purple-100 text-purple-900 border-purple-300' : 'bg-slate-100 text-slate-800 border-slate-200'}`}>
+                                {isSecondVisit ? '⭐ 2nd Visit' : `Visit #${r.visit_number}`}
+                              </Badge>
+                              {r.visit_number === 1 && r.next_visit_date && (
+                                <Badge variant="outline" className="text-[9px] bg-purple-50 text-purple-800 border-purple-200 font-semibold block w-fit">
+                                  2nd Visit: {r.next_visit_date}
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
 
                           <TableCell>
@@ -2573,9 +2588,11 @@ export default function NurseDashboard() {
 
                           <TableCell>
                             <span className={`font-semibold font-mono ${isOverdue ? 'text-red-700' : isDueSoon ? 'text-amber-700' : 'text-slate-800'}`}>
-                              {r.next_visit_date}
+                              {r.next_visit_date || 'No revisit set'}
                             </span>
-                            <span className="text-[10px] text-slate-400 block truncate max-w-[150px]">{r.next_visit_note}</span>
+                            <span className="text-[10px] text-slate-500 font-medium block truncate max-w-[150px]">
+                              {r.next_visit_note || (r.visit_number === 1 ? '2nd Visit Follow-up' : 'Routine follow-up')}
+                            </span>
                           </TableCell>
 
                           <TableCell>
@@ -4426,8 +4443,20 @@ export default function NurseDashboard() {
               </div>
               <div>
                 <Label className="text-xs font-semibold">Visit Number</Label>
-                <Select value={pVisitNum} onValueChange={setPVisitNum}>
-                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl"><SelectValue /></SelectTrigger>
+                <Select 
+                  value={pVisitNum} 
+                  onValueChange={(val) => {
+                    setPVisitNum(val);
+                    if (val === '1' && (!pNextNote || pNextNote.includes('Visit'))) {
+                      setPNextNote('2nd Visit (Mid-Gestation Follow-up)');
+                    } else if (val === '2' && (!pNextNote || pNextNote.includes('Visit'))) {
+                      setPNextNote('3rd Visit (Late 2nd Trimester Follow-up)');
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9 text-xs mt-1 rounded-xl">
+                    <SelectValue placeholder="1st Visit (1st Trimester Initial)" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="1">1st Visit (1st Trimester Initial)</SelectItem>
                     <SelectItem value="2">⭐ 2nd Visit (Mid-Gestation Follow-up)</SelectItem>

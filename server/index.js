@@ -507,6 +507,8 @@ async function migrateDatabase() {
       await safeAddColumn(pool, 'maternal_records', 'prescribed_meds', "TEXT NULL");
       await safeAddColumn(pool, 'maternal_records', 'attending_nurse', "VARCHAR(100) DEFAULT ''");
       await safeAddColumn(pool, 'maternal_records', 'next_visit_date', "DATE NULL");
+      await safeAddColumn(pool, 'maternal_records', 'visit_number', "INT DEFAULT 1");
+      await safeAddColumn(pool, 'maternal_records', 'next_visit_note', "TEXT NULL");
     } catch (e) {
       console.warn('Immunizations/Maternal columns migration warning:', e.message);
     }
@@ -4786,7 +4788,9 @@ app.post('/api/maternal', async (req, res) => {
     fundic_height,
     prescribed_meds,
     attending_nurse,
-    next_visit_date
+    next_visit_date,
+    visit_number,
+    next_visit_note
   } = req.body;
 
   // ── AUTO-SCHEDULING: compute next visit if not provided ──
@@ -4805,6 +4809,8 @@ app.post('/api/maternal', async (req, res) => {
   const lastVisit = last_visit || lmp || new Date().toISOString().split('T')[0];
   const nextVisit = next_visit || next_visit_date || computedNextVisit || null;
   const nurse = attending_nurse || 'Nurse Maria Santos';
+  const finalVisitNum = parseInt(visit_number, 10) || (String(next_visit_note || notes || '').includes('2nd') ? 2 : 1);
+  const finalNextNote = (next_visit_note || notes || 'Routine follow-up').trim();
 
   const pool = getPool();
   if (pool && getStatus().connected) {
@@ -4826,14 +4832,15 @@ app.post('/api/maternal', async (req, res) => {
 
       const [result] = await pool.query(
         `INSERT INTO maternal_records 
-         (resident_id, mother_name, age, pregnancy_status, expected_due_date, last_visit, next_visit, risk_level, notes, contact_number, barangay, gravida, para, lmp, edd, aog_weeks, bp, weight, temp, fetal_heart_rate, fundic_height, prescribed_meds, attending_nurse, next_visit_date) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (resident_id, mother_name, age, pregnancy_status, expected_due_date, last_visit, next_visit, risk_level, notes, contact_number, barangay, gravida, para, lmp, edd, aog_weeks, bp, weight, temp, fetal_heart_rate, fundic_height, prescribed_meds, attending_nurse, next_visit_date, visit_number, next_visit_note) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           resId, momName, Number(age) || 25, pregnancy_status || '1st Trimester', expected_due_date || edd || null,
-          lastVisit, validNextVisit, risk_level || 'Low', notes || `AOG: ${aog_weeks || '—'} wks. Meds: ${prescribed_meds || 'Vitamins'}`,
+          lastVisit, validNextVisit, risk_level || 'Low', finalNextNote || `AOG: ${aog_weeks || '—'} wks. Meds: ${prescribed_meds || 'Vitamins'}`,
           phone, brgy, Number(gravida) || 1, Number(para) || 0, lmp || null, edd || null,
           aog_weeks || '', bp || '120/80', weight || '', temp || '36.5',
-          fetal_heart_rate || '', fundic_height || '', prescribed_meds || '', nurse, validNextVisit
+          fetal_heart_rate || '', fundic_height || '', prescribed_meds || '', nurse, validNextVisit,
+          finalVisitNum, finalNextNote
         ]
       );
 
@@ -4845,7 +4852,7 @@ app.post('/api/maternal', async (req, res) => {
           VALUES (?, ?, ?, 'Female', 'Married', ?, 'Purok 1', 'Prenatal', ?, ?, ?, 'Routine Prenatal Consultation', ?, ?, ?, ?, CURDATE(), ?, 'Completed')
         `, [
           momName, phone, age || '25', brgy, bp || '120/80', temp || '36.5', weight || '',
-          `Prenatal Care (${pregnancy_status || 'Routine'}). Gravida: ${gravida || 1}, Para: ${para || 0}`,
+          `Prenatal Care (${pregnancy_status || 'Routine'}). Gravida: ${gravida || 1}, Para: ${para || 0}. Visit #${finalVisitNum}`,
           `AOG: ${aog_weeks || '—'} wks. FHR: ${fetal_heart_rate || 'Normal'}. Fundic Height: ${fundic_height || 'Normal'}`,
           prescribed_meds || 'Iron + Folic Acid', nurse, nextVisit
         ]);
@@ -4880,7 +4887,7 @@ app.post('/api/maternal', async (req, res) => {
         last_visit: lastVisit,
         next_visit: nextVisit,
         risk_level: risk_level || 'Low',
-        notes: notes || '',
+        notes: finalNextNote,
         contact_number: phone,
         barangay: brgy,
         gravida,
@@ -4896,6 +4903,8 @@ app.post('/api/maternal', async (req, res) => {
         prescribed_meds,
         attending_nurse: nurse,
         next_visit_date: nextVisit,
+        visit_number: finalVisitNum,
+        next_visit_note: finalNextNote,
         auto_schedule: scheduleInfo,
       };
 
@@ -4910,14 +4919,14 @@ app.post('/api/maternal', async (req, res) => {
 
   const newMaternal = {
     id: Date.now(),
-    mother_name,
+    mother_name: momName,
     age: age || 25,
     pregnancy_status: pregnancy_status || 'Prenatal',
     expected_due_date: expected_due_date || edd || null,
     last_visit: lastVisit,
     next_visit: nextVisit,
     risk_level: risk_level || 'Low',
-    notes: notes || '',
+    notes: finalNextNote,
     contact_number: phone,
     barangay: brgy,
     gravida,
@@ -4933,6 +4942,8 @@ app.post('/api/maternal', async (req, res) => {
     prescribed_meds,
     attending_nurse: nurse,
     next_visit_date: nextVisit,
+    visit_number: finalVisitNum,
+    next_visit_note: finalNextNote,
   };
   if (!mockData.maternal) mockData.maternal = [];
   mockData.maternal.unshift(newMaternal);
@@ -6916,6 +6927,8 @@ app.post('/api/patients/intake', async (req, res) => {
     due_date,
     // Follow-up
     next_visit_date,
+    visit_number,
+    next_visit_note,
     attending_worker
   } = req.body;
 
@@ -6944,14 +6957,15 @@ app.post('/api/patients/intake', async (req, res) => {
 
       // 2. Program-specific persistence
       if (program_type === 'Prenatal') {
+        const vNum = parseInt(visit_number, 10) || (String(next_visit_note || diagnosis || '').includes('2nd') ? 2 : 1);
         await pool.query(`
           INSERT INTO maternal_records 
-          (mother_name, contact_number, age, barangay, gravida, para, lmp, edd, aog_weeks, bp, weight, temp, fetal_heart_rate, fundic_height, next_visit_date, attending_nurse)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (mother_name, contact_number, age, barangay, gravida, para, lmp, edd, aog_weeks, bp, weight, temp, fetal_heart_rate, fundic_height, next_visit_date, visit_number, next_visit_note, attending_nurse)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           patient_name.trim(), contact_number || '', age || '', brgy, gravida || 1, para || 0,
           lmp || '2026-01-01', edd || '2026-10-01', aog_weeks || '', bp || '', weight || '', temp || '',
-          fetal_heart_rate || '', fundic_height || '', next_visit_date || null, worker
+          fetal_heart_rate || '', fundic_height || '', next_visit_date || null, vNum, next_visit_note || 'Routine follow-up', worker
         ]).catch(() => {});
       } else if (program_type === 'NIP Immunization') {
         await pool.query(`

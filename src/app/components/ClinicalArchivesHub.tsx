@@ -22,7 +22,6 @@ import {
   MapPin,
   CalendarCheck,
   ArrowUpDown,
-  Download,
   X
 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
@@ -39,7 +38,6 @@ import {
   DialogFooter
 } from './ui/dialog';
 import { apiService } from '../../services/api';
-import { downloadOfficialPdf } from '../../utils/exportCsv';
 import { toast } from 'sonner';
 
 interface ClinicalArchivesHubProps {
@@ -242,81 +240,7 @@ export default function ClinicalArchivesHub({
     setIsDetailModalOpen(true);
   };
 
-  const handleDownloadSinglePdf = async (item: any) => {
-    const pName = item.patientName || item.patient_name || item.child_name || item.mother_name || item.resident_name || 'Resident';
-    const cPhone = item.contactPhone || item.contact_number || item.parent_phone || item.resident_phone || 'N/A';
-    const sType = item.categoryLabel || item.program_type || item.service_type || 'Clinical Care';
-    const rDate = item.recordDate || item.encounter_date || item.date_administered || item.scheduled_date || 'Official Record';
-    const staff = item.attendingStaff || item.attending_worker || item.attending_nurse || item.attending_bhw || 'Barangay Healthcare Personnel';
 
-    await downloadOfficialPdf({
-      title: 'BARANGAY HEALTH CENTER CLINICAL RECORD SUMMARY',
-      subtitle: `Official Health Record Dossier — Barangay ${barangay}`,
-      filename: `Medical_Record_${pName.replace(/\s+/g, '_')}`,
-      preparedBy: staff,
-      preparedByTitle: 'Attending Healthcare Officer',
-      department: 'Barangay Health Center Records Division',
-      stats: [
-        { label: 'Patient Name', value: pName, color: '#0d9488' },
-        { label: 'Record Status', value: item.status || 'Recorded', color: item.status === 'Cancelled' ? '#e11d48' : '#2563eb' }
-      ],
-      tables: [{
-        title: 'Clinical Encounter & Service Specifics',
-        headers: ['Detail Field', 'Record Information'],
-        rows: [
-          ['Patient / Resident Name', pName],
-          ['Contact Phone', cPhone],
-          ['Encounter Category', sType],
-          ['Encounter Date', String(rDate)],
-          ['Status', item.status || 'Completed'],
-          ['Clinical Vitals', `BP: ${item.bp || '—'} | Temp: ${item.temp ? `${item.temp}°C` : '—'} | Wt: ${item.weight ? `${item.weight}kg` : '—'}`],
-          ['Diagnosis / Subject', item.diagnosis || item.chief_complaint || item.detailsSummary || 'General assessment'],
-          ['Medications / Prescriptions', item.prescribed_meds || item.treatment || 'Consultation counseling'],
-          ['Notes / Remarks', item.bhw_notes || item.remarks || item.detailsSummary || 'Official clinical record'],
-          ['Attending Healthcare Staff', staff]
-        ]
-      }]
-    });
-    toast.success(`Official Record PDF downloaded for ${pName}`);
-  };
-
-  const handleBulkDownloadPdf = async () => {
-    const targetRecords = selectedRecordKeys.length > 0
-      ? filteredRecords.filter(r => selectedRecordKeys.includes(r.recordKey))
-      : filteredRecords;
-
-    if (targetRecords.length === 0) {
-      toast.error('No records available to export');
-      return;
-    }
-
-    await downloadOfficialPdf({
-      title: 'BARANGAY HEALTH CENTER CLINICAL ARCHIVE REPORT',
-      subtitle: `Official Health Center Registry (${targetRecords.length} Records) — Barangay ${barangay}`,
-      filename: `Clinical_Archive_Records_${barangay}_${new Date().toISOString().slice(0, 10)}`,
-      preparedBy: 'Clinical Records Administrator',
-      preparedByTitle: 'Records Division',
-      department: 'Barangay Health Services',
-      stats: [
-        { label: 'Exported Records', value: targetRecords.length, color: '#0d9488' },
-        { label: 'Completed', value: targetRecords.filter(s => s.status === 'Completed').length, color: '#2563eb' },
-        { label: 'Cancelled / No Show', value: targetRecords.filter(s => s.status === 'Cancelled').length, color: '#e11d48' }
-      ],
-      tables: [{
-        title: 'Archived Medical & Clinic Encounters',
-        headers: ['Patient Name', 'Category', 'Record Date', 'Status', 'Findings / Details', 'Attending Staff'],
-        rows: targetRecords.map(s => [
-          s.patientName || 'Resident',
-          s.categoryLabel || s.recordCategory,
-          String(s.recordDate || 'Recent'),
-          s.status || 'Completed',
-          s.detailsSummary || s.diagnosis || 'Standard encounter',
-          s.attendingStaff || 'BHW / Nurse'
-        ])
-      }]
-    });
-    toast.success(`Exported ${targetRecords.length} clinical records as PDF`);
-  };
 
   return (
     <div className="space-y-4">
@@ -545,22 +469,7 @@ export default function ClinicalArchivesHub({
               <span className="hidden sm:inline">{sortOrder === 'desc' ? 'Newest' : 'Oldest'}</span>
             </button>
 
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleBulkDownloadPdf}
-              className={`h-9 px-3 text-xs rounded-xl flex items-center gap-1.5 cursor-pointer font-bold shadow-xs transition-all ${
-                selectedRecordKeys.length > 0
-                  ? 'bg-teal-600 hover:bg-teal-700 text-white'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-              }`}
-              title={selectedRecordKeys.length > 0 ? `Download ${selectedRecordKeys.length} selected records as PDF` : 'Download all filtered records as PDF'}
-            >
-              <Download size={13} />
-              {selectedRecordKeys.length > 0
-                ? `Download PDF (Selected: ${selectedRecordKeys.length})`
-                : `Download PDF (${filteredRecords.length})`}
-            </Button>
+
           </div>
         </div>
       </div>
@@ -722,15 +631,7 @@ export default function ClinicalArchivesHub({
                           >
                             <Eye size={11} /> View Record
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDownloadSinglePdf(rec)}
-                            className="h-7 text-[11px] border-teal-200 text-teal-700 hover:text-teal-800 hover:bg-teal-50 gap-1 rounded-lg cursor-pointer font-medium"
-                            title="Download official medical record PDF"
-                          >
-                            <Download size={11} /> Download PDF
-                          </Button>
+
                         </div>
                       </TableCell>
                     </TableRow>
@@ -891,18 +792,7 @@ export default function ClinicalArchivesHub({
             >
               Close
             </Button>
-            {selectedRecord && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  handleDownloadSinglePdf(selectedRecord);
-                  setIsDetailModalOpen(false);
-                }}
-                className="bg-teal-700 hover:bg-teal-800 text-white text-xs gap-1.5 cursor-pointer shadow-xs rounded-xl"
-              >
-                <Download size={13} /> Download PDF Record
-              </Button>
-            )}
+
           </DialogFooter>
         </DialogContent>
       </Dialog>
