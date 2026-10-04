@@ -494,11 +494,11 @@ export default function ResidentPortal() {
         )}
 
         {/* Active Clinic Appointments Tracker */}
-        {myBookings.filter(b => b.status !== 'Cancelled').length > 0 && (
+        {myBookings.length > 0 && (
           <div className="bg-white rounded-2xl border border-violet-100 p-4 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <CalendarPlus className="text-violet-600" size={15} /> Your Clinic Appointment Reservations ({myBookings.filter(b => b.status !== 'Cancelled').length})
+                <CalendarPlus className="text-violet-600" size={15} /> Your Clinic Appointment Reservations ({myBookings.length})
               </span>
               <Button
                 size="sm"
@@ -511,14 +511,15 @@ export default function ResidentPortal() {
               </Button>
             </div>
             <div className="grid sm:grid-cols-2 gap-2.5">
-              {myBookings.filter(b => b.status !== 'Cancelled').slice(0, 4).map((b, i) => (
-                <div key={b.id || i} className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs space-y-1.5 flex flex-col justify-between">
+              {myBookings.slice(0, 4).map((b, i) => (
+                <div key={b.id || i} className={`border rounded-xl p-3 text-xs space-y-1.5 flex flex-col justify-between ${b.status === 'Cancelled' ? 'bg-rose-50/40 border-rose-200/80' : 'bg-slate-50 border-slate-200/80'}`}>
                   <div>
                     <div className="flex items-center justify-between gap-1.5">
-                      <span className="font-bold text-slate-800">{b.service_type}</span>
+                      <span className={`font-bold ${b.status === 'Cancelled' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{b.service_type}</span>
                       <Badge className={`text-[10px] border-0 shrink-0 ${
                         b.status === 'Approved' ? 'bg-emerald-100 text-emerald-800 font-bold' :
                         b.status === 'Completed' ? 'bg-blue-100 text-blue-800 font-bold' :
+                        b.status === 'Cancelled' ? 'bg-rose-100 text-rose-800 font-bold' :
                         'bg-amber-100 text-amber-800 font-bold'
                       }`}>
                         {b.status === 'Approved' ? 'Confirmed' : b.status || 'Pending'}
@@ -528,8 +529,12 @@ export default function ResidentPortal() {
                       <Clock size={11} className="text-slate-400" />
                       Date: <strong>{formatApptDate(b.scheduled_date || b.preferred_date)}</strong>
                     </p>
+                    {b.status === 'Cancelled' && b.bhw_notes && (
+                      <p className="text-[10px] text-rose-700 mt-1 italic">{b.bhw_notes}</p>
+                    )}
                   </div>
 
+                  {b.status !== 'Cancelled' && b.status !== 'Completed' && (
                   <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 mt-2">
                     <span className="text-[10px] text-slate-400">Need to cancel?</span>
                     <Button
@@ -546,6 +551,7 @@ export default function ResidentPortal() {
                       <span>Cancel Schedule</span>
                     </Button>
                   </div>
+                  )}
                 </div>
               ))}
             </div>

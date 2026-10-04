@@ -249,14 +249,19 @@ export default function CensusEntryTab({
       toast.error('Last name is required');
       return;
     }
+    if (!fGender) {
+      toast.error('Gender is required');
+      return;
+    }
     setIsSaving(true);
     try {
+      const targetPurok = fPurok.trim() || '1';
       const finalHhNum =
         fHouseholdNum.trim() ||
-        computeAutoHouseholdNum(fPurok || '1', households, residents);
+        computeAutoHouseholdNum(targetPurok, households, residents);
       const fullAddress =
         fAddress.trim() ||
-        `Purok ${fPurok || '1'}, Brgy. ${barangay}, Butuan City`;
+        `Purok ${targetPurok}, Brgy. ${barangay}, Butuan City`;
 
       const newResident = await apiService.createResident({
         first_name: fFirstName.trim(),
@@ -264,8 +269,8 @@ export default function CensusEntryTab({
         last_name: fLastName.trim(),
         date_of_birth: fDob || undefined,
         gender: fGender,
-        civil_status: fCivilStatus,
-        purok: fPurok.trim() || '1',
+        civil_status: fCivilStatus || 'Single',
+        purok: targetPurok,
         barangay: barangay,
         address: fullAddress,
         phone: fPhone.trim() || undefined,
@@ -278,6 +283,10 @@ export default function CensusEntryTab({
         relationship_to_head: fRelationship,
         verification_status: 'Verified',
       });
+
+      if (selectedPurok !== 'all' && selectedPurok !== targetPurok) {
+        setSelectedPurok('all');
+      }
 
       setResidents(prev => [newResident, ...prev]);
       toast.success(
@@ -1270,13 +1279,13 @@ export default function CensusEntryTab({
                 />
               </div>
               <div>
-                <Label className="text-xs">Gender</Label>
+                <Label className="text-xs">Gender *</Label>
                 <Select
                   value={fGender}
                   onValueChange={v => setFGender(v as any)}
                 >
                   <SelectTrigger className="h-8 text-xs mt-1">
-                    <SelectValue />
+                    <SelectValue placeholder="Select Gender" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Male">Male</SelectItem>
@@ -1292,7 +1301,7 @@ export default function CensusEntryTab({
                   onValueChange={setFCivilStatus}
                 >
                   <SelectTrigger className="h-8 text-xs mt-1">
-                    <SelectValue />
+                    <SelectValue placeholder="Select Civil Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Single">Single</SelectItem>
@@ -1310,7 +1319,7 @@ export default function CensusEntryTab({
                 <Label className="text-xs">Purok *</Label>
                 <Select value={fPurok} onValueChange={handlePurokChange}>
                   <SelectTrigger className="h-8 text-xs mt-1">
-                    <SelectValue />
+                    <SelectValue placeholder="Select Purok" />
                   </SelectTrigger>
                   <SelectContent>
                     {[1, 2, 3, 4, 5, 6].map(p => (
@@ -1337,7 +1346,7 @@ export default function CensusEntryTab({
                   onValueChange={setFRelationship}
                 >
                   <SelectTrigger className="h-8 text-xs mt-1">
-                    <SelectValue />
+                    <SelectValue placeholder="Select Relationship" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Head">Head</SelectItem>

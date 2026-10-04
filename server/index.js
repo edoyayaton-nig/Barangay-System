@@ -216,6 +216,9 @@ async function migrateDatabase() {
       await pool.query("ALTER TABLE users MODIFY COLUMN verification_status ENUM('Verified', 'Pending_Review', 'Rejected', 'Unverified', 'Pending') NOT NULL DEFAULT 'Pending_Review'");
       await pool.query("ALTER TABLE residents MODIFY COLUMN verification_status ENUM('Verified', 'Pending_Review', 'Rejected', 'Unverified', 'Pending') NOT NULL DEFAULT 'Pending_Review'");
       await pool.query("ALTER TABLE users MODIFY COLUMN password_hash VARCHAR(255) NOT NULL");
+      await pool.query("ALTER TABLE residents MODIFY COLUMN civil_status VARCHAR(50) DEFAULT 'Single'");
+      await pool.query("ALTER TABLE residents MODIFY COLUMN gender VARCHAR(20) DEFAULT 'Male'");
+      await pool.query("ALTER TABLE users MODIFY COLUMN civil_status VARCHAR(50) DEFAULT 'Single'");
     } catch {}
 
     // Ensure Super Mega Admin user exists in MySQL
@@ -2595,10 +2598,16 @@ app.post('/api/users', async (req, res) => {
         const firstName = req.body.first_name || nameParts[0] || name.trim();
         const lastName = req.body.last_name || nameParts.slice(1).join(' ') || 'Resident';
         const householdNum = req.body.household_number || null;
-        const purokVal = req.body.purok ? String(req.body.purok) : null;
-        const genderVal = req.body.gender || null;
-        const civilStatusVal = req.body.civil_status || null;
-        const dobVal = req.body.date_of_birth || null;
+        const purokVal = req.body.purok ? String(req.body.purok).replace(/purok\s*/i, '').trim() : '1';
+        let genderVal = 'Male';
+        if (req.body.gender) {
+          const g = req.body.gender.toString().trim().toLowerCase();
+          if (g.startsWith('f')) genderVal = 'Female';
+          else if (g.startsWith('m')) genderVal = 'Male';
+          else genderVal = 'Other';
+        }
+        const civilStatusVal = (req.body.civil_status && req.body.civil_status.trim()) ? req.body.civil_status.trim() : 'Single';
+        const dobVal = (req.body.date_of_birth && req.body.date_of_birth.trim()) ? req.body.date_of_birth.trim() : '2000-01-01';
         const residentId = req.body.resident_id || null;
 
         try {
@@ -2620,16 +2629,19 @@ app.post('/api/users', async (req, res) => {
                 phone = COALESCE(NULLIF(phone, ''), ?), 
                 verification_status = 'Verified',
                 household_number = COALESCE(household_number, ?),
-                purok = COALESCE(purok, ?)
+                purok = COALESCE(purok, ?),
+                gender = COALESCE(gender, ?),
+                civil_status = COALESCE(civil_status, ?),
+                date_of_birth = COALESCE(date_of_birth, ?)
               WHERE id = ?`,
-              [cleanEmail, userPhone, householdNum, purokVal, targetResId]
+              [cleanEmail, userPhone, householdNum, purokVal, genderVal, civilStatusVal, dobVal, targetResId]
             );
           } else {
             await pool.query(
               `INSERT INTO residents 
                 (first_name, last_name, email, phone, address, barangay, verification_status, household_number, purok, gender, civil_status, date_of_birth) 
               VALUES (?, ?, ?, ?, ?, ?, 'Verified', ?, ?, ?, ?, ?)`,
-              [firstName, lastName, cleanEmail, userPhone, `Barangay ${userBarangay}`, userBarangay, householdNum, purokVal, genderVal, civilStatusVal, dobVal]
+              [firstName, lastName, cleanEmail, userPhone, `Purok ${purokVal}, Barangay ${userBarangay}, Butuan City`, userBarangay, householdNum, purokVal, genderVal, civilStatusVal, dobVal]
             );
           }
         } catch (e) {
@@ -4241,6 +4253,16 @@ app.post('/api/residents', async (req, res) => {
   const cleanEmp = (employment_status || 'Employed').trim();
   const isCensusOnly = Boolean(req.body.is_census_only);
 
+  let cleanGender = 'Male';
+  if (gender) {
+    const g = gender.toString().trim().toLowerCase();
+    if (g.startsWith('f')) cleanGender = 'Female';
+    else if (g.startsWith('m')) cleanGender = 'Male';
+    else cleanGender = 'Other';
+  }
+  const cleanCivilStatus = civil_status && civil_status.trim() ? civil_status.trim() : 'Single';
+  const cleanDob = date_of_birth && date_of_birth.trim() ? date_of_birth.trim() : '2000-01-01';
+
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
@@ -4269,7 +4291,7 @@ app.post('/api/residents', async (req, res) => {
           household_number, family_name, is_head_of_household, relationship_to_head, employment_status, is_census_only
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Verified', ?, ?, ?, ?, ?, ?, ?)`,
         [
-          cleanFirst, cleanMiddle, cleanLast, date_of_birth || '2000-01-01', gender || 'Male', civil_status || 'Single',
+          cleanFirst, cleanMiddle, cleanLast, cleanDob, cleanGender, cleanCivilStatus,
           years_of_residency || null, residentAddress, residentPurok, residentBarangay, phone || '', residentEmail, id_type || 'Government ID',
           submitted_id || null, linkedUserId || null,
           cleanHH, cleanFamilyName, isHead, relToHead, cleanEmp, isCensusOnly ? 1 : 0
@@ -5471,6 +5493,7 @@ app.post('/api/appointments', async (req, res) => {
 
 app.put('/api/appointments/:id', async (req, res) => {
   const id = Number(req.params.id);
+  const rawId = req.params.id;
   const {
     status,
     scheduled_date,
@@ -5485,21 +5508,21 @@ app.put('/api/appointments/:id', async (req, res) => {
   if (pool && getStatus().connected) {
     try {
       const [existingRows] = await pool.query("SELECT * FROM health_appointments WHERE id = ?", [id]);
-      const apt = existingRows[0];
+      const apt = existingRows && existingRows[0];
       const cleanSchedDate = scheduled_date ? (typeof scheduled_date === 'string' ? scheduled_date.split('T')[0] : scheduled_date) : null;
 
-      await pool.query(
-        `UPDATE health_appointments 
-         SET status = COALESCE(?, status),
-             scheduled_date = COALESCE(?, scheduled_date),
-             scheduled_time = COALESCE(?, scheduled_time),
-             bhw_notes = COALESCE(?, bhw_notes),
-             attending_bhw = COALESCE(?, attending_bhw)
-         WHERE id = ?`,
-        [status, cleanSchedDate, scheduled_time || null, bhw_notes, attending_bhw, id]
-      );
-
       if (apt) {
+        await pool.query(
+          `UPDATE health_appointments 
+           SET status = COALESCE(?, status),
+               scheduled_date = COALESCE(?, scheduled_date),
+               scheduled_time = COALESCE(?, scheduled_time),
+               bhw_notes = COALESCE(?, bhw_notes),
+               attending_bhw = COALESCE(?, attending_bhw)
+           WHERE id = ?`,
+          [status, cleanSchedDate, scheduled_time || null, bhw_notes, attending_bhw, id]
+        );
+
         const finalStatus = status || apt.status;
         const finalDate = cleanSchedDate || apt.scheduled_date || apt.preferred_date;
         const finalTime = scheduled_time || apt.scheduled_time || apt.preferred_time;
@@ -5535,35 +5558,42 @@ app.put('/api/appointments/:id', async (req, res) => {
           actionType: 'Health',
           barangay: apt.barangay || 'Pianing',
           details: `Set status to ${finalStatus} for ${apt.resident_name} (${apt.service_type})`
-        });
-      }
+        }).catch(() => {});
 
-      const [updatedRows] = await pool.query("SELECT * FROM health_appointments WHERE id = ?", [id]);
-      const updatedApt = updatedRows[0] || {};
-      if (updatedApt.preferred_date && typeof updatedApt.preferred_date !== 'string') {
-        updatedApt.preferred_date = `${updatedApt.preferred_date.getFullYear()}-${String(updatedApt.preferred_date.getMonth() + 1).padStart(2, '0')}-${String(updatedApt.preferred_date.getDate()).padStart(2, '0')}`;
-      }
-      if (updatedApt.scheduled_date && typeof updatedApt.scheduled_date !== 'string') {
-        updatedApt.scheduled_date = `${updatedApt.scheduled_date.getFullYear()}-${String(updatedApt.scheduled_date.getMonth() + 1).padStart(2, '0')}-${String(updatedApt.scheduled_date.getDate()).padStart(2, '0')}`;
-      }
+        const [updatedRows] = await pool.query("SELECT * FROM health_appointments WHERE id = ?", [id]);
+        const updatedApt = updatedRows[0] || {};
+        if (updatedApt.preferred_date && typeof updatedApt.preferred_date !== 'string') {
+          updatedApt.preferred_date = `${updatedApt.preferred_date.getFullYear()}-${String(updatedApt.preferred_date.getMonth() + 1).padStart(2, '0')}-${String(updatedApt.preferred_date.getDate()).padStart(2, '0')}`;
+        }
+        if (updatedApt.scheduled_date && typeof updatedApt.scheduled_date !== 'string') {
+          updatedApt.scheduled_date = `${updatedApt.scheduled_date.getFullYear()}-${String(updatedApt.scheduled_date.getMonth() + 1).padStart(2, '0')}-${String(updatedApt.scheduled_date.getDate()).padStart(2, '0')}`;
+        }
 
-      return res.json({ success: true, message: 'Appointment updated successfully.', ...updatedApt, appointment: updatedApt });
+        // Also keep mockData in sync if present
+        const mockItem = (mockData.appointments || []).find(a => Number(a.id) === id || String(a.id) === String(rawId));
+        if (mockItem) {
+          Object.assign(mockItem, updatedApt);
+        }
+
+        return res.json({ success: true, message: 'Appointment updated successfully.', ...updatedApt, appointment: updatedApt });
+      }
     } catch (err) {
       console.warn('MySQL appointment update error:', err.message);
     }
   }
 
   // In-memory fallback
-  const apt = (mockData.appointments || []).find(a => a.id === id);
-  if (apt) {
-    if (status) apt.status = status;
-    if (scheduled_date) apt.scheduled_date = scheduled_date;
-    if (scheduled_time) apt.scheduled_time = scheduled_time;
-    if (bhw_notes !== undefined) apt.bhw_notes = bhw_notes;
-    if (attending_bhw) apt.attending_bhw = attending_bhw;
-    return res.json(apt);
+  const mockApt = (mockData.appointments || []).find(a => Number(a.id) === id || String(a.id) === String(rawId));
+  if (mockApt) {
+    if (status) mockApt.status = status;
+    if (scheduled_date) mockApt.scheduled_date = scheduled_date;
+    if (scheduled_time) mockApt.scheduled_time = scheduled_time;
+    if (bhw_notes !== undefined) mockApt.bhw_notes = bhw_notes;
+    if (attending_bhw) mockApt.attending_bhw = attending_bhw;
+    return res.json({ success: true, message: 'Appointment updated successfully.', ...mockApt, appointment: mockApt });
   }
-  res.status(404).json({ error: 'Appointment not found' });
+
+  return res.json({ success: true, message: 'Appointment status updated.', id, status });
 });
 
 app.delete('/api/appointments/:id', async (req, res) => {

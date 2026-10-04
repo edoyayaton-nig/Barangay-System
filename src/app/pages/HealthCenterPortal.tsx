@@ -48,8 +48,10 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Popover, PopoverTrigger, PopoverContent } from '../components/ui/popover';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 import { getUpcomingOperatingDates, formatOperatingDaysSummary } from '../../utils/scheduleDateUtils';
+import { notificationStore, PersistentNotification } from '../../services/notificationStore';
 
 interface RevisitHistoryItem {
   id: string | number;
@@ -144,6 +146,7 @@ export default function HealthCenterPortal() {
   const [user, setUser] = useState<any>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<PersistentNotification[]>([]);
   const [isRejectionBannerDismissed, setIsRejectionBannerDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -264,6 +267,41 @@ export default function HealthCenterPortal() {
         setAppointments(userApts);
         setMyBookings(userApts);
 
+        // Sync appointments into persistent notificationStore
+        if (uEmail) {
+          userApts.forEach(a => {
+            const isCanc = a.status === 'Cancelled';
+            const isAppr = a.status === 'Approved';
+            const isComp = a.status === 'Completed';
+            const notifTitle = isCanc
+              ? 'Appointment Cancelled'
+              : isAppr
+              ? 'Clinic Revisit Confirmed'
+              : isComp
+              ? 'Clinic Visit Completed'
+              : 'Clinic Schedule Requested';
+            const notifMsg = isCanc
+              ? `Your appointment for ${a.service_type} (${formatApptDate(a.scheduled_date || a.preferred_date)}) has been cancelled.${a.bhw_notes ? ' Reason: ' + a.bhw_notes : ''}`
+              : isAppr
+              ? `Your ${a.service_type} appointment is confirmed for ${formatApptDate(a.scheduled_date || a.preferred_date)} at ${a.scheduled_time || a.preferred_time || 'Morning (8:00 AM - 11:30 AM)'}.${a.bhw_notes ? ' Note: ' + a.bhw_notes : ''}`
+              : isComp
+              ? `Your consultation/visit for ${a.service_type} on ${formatApptDate(a.scheduled_date || a.preferred_date)} has been completed.`
+              : `Your requested appointment for ${a.service_type} (${formatApptDate(a.preferred_date)}) is awaiting review by health station staff.`;
+
+            notificationStore.addNotification(uEmail, {
+              id: `apt-${a.id}-${a.status?.toLowerCase() || 'pending'}`,
+              type: 'health',
+              title: notifTitle,
+              message: notifMsg,
+              ref_code: a.appointment_code || `APT-${a.id}`,
+              status_badge: a.status || 'Pending',
+              badge_color: isCanc ? 'red' : isAppr ? 'emerald' : isComp ? 'blue' : 'amber',
+              action_type: 'view_schedule'
+            });
+          });
+          setNotifications(notificationStore.getNotifications(uEmail));
+        }
+
         // 2. Clinical Consultations & Prescriptions
         const userCons = (liveCons || []).filter((c: ClinicalConsultationRecord) => {
           if (uName && c.patient_name && (c.patient_name.toLowerCase().includes(uName) || uName.includes(c.patient_name.toLowerCase()))) return true;
@@ -331,6 +369,19 @@ export default function HealthCenterPortal() {
       } as any);
       setMyBookings(prev => [apt, ...prev]);
       setAppointments(prev => [apt, ...prev]);
+      if (user?.email && apt) {
+        notificationStore.addNotification(user.email, {
+          id: `apt-${apt.id}-pending`,
+          type: 'health',
+          title: 'Clinic Schedule Requested',
+          message: `Your requested appointment for ${apt.service_type} on ${bookingDate} is awaiting review.`,
+          ref_code: apt.appointment_code || `APT-${apt.id}`,
+          status_badge: 'Pending',
+          badge_color: 'amber',
+          action_type: 'view_schedule'
+        });
+        setNotifications(notificationStore.getNotifications(user.email));
+      }
       toast.success(`Appointment booked for ${bookingDate}! The nurse will confirm your slot.`);
       try {
         const ch = new BroadcastChannel('barangay_health_sync');
@@ -372,6 +423,21 @@ export default function HealthCenterPortal() {
             : b
         )
       );
+
+      // Persistently record cancellation notification in notificationStore so it is never lost
+      if (user?.email) {
+        notificationStore.addNotification(user.email, {
+          id: `apt-${appointmentToCancel.id}-cancelled`,
+          type: 'health',
+          title: 'Appointment Cancelled',
+          message: `Your appointment for ${appointmentToCancel.service_type} (${formatApptDate(appointmentToCancel.scheduled_date || appointmentToCancel.preferred_date)}) has been cancelled.${cancelReason.trim() ? ' Reason: ' + cancelReason.trim() : ''}`,
+          ref_code: appointmentToCancel.appointment_code || `APT-${appointmentToCancel.id}`,
+          status_badge: 'Cancelled',
+          badge_color: 'red',
+          action_type: 'view_schedule'
+        });
+        setNotifications(notificationStore.getNotifications(user.email));
+      }
 
       toast.success('Your clinic appointment has been cancelled successfully.');
       setIsCancelModalOpen(false);
@@ -442,7 +508,7 @@ export default function HealthCenterPortal() {
         service_type: a.service_type,
         date: visitDate,
         time: a.scheduled_time || a.preferred_time || 'TBA',
-        status: a.status === 'Approved' ? 'Upcoming' : a.status === 'Completed' ? 'Completed' : 'Pending',
+        status: a.status === 'Approved' ? 'Upcoming' : a.status === 'Completed' ? 'Completed' : a.status === 'Cancelled' ? 'Cancelled' : 'Pending',
         provider: a.attending_bhw || 'Barangay Health Center Nurse',
         instructions: a.bhw_notes || undefined,
         notes: a.resident_notes
@@ -516,8 +582,10 @@ export default function HealthCenterPortal() {
                     title="Notifications"
                   >
                     <Bell size={16} className="text-slate-600" />
-                    {nextUpcomingVisit && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-600 rounded-full text-white text-[9px] font-bold flex items-center justify-center">1</span>
+                    {notifications.filter(n => !n.is_read).length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-600 rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+                        {notifications.filter(n => !n.is_read).length}
+                      </span>
                     )}
                   </button>
                 </PopoverTrigger>
@@ -527,30 +595,82 @@ export default function HealthCenterPortal() {
                       <h4 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
                         <Bell className="text-emerald-600" size={16} /> Health Notifications
                       </h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Your revisit schedule and account updates.</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Your revisit schedule, bookings, and clinic alerts.</p>
                     </div>
+                    {notifications.filter(n => !n.is_read).length > 0 && (
+                      <button
+                        onClick={() => {
+                          if (user?.email) {
+                            notificationStore.markAllAsRead(user.email);
+                            setNotifications(notificationStore.getNotifications(user.email));
+                          }
+                        }}
+                        className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 cursor-pointer"
+                      >
+                        Mark all read
+                      </button>
+                    )}
                   </div>
-                  <div className="space-y-2.5 p-3 text-xs max-h-[60vh] overflow-y-auto">
-                    {nextUpcomingVisit ? (
-                      <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-emerald-900 dark:text-emerald-300 text-xs flex items-center gap-1.5">
-                            <CalendarCheck size={13} className="text-emerald-600" /> {nextUpcomingVisit.service_type}
-                          </span>
-                          <Badge className="bg-emerald-600 text-white text-[10px]">Confirmed</Badge>
-                        </div>
-                        <p className="text-xs text-emerald-800 dark:text-emerald-200">
-                          <strong>{new Date(nextUpcomingVisit.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</strong>
-                          {' '}at <strong>{nextUpcomingVisit.time}</strong>
-                        </p>
-                        {nextUpcomingVisit.instructions && (
-                          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 italic">{nextUpcomingVisit.instructions}</p>
-                        )}
+                  <div className="space-y-2 p-3 text-xs max-h-[60vh] overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-center text-slate-400 text-xs py-8">
+                        No health notifications on file yet.
                       </div>
                     ) : (
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-center text-slate-400 text-xs py-8">
-                        No upcoming revisits. Walk in to the Health Center to get started.
-                      </div>
+                      notifications.map(n => {
+                        const isRed = n.badge_color === 'red' || n.status_badge === 'Cancelled';
+                        const isGreen = n.badge_color === 'emerald' || n.status_badge === 'Confirmed' || n.status_badge === 'Approved';
+                        const isBlue = n.badge_color === 'blue' || n.status_badge === 'Completed';
+                        return (
+                          <div
+                            key={n.id}
+                            onClick={() => {
+                              if (!n.is_read && user?.email) {
+                                notificationStore.markAsRead(user.email, n.id);
+                                setNotifications(notificationStore.getNotifications(user.email));
+                              }
+                            }}
+                            className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                              !n.is_read ? 'bg-emerald-50/50 border-emerald-200 shadow-2xs' : 'bg-slate-50/70 border-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                                {isRed ? (
+                                  <XCircle size={13} className="text-rose-600" />
+                                ) : isGreen ? (
+                                  <CalendarCheck size={13} className="text-emerald-600" />
+                                ) : isBlue ? (
+                                  <CheckCircle2 size={13} className="text-blue-600" />
+                                ) : (
+                                  <Clock size={13} className="text-amber-600" />
+                                )}
+                                {n.title}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {n.status_badge && (
+                                  <Badge className={`text-[9px] font-bold py-0 h-4 border-0 ${
+                                    isRed ? 'bg-rose-100 text-rose-800' :
+                                    isGreen ? 'bg-emerald-100 text-emerald-800' :
+                                    isBlue ? 'bg-blue-100 text-blue-800' :
+                                    'bg-amber-100 text-amber-800'
+                                  }`}>
+                                    {n.status_badge}
+                                  </Badge>
+                                )}
+                                {!n.is_read && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-slate-600 leading-relaxed">{n.message}</p>
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 pt-1 border-t border-slate-200/50">
+                              <span>{n.ref_code ? `Ref: ${n.ref_code}` : 'Barangay Health'}</span>
+                              <span>{new Date(n.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
                     <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
                       <div className="flex items-center justify-between">
@@ -1319,25 +1439,28 @@ export default function HealthCenterPortal() {
                   <div className="relative pl-7 space-y-4 before:content-[''] before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-px before:bg-gradient-to-b before:from-emerald-300 before:via-slate-200 before:to-slate-100">
                     {revisitTimeline.map((item, idx) => {
                       const isUpcoming = item.status === 'Upcoming' || item.status === 'Pending';
+                      const isCancelled = item.status === 'Cancelled';
                       return (
                         <div key={`tl-${item.id}-${idx}`} className="relative">
                           <div className={`absolute -left-7 top-2 w-5 h-5 rounded-full border-2 flex items-center justify-center text-[9px] font-bold shadow-xs ${
-                            isUpcoming
+                            isCancelled
+                              ? 'bg-white border-rose-400 text-rose-500'
+                              : isUpcoming
                               ? 'bg-emerald-600 border-white text-white ring-3 ring-emerald-100 animate-pulse'
                               : 'bg-white border-emerald-500 text-emerald-600'
                           }`}>
-                            {isUpcoming ? <Clock size={10} /> : <Check size={10} />}
+                            {isCancelled ? <XCircle size={10} /> : isUpcoming ? <Clock size={10} /> : <Check size={10} />}
                           </div>
 
                           <div className={`rounded-xl border p-3.5 transition-all ${
-                            isUpcoming ? 'bg-emerald-50/60 border-emerald-200 shadow-xs' : 'bg-slate-50/50 border-slate-200 hover:border-slate-300'
+                            isCancelled ? 'bg-rose-50/40 border-rose-200' : isUpcoming ? 'bg-emerald-50/60 border-emerald-200 shadow-xs' : 'bg-slate-50/50 border-slate-200 hover:border-slate-300'
                           }`}>
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${isUpcoming ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${isCancelled ? 'bg-rose-100 text-rose-800 line-through' : isUpcoming ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
                                   {item.service_type}
                                 </span>
-                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${isUpcoming ? 'border-emerald-300 text-emerald-800 bg-white' : 'border-slate-200 text-slate-600'}`}>
+                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${isCancelled ? 'border-rose-300 text-rose-700 bg-white' : isUpcoming ? 'border-emerald-300 text-emerald-800 bg-white' : 'border-slate-200 text-slate-600'}`}>
                                   {item.status}
                                 </span>
                               </div>

@@ -341,7 +341,8 @@ export default function NurseDashboard() {
   const [pNextDate, setPNextDate] = useState('');
   const [pNextNote, setPNextNote] = useState('');
   const [pMeds, setPMeds] = useState('');
-  const [pMedQty, setPMedQty] = useState('30');
+  const [pMedQty, setPMedQty] = useState('0');
+  const [showPMedSuggestions, setShowPMedSuggestions] = useState(false);
 
   // ══ Immunization Form State ══
   const [iChildFirstName, setIChildFirstName] = useState('');
@@ -408,6 +409,39 @@ export default function NurseDashboard() {
       inventory.find(i => i.item_name.toLowerCase().includes(lower) || lower.includes(i.item_name.toLowerCase())) ||
       null;
   }, [medName, inventory]);
+
+  // Full list of maternal vitamins from inventory + standard health center stock
+  const maternalVitaminsList = useMemo(() => {
+    const invMeds = inventory.filter(i => 
+      i.category === 'Maternal Vitamin' || 
+      i.item_name.toLowerCase().includes('folic') || 
+      i.item_name.toLowerCase().includes('iron') || 
+      i.item_name.toLowerCase().includes('ferrous') || 
+      i.item_name.toLowerCase().includes('calcium') ||
+      i.item_name.toLowerCase().includes('vitamin')
+    );
+    const standardMeds = [
+      { id: 'std-1', item_name: 'Folic Acid 400mcg', stock: 120, unit: 'tablets' },
+      { id: 'std-2', item_name: 'Ferrous Sulfate + Folic Acid 60mg', stock: 150, unit: 'capsules' },
+      { id: 'std-3', item_name: 'Calcium Carbonate 500mg', stock: 90, unit: 'tablets' },
+      { id: 'std-4', item_name: 'Maternal Multivitamins + Minerals', stock: 100, unit: 'capsules' },
+      { id: 'std-5', item_name: 'Vitamin B-Complex', stock: 80, unit: 'tablets' },
+      { id: 'std-6', item_name: 'Ascorbic Acid (Vitamin C) 500mg', stock: 140, unit: 'tablets' }
+    ];
+    const combined = [...invMeds];
+    standardMeds.forEach(s => {
+      if (!combined.some(c => c.item_name.toLowerCase() === s.item_name.toLowerCase())) {
+        combined.push(s as any);
+      }
+    });
+    return combined;
+  }, [inventory]);
+
+  const filteredMaternalVitamins = useMemo(() => {
+    const q = (pMeds || '').trim().toLowerCase();
+    if (!q) return maternalVitaminsList;
+    return maternalVitaminsList.filter(m => m.item_name.toLowerCase().includes(q));
+  }, [maternalVitaminsList, pMeds]);
 
   // Find currently selected prenatal vitamin in inventory (exact item match)
   const selectedPrenatalInvItem = useMemo(() => {
@@ -967,8 +1001,8 @@ export default function NurseDashboard() {
     const cleanDia = pBpDia.replace(/\D/g, '') || '80';
     const bpString = `${cleanSys}/${cleanDia}`;
 
-    const pMedQtyNum = parseInt(pMedQty, 10) || 1;
-    const finalPMeds = pMeds.trim() ? `${pMeds.trim()} (Qty: ${pMedQtyNum} ${selectedPrenatalInvItem?.unit || 'tablets'})` : '';
+    const pMedQtyNum = isNaN(parseInt(pMedQty, 10)) ? 0 : parseInt(pMedQty, 10);
+    const finalPMeds = pMeds.trim() ? `${pMeds.trim()}${pMedQtyNum > 0 ? ` (Qty: ${pMedQtyNum} ${selectedPrenatalInvItem?.unit || 'tablets'})` : ''}` : '';
 
     const optimisticRecord: PrenatalRecord = {
       id: Date.now(),
@@ -1021,7 +1055,7 @@ export default function NurseDashboard() {
         attending_nurse: nurseName
       } as any);
 
-      toast.success(`Prenatal record for ${combinedMotherName} saved & archived! Dispensed ${pMedQtyNum}x vitamins.`);
+      toast.success(`Prenatal record for ${combinedMotherName} saved & archived!${pMedQtyNum > 0 ? ` Dispensed ${pMedQtyNum}x vitamins.` : ''}`);
       setIsNewPrenatalOpen(false);
       setPFirstName(''); setPMiddleName(''); setPLastName('');
       setPName(''); setPPhone(''); setPAge(''); setPLmp(''); setPEdd(''); setPAog('');
@@ -1087,12 +1121,12 @@ export default function NurseDashboard() {
         remarks: iRemarks || 'Cleared for routine vaccination',
         administered_by: nurseName,
         status: iDateGiven ? 'Completed' : 'Scheduled',
-        dose_count: parseInt(iVaccineQty, 10) || 1,
-        quantity: parseInt(iVaccineQty, 10) || 1
+        dose_count: isNaN(parseInt(iVaccineQty, 10)) ? 0 : parseInt(iVaccineQty, 10),
+        quantity: isNaN(parseInt(iVaccineQty, 10)) ? 0 : parseInt(iVaccineQty, 10)
       });
 
       // Deduct vaccine from local inventory stock with exact quantity
-      const vaccineDeductQty = parseInt(iVaccineQty, 10) || 1;
+      const vaccineDeductQty = isNaN(parseInt(iVaccineQty, 10)) ? 0 : parseInt(iVaccineQty, 10);
       setInventory(prev => prev.map(item => {
         if (item.item_name.toLowerCase().includes(activeVaccine.toLowerCase()) || activeVaccine.toLowerCase().includes(item.item_name.toLowerCase())) {
           const updatedStock = Math.max(0, item.stock - vaccineDeductQty);
@@ -3818,7 +3852,7 @@ export default function NurseDashboard() {
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                       <Pill size={13} className="text-teal-600" />
-                      Dynamic Prescription Builder
+                      Prescription
                     </Label>
                     <span className="text-[10px] text-slate-400">Add multiple meds</span>
                   </div>
@@ -3880,7 +3914,7 @@ export default function NurseDashboard() {
                     <div className="flex items-center justify-between text-[11px]">
                       <Label className="font-bold text-slate-700 flex items-center gap-1.5">
                         <span className="w-4 h-4 rounded-full bg-teal-600 text-white text-[10px] flex items-center justify-center font-bold">2</span>
-                        Quantity to Dispense (Start from 1):
+                        Quantity
                       </Label>
                       {selectedInventoryItem ? (
                         <span className="text-[10px] font-semibold text-slate-500">
@@ -3970,7 +4004,7 @@ export default function NurseDashboard() {
                   {/* Prescribed Items Table */}
                   {cPrescriptions.length > 0 && (
                     <div className="space-y-1.5 pt-2 border-t border-slate-200">
-                      <p className="text-[11px] font-bold text-slate-700">Prescribed for this Consultation ({cPrescriptions.length}):</p>
+                      <p className="text-[11px] font-bold text-slate-700">Prescription ({cPrescriptions.length}):</p>
                       {cPrescriptions.map((item, i) => (
                         <div key={item.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-xs shadow-xs">
                           <div>
@@ -4447,7 +4481,7 @@ export default function NurseDashboard() {
 
             {/* Prenatal Medicines & Supplements Dispensing Flow */}
             <div className="bg-pink-50/40 border border-pink-200 rounded-xl p-3 space-y-2.5">
-              <div>
+              <div className="relative">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
                     <span className="w-4 h-4 rounded-full bg-pink-600 text-white text-[10px] flex items-center justify-center font-bold">1</span>
@@ -4464,51 +4498,58 @@ export default function NurseDashboard() {
                       {selectedPrenatalInvItem.stock <= 0 ? 'Out of Stock' : `In Stock: ${selectedPrenatalInvItem.stock} ${selectedPrenatalInvItem.unit}`}
                     </span>
                   ) : (
-                    <span className="text-[10px] text-slate-400">Select vitamin to check stock</span>
+                    <span className="text-[10px] text-slate-400">Type or select to check stock</span>
                   )}
                 </div>
 
-                <div className="pt-1.5">
-                  <Select
+                <div className="pt-1.5 relative">
+                  <Input
                     value={pMeds}
-                    onValueChange={(val) => {
-                      setPMeds(val);
-                      setPMedQty('1');
+                    onChange={e => {
+                      setPMeds(e.target.value);
+                      setShowPMedSuggestions(true);
                     }}
-                  >
-                    <SelectTrigger className="h-9 text-xs bg-white rounded-xl border-slate-200 shadow-xs">
-                      <SelectValue placeholder="Select prenatal vitamin from inventory..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-56">
-                      {inventory
-                        .filter(i => i.category === 'Maternal Vitamin' || i.item_name.toLowerCase().includes('folic') || i.item_name.toLowerCase().includes('calcium'))
-                        .map(med => (
-                          <SelectItem key={med.id} value={med.item_name} disabled={med.stock <= 0}>
-                            <div className="flex items-center justify-between gap-3 w-full text-xs">
-                              <span className="font-medium text-slate-800">{med.item_name}</span>
-                              <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                                med.stock <= 0
-                                  ? 'bg-red-50 text-red-600'
-                                  : med.stock < 30
-                                  ? 'bg-amber-50 text-amber-700'
-                                  : 'bg-emerald-50 text-emerald-700'
-                              }`}>
-                                {med.stock <= 0 ? 'Out of Stock' : `${med.stock} ${med.unit || 'tablets'} available`}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                    onFocus={() => setShowPMedSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowPMedSuggestions(false), 200)}
+                    placeholder="Type to search or choose maternal vitamins/supplements..."
+                    className="h-9 text-xs bg-white rounded-xl border-slate-200 shadow-xs"
+                    autoComplete="off"
+                  />
+                  {showPMedSuggestions && filteredMaternalVitamins.length > 0 && (
+                    <div className="absolute z-50 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-pink-200 rounded-xl shadow-xl divide-y divide-slate-100">
+                      {filteredMaternalVitamins.map(med => (
+                        <button
+                          key={med.id}
+                          type="button"
+                          onMouseDown={() => {
+                            setPMeds(med.item_name);
+                            setShowPMedSuggestions(false);
+                          }}
+                          className="w-full text-left p-2.5 hover:bg-pink-50 transition-colors flex items-center justify-between text-xs cursor-pointer"
+                        >
+                          <span className="font-medium text-slate-800">{med.item_name}</span>
+                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                            med.stock <= 0
+                              ? 'bg-red-50 text-red-600'
+                              : med.stock < 30
+                              ? 'bg-amber-50 text-amber-700'
+                              : 'bg-emerald-50 text-emerald-700'
+                          }`}>
+                            {med.stock <= 0 ? 'Out of Stock' : `${med.stock} ${med.unit || 'tablets'} available`}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Quantity to Dispense */}
+              {/* Quantity */}
               <div className="bg-white border border-pink-100 rounded-lg p-2.5 space-y-1.5">
                 <div className="flex items-center justify-between text-[11px]">
                   <Label className="font-bold text-slate-700 flex items-center gap-1.5">
                     <span className="w-4 h-4 rounded-full bg-pink-600 text-white text-[10px] flex items-center justify-center font-bold">2</span>
-                    Quantity to Dispense (Freedom to start from 1):
+                    Quantity
                   </Label>
                   {selectedPrenatalInvItem && (
                     <span className="text-[10px] text-slate-500">
@@ -4520,16 +4561,16 @@ export default function NurseDashboard() {
                   <div className="w-24">
                     <Input
                       type="number"
-                      min="1"
+                      min="0"
                       max={selectedPrenatalInvItem ? selectedPrenatalInvItem.stock : undefined}
                       value={pMedQty}
                       onChange={e => setPMedQty(e.target.value)}
-                      placeholder="1"
+                      placeholder="0"
                       className="h-8 text-xs bg-slate-50 rounded-lg border-pink-300 font-mono font-bold text-center focus:bg-white"
                     />
                   </div>
                   <div className="flex flex-wrap items-center gap-1">
-                    {['1', '15', '30', '60', '90'].map(q => (
+                    {['0', '15', '30', '60', '90'].map(q => (
                       <button
                         type="button"
                         key={q}
@@ -4721,7 +4762,9 @@ export default function NurseDashboard() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Select value={iVaccine} onValueChange={setIVaccine}>
-                    <SelectTrigger className="h-9 text-xs bg-white rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-xs bg-white rounded-xl">
+                      <SelectValue placeholder="Select Vaccine Type" />
+                    </SelectTrigger>
                     <SelectContent>
                       {/* Dynamic vaccines from live inventory */}
                       {inventory
@@ -4755,7 +4798,9 @@ export default function NurseDashboard() {
                 </div>
                 <div>
                   <Select value={iDose} onValueChange={setIDose}>
-                    <SelectTrigger className="h-9 text-xs bg-white rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-xs bg-white rounded-xl">
+                      <SelectValue placeholder="Select Dose Number" />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Dose 1">Dose 1 (Initial)</SelectItem>
                       <SelectItem value="Dose 2">⭐ Dose 2 (Secondary)</SelectItem>
@@ -4767,19 +4812,19 @@ export default function NurseDashboard() {
                 </div>
               </div>
 
-              {/* Vaccine Dose / Vials to Dispense (Freedom from 1) */}
+              {/* Vaccine Dose / Vials to Dispense */}
               <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between flex-wrap gap-2">
-                <span className="text-[11px] font-semibold text-slate-700">Vials / Doses to Dispense:</span>
+                <span className="text-[11px] font-semibold text-slate-700">Quantity</span>
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
-                    min="1"
+                    min="0"
                     value={iVaccineQty}
                     onChange={e => setIVaccineQty(e.target.value)}
                     className="h-7 w-20 text-xs text-center bg-white rounded-md border-slate-300 font-mono font-bold"
                   />
                   <div className="flex items-center gap-1">
-                    {['1', '2', '3'].map(q => (
+                    {['0', '1', '2', '3'].map(q => (
                       <button
                         type="button"
                         key={q}

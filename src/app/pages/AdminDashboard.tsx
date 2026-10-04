@@ -1647,6 +1647,10 @@ export default function AdminDashboard() {
       toast.error('Date of Birth is required');
       return;
     }
+    if (!newResGender) {
+      toast.error('Gender is required');
+      return;
+    }
     if (!newResPhone.trim()) {
       toast.error('Contact Number is required');
       return;
@@ -1679,7 +1683,7 @@ export default function AdminDashboard() {
         barangay: adminBarangay,
         date_of_birth: newResDOB,
         gender: newResGender,
-        civil_status: newResCivilStatus,
+        civil_status: newResCivilStatus || 'Single',
         years_of_residency: newResYearsOfResidency.trim() || undefined,
         address: autoAddress,
         purok: cleanPurokNum,
@@ -1693,15 +1697,16 @@ export default function AdminDashboard() {
         employment_status: newResEmployment as any,
         is_census_only: true
       });
-      // Reload to avoid duplicates (never manually push) and refresh superadmin analytics
+      // Reload to avoid duplicates and refresh superadmin analytics
       await loadData();
-      const freshResidents = await apiService.getResidents(user?.barangay, selectedCensusPurok);
+      setSelectedCensusPurok('all');
+      const freshResidents = await apiService.getResidents(adminBarangay, 'all');
       setResidents(freshResidents);
       setStats(prev => ({ ...prev, totalResidents: freshResidents.length }));
       // Refresh Purok Population Density after new resident registration
       apiService.getPopulationStats(isSuperMegaAdmin ? undefined : userBarangay).then(p => { if (p) setPopulationStats(p); }).catch(() => {});
-      apiService.getCensusStats(user?.barangay, selectedCensusPurok).then(data => { if (data) setCensusStats(data); }).catch(() => {});
-      apiService.getHouseholds(user?.barangay, selectedCensusPurok).then(data => { if (data) setCensusHouseholds(data); }).catch(() => {});
+      apiService.getCensusStats(adminBarangay, 'all').then(data => { if (data) setCensusStats(data); }).catch(() => {});
+      apiService.getHouseholds(adminBarangay, 'all').then(data => { if (data) setCensusHouseholds(data); }).catch(() => {});
       toast.success('Resident registered in Population Census successfully');
       try {
         const ch = new BroadcastChannel('barangay_health_sync');
@@ -1865,6 +1870,10 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!resAccFirstName.trim() || !resAccLastName.trim()) {
       toast.error('First Name and Last Name are required.');
+      return;
+    }
+    if (!resAccGender) {
+      toast.error('Gender is required for resident registration.');
       return;
     }
     if (!resAccEmail.trim()) {
@@ -9412,11 +9421,133 @@ export default function AdminDashboard() {
           </div>
 
           <form onSubmit={handleCreateResidentUser} autoComplete="off" className="space-y-4 pt-1">
-            {/* Step 1: Login Credentials */}
+            {/* Step 1: Resident Demographics & Profile */}
+            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Users size={14} className="text-blue-600" />
+                Step 1: Resident Demographics &amp; Profile
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">First Name *</Label>
+                  <Input
+                    value={resAccFirstName}
+                    onChange={e => {
+                      setResAccFirstName(e.target.value);
+                      if (!resAccCensusMatch && e.target.value.length >= 2) {
+                        setResAccCensusSearch(e.target.value);
+                      }
+                    }}
+                    placeholder="e.g. Juan"
+                    className="text-xs mt-1 bg-white border-slate-300"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Middle Name</Label>
+                  <Input
+                    value={resAccMiddleName}
+                    onChange={e => setResAccMiddleName(e.target.value)}
+                    placeholder="e.g. Ramos"
+                    className="text-xs mt-1 bg-white border-slate-300"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Last Name *</Label>
+                  <Input
+                    value={resAccLastName}
+                    onChange={e => {
+                      setResAccLastName(e.target.value);
+                      if (!resAccCensusMatch && e.target.value.length >= 2) {
+                        setResAccCensusSearch(`${resAccFirstName} ${e.target.value}`);
+                      }
+                    }}
+                    placeholder="e.g. Dela Cruz"
+                    className="text-xs mt-1 bg-white border-slate-300"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-slate-700">Date of Birth</Label>
+                    {resAccDOB && getDynamicAge(resAccDOB) !== null && (
+                      <span className="text-[9px] text-blue-600 font-bold bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
+                        {getDynamicAge(resAccDOB)} yrs
+                      </span>
+                    )}
+                  </div>
+                  <Input
+                    type="date"
+                    value={resAccDOB}
+                    onChange={e => setResAccDOB(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="text-xs mt-1 bg-white border-slate-300"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Gender *</Label>
+                  <Select value={resAccGender} onValueChange={(val: any) => setResAccGender(val)}>
+                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Gender" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Civil Status</Label>
+                  <Select value={resAccCivilStatus} onValueChange={setResAccCivilStatus}>
+                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Single">Single</SelectItem>
+                      <SelectItem value="Married">Married</SelectItem>
+                      <SelectItem value="Widowed">Widowed</SelectItem>
+                      <SelectItem value="Separated">Separated</SelectItem>
+                      <SelectItem value="Live-In">Live-In / Common Law</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Employment Status</Label>
+                  <Select value={resAccEmployment} onValueChange={setResAccEmployment}>
+                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Employment Status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Employed">Employed</SelectItem>
+                      <SelectItem value="Self-Employed">Self-Employed / Business</SelectItem>
+                      <SelectItem value="Unemployed">Unemployed</SelectItem>
+                      <SelectItem value="Student">Student</SelectItem>
+                      <SelectItem value="Retired">Retired</SelectItem>
+                      <SelectItem value="Minor">Dependent Minor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-slate-700">Years of Residency</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={resAccResidencyYears}
+                    onChange={e => setResAccResidencyYears(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="e.g. 5"
+                    className="text-xs mt-1 bg-white border-slate-300"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Resident Portal Login Credentials */}
             <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
               <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <KeyRound size={14} className="text-blue-600" />
-                Step 1: Resident Portal Login Credentials
+                Step 2: Resident Portal Login Credentials
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -9503,128 +9634,6 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <p className="text-[10px] text-slate-500 mt-0.5">Philippine 11-digit mobile number for SMS notifications.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2: Citizen Demographics & Profile */}
-            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Users size={14} className="text-blue-600" />
-                Step 2: Resident Demographics &amp; Profile
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">First Name *</Label>
-                  <Input
-                    value={resAccFirstName}
-                    onChange={e => {
-                      setResAccFirstName(e.target.value);
-                      if (!resAccCensusMatch && e.target.value.length >= 2) {
-                        setResAccCensusSearch(e.target.value);
-                      }
-                    }}
-                    placeholder="e.g. Juan"
-                    className="text-xs mt-1 bg-white border-slate-300"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Middle Name</Label>
-                  <Input
-                    value={resAccMiddleName}
-                    onChange={e => setResAccMiddleName(e.target.value)}
-                    placeholder="e.g. Ramos"
-                    className="text-xs mt-1 bg-white border-slate-300"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Last Name *</Label>
-                  <Input
-                    value={resAccLastName}
-                    onChange={e => {
-                      setResAccLastName(e.target.value);
-                      if (!resAccCensusMatch && e.target.value.length >= 2) {
-                        setResAccCensusSearch(`${resAccFirstName} ${e.target.value}`);
-                      }
-                    }}
-                    placeholder="e.g. Dela Cruz"
-                    className="text-xs mt-1 bg-white border-slate-300"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold text-slate-700">Date of Birth</Label>
-                    {resAccDOB && getDynamicAge(resAccDOB) !== null && (
-                      <span className="text-[9px] text-blue-600 font-bold bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
-                        {getDynamicAge(resAccDOB)} yrs
-                      </span>
-                    )}
-                  </div>
-                  <Input
-                    type="date"
-                    value={resAccDOB}
-                    onChange={e => setResAccDOB(e.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
-                    className="text-xs mt-1 bg-white border-slate-300"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Gender</Label>
-                  <Select value={resAccGender} onValueChange={(val: any) => setResAccGender(val)}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Gender" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Civil Status</Label>
-                  <Select value={resAccCivilStatus} onValueChange={setResAccCivilStatus}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Single">Single</SelectItem>
-                      <SelectItem value="Married">Married</SelectItem>
-                      <SelectItem value="Widowed">Widowed</SelectItem>
-                      <SelectItem value="Separated">Separated</SelectItem>
-                      <SelectItem value="Live-In">Live-In / Common Law</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Employment Status</Label>
-                  <Select value={resAccEmployment} onValueChange={setResAccEmployment}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Employment Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Employed">Employed</SelectItem>
-                      <SelectItem value="Self-Employed">Self-Employed / Business</SelectItem>
-                      <SelectItem value="Unemployed">Unemployed</SelectItem>
-                      <SelectItem value="Student">Student</SelectItem>
-                      <SelectItem value="Retired">Retired</SelectItem>
-                      <SelectItem value="Minor">Dependent Minor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Years of Residency</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={resAccResidencyYears}
-                    onChange={e => setResAccResidencyYears(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="e.g. 5"
-                    className="text-xs mt-1 bg-white border-slate-300"
-                  />
                 </div>
               </div>
             </div>
