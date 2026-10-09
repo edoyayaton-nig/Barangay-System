@@ -7267,7 +7267,8 @@ app.listen(PORT, async () => {
       console.warn('[Migration] Warning:', migErr.message);
     }
   } else {
-    console.log(`ℹ️ [MySQL Status] Attempting automatic migration & setup for database '${process.env.DB_NAME || 'smart_db'}'...`);
+    const targetDb = process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || process.env.DB_NAME || (process.env.MYSQLHOST ? 'railway' : 'smart_db');
+    console.log(`ℹ️ [MySQL Status] Attempting automatic migration & setup for database '${targetDb}'...`);
     const { runMigration } = await import('./migrate.js');
     const migRes = await runMigration();
     if (migRes.success) {

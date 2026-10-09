@@ -1,13 +1,10 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import { dbConfig } from './config/db.js';
 dotenv.config();
 
 export async function migrateAndSeedCensus() {
-  const host = process.env.DB_HOST || 'localhost';
-  const port = Number(process.env.DB_PORT) || 3306;
-  const user = process.env.DB_USER || 'root';
-  const password = process.env.DB_PASSWORD || '';
-  const dbName = process.env.DB_NAME || 'smart_db';
+  const { host, port, user, password, database: dbName } = dbConfig;
 
   console.log(`Connecting to ${dbName} at ${host}:${port}...`);
   const conn = await mysql.createConnection({ host, port, user, password, database: dbName });
