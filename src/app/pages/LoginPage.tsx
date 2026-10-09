@@ -33,6 +33,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { FloatingInput, FloatingSelect } from '../components/ui/floating-input';
 import { BUTUAN_BARANGAYS, normalizeBarangay, formatJurisdictionAddress } from '../../utils/barangays';
 import { AGUSAN_DEL_NORTE_LGUS, getBarangaysForCity } from '../../utils/caragaJurisdictions';
+import { saveStoredUser } from '../../utils/safeStorage';
 import TermsAndPrivacyModal from '../components/TermsAndPrivacyModal';
 import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import { toast } from 'sonner';
@@ -192,7 +193,7 @@ export default function LoginPage() {
       const response = await apiService.login(email.trim(), password);
       if (response && response.user) {
         const u = response.user;
-        localStorage.setItem('barangay_user', JSON.stringify(u));
+        saveStoredUser(u);
         toast.success(`Welcome back, ${u.name}!`);
 
         if (u.role === 'super_mega_admin') {
@@ -351,12 +352,12 @@ export default function LoginPage() {
         purok: cleanPurokNum || regPurok.trim(),
         role: 'resident',
         verification_status: 'Pending_Review',
-        submitted_id: regIdPhoto,
+        submitted_id: 'submitted',
         id_type: regIdType,
         years_of_residency: regResidencyYears.trim() || undefined
       };
 
-      localStorage.setItem('barangay_user', JSON.stringify(user));
+      saveStoredUser(user);
 
       toast.warning('Account Created (ID Under Review)', {
         description: 'Your resident account and ID have been submitted! Please wait for Admin approval to unlock official clearance requests.'

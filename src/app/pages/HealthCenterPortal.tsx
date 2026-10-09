@@ -39,6 +39,7 @@ import {
   Eye
 } from 'lucide-react';
 import { getBarangayContact, getBarangayEmail } from '../../utils/barangays';
+import { saveStoredUser } from '../../utils/safeStorage';
 import { apiService, HealthAppointment, ClinicSchedule, MaternalRecord, ClinicalConsultationRecord, ImmunizationRecord } from '../../services/api';
 import BarangayChatbot from '../components/BarangayChatbot';
 import ProfileSettingsModal from '../components/ProfileSettingsModal';
@@ -472,7 +473,7 @@ export default function HealthCenterPortal() {
               const updated = { ...parsed, ...liveUser, date_of_birth: cleanDob, age: liveUser.age ?? parsed.age };
               setUser(updated);
               setIsVerified(updated.verification_status === 'Verified');
-              localStorage.setItem('barangay_user', JSON.stringify(updated));
+              saveStoredUser(updated);
               if (hasChanged && liveStatus === 'Verified') {
                 toast.success('Account Verified!', { description: 'Your health center revisits will now appear here.' });
               }

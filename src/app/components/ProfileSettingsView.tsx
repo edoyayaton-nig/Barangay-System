@@ -25,6 +25,7 @@ import {
   Crown
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { saveStoredUser } from '../../utils/safeStorage';
 import { toast } from 'sonner';
 
 interface ProfileSettingsViewProps {
@@ -332,7 +333,7 @@ export default function ProfileSettingsView({ user, onProfileUpdated, darkMode }
 
       const currentUser = JSON.parse(localStorage.getItem('barangay_user') || '{}');
       const merged = { ...currentUser, ...updated, profile_photo: profilePhoto };
-      localStorage.setItem('barangay_user', JSON.stringify(merged));
+      saveStoredUser(merged);
 
       if (onProfileUpdated) {
         onProfileUpdated(merged);

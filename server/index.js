@@ -1272,6 +1272,12 @@ app.post('/api/auth/login', async (req, res) => {
         }
         // Never expose password hash to client
         delete user.password_hash;
+        if (user.submitted_id && user.submitted_id.length > 500) {
+          user.submitted_id = 'submitted';
+        }
+        if (user.profile_photo && user.profile_photo.length > 100000) {
+          delete user.profile_photo;
+        }
         if (user.permissions && typeof user.permissions === 'string') {
           try { user.permissions = JSON.parse(user.permissions); } catch {}
         }
@@ -1516,7 +1522,7 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(201).json({
           success: true,
           is_claimed: true,
-          user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, city: userCity, purok: existingRec.purok || cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
+          user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id: 'submitted', phone, address: residentAddress, city: userCity, purok: existingRec.purok || cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
           message: 'Existing resident profile linked successfully! Your submitted ID is under review by the Barangay Admin.'
         });
       }
@@ -1579,7 +1585,7 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(201).json({
         success: true,
         is_claimed: false,
-        user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id, phone, address: residentAddress, city: userCity, purok: cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
+        user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id: 'submitted', phone, address: residentAddress, city: userCity, purok: cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
         message: 'Account created! Your submitted ID is under review by the Barangay Admin.'
       });
     } catch (err) {
@@ -1737,7 +1743,7 @@ app.get('/api/auth/check-status', async (req, res) => {
   if (pool && getStatus().connected) {
     try {
       const [rows] = await pool.query(
-        "SELECT id, CONCAT(first_name, ' ', last_name) AS name, first_name, middle_name, last_name, date_of_birth, TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) as age, civil_status, gender, email, phone, address, purok, barangay, verification_status, rejection_reason, submitted_id FROM residents WHERE LOWER(email) = LOWER(?) LIMIT 1",
+        "SELECT id, CONCAT(first_name, ' ', last_name) AS name, first_name, middle_name, last_name, date_of_birth, TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) as age, civil_status, gender, email, phone, address, purok, barangay, verification_status, rejection_reason FROM residents WHERE LOWER(email) = LOWER(?) LIMIT 1",
         [email]
       );
       if (rows.length > 0) {
@@ -3181,6 +3187,13 @@ app.get('/api/auth/check-status', async (req, res) => {
         }
         user.verification_status = effectiveStatus;
         user.rejection_reason = rejectionCause;
+        delete user.password_hash;
+        if (user.submitted_id && user.submitted_id.length > 500) {
+          user.submitted_id = 'submitted';
+        }
+        if (user.profile_photo && user.profile_photo.length > 100000) {
+          delete user.profile_photo;
+        }
         return res.json({ success: true, user });
       }
     } catch (err) {

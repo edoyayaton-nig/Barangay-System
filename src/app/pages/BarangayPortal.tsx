@@ -33,6 +33,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { getBarangayContact, getBarangayEmail } from '../../utils/barangays';
+import { saveStoredUser } from '../../utils/safeStorage';
 import { apiService, DocumentRequest, ClinicSchedule, HealthAppointment } from '../../services/api';
 import BarangayChatbot from '../components/BarangayChatbot';
 import ProfileSettingsModal from '../components/ProfileSettingsModal';
@@ -536,7 +537,7 @@ export default function BarangayPortal() {
           };
           setUser(updated);
           setIsVerified(updated.verification_status === 'Verified');
-          localStorage.setItem('barangay_user', JSON.stringify(updated));
+          saveStoredUser(updated);
           if (hasChanged && liveUser.verification_status === 'Verified') {
             toast.success('Account Verified!', {
               description: 'Your account was approved by Barangay Admin. You can now request documents.'

@@ -13,6 +13,7 @@ import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Upload, Camera, AlertTriangle, CheckCircle2, User, Phone, MapPin, X, Eye } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { saveStoredUser } from '../../utils/safeStorage';
 import { toast } from 'sonner';
 
 interface ResubmitIdModalProps {
@@ -110,7 +111,7 @@ export default function ResubmitIdModal({
           rejection_reason: null
         };
 
-        localStorage.setItem('barangay_user', JSON.stringify(updatedUser));
+        saveStoredUser(updatedUser);
         onResubmitted(updatedUser);
         toast.success('Verification Resubmitted!', {
           description: 'Your updated ID is now in the Barangay Admin approval queue.'

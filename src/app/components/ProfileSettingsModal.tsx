@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { apiService } from '../../services/api';
+import { saveStoredUser } from '../../utils/safeStorage';
 import { toast } from 'sonner';
 
 interface ProfileSettingsModalProps {
@@ -194,7 +195,7 @@ export default function ProfileSettingsModal({
         age: calculatedAge !== null ? calculatedAge : user?.age,
         address: formattedAddress,
       };
-      localStorage.setItem('barangay_user', JSON.stringify(updated));
+      saveStoredUser(updated);
 
       if (isChangingEmail) {
         toast.success('Email & Profile Updated!', {
