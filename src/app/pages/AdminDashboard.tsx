@@ -2640,24 +2640,32 @@ export default function AdminDashboard() {
   // Check if an address or record belongs to current admin's barangay
   const belongsToMyBarangay = (itemAddressOrBarangay?: string, itemEmail?: string, itemBarangay?: string) => {
     if (isSuperMegaAdmin) return true;
-    if (!currentAdminBarangay) return true;
+    if (!currentAdminBarangay || currentAdminBarangay.includes('all') || currentAdminBarangay.includes('city-wide')) return true;
+
+    const cleanAdminB = currentAdminBarangay.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
 
     // Direct barangay field match
     if (itemBarangay) {
       const bLower = itemBarangay.toLowerCase().trim();
-      return bLower === currentAdminBarangay || bLower.includes(currentAdminBarangay);
+      const cleanItemB = bLower.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      if (bLower === currentAdminBarangay || bLower.includes(cleanAdminB) || cleanAdminB.includes(cleanItemB) || cleanItemB === cleanAdminB) {
+        return true;
+      }
     }
 
     // Direct address field check
     if (itemAddressOrBarangay) {
       const target = itemAddressOrBarangay.toLowerCase().trim();
-      return target.includes(currentAdminBarangay);
+      const cleanTarget = target.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      if (target.includes(currentAdminBarangay) || target.includes(cleanAdminB) || cleanTarget.includes(cleanAdminB)) {
+        return true;
+      }
     }
 
     // Email check
     if (itemEmail) {
       const targetEm = itemEmail.toLowerCase().trim();
-      if (targetEm.includes(currentAdminBarangay)) return true;
+      if (targetEm.includes(currentAdminBarangay) || targetEm.includes(cleanAdminB)) return true;
     }
 
     return false;
@@ -2666,12 +2674,14 @@ export default function AdminDashboard() {
   // Filtered lists — Documents tab shows ONLY active requests for this barangay
   const isDocForMyBarangay = (doc: DocumentRequest) => {
     if (isSuperMegaAdmin) return true;
-    if (!currentAdminBarangay) return true;
+    if (!currentAdminBarangay || currentAdminBarangay.includes('all') || currentAdminBarangay.includes('city-wide')) return true;
+    const cleanAdminB = currentAdminBarangay.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
 
     // 1. Direct barangay check
     const docB = ((doc as any).barangay || '').toLowerCase().trim();
     if (docB) {
-      return docB === currentAdminBarangay || docB.includes(currentAdminBarangay);
+      const cleanDocB = docB.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      return docB === currentAdminBarangay || docB.includes(cleanAdminB) || cleanAdminB.includes(cleanDocB) || cleanDocB === cleanAdminB;
     }
 
     // 2. Match with resident registry

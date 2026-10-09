@@ -272,6 +272,8 @@ async function migrateDatabase() {
     await safeAddColumn(pool, 'users', 'civil_status', "ENUM('Single', 'Married', 'Widowed', 'Separated') DEFAULT 'Single'");
     await safeAddColumn(pool, 'users', 'last_login', "DATETIME NULL");
     await safeAddColumn(pool, 'users', 'profile_photo', "LONGTEXT NULL");
+    await safeAddColumn(pool, 'users', 'submitted_id', "LONGTEXT NULL");
+    await safeAddColumn(pool, 'users', 'id_type', "VARCHAR(100) DEFAULT 'Government ID'");
     await safeAddColumn(pool, 'users', 'employee_id', "VARCHAR(50) DEFAULT NULL");
     await safeAddColumn(pool, 'users', 'job_title', "VARCHAR(100) DEFAULT NULL");
     await safeAddColumn(pool, 'users', 'permissions', "TEXT NULL");
@@ -294,6 +296,11 @@ async function migrateDatabase() {
     await safeAddColumn(pool, 'residents', 'employment_status', "VARCHAR(50) DEFAULT 'Employed'");
     await safeAddColumn(pool, 'residents', 'last_profile_update_note', "TEXT NULL");
     await safeAddColumn(pool, 'residents', 'is_census_only', "TINYINT(1) DEFAULT 0");
+    await safeAddColumn(pool, 'residents', 'linked_user_id', "INT NULL DEFAULT NULL");
+    await safeAddColumn(pool, 'residents', 'id_type', "VARCHAR(100) DEFAULT 'Government ID'");
+    await safeAddColumn(pool, 'residents', 'claimed_at', "DATETIME NULL");
+    await safeAddColumn(pool, 'residents', 'submitted_id', "LONGTEXT NULL");
+    await safeAddColumn(pool, 'residents', 'submitted_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
 
     // SMS notifications columns
     await safeAddColumn(pool, 'sms_notifications', 'is_read', "TINYINT(1) DEFAULT 0");
@@ -1402,20 +1409,37 @@ app.post('/api/auth/register', async (req, res) => {
 
       // 2. CIVIC TRIAD DE-DUPLICATION & AUTO-MERGING:
       // Match by First Name + Last Name + Date of Birth + Barangay (tolerant of any casing/spelling of Pianing)
-      const [matchedResidents] = await pool.query(
-        `SELECT id, first_name, last_name, date_of_birth, barangay, email, phone, verification_status, linked_user_id 
-         FROM residents 
-         WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(?)) 
-           AND LOWER(TRIM(last_name)) = LOWER(TRIM(?)) 
-           AND date_of_birth = ? 
-           AND (
-             LOWER(TRIM(barangay)) = LOWER(TRIM(?))
-             OR LOWER(REPLACE(REPLACE(TRIM(barangay), 'barangay ', ''), 'brgy. ', '')) = LOWER(?)
-             OR LOWER(TRIM(barangay)) LIKE CONCAT('%', LOWER(?), '%')
-           ) 
-         LIMIT 1`,
-        [firstName, lastName, dob, userBarangay, userBarangay, userBarangay]
-      );
+      let matchedResidents = [];
+      try {
+        const [rows] = await pool.query(
+          `SELECT id, first_name, last_name, date_of_birth, barangay, email, phone, verification_status, linked_user_id 
+           FROM residents 
+           WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(?)) 
+             AND LOWER(TRIM(last_name)) = LOWER(TRIM(?)) 
+             AND date_of_birth = ? 
+             AND (
+               LOWER(TRIM(barangay)) = LOWER(TRIM(?))
+               OR LOWER(REPLACE(REPLACE(TRIM(barangay), 'barangay ', ''), 'brgy. ', '')) = LOWER(?)
+               OR LOWER(TRIM(barangay)) LIKE CONCAT('%', LOWER(?), '%')
+             ) 
+           LIMIT 1`,
+          [firstName, lastName, dob, userBarangay, userBarangay, userBarangay]
+        );
+        matchedResidents = rows || [];
+      } catch (civicErr) {
+        try {
+          const [rows] = await pool.query(
+            `SELECT id, first_name, last_name, date_of_birth, barangay, email, phone, verification_status 
+             FROM residents 
+             WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(?)) 
+               AND LOWER(TRIM(last_name)) = LOWER(TRIM(?)) 
+               AND date_of_birth = ? 
+             LIMIT 1`,
+            [firstName, lastName, dob]
+          );
+          matchedResidents = rows || [];
+        } catch {}
+      }
 
       let residentIdToUse;
       let isClaimedExisting = false;
@@ -1438,17 +1462,34 @@ app.post('/api/auth/register', async (req, res) => {
         isClaimedExisting = true;
 
         // Create the user login account
-        const [userResult] = await pool.query(
-          "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, NOW())",
-          [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress]
-        );
+        let userResult;
+        try {
+          [userResult] = await pool.query(
+            "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, profile_photo, submitted_id, id_type, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, ?, ?, ?, NOW())",
+            [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress, submitted_id || '', submitted_id || '', req.body.id_type || 'Government ID']
+          );
+        } catch (uErr) {
+          [userResult] = await pool.query(
+            "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, NOW())",
+            [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress]
+          );
+        }
         const newUserId = userResult.insertId;
 
         // Update existing resident record with new email, phone, ID photo, employment_status, and linked_user_id
-        await pool.query(
-          "UPDATE residents SET email = ?, phone = ?, submitted_id = ?, id_type = ?, employment_status = ?, verification_status = 'Pending_Review', submitted_at = NOW(), claimed_at = NOW(), linked_user_id = ?, rejection_reason = NULL WHERE id = ?",
-          [cleanEmail, phone || existingRec.phone || '', submitted_id, req.body.id_type || 'Government ID', userEmployment, newUserId, residentIdToUse]
-        );
+        try {
+          await pool.query(
+            "UPDATE residents SET email = ?, phone = ?, submitted_id = ?, id_type = ?, employment_status = ?, verification_status = 'Pending_Review', submitted_at = NOW(), claimed_at = NOW(), linked_user_id = ?, rejection_reason = NULL WHERE id = ?",
+            [cleanEmail, phone || existingRec.phone || '', submitted_id, req.body.id_type || 'Government ID', userEmployment, newUserId, residentIdToUse]
+          );
+        } catch (updErr) {
+          try {
+            await pool.query(
+              "UPDATE residents SET email = ?, phone = ?, submitted_id = ?, verification_status = 'Pending_Review', rejection_reason = NULL WHERE id = ?",
+              [cleanEmail, phone || existingRec.phone || '', submitted_id, residentIdToUse]
+            );
+          } catch {}
+        }
 
         if (years_of_residency) {
           try {
@@ -1481,17 +1522,38 @@ app.post('/api/auth/register', async (req, res) => {
       }
 
       // Case: No existing resident found. Create brand new user & resident record
-      const [userResult] = await pool.query(
-        "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, NOW())",
-        [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress]
-      );
+      let userResult;
+      try {
+        [userResult] = await pool.query(
+          "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, profile_photo, submitted_id, id_type, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, ?, ?, ?, NOW())",
+          [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress, submitted_id || '', submitted_id || '', req.body.id_type || 'Government ID']
+        );
+      } catch (uErr) {
+        [userResult] = await pool.query(
+          "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, NOW())",
+          [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress]
+        );
+      }
       const newUserId = userResult.insertId;
 
-      const [resResult] = await pool.query(
-        "INSERT INTO residents (first_name, middle_name, last_name, date_of_birth, gender, civil_status, employment_status, address, purok, barangay, phone, email, verification_status, submitted_id, id_type, submitted_at, linked_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Review', ?, ?, NOW(), ?)",
-        [firstName, middleName, lastName, dob, userGender, userCivilStatus, userEmployment, residentAddress, cleanPurokNum || '1', userBarangay, phone || '', cleanEmail, submitted_id, req.body.id_type || 'Government ID', newUserId]
-      );
-      residentIdToUse = resResult.insertId;
+      try {
+        const [resResult] = await pool.query(
+          "INSERT INTO residents (first_name, middle_name, last_name, date_of_birth, gender, civil_status, employment_status, address, purok, barangay, phone, email, verification_status, submitted_id, id_type, submitted_at, linked_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Review', ?, ?, NOW(), ?)",
+          [firstName, middleName, lastName, dob, userGender, userCivilStatus, userEmployment, residentAddress, cleanPurokNum || '1', userBarangay, phone || '', cleanEmail, submitted_id, req.body.id_type || 'Government ID', newUserId]
+        );
+        residentIdToUse = resResult.insertId;
+      } catch (resErr) {
+        try {
+          const [resResult] = await pool.query(
+            "INSERT INTO residents (first_name, middle_name, last_name, date_of_birth, gender, civil_status, address, barangay, phone, email, verification_status, submitted_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Review', ?)",
+            [firstName, middleName, lastName, dob, userGender, userCivilStatus, residentAddress, userBarangay, phone || '', cleanEmail, submitted_id]
+          );
+          residentIdToUse = resResult.insertId;
+        } catch (e2) {
+          console.warn('[Register] Error inserting into residents:', e2.message);
+          residentIdToUse = newUserId;
+        }
+      }
 
       if (years_of_residency && residentIdToUse) {
         try {
@@ -1725,21 +1787,22 @@ app.get('/api/residents/pending', async (req, res) => {
         SELECT 
           COALESCE(r.id, u.id) AS id,
           COALESCE(CONCAT(r.first_name, ' ', r.last_name), u.name) AS name,
-          r.first_name,
-          r.middle_name,
-          r.last_name,
-          r.date_of_birth,
+          COALESCE(r.first_name, SUBSTRING_INDEX(u.name, ' ', 1)) AS first_name,
+          COALESCE(r.middle_name, '') AS middle_name,
+          COALESCE(r.last_name, SUBSTRING(u.name, LOCATE(' ', u.name) + 1)) AS last_name,
+          COALESCE(r.date_of_birth, '2000-01-01') AS date_of_birth,
           COALESCE(r.email, u.email) AS email,
           COALESCE(r.phone, u.phone) AS phone,
-          COALESCE(r.address, CONCAT('Barangay ', COALESCE(u.barangay, 'Pianing'))) AS address,
+          COALESCE(r.address, u.address, CONCAT('Barangay ', COALESCE(u.barangay, r.barangay, 'Pianing'))) AS address,
           COALESCE(r.barangay, u.barangay, 'Pianing') AS barangay,
-          r.submitted_id,
+          COALESCE(r.submitted_id, u.submitted_id, u.profile_photo) AS submitted_id,
+          COALESCE(r.id_type, u.id_type, 'Government ID') AS id_type,
           COALESCE(r.submitted_at, u.created_at) AS submitted_at,
           COALESCE(r.verification_status, u.verification_status, 'Pending_Review') AS verification_status,
           COALESCE(r.rejection_reason, u.rejection_reason) AS rejection_reason
         FROM users u
-        LEFT JOIN residents r ON LOWER(u.email) = LOWER(r.email)
-        WHERE (u.role = 'resident' OR r.id IS NOT NULL)
+        LEFT JOIN residents r ON (LOWER(TRIM(u.email)) = LOWER(TRIM(r.email)) OR (r.linked_user_id IS NOT NULL AND u.id = r.linked_user_id))
+        WHERE (u.role = 'resident' OR u.role IS NULL OR r.id IS NOT NULL)
           AND u.status != 'Archived'
           AND (
             LOWER(COALESCE(r.verification_status, u.verification_status, '')) NOT IN ('verified')
@@ -1748,19 +1811,28 @@ app.get('/api/residents/pending', async (req, res) => {
       `;
       const params = [];
       if (barangay && barangay.toLowerCase() !== 'all' && !barangay.toLowerCase().includes('city-wide')) {
-        // Strict barangay match — only fall back to address when barangay column is empty
+        const cleanB = barangay.trim().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '');
         query += ` AND (
-          (COALESCE(r.barangay, u.barangay, '') != '' AND LOWER(COALESCE(r.barangay, u.barangay, '')) = LOWER(?))
-          OR
-          (COALESCE(r.barangay, u.barangay, '') = '' AND LOWER(COALESCE(r.address, '')) LIKE LOWER(?))
+          LOWER(COALESCE(r.barangay, u.barangay, '')) = LOWER(?)
+          OR LOWER(REPLACE(REPLACE(COALESCE(r.barangay, u.barangay, ''), 'barangay ', ''), 'brgy. ', '')) = LOWER(?)
+          OR LOWER(COALESCE(r.barangay, u.barangay, '')) LIKE CONCAT('%', LOWER(?), '%')
+          OR LOWER(COALESCE(r.address, u.address, '')) LIKE CONCAT('%', LOWER(?), '%')
         )`;
-        params.push(barangay.trim(), `%${barangay.trim()}%`);
+        params.push(cleanB, cleanB, cleanB, cleanB);
       }
       query += ` ORDER BY u.id DESC`;
       const [rows] = await pool.query(query, params);
       return res.json(rows);
     } catch (err) {
       console.warn('MySQL pending residents error:', err.message);
+      try {
+        const [rows] = await pool.query(
+          "SELECT id, name, email, phone, address, barangay, verification_status, created_at AS submitted_at FROM users WHERE role = 'resident' AND (verification_status != 'Verified' OR verification_status IS NULL) ORDER BY id DESC"
+        );
+        return res.json(rows);
+      } catch (e2) {
+        console.warn('MySQL pending fallback error:', e2.message);
+      }
     }
   }
   let pending = mockData.pendingRegistrations.filter(r => r.verification_status !== 'Verified');
