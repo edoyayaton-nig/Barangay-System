@@ -1688,14 +1688,14 @@ export default function NurseDashboard() {
     return prenatalRecords.filter(r => {
       const matchSearch = !search || r.patient_name.toLowerCase().includes(search.toLowerCase()) || r.contact_number.includes(search);
       if (maternalFilterVisit === '1st') {
-        return r.visit_number === 1 && !r.next_visit_date;
+        return (r.visit_number === 1 || !r.visit_number) && !r.next_visit_date;
       }
       if (maternalFilterVisit === '2nd') {
         const isVisit2 = r.visit_number === 2;
-        const has2ndScheduled = Boolean(r.next_visit_date) ||
-          (r.next_visit_note || '').toLowerCase().includes('2nd') ||
-          (r.remarks || '').toLowerCase().includes('2nd');
-        return isVisit2 || has2ndScheduled;
+        const isVisit1ScheduledFor2nd = (r.visit_number === 1 || !r.visit_number) && Boolean(r.next_visit_date);
+        const has2ndExplicit = (r.next_visit_note || '').toLowerCase().includes('2nd') ||
+          ((r as any).remarks || '').toLowerCase().includes('2nd');
+        return isVisit2 || isVisit1ScheduledFor2nd || has2ndExplicit;
       }
       if (maternalFilterVisit === '3rd') return r.visit_number >= 3 || (r.next_visit_note || '').toLowerCase().includes('3rd');
       if (maternalFilterVisit === 'due') {
