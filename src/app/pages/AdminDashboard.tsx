@@ -453,6 +453,7 @@ export default function AdminDashboard() {
   // User Directory tab & filter states
   const [userCategoryTab, setUserCategoryTab] = useState<'all' | 'officials' | 'residents' | 'archived'>('all');
   const [userBarangayFilter, setUserBarangayFilter] = useState('all');
+  const [approvalBarangayFilter, setApprovalBarangayFilter] = useState('all');
   const [userSearchText, setUserSearchText] = useState('');
 
   // Edit User Modal State (Super Admin & Admin)
@@ -814,15 +815,16 @@ export default function AdminDashboard() {
   const loadData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      // Data isolation: super_mega_admin sees all (undefined = no filter).
-      // ALL other roles (superadmin, admin, staff, nurse, bhw) are STRICTLY scoped to their own barangay.
-      const activeBarangayParam = isSuperMegaAdmin ? undefined : userBarangay || undefined;
+      // Data isolation: super_mega_admin and superadmin see city-wide by default (undefined = no filter).
+      // Other roles (admin, staff, nurse, bhw) are scoped to their own barangay.
+      const isSuperUser = isSuperMegaAdmin || isSuperAdmin;
+      const activeBarangayParam = isSuperUser ? undefined : userBarangay || undefined;
       const [docsData, resData, usersData, statsData, pendingData, catData, logsData, schedData, aptsData, popData, cStats, hhData] = await Promise.all([
         apiService.getDocuments(activeBarangayParam),
         apiService.getResidents(activeBarangayParam, selectedCensusPurok),
         apiService.getUsers(),
         apiService.getAdminStats(activeBarangayParam),
-        apiService.getPendingResidents(activeBarangayParam),
+        apiService.getPendingResidents(isSuperUser ? undefined : activeBarangayParam),
         apiService.getCategories().catch(() => []),
         apiService.getActivityLogs({ barangay: activeBarangayParam, caller_role: user?.role }).catch(() => []),
         apiService.getClinicSchedules(activeBarangayParam).catch(() => []),
@@ -2629,7 +2631,7 @@ export default function AdminDashboard() {
 
   // Check if a system user account is visible to the current administrator
   const isUserForAdmin = (u: SystemUser) => {
-    if (isSuperMegaAdmin) return true;
+    if (isSuperMegaAdmin || isSuperAdmin) return true;
     if (u.role === 'superadmin' && !isSuperAdmin) return false;
     const adminBrgy = (user?.barangay || '').toLowerCase().trim();
     const uBrgy = (u.barangay || '').toLowerCase().trim();
@@ -2639,7 +2641,7 @@ export default function AdminDashboard() {
 
   // Check if an address or record belongs to current admin's barangay
   const belongsToMyBarangay = (itemAddressOrBarangay?: string, itemEmail?: string, itemBarangay?: string) => {
-    if (isSuperMegaAdmin) return true;
+    if (isSuperMegaAdmin || isSuperAdmin) return true;
     if (!currentAdminBarangay || currentAdminBarangay.includes('all') || currentAdminBarangay.includes('city-wide')) return true;
 
     const cleanAdminB = currentAdminBarangay.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
@@ -2673,7 +2675,7 @@ export default function AdminDashboard() {
 
   // Filtered lists — Documents tab shows ONLY active requests for this barangay
   const isDocForMyBarangay = (doc: DocumentRequest) => {
-    if (isSuperMegaAdmin) return true;
+    if (isSuperMegaAdmin || isSuperAdmin) return true;
     if (!currentAdminBarangay || currentAdminBarangay.includes('all') || currentAdminBarangay.includes('city-wide')) return true;
     const cleanAdminB = currentAdminBarangay.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
 
@@ -2783,9 +2785,18 @@ export default function AdminDashboard() {
     );
   });
 
-  // Pending resident approvals — strictly isolated by barangay
+  // Pending resident approvals — with barangay filter and search support
   const myPendingResidents = pendingResidents
-    .filter(res => belongsToMyBarangay(res.address || (res as any).barangay, res.email, (res as any).barangay))
+    .filter(res => {
+      if (approvalBarangayFilter === 'all') return true;
+      const bLower = (res.barangay || '').toLowerCase().trim();
+      const filterLower = approvalBarangayFilter.toLowerCase().trim();
+      const cleanItemB = bLower.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      const cleanFilterB = filterLower.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      if (bLower === filterLower || cleanItemB === cleanFilterB || bLower.includes(cleanFilterB)) return true;
+      const addr = (res.address || '').toLowerCase();
+      return addr.includes(cleanFilterB);
+    })
     .filter(res => {
       if (!approvalSearch.trim()) return true;
       const q = approvalSearch.toLowerCase();
@@ -2793,7 +2804,9 @@ export default function AdminDashboard() {
         (res.name || `${res.first_name || ''} ${res.last_name || ''}`).toLowerCase().includes(q) ||
         String(res.id).includes(q) ||
         (res.email || '').toLowerCase().includes(q) ||
-        (res.address || '').toLowerCase().includes(q)
+        (res.address || '').toLowerCase().includes(q) ||
+        (res.barangay || '').toLowerCase().includes(q) ||
+        (res.id_type || '').toLowerCase().includes(q)
       );
     });
 
@@ -3801,14 +3814,18 @@ export default function AdminDashboard() {
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-                          Barangay {user?.barangay || 'Pianing'} — Citizen Identity Verification &amp; Accreditation Desk
+                          {approvalBarangayFilter === 'all'
+                            ? ((isSuperAdmin || isSuperMegaAdmin) ? 'Central Governance Desk — Citizen Identity Verification & Accreditation Desk' : 'All Barangays — Citizen Identity Verification Desk')
+                            : `Barangay ${approvalBarangayFilter} — Citizen Identity Verification & Accreditation Desk`}
                         </h2>
                         <Badge className="bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                           {myPendingResidents.length} Pending Review
                         </Badge>
                       </div>
                       <p className="text-xs text-slate-500 max-w-2xl mt-1 leading-relaxed">
-                        Review and authenticate submitted Government IDs from registered residents of Barangay {user?.barangay || 'Pianing'}. Verified citizens receive official accreditation to request clearances, certifications, and civic services.
+                        {approvalBarangayFilter === 'all'
+                          ? 'Review and authenticate submitted Government IDs from registered residents across all 86 Barangays in Butuan City. Verified citizens receive official accreditation to request clearances, certifications, and civic services.'
+                          : `Review and authenticate submitted Government IDs from registered residents of Barangay ${approvalBarangayFilter}. Verified citizens receive official accreditation to request clearances, certifications, and civic services.`}
                       </p>
                     </div>
                   </div>
@@ -3861,8 +3878,23 @@ export default function AdminDashboard() {
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-500 font-medium px-2">
-                  <span>Showing <strong>{myPendingResidents.length}</strong> applicant{myPendingResidents.length !== 1 ? 's' : ''} in queue</span>
+
+                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                  <div className="w-full sm:w-60 shrink-0">
+                    <select
+                      value={approvalBarangayFilter}
+                      onChange={e => setApprovalBarangayFilter(e.target.value)}
+                      className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white cursor-pointer transition-all shadow-2xs"
+                    >
+                      <option value="all">🌐 All Barangays (City-Wide)</option>
+                      {BUTUAN_BARANGAYS.map(b => (
+                        <option key={b} value={b}>📍 Barangay {b}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-xs text-slate-500 font-medium px-2 whitespace-nowrap">
+                    <span>Showing <strong>{myPendingResidents.length}</strong> applicant{myPendingResidents.length !== 1 ? 's' : ''}</span>
+                  </div>
                 </div>
               </div>
 
@@ -3920,11 +3952,21 @@ export default function AdminDashboard() {
                                     <span className="text-[11px] text-slate-500 block truncate max-w-[200px]">
                                       {r.email || r.address || 'Resident Applicant'}
                                     </span>
-                                    {(r.claimed_at || (r as any).is_claimed || (r as any).linked_user_id) && (
-                                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold px-1.5 py-0.2 rounded mt-0.5">
-                                        ✓ Census Record Linked
+                                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                      <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                                        📍 Barangay {r.barangay || 'Pianing'}
                                       </span>
-                                    )}
+                                      {r.id_type && (
+                                        <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-medium px-2 py-0.5 rounded-md">
+                                          🪪 {r.id_type}
+                                        </span>
+                                      )}
+                                      {(r.claimed_at || (r as any).is_claimed || (r as any).linked_user_id) && (
+                                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold px-1.5 py-0.2 rounded">
+                                          ✓ Census Record Linked
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </TableCell>
