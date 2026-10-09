@@ -1687,11 +1687,12 @@ export default function NurseDashboard() {
   const filteredMaternal = useMemo(() => {
     return prenatalRecords.filter(r => {
       const matchSearch = !search || r.patient_name.toLowerCase().includes(search.toLowerCase()) || r.contact_number.includes(search);
-      if (!matchSearch) return false;
-      if (maternalFilterVisit === '1st') return r.visit_number === 1;
+      if (maternalFilterVisit === '1st') {
+        return r.visit_number === 1 && !r.next_visit_date;
+      }
       if (maternalFilterVisit === '2nd') {
         const isVisit2 = r.visit_number === 2;
-        const has2ndScheduled = (r.visit_number === 1 && Boolean(r.next_visit_date)) ||
+        const has2ndScheduled = Boolean(r.next_visit_date) ||
           (r.next_visit_note || '').toLowerCase().includes('2nd') ||
           (r.remarks || '').toLowerCase().includes('2nd');
         return isVisit2 || has2ndScheduled;
@@ -2491,7 +2492,7 @@ export default function NurseDashboard() {
                   {[
                     { id: 'all', label: 'All Mothers' },
                     { id: '1st', label: '1st Visit' },
-                    { id: '2nd', label: '⭐ 2nd Visit & Scheduled' },
+                    { id: '2nd', label: '⭐ 2nd Visit' },
                     { id: '3rd', label: '3rd+ Visit' },
                     { id: 'due', label: '⚠️ Overdue / Due Soon' }
                   ].map(f => (
@@ -2540,7 +2541,7 @@ export default function NurseDashboard() {
                     {filteredMaternal.map((r, idx) => {
                       const isOverdue = r.next_visit_date && new Date(r.next_visit_date) <= new Date();
                       const isDueSoon = r.next_visit_date && !isOverdue && (new Date(r.next_visit_date).getTime() - Date.now()) / 86400000 <= 7;
-                      const isSecondVisit = r.visit_number === 2;
+                      const isSecondVisit = r.visit_number === 2 || (r.visit_number === 1 && Boolean(r.next_visit_date)) || (r.next_visit_note || '').toLowerCase().includes('2nd');
 
                       return (
                         <TableRow key={`prn-${r.id}-${idx}`} className={`text-xs hover:bg-slate-50/70 transition-colors ${isOverdue ? 'bg-red-50/40' : isDueSoon ? 'bg-amber-50/40' : ''}`}>
@@ -2557,15 +2558,15 @@ export default function NurseDashboard() {
                             </span>
                           </TableCell>
 
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap min-w-[130px]">
                             <div className="space-y-1">
                               <Badge className={`text-[10px] font-bold border ${isSecondVisit ? 'bg-purple-100 text-purple-900 border-purple-300' : 'bg-slate-100 text-slate-800 border-slate-200'}`}>
                                 {isSecondVisit ? '⭐ 2nd Visit' : `Visit #${r.visit_number}`}
                               </Badge>
-                              {r.visit_number === 1 && r.next_visit_date && (
-                                <Badge variant="outline" className="text-[9px] bg-purple-50 text-purple-800 border-purple-200 font-semibold block w-fit">
-                                  2nd Visit: {r.next_visit_date}
-                                </Badge>
+                              {isSecondVisit && r.next_visit_date && (
+                                <span className="text-[10px] text-purple-700 font-semibold block">
+                                  Due: {r.next_visit_date}
+                                </span>
                               )}
                             </div>
                           </TableCell>
