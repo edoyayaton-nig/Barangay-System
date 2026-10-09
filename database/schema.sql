@@ -201,4 +201,113 @@ CREATE TABLE IF NOT EXISTS `user_notifications` (
   INDEX `idx_recipient` (`recipient_email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 14. Health Appointments (Barangay Clinic Booking)
+CREATE TABLE IF NOT EXISTS `health_appointments` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `appointment_code` VARCHAR(50) NOT NULL UNIQUE,
+  `resident_id` INT NULL,
+  `resident_name` VARCHAR(100) NOT NULL,
+  `resident_phone` VARCHAR(50) DEFAULT '',
+  `resident_email` VARCHAR(100) DEFAULT '',
+  `barangay` VARCHAR(100) DEFAULT 'Pianing',
+  `service_type` VARCHAR(100) NOT NULL,
+  `preferred_date` DATE NOT NULL,
+  `preferred_time` VARCHAR(100) DEFAULT 'Morning (8:00 AM - 11:30 AM)',
+  `scheduled_date` DATE NULL,
+  `scheduled_time` VARCHAR(100) NULL,
+  `status` ENUM('Pending', 'Approved', 'Completed', 'Cancelled', 'Rescheduled') DEFAULT 'Pending',
+  `bhw_notes` TEXT NULL,
+  `resident_notes` TEXT NULL,
+  `attending_bhw` VARCHAR(100) DEFAULT '',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 15. Clinic Schedules
+CREATE TABLE IF NOT EXISTS `clinic_schedules` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `title` VARCHAR(150) NOT NULL,
+  `service_type` VARCHAR(100) NOT NULL,
+  `day_of_week` VARCHAR(100) NOT NULL,
+  `time_slot` VARCHAR(100) NOT NULL,
+  `location` VARCHAR(150) DEFAULT 'Barangay Pianing Health Center',
+  `slots_available` INT DEFAULT 20,
+  `bhw_in_charge` VARCHAR(100) DEFAULT 'Nurse Maria Santos',
+  `status` ENUM('Active', 'Suspended') DEFAULT 'Active',
+  `barangay` VARCHAR(100) DEFAULT 'Pianing',
+  `created_by` VARCHAR(100) DEFAULT 'BHW Maria',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 16. Clinical Encounters (General Consultations)
+CREATE TABLE IF NOT EXISTS `clinical_encounters` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `patient_name` VARCHAR(150) NOT NULL,
+  `contact_number` VARCHAR(50) DEFAULT '',
+  `age` VARCHAR(20) DEFAULT '—',
+  `gender` VARCHAR(20) DEFAULT 'Female',
+  `civil_status` VARCHAR(50) DEFAULT 'Single',
+  `barangay` VARCHAR(100) DEFAULT 'Pianing',
+  `purok` VARCHAR(100) DEFAULT 'Purok 1',
+  `program_type` VARCHAR(100) DEFAULT 'General Consultation',
+  `bp` VARCHAR(30) DEFAULT '120/80',
+  `temp` VARCHAR(20) DEFAULT '36.5',
+  `weight` VARCHAR(20) DEFAULT '',
+  `height` VARCHAR(20) DEFAULT '',
+  `heart_rate` VARCHAR(20) DEFAULT '',
+  `chief_complaint` VARCHAR(255) DEFAULT 'Routine Health Visit',
+  `diagnosis` TEXT NULL,
+  `treatment` TEXT NULL,
+  `prescribed_meds` TEXT NULL,
+  `attending_worker` VARCHAR(100) DEFAULT 'Nurse Maria Santos',
+  `encounter_date` DATE NULL,
+  `next_visit_date` DATE NULL,
+  `status` VARCHAR(50) DEFAULT 'Completed',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 17. Medicine & Vaccine Inventory
+CREATE TABLE IF NOT EXISTS `inventory` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `barangay` VARCHAR(100) NOT NULL DEFAULT 'Pianing',
+  `item_name` VARCHAR(150) NOT NULL,
+  `category` VARCHAR(100) NOT NULL DEFAULT 'Essential Medicine',
+  `stock` INT NOT NULL DEFAULT 0,
+  `unit` VARCHAR(50) NOT NULL DEFAULT 'units',
+  `expiry_date` VARCHAR(50) NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'In Stock',
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 18. Barangay Settings
+CREATE TABLE IF NOT EXISTS `barangay_settings` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `barangay_name` VARCHAR(150) NOT NULL DEFAULT 'My Barangay',
+  `municipality` VARCHAR(150) DEFAULT '',
+  `province` VARCHAR(150) DEFAULT '',
+  `emailjs_service_id` VARCHAR(100) DEFAULT '',
+  `emailjs_template_id` VARCHAR(100) DEFAULT '',
+  `emailjs_public_key` VARCHAR(200) DEFAULT '',
+  `emailjs_private_key` VARCHAR(200) DEFAULT '',
+  `sms_api_key` VARCHAR(300) DEFAULT '',
+  `sms_sender_name` VARCHAR(50) DEFAULT 'BrgySystem',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 19. Emergency Broadcasts
+CREATE TABLE IF NOT EXISTS `broadcasts` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `title` VARCHAR(255) NOT NULL,
+  `message` TEXT NOT NULL,
+  `severity` ENUM('Emergency', 'Advisory', 'Info') NOT NULL DEFAULT 'Info',
+  `target_barangay` VARCHAR(100) NOT NULL DEFAULT 'All',
+  `target_audience` ENUM('All', 'Residents', 'Staff') NOT NULL DEFAULT 'All',
+  `sender_name` VARCHAR(100) NOT NULL,
+  `sender_role` VARCHAR(50) NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 
