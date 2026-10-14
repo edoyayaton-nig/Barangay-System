@@ -37,6 +37,7 @@ import { saveStoredUser } from '../../utils/safeStorage';
 import TermsAndPrivacyModal from '../components/TermsAndPrivacyModal';
 import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import { toast } from 'sonner';
+import { compressImage } from '../../utils/imageCompressor';
 
 const ID_TYPES = [
   'Philippine National ID (PhilSys)',
@@ -151,7 +152,7 @@ export default function LoginPage() {
     return age >= 0 ? age : null;
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -160,18 +161,24 @@ export default function LoginPage() {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File too large', { description: 'Max image size is 5MB.' });
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('File too large', { description: 'Max image size is 15MB.' });
       return;
     }
 
     setRegIdFileName(file.name);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setRegIdPhoto(reader.result as string);
+    try {
+      const compressed = await compressImage(file, 1200, 1200, 0.75);
+      setRegIdPhoto(compressed);
       toast.success('ID image attached', { description: file.name });
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setRegIdPhoto(reader.result as string);
+        toast.success('ID image attached', { description: file.name });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleClearIdPhoto = () => {
@@ -402,11 +409,12 @@ export default function LoginPage() {
       </header>
 
       {/* Centered Main Login / Signup Card */}
+      {/* Centered Main Login / Signup Card */}
       <main className="flex-1 flex items-center justify-center px-4 py-4 sm:py-6">
-        <div className={`w-full bg-white border border-slate-200 shadow-sm rounded-2xl p-6 sm:p-7 transition-all ${activeTab === 'register' ? 'max-w-xl' : 'max-w-[420px]'}`}>
+        <div className={`w-full bg-white border border-[#6458FF]/20 shadow-[0_12px_36px_-6px_rgba(100,88,255,0.18)] rounded-3xl p-6 sm:p-8 transition-all ${activeTab === 'register' ? 'max-w-xl' : 'max-w-[420px]'}`}>
           {/* Card Header matching Screenshot with Logo */}
           <div className="text-center pb-4">
-            <div className="mx-auto w-11 h-11 rounded-full overflow-hidden bg-white shadow-xs border border-slate-200 flex items-center justify-center mb-2.5">
+            <div className="mx-auto w-12 h-12 rounded-full overflow-hidden bg-white shadow-md border-2 border-[#6458FF]/30 flex items-center justify-center mb-2.5">
               <img src="/assets/pianing-logo.png" alt="Barangay Pianing Logo" className="w-full h-full object-contain" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 leading-tight">Smart Barangay Portal</h2>
@@ -417,14 +425,14 @@ export default function LoginPage() {
 
           {/* Tab Switcher Capsule */}
           <div className="flex justify-center mb-5">
-            <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/60">
+            <div className="inline-flex bg-slate-100 p-1.5 rounded-full border border-slate-200/80 shadow-inner">
               <button
                 type="button"
                 onClick={() => handleTabChange('login')}
-                className={`px-5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                className={`px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'login'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-md'
+                    : 'text-slate-500 hover:text-[#6458FF]'
                 }`}
               >
                 Sign In
@@ -432,10 +440,10 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => handleTabChange('register')}
-                className={`px-5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                className={`px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'register'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
+                    ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-md'
+                    : 'text-slate-500 hover:text-[#6458FF]'
                 }`}
               >
                 Create Account
@@ -445,13 +453,13 @@ export default function LoginPage() {
 
           {/* ── TAB 1: LOGIN ─────────────────────────────────── */}
           {activeTab === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-3" autoComplete="off" method="post" action="#">
+            <form onSubmit={handleLogin} className="space-y-3.5" autoComplete="off" method="post" action="#">
               <input type="text" name="fake_username_fill" className="hidden" tabIndex={-1} autoComplete="off" />
               <input type="password" name="fake_password_fill" className="hidden" tabIndex={-1} autoComplete="new-password" />
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                  Email Address <span className="text-red-500 font-bold">*</span>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Email Address <span className="text-[#FF6492] font-bold">*</span>
                 </label>
                 <input
                   type="email"
@@ -460,19 +468,19 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. name@email.com"
                   required
-                  className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
+                  className="w-full h-10 px-4 bg-slate-50/80 border border-slate-200 rounded-full text-xs text-slate-800 focus:bg-white focus:border-[#6458FF] focus:ring-2 focus:ring-[#6458FF]/20 outline-none transition-all shadow-inner"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-semibold text-slate-700 block">
-                    Password <span className="text-red-500 font-bold">*</span>
+                  <label className="text-[11px] font-bold text-slate-700 block">
+                    Password <span className="text-[#FF6492] font-bold">*</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsForgotPasswordOpen(true)}
-                    className="text-[10.5px] font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                    className="text-[10.5px] font-bold text-[#6458FF] hover:text-[#5044E5] hover:underline cursor-pointer"
                   >
                     Forgot Password?
                   </button>
@@ -485,12 +493,12 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full h-9 px-3 pr-9 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
+                    className="w-full h-10 px-4 pr-10 bg-slate-50/80 border border-slate-200 rounded-full text-xs text-slate-800 focus:bg-white focus:border-[#6458FF] focus:ring-2 focus:ring-[#6458FF]/20 outline-none transition-all shadow-inner"
                   />
                   <button
                     type="button"
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="absolute right-3.5 top-2.5 text-slate-400 hover:text-[#6458FF] cursor-pointer"
                     tabIndex={-1}
                   >
                     {showLoginPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -501,11 +509,42 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-all rounded-lg mt-2 cursor-pointer"
+                className="w-full h-11 bg-gradient-to-r from-[#6458FF] to-[#00C6FF] hover:opacity-95 text-white font-bold text-xs shadow-[0_6px_20px_-2px_rgba(100,88,255,0.45)] hover:shadow-[0_10px_28px_-2px_rgba(0,198,255,0.55)] transition-all rounded-full mt-3 cursor-pointer"
               >
                 {loading ? 'Authenticating...' : 'Sign In to Portal'}
                 <ArrowRight size={14} className="ml-1.5" />
               </Button>
+
+              {/* Quick One-Click Demo Role Accounts */}
+              <div className="pt-3 border-t border-slate-100">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 text-center">
+                  Quick Access Portals (Password: 123)
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { label: 'Nurse Portal', email: 'nurse@barangay.gov', icon: '🩺', color: 'hover:border-[#00B894] hover:bg-[#00B894]/10 hover:text-[#00B894]' },
+                    { label: 'BHW Health', email: 'bhw@barangay.gov', icon: '🌿', color: 'hover:border-[#00B894] hover:bg-[#00B894]/10 hover:text-[#00B894]' },
+                    { label: 'Barangay Admin', email: 'admin@barangay.gov', icon: '🏛️', color: 'hover:border-[#6458FF] hover:bg-[#6458FF]/10 hover:text-[#6458FF]' },
+                    { label: 'Super Admin', email: 'superadmin@barangay.gov', icon: '🛡️', color: 'hover:border-[#6458FF] hover:bg-[#6458FF]/10 hover:text-[#6458FF]' },
+                    { label: 'Super Mega', email: 'supermegaadmin@barangay.gov', icon: '⚡', color: 'hover:border-[#6458FF] hover:bg-[#6458FF]/10 hover:text-[#6458FF]' },
+                    { label: 'Citizen Portal', email: 'citizen.pianing@gmail.com', icon: '👤', color: 'hover:border-[#FFA502] hover:bg-[#FFA502]/10 hover:text-[#FFA502]' },
+                  ].map(portal => (
+                    <button
+                      key={portal.email}
+                      type="button"
+                      onClick={() => {
+                        setEmail(portal.email);
+                        setPassword('123');
+                        toast.info(`Filled credentials for ${portal.label}`);
+                      }}
+                      className={`px-2.5 py-2 text-[11px] font-bold text-slate-600 bg-white border border-slate-200/90 rounded-full flex items-center justify-center gap-1.5 transition-all shadow-xs hover:-translate-y-0.5 cursor-pointer ${portal.color}`}
+                    >
+                      <span>{portal.icon}</span>
+                      <span className="truncate">{portal.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </form>
           )}
 

@@ -59,6 +59,14 @@ import ClinicalArchivesHub from '../components/ClinicalArchivesHub';
 import ProfileSettingsView from '../components/ProfileSettingsView';
 import BatchSmsReminderModal, { DuePatientItem } from '../components/BatchSmsReminderModal';
 import CensusEntryTab from '../components/CensusEntryTab';
+import ManualResidentNotifyModal from '../components/ManualResidentNotifyModal';
+import { dispatchResidentNotification } from '../../services/emailJsService';
+import {
+  notifyHealthDataChanged,
+  subscribeHealthDataSync,
+  isReminderMarkedSent,
+  saveSentReminderIds
+} from '../../services/healthSync';
 import { exportToCsv, printOfficialReport, downloadOfficialPdf } from '../../utils/exportCsv';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -129,6 +137,11 @@ export default function BhwDashboard() {
   const [scheduleTime, setScheduleTime] = useState('09:00 AM');
   const [scheduleBhwNotes, setScheduleBhwNotes] = useState('');
 
+  // Manual Resident Notification Modal State
+  const [isManualNotifyOpen, setIsManualNotifyOpen] = useState(false);
+  const [selectedNotifyResident, setSelectedNotifyResident] = useState<any | null>(null);
+  const [notifyCategory, setNotifyCategory] = useState<'general' | 'document' | 'health' | 'account'>('health');
+
   // Post Clinic Schedule Modal State
   const [isPostScheduleOpen, setIsPostScheduleOpen] = useState(false);
   const [newScheduleTitle, setNewScheduleTitle] = useState('');
@@ -167,6 +180,7 @@ export default function BhwDashboard() {
   // Resident Profile Modal
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [selectedResidentId, setSelectedResidentId] = useState<number | null>(null);
+  const [returnToDocOnProfileClose, setReturnToDocOnProfileClose] = useState<DocumentRequest | null>(null);
 
   const openResidentProfile = (id: number) => {
     setSelectedResidentId(id);
@@ -278,11 +292,7 @@ export default function BhwDashboard() {
   const [smsMessage, setSmsMessage] = useState('');
 
   const triggerHealthSync = () => {
-    try {
-      const ch = new BroadcastChannel('barangay_health_sync');
-      ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
-      ch.close();
-    } catch {}
+    notifyHealthDataChanged('HEALTH_DATA_SYNC');
   };
 
   const isHealthWorkerNotification = (n: SmsNotification) => {
@@ -312,29 +322,45 @@ export default function BhwDashboard() {
   const loadData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
+      const bhwBarangay = user?.barangay || (JSON.parse(localStorage.getItem('barangay_user') || '{}')?.barangay) || 'Pianing';
       const [immData, matData, smsData, statsData, docsData, aptsData, schedulesData, invData, resData] = await Promise.all([
-        apiService.getImmunizations().catch(() => []),
-        apiService.getMaternalRecords().catch(() => []),
+        apiService.getImmunizations(bhwBarangay).catch(() => []),
+        apiService.getMaternalRecords(bhwBarangay).catch(() => []),
         apiService.getNotifications({ department: 'health', role: 'bhw' }).catch(() => []),
-        apiService.getBhwStats().catch(() => null),
-        apiService.getDocuments().catch(() => []),
-        apiService.getAppointments().catch(() => []),
-        apiService.getClinicSchedules().catch(() => []),
-        apiService.getInventory(user?.barangay || 'Pianing').catch(() => []),
-        apiService.getResidents(user?.barangay || 'Pianing').catch(() => [])
+        apiService.getBhwStats(bhwBarangay).catch(() => null),
+        apiService.getDocuments(bhwBarangay).catch(() => []),
+        apiService.getAppointments({ barangay: bhwBarangay }).catch(() => []),
+        apiService.getClinicSchedules(bhwBarangay).catch(() => []),
+        apiService.getInventory(bhwBarangay).catch(() => []),
+        apiService.getResidents(bhwBarangay).catch(() => [])
       ]);
-      setImmunizations(immData || []);
-      setMaternalRecords(matData || []);
+
+      const cleanBrgy = bhwBarangay.toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      const belongsToThisBrgy = (item: any) => {
+        const b = ((item.barangay || '').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim());
+        const addr = (item.address || '').toLowerCase();
+        return !b || b === cleanBrgy || b.includes(cleanBrgy) || addr.includes(cleanBrgy);
+      };
+
+      setImmunizations((immData || []).filter(belongsToThisBrgy));
+      setMaternalRecords((matData || []).filter(belongsToThisBrgy));
       const healthOnlySms = (smsData || []).filter(isHealthWorkerNotification);
       setNotifications(healthOnlySms);
       if (statsData) setStats(statsData);
-      setDocuments(docsData || []);
-      setAppointments(aptsData || []);
-      setClinicSchedules(schedulesData || []);
-      setResidents(Array.isArray(resData) ? resData : []);
+      setDocuments((docsData || []).filter(belongsToThisBrgy));
+      setAppointments((aptsData || []).filter(belongsToThisBrgy));
+      setClinicSchedules((schedulesData || []).filter(belongsToThisBrgy));
+      setResidents((Array.isArray(resData) ? resData : []).filter(belongsToThisBrgy));
       if (invData && Array.isArray(invData)) {
         setInventory(invData);
       }
+
+      // Automatically trigger 3-day advance SMS appointment reminders via iProg SMS Gateway
+      apiService.runAppointmentReminders().then(remRes => {
+        if (remRes?.three_day_sms_count && remRes.three_day_sms_count > 0) {
+          console.log(`⏰ [BHW Auto-Reminders] Dispatched ${remRes.three_day_sms_count} 3-day appointment SMS reminders.`);
+        }
+      }).catch(() => {});
     } catch (err) {
       if (showLoading) toast.error('Failed to load health monitoring data');
     } finally {
@@ -355,7 +381,10 @@ export default function BhwDashboard() {
     if (!selectedApptToSchedule) return;
 
     try {
-      await apiService.updateAppointment(selectedApptToSchedule.id, {
+      const apt = selectedApptToSchedule;
+      const clinicLocation = `Barangay ${apt.barangay || user?.barangay || 'Pianing'} Health Center & Primary Clinic (Purok 1, Barangay ${apt.barangay || user?.barangay || 'Pianing'}, Butuan City)`;
+
+      await apiService.updateAppointment(apt.id, {
         status: 'Approved',
         scheduled_date: scheduleDate,
         scheduled_time: scheduleTime,
@@ -365,8 +394,26 @@ export default function BhwDashboard() {
         user_role: user?.role || 'bhw'
       });
 
+      if (apt.resident_email || apt.resident_phone) {
+        dispatchResidentNotification({
+          residentEmail: apt.resident_email || '',
+          residentName: apt.resident_name,
+          phone: apt.resident_phone,
+          type: 'health',
+          title: `🏥 Appointment Confirmed: ${apt.service_type}`,
+          message: `Hello ${apt.resident_name}! Your appointment for ${apt.service_type} has been CONFIRMED for ${scheduleDate} (${scheduleTime}) at ${clinicLocation}. Ref: ${apt.appointment_code}. Please bring valid ID and arrive 10 minutes early.`,
+          statusBadge: 'Approved',
+          badgeColor: 'emerald',
+          refCode: apt.appointment_code,
+          barangay: apt.barangay || user?.barangay || 'Pianing'
+        }).then(res => {
+          if (res.sms) toast.info(`📱 Live SMS sent to ${apt.resident_phone}`);
+          if (res.email) toast.info(`📧 Email confirmation sent to ${apt.resident_email}`);
+        }).catch(() => {});
+      }
+
       toast.success('Appointment Approved & Confirmed!', {
-        description: `📲 Auto-SMS & Email sent to ${selectedApptToSchedule.resident_name} for ${scheduleDate} at ${scheduleTime}.`
+        description: `📲 Auto-SMS & Email sent to ${apt.resident_name} for ${scheduleDate} at ${scheduleTime} at ${clinicLocation}.`
       });
 
       setIsScheduleModalOpen(false);
@@ -452,11 +499,34 @@ export default function BhwDashboard() {
     const targetDoc = documents.find(d => d.id === id);
     const resName = targetDoc?.resident_name || 'Resident';
 
+    const matchingRes = residents.find(r => r.id === targetDoc?.resident_id || `${r.first_name} ${r.last_name}`.toLowerCase().trim() === (resName || '').toLowerCase().trim());
+    const resPhone = (targetDoc as any)?.phone || matchingRes?.phone || '';
+    const resEmail = (targetDoc as any)?.email || matchingRes?.email || '';
+    const brgyName = targetDoc?.barangay || user?.barangay || 'Pianing';
+
     try {
       await apiService.updateDocumentStatus(id, nextStatus, user?.name || 'Nurse Maria (BHW)');
       setDocuments(documents.map(d => d.id === id ? { ...d, status: nextStatus, processed_at: new Date().toLocaleDateString(), processed_by: user?.name || 'Nurse Maria (BHW)' } : d));
       
       if (nextStatus === 'Completed') {
+        if (resEmail || resPhone) {
+          dispatchResidentNotification({
+            residentEmail: resEmail,
+            residentName: resName,
+            phone: resPhone,
+            type: 'document',
+            title: `Document Ready: ${targetDoc?.document_type || 'Certificate'}`,
+            message: `Good day ${resName}! Your requested ${targetDoc?.document_type || 'document'} (Tracking #${targetDoc?.request_code || targetDoc?.id}) is now COMPLETED and ready for pickup at the Barangay Health Center / Barangay Hall.`,
+            statusBadge: 'Ready for Pickup',
+            badgeColor: 'emerald',
+            refCode: targetDoc?.request_code || `DOC-${targetDoc?.id}`,
+            barangay: brgyName
+          }).then(res => {
+            if (res.sms) toast.info(`📱 Live SMS sent to ${resPhone}`);
+            if (res.email) toast.info(`📧 Email sent to ${resEmail}`);
+          }).catch(() => {});
+        }
+
         toast.success(`Health Document Approved & Ready for Release!`, {
           description: `📲 Auto-SMS sent to ${resName}: "Your certificate/clearance is approved & ready for pickup at the Health Center."`
         });
@@ -507,22 +577,16 @@ export default function BhwDashboard() {
     }
     loadData();
 
-    let channel: BroadcastChannel | null = null;
-    try {
-      channel = new BroadcastChannel('barangay_health_sync');
-      channel.onmessage = (event) => {
-        if (event.data?.type === 'HEALTH_DATA_SYNC') {
-          loadData(false);
-        }
-      };
-    } catch {}
+    const unsubscribeSync = subscribeHealthDataSync(() => {
+      loadData(false);
+    });
 
     const interval = setInterval(() => {
       loadData(false);
-    }, 4000);
+    }, 5000);
 
     return () => {
-      if (channel) channel.close();
+      unsubscribeSync();
       clearInterval(interval);
     };
   }, [navigate]);
@@ -559,7 +623,8 @@ export default function BhwDashboard() {
         next_due_date: newDueDate,
         remarks: newRemarks || 'Cleared for routine vaccination',
         administered_by: user?.name || 'BHW Maria',
-        status: newDateGiven ? 'Completed' : 'Scheduled'
+        status: newDateGiven ? 'Completed' : 'Scheduled',
+        barangay: user?.barangay || 'Pianing'
       };
 
       const created = await apiService.createImmunization(payload);
@@ -720,7 +785,8 @@ export default function BhwDashboard() {
         next_visit: newNextVisit,
         next_visit_date: newNextVisit,
         risk_level: newRiskLevel,
-        attending_nurse: user?.name || 'BHW Health Worker'
+        attending_nurse: user?.name || 'BHW Health Worker',
+        barangay: user?.barangay || 'Pianing'
       };
 
       const created = await apiService.createMaternalRecord(payload);
@@ -831,30 +897,44 @@ export default function BhwDashboard() {
   const dueSmsItems: DuePatientItem[] = [
     ...immunizations
       .filter(i => i.status === 'Overdue' || (i.due_date && new Date(i.due_date) <= new Date(Date.now() + 7 * 86400000)))
-      .map(i => ({
-        id: `imm-${i.id}`,
-        name: i.child_name,
-        phone: i.parent_phone || '09226789012',
-        service: 'Child Immunization',
-        detail: `${i.vaccine_name} (${i.dose_number})`,
-        dueDate: i.due_date || 'Due Soon',
-        isOverdue: i.status === 'Overdue',
-        category: 'immunization' as const,
-        status: (i.status === 'Overdue' ? 'Overdue' : 'Due Soon') as 'Overdue' | 'Due Soon'
-      })),
+      .map(i => {
+        const matchRes = residents.find(r => 
+          (r.first_name + ' ' + r.last_name).toLowerCase().trim() === ((i as any).guardian_name || (i as any).guardian || '').toLowerCase().trim() ||
+          (r.first_name + ' ' + r.last_name).toLowerCase().trim() === (i.child_name || '').toLowerCase().trim()
+        );
+        return {
+          id: `imm-${i.id}`,
+          name: i.child_name,
+          phone: i.parent_phone || matchRes?.phone || '09171234567',
+          email: matchRes?.email || '',
+          service: 'Child Immunization',
+          detail: `${i.vaccine_name} (${i.dose_number})`,
+          dueDate: i.due_date || 'Due Soon',
+          isOverdue: i.status === 'Overdue',
+          category: 'immunization' as const,
+          status: (i.status === 'Overdue' ? 'Overdue' : 'Due Soon') as 'Overdue' | 'Due Soon'
+        };
+      }),
     ...maternalRecords
       .filter(m => m.risk_level === 'High' || (m.next_visit && new Date(m.next_visit) <= new Date(Date.now() + 7 * 86400000)))
-      .map(m => ({
-        id: `mat-${m.id}`,
-        name: m.mother_name,
-        phone: (m as any).phone || (m as any).contact_number || '09171234567',
-        service: 'Maternal Health',
-        detail: (m as any).visit_type || m.pregnancy_status || 'Routine Visit',
-        dueDate: m.next_visit || 'Upcoming',
-        isOverdue: m.risk_level === 'High',
-        category: 'maternal' as const,
-        status: (m.risk_level === 'High' ? 'Overdue' : 'Due Soon') as 'Overdue' | 'Due Soon'
-      }))
+      .map(m => {
+        const matchRes = residents.find(r => 
+          r.id === m.resident_id ||
+          (r.first_name + ' ' + r.last_name).toLowerCase().trim() === (m.mother_name || '').toLowerCase().trim()
+        );
+        return {
+          id: `mat-${m.id}`,
+          name: m.mother_name,
+          phone: (m as any).phone || (m as any).contact_number || matchRes?.phone || '09171234567',
+          email: matchRes?.email || '',
+          service: 'Maternal Health',
+          detail: (m as any).visit_type || m.pregnancy_status || 'Routine Visit',
+          dueDate: m.next_visit || 'Upcoming',
+          isOverdue: m.risk_level === 'High',
+          category: 'maternal' as const,
+          status: (m.risk_level === 'High' ? 'Overdue' : 'Due Soon') as 'Overdue' | 'Due Soon'
+        };
+      })
   ];
 
   const filteredNotifications = notifications.filter(n => {
@@ -996,6 +1076,21 @@ export default function BhwDashboard() {
 
           <div className="flex items-center gap-2 sm:gap-3">
 
+            {/* Manual Resident Notification Dispatcher */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedNotifyResident(null);
+                setNotifyCategory('health');
+                setIsManualNotifyOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 rounded-lg shadow-xs transition-all cursor-pointer"
+              title="Manually dispatch SMS, Email (EmailJS), and In-App notice to any resident or patient"
+            >
+              <Send size={13} />
+              <span className="hidden sm:inline">Send Notice</span>
+            </button>
+
             {/* Notification Bell */}
             <div className="relative">
               <button
@@ -1123,13 +1218,13 @@ export default function BhwDashboard() {
                   }
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                   isActive
-                    ? 'bg-[#EBF5FF] text-[#2563EB] shadow-xs'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-[#6458FF]/10 hover:text-[#6458FF] dark:hover:text-white'
                 }`}
               >
-                <item.icon size={18} className={`shrink-0 ${isActive ? 'text-[#2563EB]' : 'text-slate-500'}`} />
+                <item.icon size={18} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                 <span>{item.label}</span>
               </button>
             );
@@ -1167,13 +1262,13 @@ export default function BhwDashboard() {
                       setActiveTab(item.id);
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? 'bg-[#EBF5FF] text-[#2563EB] shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-[#6458FF]/10 hover:text-[#6458FF] dark:hover:text-white'
                   }`}
                 >
-                  <item.icon size={18} className={`shrink-0 ${isActive ? 'text-[#2563EB]' : 'text-slate-500'}`} />
+                  <item.icon size={18} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -3340,7 +3435,27 @@ export default function BhwDashboard() {
       <ResidentProfileModal
         residentId={selectedResidentId}
         isOpen={profileModalOpen}
-        onClose={() => { setProfileModalOpen(false); setSelectedResidentId(null); }}
+        onClose={() => {
+          setProfileModalOpen(false);
+          setSelectedResidentId(null);
+          if (returnToDocOnProfileClose) {
+            const docToReopen = returnToDocOnProfileClose;
+            setReturnToDocOnProfileClose(null);
+            setSelectedInfoDoc(docToReopen);
+            setIsDocInfoOpen(true);
+          }
+        }}
+        returnDocTitle={returnToDocOnProfileClose ? `${returnToDocOnProfileClose.document_type} (${returnToDocOnProfileClose.request_code})` : undefined}
+        onBackToDoc={() => {
+          setProfileModalOpen(false);
+          setSelectedResidentId(null);
+          if (returnToDocOnProfileClose) {
+            const docToReopen = returnToDocOnProfileClose;
+            setReturnToDocOnProfileClose(null);
+            setSelectedInfoDoc(docToReopen);
+            setIsDocInfoOpen(true);
+          }
+        }}
       />
 
       {/* Official Document Print & Download Modal */}
@@ -3353,10 +3468,19 @@ export default function BhwDashboard() {
       {/* Document Info / Specifics Viewer Modal */}
       <DocumentInfoModal
         isOpen={isDocInfoOpen}
-        onClose={() => setIsDocInfoOpen(false)}
+        onClose={() => {
+          setIsDocInfoOpen(false);
+          setReturnToDocOnProfileClose(null);
+        }}
         document={selectedInfoDoc}
         onUpdateStatus={(id, status) => handleUpdateDocStatus(id, status)}
         onPrint={(doc) => openPrintModal(doc)}
+        onViewResidentProfile={(residentId, fromDoc) => {
+          setReturnToDocOnProfileClose(fromDoc || selectedInfoDoc);
+          setIsDocInfoOpen(false);
+          setSelectedResidentId(residentId);
+          setProfileModalOpen(true);
+        }}
         canEdit={true}
       />
 
@@ -3390,9 +3514,11 @@ export default function BhwDashboard() {
         initialService={batchSmsInitialService}
         duePatients={dueSmsItems}
         barangay={user?.barangay || 'Pianing'}
-        attendingName={user?.name || 'BHW Health Worker'}
-        onBatchSent={() => {
-          loadData();
+        attendingName={user?.name || 'Nurse Maria (BHW)'}
+        onBatchSent={(sentIds) => {
+          if (sentIds) saveSentReminderIds(sentIds);
+          notifyHealthDataChanged('SMS_REMINDER_RESOLVED', { sentIds });
+          loadData(false);
         }}
       />
 
@@ -3914,6 +4040,28 @@ export default function BhwDashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Manual Resident Notification Modal */}
+      <ManualResidentNotifyModal
+        isOpen={isManualNotifyOpen}
+        onClose={() => {
+          setIsManualNotifyOpen(false);
+          setSelectedNotifyResident(null);
+        }}
+        defaultResident={selectedNotifyResident}
+        currentSenderRole="bhw"
+        currentSenderName={user?.name || 'Barangay Health Worker'}
+        currentSenderBarangay={user?.barangay || 'Pianing'}
+        residentsList={residents.map(r => ({
+          id: r.id,
+          name: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+          email: r.email,
+          phone: r.phone,
+          barangay: (r as any).barangay || user?.barangay || 'Pianing',
+          purok: r.purok
+        }))}
+        initialCategory={notifyCategory}
+      />
     </div>
   );
 }

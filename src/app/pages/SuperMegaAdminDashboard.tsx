@@ -27,6 +27,8 @@ import { toast } from 'sonner';
 import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import ProfileSettingsView from '../components/ProfileSettingsView';
 import { ClientBarangay, INITIAL_CLIENTS } from '../components/BarangaySettingsControlPanel';
+import { dispatchResidentNotification } from '../../services/emailJsService';
+import ManualResidentNotifyModal from '../components/ManualResidentNotifyModal';
 
 
 /* ─────────────────────────────────────────────────────────── */
@@ -59,17 +61,17 @@ function validatePassword(p: string) {
 /* ─────────────────────────────────────────────────────────── */
 /*  Design tokens (dark, eye-friendly palette)                  */
 /* ─────────────────────────────────────────────────────────── */
-const BG = '#0A0E1A';
-const CARD = '#111827';
-const CARD2 = '#161F30';
-const BORDER = '#1F293D';
-const TEXT = '#E2E8F0';
-const MUTED = '#64748B';
-const ACCENT_CYAN = '#06B6D4';
-const ACCENT_VIOLET = '#7C3AED';
-const ACCENT_EMERALD = '#10B981';
-const ACCENT_AMBER = '#F59E0B';
-const ACCENT_ROSE = '#F43F5E';
+const BG = '#0F111E';
+const CARD = '#151824';
+const CARD2 = '#202538';
+const BORDER = '#2E3650';
+const TEXT = '#F8FAFC';
+const MUTED = '#8D99AE';
+const ACCENT_CYAN = '#00C6FF';
+const ACCENT_VIOLET = '#6458FF';
+const ACCENT_EMERALD = '#00B894';
+const ACCENT_AMBER = '#FFA502';
+const ACCENT_ROSE = '#FF6492';
 
 /* ─────────────────────────────────────────────────────────── */
 /*  DB Tables monitored by System & Backup tab                  */
@@ -114,7 +116,7 @@ export default function SuperMegaAdminDashboard() {
     }
   }, [user, navigate]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'system' | 'logs' | 'users' | 'reports' | 'profile-settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'system' | 'logs' | 'users' | 'reports' | 'profile-settings' | 'approvals'>('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -132,10 +134,19 @@ export default function SuperMegaAdminDashboard() {
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [residents, setResidents] = useState<any[]>([]);
+  const [pendingResidents, setPendingResidents] = useState<any[]>([]);
+  const [approvalSearch, setApprovalSearch] = useState('');
+  const [approvalBarangayFilter, setApprovalBarangayFilter] = useState('all');
+  const [previewApplicant, setPreviewApplicant] = useState<any | null>(null);
+  const [approvingResidentId, setApprovingResidentId] = useState<number | null>(null);
+  const [warnNoAdminModal, setWarnNoAdminModal] = useState<{ open: boolean; barangay: string; residentName: string } | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [dbHealth, setDbHealth] = useState<{ table: string; count: number; status: string }[]>([]);
   const [gatewayStatus, setGatewayStatus] = useState({ db: 'Checking...', sms: 'Checking...', smtp: 'Checking...' });
+  const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
+  const [selectedNotifyResident, setSelectedNotifyResident] = useState<any | null>(null);
+  const [notifyCategory, setNotifyCategory] = useState<'general' | 'document' | 'health' | 'account'>('general');
 
   // ── User Management (System Owner Governance) ────────────
   const [userManagementSubTab, setUserManagementSubTab] = useState<'superadmins' | 'platform' | 'all'>('superadmins');
@@ -186,10 +197,9 @@ export default function SuperMegaAdminDashboard() {
   const [creatingUser, setCreatingUser] = useState(false);
   const [showNewSAPass, setShowNewSAPass] = useState(false);
 
-  // Reset form every time the modal OPENS so stale data never shows
+  // Clear modal error and password toggle when closed
   useEffect(() => {
-    if (isCreateSuperadminOpen) {
-      setNewSA({ ...BLANK_NEW_SA });
+    if (!isCreateSuperadminOpen) {
       setNewSAError('');
       setShowNewSAPass(false);
     }
@@ -199,6 +209,33 @@ export default function SuperMegaAdminDashboard() {
     if (!newSA.city) return [];
     return getBarangaysForCity(newSA.city);
   }, [newSA.city]);
+
+  // Open modal with pre-selected barangay for deployed jurisdiction
+  const openCreateSuperadmin = (targetBarangay?: string) => {
+    let matchedBarangay = '';
+    if (targetBarangay) {
+      const cleanB = targetBarangay.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      const cityBarangays = getBarangaysForCity('Butuan City');
+      matchedBarangay = cityBarangays.find(b => 
+        b.toLowerCase().trim() === cleanB.toLowerCase().trim()
+      ) || cityBarangays.find(b => 
+        b.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanB.toLowerCase().replace(/[^a-z0-9]/g, '')
+      ) || cityBarangays.find(b =>
+        b.toLowerCase().includes(cleanB.toLowerCase()) || cleanB.toLowerCase().includes(b.toLowerCase())
+      ) || cleanB;
+    }
+    setNewSA({
+      ...BLANK_NEW_SA,
+      city: 'Butuan City',
+      barangay: matchedBarangay
+    });
+    setNewSAError('');
+    setShowNewSAPass(false);
+    setIsCreateSuperadminOpen(true);
+    if (matchedBarangay) {
+      toast.info(`Deploying Administrator for Barangay ${matchedBarangay}. Fill in details to activate.`);
+    }
+  };
 
   // ── Category Management ───────────────────────────────────
   const [catSearch, setCatSearch] = useState('');
@@ -228,19 +265,21 @@ export default function SuperMegaAdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [usersData, logsData, residentsData, catData, docsData, maintData] = await Promise.all([
+      const [usersData, logsData, residentsData, catData, docsData, maintData, pendingData] = await Promise.all([
         apiService.getUsers().catch(() => []),
         apiService.getActivityLogs().catch(() => []),
         apiService.getResidents().catch(() => []),
         apiService.getCategories().catch(() => []),
         apiService.getDocuments().catch(() => []),
         apiService.getMaintenanceMode().catch(() => null),
+        apiService.getPendingResidents().catch(() => []),
       ]);
       setSystemUsers(usersData);
       setActivityLogs(logsData);
       setResidents(residentsData);
       setCategories(catData);
       setDocuments(docsData);
+      setPendingResidents(pendingData || []);
       if (maintData) {
         setMaintenanceMode(Boolean(maintData.enabled));
         if (maintData.type) setNoticeType(maintData.type);
@@ -617,8 +656,104 @@ export default function SuperMegaAdminDashboard() {
     return map[type || ''] || 'bg-slate-800 text-slate-300';
   }
 
+  /* ── Citizen Identity Approvals & Governance ──────────────── */
+  const getOfficialsForBarangay = (rawBarangay?: string) => {
+    if (!rawBarangay) return [];
+    const clean = rawBarangay.toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+    return systemUsers.filter(u => {
+      if (u.role !== 'admin' && u.role !== 'superadmin') return false;
+      if (u.status !== 'Active') return false;
+      const uBrgy = (u.barangay || '').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      return uBrgy === clean || uBrgy.includes(clean) || clean.includes(uBrgy);
+    });
+  };
+
+  const handleApproveCitizen = async (r: any) => {
+    const officials = getOfficialsForBarangay(r.barangay);
+    if (officials.length === 0) {
+      setWarnNoAdminModal({
+        open: true,
+        barangay: r.barangay || 'Unknown Barangay',
+        residentName: r.name || `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Resident'
+      });
+      return;
+    }
+
+    setApprovingResidentId(r.id);
+    try {
+      await apiService.approveResident(r.id, 'Super Mega Admin');
+      toast.success(`Citizen application approved! ${r.name || r.first_name} is now Verified for Barangay ${r.barangay}.`);
+
+      if (r && (r.email || r.phone)) {
+        const citizenName = r.name || `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Resident';
+        dispatchResidentNotification({
+          residentEmail: r.email || '',
+          residentName: citizenName,
+          phone: r.phone,
+          type: 'account',
+          title: '🎉 Account Verified & Approved',
+          message: `Mabuhay ${citizenName}! Your resident account for Barangay ${r.barangay || 'Pianing'} has been officially approved and verified by Super Administration. You can now access all services online.`,
+          statusBadge: 'Verified',
+          badgeColor: 'emerald',
+          barangay: r.barangay || 'Pianing'
+        }).then(res => {
+          if (res.sms) toast.info(`📱 Live SMS sent to ${r.phone}`);
+          if (res.email) toast.info(`📧 Verification email sent to ${r.email}`);
+        }).catch(() => {});
+      }
+
+      loadData();
+      if (previewApplicant?.id === r.id) {
+        setPreviewApplicant(null);
+      }
+    } catch (err: any) {
+      if (err?.data?.no_barangay_officials) {
+        setWarnNoAdminModal({
+          open: true,
+          barangay: r.barangay || 'Unknown Barangay',
+          residentName: r.name || `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Resident'
+        });
+      } else {
+        toast.error(err?.message || 'Failed to approve applicant registration');
+      }
+    } finally {
+      setApprovingResidentId(null);
+    }
+  };
+
+  const handleOpenDeployForApplicant = (brgyName: string) => {
+    setWarnNoAdminModal(null);
+    openCreateSuperadmin(brgyName);
+  };
+
+  const filteredPendingResidents = pendingResidents.filter(r => {
+    if (approvalBarangayFilter !== 'all') {
+      const cleanFilter = approvalBarangayFilter.toLowerCase().trim();
+      const rBrgy = (r.barangay || '').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      if (rBrgy !== cleanFilter && !rBrgy.includes(cleanFilter) && !(r.address || '').toLowerCase().includes(cleanFilter)) {
+        return false;
+      }
+    }
+    if (approvalSearch.trim()) {
+      const q = approvalSearch.toLowerCase();
+      const fullName = (r.name || `${r.first_name || ''} ${r.last_name || ''}`).toLowerCase();
+      return (
+        fullName.includes(q) ||
+        (r.email || '').toLowerCase().includes(q) ||
+        (r.address || '').toLowerCase().includes(q) ||
+        (r.barangay || '').toLowerCase().includes(q) ||
+        String(r.id).includes(q)
+      );
+    }
+    return true;
+  });
+
+  const pendingWithOfficialsCount = pendingResidents.filter(r => getOfficialsForBarangay(r.barangay).length > 0).length;
+  const pendingWithoutOfficialsCount = pendingResidents.filter(r => getOfficialsForBarangay(r.barangay).length === 0).length;
+
   const sidebarItems = [
     { id: 'overview', label: 'Executive Overview', icon: LayoutDashboard },
+    { id: 'approvals', label: 'Citizen Approvals', icon: ShieldCheck, badge: pendingResidents.length },
     { id: 'categories', label: 'Category Manager', icon: Tag },
     { id: 'system', label: 'System Settings', icon: Settings },
     { id: 'logs', label: 'System Audit & Logs', icon: History },
@@ -714,14 +849,21 @@ export default function SuperMegaAdminDashboard() {
               {sidebarItems.map(item => (
                 <button key={item.id} onClick={() => { setActiveTab(item.id as any); setMobileMenuOpen(false); }}
                   style={{
-                    background: activeTab === item.id ? `${ACCENT_VIOLET}20` : 'transparent',
-                    color: activeTab === item.id ? '#C4B5FD' : MUTED,
-                    border: activeTab === item.id ? `1px solid ${ACCENT_VIOLET}40` : '1px solid transparent',
-                    borderRadius: 8, padding: '9px 12px', marginBottom: 4,
-                    display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, fontSize: 13,
+                    background: activeTab === item.id ? 'linear-gradient(135deg, #6458FF 0%, #00C6FF 100%)' : 'transparent',
+                    color: activeTab === item.id ? '#FFFFFF' : MUTED,
+                    border: activeTab === item.id ? 'none' : '1px solid transparent',
+                    boxShadow: activeTab === item.id ? '0 6px 18px -2px rgba(100, 88, 255, 0.45)' : 'none',
+                    borderRadius: 9999, padding: '10px 14px', marginBottom: 6,
+                    display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 13,
                   }}
-                  className="w-full text-left hover:bg-white/5 transition-all cursor-pointer">
-                  <item.icon size={15} />{item.label}
+                  className="w-full text-left hover:bg-white/10 transition-all cursor-pointer">
+                  <item.icon size={15} />
+                  <span className="flex-1">{item.label}</span>
+                  {item.badge ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30">
+                      {item.badge}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </aside>
@@ -735,14 +877,21 @@ export default function SuperMegaAdminDashboard() {
           {sidebarItems.map(item => (
             <button key={item.id} onClick={() => setActiveTab(item.id as any)}
               style={{
-                background: activeTab === item.id ? `${ACCENT_VIOLET}20` : 'transparent',
-                color: activeTab === item.id ? '#C4B5FD' : MUTED,
-                border: activeTab === item.id ? `1px solid ${ACCENT_VIOLET}40` : '1px solid transparent',
-                borderRadius: 8, padding: '9px 10px', marginBottom: 3,
-                display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, fontSize: 12,
+                background: activeTab === item.id ? 'linear-gradient(135deg, #6458FF 0%, #00C6FF 100%)' : 'transparent',
+                color: activeTab === item.id ? '#FFFFFF' : MUTED,
+                border: activeTab === item.id ? 'none' : '1px solid transparent',
+                boxShadow: activeTab === item.id ? '0 6px 18px -2px rgba(100, 88, 255, 0.45)' : 'none',
+                borderRadius: 9999, padding: '10px 12px', marginBottom: 4,
+                display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 12,
               }}
-              className="w-full text-left hover:bg-white/5 transition-all cursor-pointer">
-              <item.icon size={14} />{item.label}
+              className="w-full text-left hover:bg-white/10 transition-all cursor-pointer">
+              <item.icon size={14} />
+              <span className="flex-1">{item.label}</span>
+              {item.badge ? (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30">
+                  {item.badge}
+                </span>
+              ) : null}
             </button>
           ))}
           <div className="flex-1" />
@@ -773,10 +922,24 @@ export default function SuperMegaAdminDashboard() {
               <h1 style={{ color: TEXT, fontWeight: 800, fontSize: 20, marginTop: 2 }}>{greeting()}, Super Mega Administrator</h1>
               <p style={{ color: MUTED, fontSize: 12 }}>City of Butuan — Municipal Governance Oversight Portal</p>
             </div>
-            <button onClick={loadData} style={{ border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 600, background: 'transparent' }}
-              className="flex items-center gap-1.5 hover:bg-white/5 transition-colors cursor-pointer">
-              <RefreshCcw size={12} className={loading ? 'animate-spin' : ''} /> Refresh All
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => {
+                  setSelectedNotifyResident(null);
+                  setNotifyCategory('general');
+                  setIsNotifyModalOpen(true);
+                }}
+                style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', borderRadius: 8, padding: '7px 14px', fontSize: 11, fontWeight: 700, border: 'none' }}
+                className="flex items-center gap-1.5 shadow-md hover:opacity-90 transition-opacity cursor-pointer"
+                title="Manually dispatch SMS, EmailJS, and In-App notice to any resident"
+              >
+                <Send size={12} /> Send Notice to Resident
+              </button>
+              <button onClick={loadData} style={{ border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 600, background: 'transparent' }}
+                className="flex items-center gap-1.5 hover:bg-white/5 transition-colors cursor-pointer">
+                <RefreshCcw size={12} className={loading ? 'animate-spin' : ''} /> Refresh All
+              </button>
+            </div>
           </div>
 
           {/* ── TAB 0: EXECUTIVE OVERVIEW ─────────────────────────── */}
@@ -804,7 +967,7 @@ export default function SuperMegaAdminDashboard() {
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => setIsCreateSuperadminOpen(true)}
+                    onClick={() => openCreateSuperadmin()}
                     style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, #6366F1)`, color: '#fff' }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:opacity-95 transition-all cursor-pointer shadow-sm"
                   >
@@ -999,7 +1162,7 @@ export default function SuperMegaAdminDashboard() {
                         </p>
                       </div>
                       <button
-                        onClick={() => setIsCreateSuperadminOpen(true)}
+                        onClick={() => openCreateSuperadmin()}
                         style={{ background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}50`, color: '#C4B5FD' }}
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-violet-600/30 transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto"
                       >
@@ -1015,7 +1178,7 @@ export default function SuperMegaAdminDashboard() {
                           Create your first Barangay Superadmin account to delegate administrative authority.
                         </p>
                         <button
-                          onClick={() => setIsCreateSuperadminOpen(true)}
+                          onClick={() => openCreateSuperadmin()}
                           className="mt-3 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-semibold cursor-pointer"
                         >
                           + Create Barangay Superadmin
@@ -1080,7 +1243,7 @@ export default function SuperMegaAdminDashboard() {
                         </span>
                       </div>
                       <button
-                        onClick={() => setIsCreateSuperadminOpen(true)}
+                        onClick={() => openCreateSuperadmin()}
                         className="text-violet-300 hover:underline font-bold text-xs shrink-0 bg-transparent border-none cursor-pointer"
                       >
                         Deploy Node +
@@ -1297,6 +1460,284 @@ export default function SuperMegaAdminDashboard() {
 
                 </div>
 
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB: CITIZEN APPROVALS ──────────────────────────── */}
+          {activeTab === 'approvals' && (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span style={{ background: `${ACCENT_VIOLET}20`, color: '#C4B5FD', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px', border: `1px solid ${ACCENT_VIOLET}40` }}>
+                      CENTRAL JURISDICTION GATEWAY
+                    </span>
+                    <span style={{ background: `${ACCENT_AMBER}20`, color: ACCENT_AMBER, fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px', border: `1px solid ${ACCENT_AMBER}40` }}>
+                      {pendingResidents.length} PENDING CITY-WIDE
+                    </span>
+                  </div>
+                  <h2 style={{ color: TEXT, fontWeight: 700, fontSize: 18 }}>Citizen Identity Verification & Accreditation Desk</h2>
+                  <p style={{ color: MUTED, fontSize: 12 }}>
+                    City-wide resident registration oversight across all 86 Barangays in Butuan City. Registrations can be accredited once a local Barangay Admin/Superadmin is actively deployed for that jurisdiction.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openCreateSuperadmin(approvalBarangayFilter !== 'all' ? approvalBarangayFilter : undefined)}
+                    style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700 }}
+                    className="flex items-center gap-1.5 cursor-pointer hover:opacity-90 shadow-md shadow-violet-900/30 transition-all"
+                  >
+                    <Crown size={14} /> Deploy Barangay Superadmin
+                  </button>
+                  <button
+                    onClick={loadData}
+                    disabled={loading}
+                    style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 600 }}
+                    className="flex items-center gap-1.5 cursor-pointer hover:bg-white/5 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCcw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+                  </button>
+                </div>
+              </div>
+
+              {/* KPI Counter Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
+                  <p style={{ color: MUTED, fontSize: 11, fontWeight: 600 }}>Total City-Wide Applications</p>
+                  <p style={{ color: TEXT, fontSize: 24, fontWeight: 800, marginTop: 4 }}>{pendingResidents.length}</p>
+                  <p style={{ color: ACCENT_AMBER, fontSize: 10, fontWeight: 600, marginTop: 2 }}>Awaiting identity validation</p>
+                </div>
+                <div style={{ background: CARD, border: `1px solid ${ACCENT_EMERALD}40`, borderRadius: 12, padding: 14 }}>
+                  <p style={{ color: MUTED, fontSize: 11, fontWeight: 600 }}>Ready for Approval</p>
+                  <p style={{ color: ACCENT_EMERALD, fontSize: 24, fontWeight: 800, marginTop: 4 }}>{pendingWithOfficialsCount}</p>
+                  <p style={{ color: MUTED, fontSize: 10, fontWeight: 600, marginTop: 2 }}>Active Barangay Officials deployed</p>
+                </div>
+                <div style={{ background: CARD, border: `1px solid ${ACCENT_ROSE}40`, borderRadius: 12, padding: 14 }}>
+                  <p style={{ color: MUTED, fontSize: 11, fontWeight: 600 }}>Unassigned Jurisdiction Desks</p>
+                  <p style={{ color: ACCENT_ROSE, fontSize: 24, fontWeight: 800, marginTop: 4 }}>{pendingWithoutOfficialsCount}</p>
+                  <p style={{ color: ACCENT_ROSE, fontSize: 10, fontWeight: 600, marginTop: 2 }}>Action required: Deploy local official</p>
+                </div>
+              </div>
+
+              {/* Filter Toolbar */}
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 12 }} className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={approvalSearch}
+                    onChange={e => setApprovalSearch(e.target.value)}
+                    placeholder="Search applicant name, email, address, or barangay..."
+                    style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '7px 10px 7px 32px', width: '100%' }}
+                  />
+                  {approvalSearch && (
+                    <button onClick={() => setApprovalSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs bg-transparent border-none cursor-pointer">✕</button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={approvalBarangayFilter}
+                    onChange={e => setApprovalBarangayFilter(e.target.value)}
+                    style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '7px 12px' }}
+                    className="cursor-pointer"
+                  >
+                    <option value="all">🌐 All Barangays (City-Wide)</option>
+                    {BUTUAN_BARANGAYS.map(b => (
+                      <option key={b} value={b}>📍 Barangay {b}</option>
+                    ))}
+                  </select>
+                  <span style={{ color: MUTED, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    Showing {filteredPendingResidents.length} of {pendingResidents.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Applicants Table */}
+              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12 }} className="overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs" style={{ borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: `${BORDER}40`, borderBottom: `1px solid ${BORDER}` }}>
+                        <th style={{ color: MUTED, fontWeight: 700, padding: '10px 14px' }}>APPLICANT CITIZEN</th>
+                        <th style={{ color: MUTED, fontWeight: 700, padding: '10px 14px' }}>BARANGAY JURISDICTION</th>
+                        <th style={{ color: MUTED, fontWeight: 700, padding: '10px 14px' }}>GOVERNMENT ID</th>
+                        <th style={{ color: MUTED, fontWeight: 700, padding: '10px 14px' }}>LOCAL OFFICIAL STATUS</th>
+                        <th style={{ color: MUTED, fontWeight: 700, padding: '10px 14px', textAlign: 'right' }}>EXECUTIVE ACTIONS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPendingResidents.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ padding: 40, textAlign: 'center', color: MUTED }}>
+                            <ShieldCheck size={36} className="mx-auto mb-2 opacity-30 text-emerald-400" />
+                            <p className="font-semibold text-slate-300">No Pending Resident Registrations</p>
+                            <p className="text-[11px] text-slate-500 mt-1">All applicant identity records are verified, or none match your search criteria.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredPendingResidents.map(r => {
+                          const applicantName = r.name || `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Resident Citizen';
+                          const officials = getOfficialsForBarangay(r.barangay);
+                          const hasOfficial = officials.length > 0;
+                          const isApproving = approvingResidentId === r.id;
+
+                          return (
+                            <tr key={r.id} style={{ borderBottom: `1px solid ${BORDER}50` }} className="hover:bg-white/2 transition-colors">
+                              <td style={{ padding: '12px 14px' }}>
+                                <div className="flex items-center gap-3">
+                                  <div style={{ background: `${ACCENT_VIOLET}25`, border: `1px solid ${ACCENT_VIOLET}50`, color: '#C4B5FD', width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }} className="shrink-0">
+                                    {(applicantName.charAt(0) || 'R').toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p style={{ color: TEXT, fontWeight: 700, fontSize: 13 }}>{applicantName}</p>
+                                    <p style={{ color: MUTED, fontSize: 11 }}>{r.email || 'No email provided'}</p>
+                                    {r.phone && <p style={{ color: MUTED, fontSize: 10 }}>📱 {r.phone}</p>}
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td style={{ padding: '12px 14px' }}>
+                                <div className="space-y-1">
+                                  <span style={{ background: `${ACCENT_CYAN}15`, border: `1px solid ${ACCENT_CYAN}40`, color: ACCENT_CYAN, borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700, display: 'inline-block' }}>
+                                    📍 Barangay {r.barangay || 'Pianing'}
+                                  </span>
+                                  {r.address && (
+                                    <p style={{ color: MUTED, fontSize: 10, maxWidth: 220 }} className="truncate" title={r.address}>
+                                      {r.address}
+                                    </p>
+                                  )}
+                                  <p style={{ color: MUTED, fontSize: 9 }}>Ref: APP-#{r.id}</p>
+                                </div>
+                              </td>
+
+                              <td style={{ padding: '12px 14px' }}>
+                                <div className="flex items-center gap-2">
+                                  {r.submitted_id ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewApplicant(r)}
+                                      className="relative group cursor-pointer overflow-hidden rounded-lg border border-slate-700 hover:border-violet-500 transition-all"
+                                      style={{ width: 44, height: 44, background: '#0F172A' }}
+                                      title="Click to expand Government ID"
+                                    >
+                                      <img src={r.submitted_id} alt="Government ID" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                        <Eye size={12} color="white" />
+                                      </div>
+                                    </button>
+                                  ) : (
+                                    <div style={{ width: 44, height: 44, background: `${BORDER}60`, border: `1px solid ${BORDER}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <FileText size={16} style={{ color: MUTED }} />
+                                    </div>
+                                  )}
+                                  <div className="text-[10px]">
+                                    <p style={{ color: TEXT, fontWeight: 600 }}>{r.id_type || 'Government ID'}</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewApplicant(r)}
+                                      style={{ color: '#C4B5FD', textDecoration: 'underline' }}
+                                      className="cursor-pointer bg-transparent border-none p-0 text-[10px] hover:text-white"
+                                    >
+                                      Inspect Document
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td style={{ padding: '12px 14px' }}>
+                                {hasOfficial ? (
+                                  <div>
+                                    <span style={{ background: `${ACCENT_EMERALD}15`, border: `1px solid ${ACCENT_EMERALD}40`, color: ACCENT_EMERALD, borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                      <CheckCircle2 size={11} /> Active Local Official
+                                    </span>
+                                    <p style={{ color: MUTED, fontSize: 10, marginTop: 4 }}>
+                                      {officials.map(o => `${o.name} (${o.role})`).slice(0, 2).join(', ')}
+                                      {officials.length > 2 && ` +${officials.length - 2} more`}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <span style={{ background: `${ACCENT_ROSE}20`, border: `1px solid ${ACCENT_ROSE}50`, color: ACCENT_ROSE, borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                      <AlertOctagon size={11} /> No Local Admin Deployed
+                                    </span>
+                                    <p style={{ color: MUTED, fontSize: 10, marginTop: 3 }}>
+                                      Approvals blocked until official is assigned.
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenDeployForApplicant(r.barangay)}
+                                      style={{ color: '#C4B5FD', background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}50`, borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 700, marginTop: 4 }}
+                                      className="cursor-pointer hover:bg-violet-900/40 transition-colors flex items-center gap-1"
+                                    >
+                                      <Crown size={10} /> Deploy Official
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+
+                              <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedNotifyResident({
+                                        id: r.id,
+                                        name: r.name || `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Resident',
+                                        email: r.email,
+                                        phone: r.phone,
+                                        barangay: r.barangay
+                                      });
+                                      setNotifyCategory('account');
+                                      setIsNotifyModalOpen(true);
+                                    }}
+                                    style={{ background: `${ACCENT_CYAN}15`, border: `1px solid ${ACCENT_CYAN}40`, color: ACCENT_CYAN, borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600 }}
+                                    className="cursor-pointer hover:bg-cyan-950/40 transition-colors flex items-center gap-1"
+                                    title="Send manual SMS, Email (EmailJS), or In-App notice to this applicant"
+                                  >
+                                    <Send size={11} /> Notify
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewApplicant(r)}
+                                    style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 600 }}
+                                    className="cursor-pointer hover:bg-white/5 hover:text-white transition-colors"
+                                  >
+                                    Preview Info
+                                  </button>
+
+                                  {hasOfficial ? (
+                                    <button
+                                      type="button"
+                                      disabled={isApproving}
+                                      onClick={() => handleApproveCitizen(r)}
+                                      style={{ background: `linear-gradient(135deg, ${ACCENT_EMERALD}, #059669)`, color: 'white', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 11, fontWeight: 700 }}
+                                      className="cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-1.5 shadow-sm shadow-emerald-950"
+                                    >
+                                      {isApproving ? <RefreshCcw size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
+                                      Approve & Verify
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleApproveCitizen(r)}
+                                      style={{ background: `${ACCENT_AMBER}15`, border: `1px solid ${ACCENT_AMBER}50`, color: ACCENT_AMBER, borderRadius: 6, padding: '6px 10px', fontSize: 11, fontWeight: 700 }}
+                                      className="cursor-pointer hover:bg-amber-950/40 transition-colors flex items-center gap-1"
+                                      title="Cannot approve without local barangay administrator"
+                                    >
+                                      <Lock size={11} /> Blocked (Deploy Admin)
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -2027,7 +2468,7 @@ export default function SuperMegaAdminDashboard() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
-                    onClick={() => { setNewSA({ ...BLANK_NEW_SA }); setNewSAError(''); setShowNewSAPass(false); setIsCreateSuperadminOpen(true); }}
+                    onClick={() => openCreateSuperadmin()}
                     style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, #4F46E5)`, borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, color: 'white', border: 'none', boxShadow: '0 4px 14px rgba(124, 58, 237, 0.35)' }}
                     className="flex items-center gap-2 hover:opacity-95 transition-opacity cursor-pointer flex-shrink-0"
                   >
@@ -2183,7 +2624,7 @@ export default function SuperMegaAdminDashboard() {
                         <p style={{ color: MUTED, fontSize: 11 }}>Client tenant list with appointed administrator credentials</p>
                       </div>
                       <button
-                        onClick={() => setIsCreateSuperadminOpen(true)}
+                        onClick={() => openCreateSuperadmin()}
                         style={{ color: '#C4B5FD', background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}40`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}
                         className="hover:bg-violet-900/40 cursor-pointer transition-colors flex items-center gap-1.5"
                       >
@@ -2892,6 +3333,11 @@ export default function SuperMegaAdminDashboard() {
                           {b}
                         </option>
                       ))}
+                      {newSA.barangay && !saBarangays.includes(newSA.barangay) && (
+                        <option value={newSA.barangay} style={{ background: '#161F30', color: '#F8FAFC' }}>
+                          {newSA.barangay}
+                        </option>
+                      )}
                     </select>
                   </div>
                 </div>
@@ -3032,6 +3478,222 @@ export default function SuperMegaAdminDashboard() {
           </div>
         </div>
       )}
+      {/* MODAL: Warn No Barangay Admin Deployed */}
+      {warnNoAdminModal && warnNoAdminModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: CARD2, border: `1px solid ${ACCENT_AMBER}50`, borderRadius: 16, width: '100%', maxWidth: 460, padding: 24 }} className="shadow-2xl">
+            <div className="flex items-start gap-3.5 mb-4">
+              <div style={{ background: `${ACCENT_AMBER}20`, border: `1px solid ${ACCENT_AMBER}50`, borderRadius: 12, padding: 10 }} className="shrink-0">
+                <AlertOctagon size={24} color={ACCENT_AMBER} />
+              </div>
+              <div className="flex-1">
+                <h3 style={{ color: TEXT, fontWeight: 800, fontSize: 16 }}>Jurisdiction Action Required</h3>
+                <p style={{ color: MUTED, fontSize: 11, marginTop: 2 }}>Unassigned Barangay Governance Desk</p>
+              </div>
+              <button onClick={() => setWarnNoAdminModal(null)} style={{ color: MUTED, background: 'transparent', border: 'none' }} className="cursor-pointer"><X size={18} /></button>
+            </div>
+
+            <div style={{ background: `${BORDER}40`, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 14 }} className="space-y-2 mb-5">
+              <p style={{ color: TEXT, fontSize: 13, lineHeight: 1.5 }}>
+                Cannot approve applicant registration for <strong className="text-white">{warnNoAdminModal.residentName}</strong>.
+              </p>
+              <p style={{ color: MUTED, fontSize: 12, lineHeight: 1.5 }}>
+                No active <strong>Barangay Administrator</strong> or <strong>Superadmin</strong> currently exists for <span className="text-amber-400 font-bold">Barangay {warnNoAdminModal.barangay}</span>.
+              </p>
+              <p style={{ color: '#94A3B8', fontSize: 11, lineHeight: 1.4 }}>
+                Under municipal security protocol, citizen accounts must be governed by an official assigned to that specific territorial jurisdiction. Once an administrator is deployed, this resident can be migrated and approved under that local account role.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setWarnNoAdminModal(null)}
+                style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1px solid ${BORDER}`, color: MUTED, background: 'transparent', fontSize: 12, fontWeight: 600 }}
+                className="cursor-pointer hover:bg-white/5 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenDeployForApplicant(warnNoAdminModal.barangay)}
+                style={{ flex: 2, padding: '10px', borderRadius: 8, background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', border: 'none', fontSize: 12, fontWeight: 700 }}
+                className="cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-violet-900/30"
+              >
+                <Crown size={14} /> Deploy Superadmin for {warnNoAdminModal.barangay}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Full Applicant Info & Government ID Preview */}
+      {previewApplicant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(5px)' }}>
+          <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 18, width: '100%', maxWidth: 680, maxHeight: '90vh', overflowY: 'auto', padding: 24 }} className="shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div style={{ background: `${ACCENT_VIOLET}25`, padding: 8, borderRadius: 10 }}>
+                  <ShieldCheck size={20} color="#C4B5FD" />
+                </div>
+                <div>
+                  <h3 style={{ color: TEXT, fontWeight: 800, fontSize: 16 }}>
+                    {previewApplicant.name || `${previewApplicant.first_name || ''} ${previewApplicant.last_name || ''}`}
+                  </h3>
+                  <p style={{ color: MUTED, fontSize: 11 }}>Citizen Registration Application APP-#{previewApplicant.id}</p>
+                </div>
+              </div>
+              <button onClick={() => setPreviewApplicant(null)} style={{ color: MUTED, background: 'transparent', border: 'none' }} className="cursor-pointer hover:text-white"><X size={20} /></button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+              {/* Personal Information */}
+              <div style={{ background: `${BORDER}30`, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }} className="space-y-2.5">
+                <p style={{ color: '#C4B5FD', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>APPLICANT CREDENTIALS</p>
+                <div className="text-xs space-y-1.5">
+                  <div className="flex justify-between py-1 border-b border-slate-800">
+                    <span style={{ color: MUTED }}>Barangay:</span>
+                    <span className="font-bold text-cyan-400">Barangay {previewApplicant.barangay || 'Pianing'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800">
+                    <span style={{ color: MUTED }}>Email:</span>
+                    <span className="font-semibold text-white truncate max-w-[180px]">{previewApplicant.email || '—'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800">
+                    <span style={{ color: MUTED }}>Phone:</span>
+                    <span className="font-semibold text-white">{previewApplicant.phone || '—'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800">
+                    <span style={{ color: MUTED }}>Gender / Civil:</span>
+                    <span className="font-semibold text-white">{previewApplicant.gender || '—'} / {previewApplicant.civil_status || 'Single'}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800">
+                    <span style={{ color: MUTED }}>Date of Birth:</span>
+                    <span className="font-semibold text-white">{previewApplicant.date_of_birth || '—'}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span style={{ color: MUTED }}>Address:</span>
+                    <span className="font-semibold text-white text-right max-w-[170px] truncate">{previewApplicant.address || '—'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submitted Government ID Photo */}
+              <div style={{ background: `${BORDER}30`, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
+                <p style={{ color: '#C4B5FD', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 8 }}>SUBMITTED GOVERNMENT ID</p>
+                {previewApplicant.submitted_id ? (
+                  <div className="relative group rounded-lg overflow-hidden border border-slate-700 aspect-video bg-black/50 flex items-center justify-center">
+                    <img src={previewApplicant.submitted_id} alt="Government ID" className="w-full h-full object-contain" />
+                    <a
+                      href={previewApplicant.submitted_id}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute bottom-2 right-2 px-2.5 py-1 bg-black/80 hover:bg-black text-white text-[10px] font-bold rounded flex items-center gap-1 shadow"
+                    >
+                      <ExternalLink size={11} /> Open Original
+                    </a>
+                  </div>
+                ) : (
+                  <div className="aspect-video rounded-lg border border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 text-xs">
+                    <FileText size={24} className="mb-1 text-slate-600" />
+                    No ID file attached
+                  </div>
+                )}
+                <p style={{ color: MUTED, fontSize: 10, marginTop: 6, textAlign: 'center' }}>
+                  Document Type: <strong>{previewApplicant.id_type || 'Government ID (PhilSys/Driver\'s)'}</strong>
+                </p>
+              </div>
+            </div>
+
+            {/* Jurisdiction Check Status Banner */}
+            {(() => {
+              const officials = getOfficialsForBarangay(previewApplicant.barangay);
+              const hasOfficial = officials.length > 0;
+              return (
+                <div style={{ background: hasOfficial ? `${ACCENT_EMERALD}15` : `${ACCENT_AMBER}15`, border: `1px solid ${hasOfficial ? ACCENT_EMERALD : ACCENT_AMBER}40`, borderRadius: 10, padding: 12 }} className="mb-5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    {hasOfficial ? <CheckCircle2 size={18} color={ACCENT_EMERALD} /> : <AlertOctagon size={18} color={ACCENT_AMBER} />}
+                    <div>
+                      <p style={{ color: hasOfficial ? ACCENT_EMERALD : ACCENT_AMBER, fontSize: 12, fontWeight: 700 }}>
+                        {hasOfficial ? 'Local Jurisdiction Assigned' : `No Official Deployed for Barangay ${previewApplicant.barangay}`}
+                      </p>
+                      <p style={{ color: MUTED, fontSize: 11 }}>
+                        {hasOfficial
+                          ? `Active Officials: ${officials.map(o => `${o.name} (${o.role})`).join(', ')}`
+                          : 'You must deploy a Barangay Administrator before this applicant can be accredited.'}
+                      </p>
+                    </div>
+                  </div>
+                  {!hasOfficial && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDeployForApplicant(previewApplicant.barangay)}
+                      style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 11, fontWeight: 700 }}
+                      className="cursor-pointer hover:opacity-90 shrink-0 shadow"
+                    >
+                      Deploy Official
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
+            <div className="flex gap-2.5 justify-end">
+              <button
+                type="button"
+                onClick={() => setPreviewApplicant(null)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: `1px solid ${BORDER}`, color: MUTED, background: 'transparent', fontSize: 12, fontWeight: 600 }}
+                className="cursor-pointer hover:bg-white/5"
+              >
+                Close Preview
+              </button>
+
+              {getOfficialsForBarangay(previewApplicant.barangay).length > 0 ? (
+                <button
+                  type="button"
+                  disabled={approvingResidentId === previewApplicant.id}
+                  onClick={() => handleApproveCitizen(previewApplicant)}
+                  style={{ padding: '8px 18px', borderRadius: 8, background: `linear-gradient(135deg, ${ACCENT_EMERALD}, #059669)`, color: 'white', border: 'none', fontSize: 12, fontWeight: 700 }}
+                  className="cursor-pointer hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5 shadow-lg shadow-emerald-950/40"
+                >
+                  {approvingResidentId === previewApplicant.id ? <RefreshCcw size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
+                  Accept & Verify Citizen
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleApproveCitizen(previewApplicant)}
+                  style={{ padding: '8px 18px', borderRadius: 8, background: `${ACCENT_AMBER}20`, border: `1px solid ${ACCENT_AMBER}50`, color: ACCENT_AMBER, fontSize: 12, fontWeight: 700 }}
+                  className="cursor-pointer hover:bg-amber-950/40 flex items-center gap-1.5"
+                >
+                  <Lock size={12} /> Blocked (Deploy Admin First)
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Resident Notification Modal */}
+      <ManualResidentNotifyModal
+        isOpen={isNotifyModalOpen}
+        onClose={() => {
+          setIsNotifyModalOpen(false);
+          setSelectedNotifyResident(null);
+        }}
+        defaultResident={selectedNotifyResident}
+        currentSenderRole="superadmin"
+        currentSenderName={user?.name || 'Super Mega Administrator'}
+        currentSenderBarangay={selectedNotifyResident?.barangay || 'Pianing'}
+        residentsList={residents.map(r => ({
+          id: r.id,
+          name: r.name || `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+          email: r.email,
+          phone: r.phone,
+          barangay: r.barangay
+        }))}
+        initialCategory={notifyCategory}
+      />
     </div>
   );
 }

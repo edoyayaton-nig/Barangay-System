@@ -24,9 +24,11 @@ import {
   EyeOff,
   Eye,
   RefreshCw,
-  UserPlus
+  UserPlus,
+  ArrowLeft
 } from 'lucide-react';
 import { apiService, Resident, DocumentRequest, MaternalRecord, ImmunizationRecord } from '../../services/api';
+import { dispatchResidentNotification } from '../../services/emailJsService';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -36,6 +38,7 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { toast } from 'sonner';
 import ImageViewerModal from './ImageViewerModal';
+import ManualResidentNotifyModal from './ManualResidentNotifyModal';
 
 interface ResidentProfileModalProps {
   residentId: number | null;
@@ -44,6 +47,8 @@ interface ResidentProfileModalProps {
   canVerify?: boolean;
   onStatusUpdated?: () => void;
   currentUserName?: string;
+  returnDocTitle?: string;
+  onBackToDoc?: () => void;
 }
 
 export default function ResidentProfileModal({
@@ -52,7 +57,9 @@ export default function ResidentProfileModal({
   onClose,
   canVerify = false,
   onStatusUpdated,
-  currentUserName
+  currentUserName,
+  returnDocTitle,
+  onBackToDoc
 }: ResidentProfileModalProps) {
   const [loading, setLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -98,6 +105,7 @@ export default function ResidentProfileModal({
   const [smsSending, setSmsSending] = useState(false);
 
   const [selectedIdPreview, setSelectedIdPreview] = useState<string | null>(null);
+  const [isManualNotifyOpen, setIsManualNotifyOpen] = useState(false);
 
   useEffect(() => {
     if (residentId && isOpen) {
@@ -241,6 +249,25 @@ export default function ResidentProfileModal({
     try {
       await apiService.approveResident(resident.id, currentUserName || 'Barangay Admin');
       toast.success(`Resident ${resident.first_name} ${resident.last_name} is now VERIFIED!`);
+      
+      const citizenName = `${resident.first_name} ${resident.last_name}`.trim();
+      if (resident.email || resident.phone) {
+        dispatchResidentNotification({
+          residentEmail: resident.email || '',
+          residentName: citizenName,
+          phone: resident.phone,
+          type: 'account',
+          title: '🎉 Account Verified & Approved',
+          message: `Mabuhay ${citizenName}! Your Barangay ${resident.barangay || 'Pianing'} resident account has been officially approved and verified by the Barangay Administration. You can now access all services online.`,
+          statusBadge: 'Verified',
+          badgeColor: 'emerald',
+          barangay: resident.barangay || 'Pianing'
+        }).then(res => {
+          if (res.sms) toast.info(`📱 Live SMS sent to ${resident.phone}`);
+          if (res.email) toast.info(`📧 Verification email sent to ${resident.email}`);
+        }).catch(() => {});
+      }
+
       setResident(prev => prev ? { ...prev, verification_status: 'Verified' } : null);
       if (onStatusUpdated) onStatusUpdated();
     } catch (err: any) {
@@ -314,6 +341,24 @@ export default function ResidentProfileModal({
         onPointerDownOutside={(e) => e.preventDefault()}
         className="w-[94vw] max-w-4xl max-h-[88vh] bg-white p-4 sm:p-6 overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-200 shadow-2xl"
       >
+        {returnDocTitle && onBackToDoc && (
+          <div className="bg-indigo-50/90 border border-indigo-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs mb-3 shadow-2xs">
+            <div className="flex items-center gap-2 text-indigo-950 font-semibold truncate mr-2">
+              <FileText size={15} className="text-indigo-600 shrink-0" />
+              <span className="truncate">Active Document Context: <strong>{returnDocTitle}</strong></span>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onBackToDoc}
+              className="h-7 text-xs font-bold text-indigo-700 bg-white border-indigo-300 hover:bg-indigo-100 hover:text-indigo-900 rounded-lg cursor-pointer shrink-0 gap-1 shadow-xs"
+              title="Return directly to document processing"
+            >
+              <ArrowLeft size={13} /> Return to Document
+            </Button>
+          </div>
+        )}
         <DialogHeader className="border-b border-slate-100 pb-3">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -408,11 +453,12 @@ export default function ResidentProfileModal({
               )}
               <Button
                 size="sm"
-                onClick={() => setActiveTab('sms')}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 px-3 gap-1.5 rounded-xl cursor-pointer shadow-xs whitespace-nowrap font-medium"
+                onClick={() => setIsManualNotifyOpen(true)}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs h-8 px-3 gap-1.5 rounded-xl cursor-pointer shadow-xs whitespace-nowrap font-medium"
+                title="Send manual SMS, Email (EmailJS), or In-App notification"
               >
-                <MessageSquare size={13} />
-                Send SMS
+                <Send size={13} />
+                Send Notice
               </Button>
             </div>
           </div>
@@ -969,6 +1015,21 @@ export default function ResidentProfileModal({
       title={`Submitted Government ID — ${residentFullName}`}
       subtitle={`Official Philippine Government ID / Accreditation Document • ${resident?.id_type || 'Valid ID'}`}
       fileName={`${residentFullName.replace(/\s+/g, '-').toLowerCase()}-submitted-id.png`}
+    />
+
+    <ManualResidentNotifyModal
+      isOpen={isManualNotifyOpen}
+      onClose={() => setIsManualNotifyOpen(false)}
+      defaultResident={resident ? {
+        id: resident.id,
+        name: residentFullName,
+        email: resident.email,
+        phone: resident.phone,
+        barangay: resident.barangay || 'Pianing'
+      } : null}
+      currentSenderRole="admin"
+      currentSenderName={currentUserName || 'Barangay Official'}
+      currentSenderBarangay={resident?.barangay || 'Pianing'}
     />
     </>
   );

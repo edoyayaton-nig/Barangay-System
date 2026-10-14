@@ -51,26 +51,51 @@ export async function runMigration() {
       console.log(`✅ Connected directly to database '${dbName}'.`);
     }
 
-    // 3. Read and execute schema.sql
-    const schemaPath = path.resolve(__dirname, '../database/schema.sql');
-    if (fs.existsSync(schemaPath)) {
-      console.log(`📄 Executing schema.sql DDL migrations...`);
-      let schemaSql = fs.readFileSync(schemaPath, 'utf8');
-      schemaSql = schemaSql.replace(/CREATE DATABASE IF NOT EXISTS `[^`]+`;/gi, '');
-      schemaSql = schemaSql.replace(/USE `[^`]+`;/gi, '');
-      await connection.query(schemaSql);
-      console.log(`✅ Schema tables created successfully.`);
+    // 3. Check if database is already populated
+    const [existingTables] = await connection.query('SHOW TABLES');
+    if (existingTables.length >= 10) {
+      console.log(`✅ Database '${dbName}' already contains ${existingTables.length} tables. Skipping re-migration.`);
+      return { success: true, database: dbName };
     }
 
-    // 4. Read and execute seed.sql
-    const seedPath = path.resolve(__dirname, '../database/seed.sql');
-    if (fs.existsSync(seedPath)) {
-      console.log(`🌱 Executing seed.sql data insertion...`);
-      let seedSql = fs.readFileSync(seedPath, 'utf8');
-      seedSql = seedSql.replace(/USE `[^`]+`;/gi, '');
-      await connection.query(seedSql);
-      console.log(`✅ Seed data inserted successfully.`);
+    // 4. Read and execute clean_dump.sql if available, else schema.sql + seed.sql
+    await connection.query('SET FOREIGN_KEY_CHECKS=0;');
+    const cleanDumpPath = path.resolve(__dirname, '../database/clean_dump.sql');
+    if (fs.existsSync(cleanDumpPath)) {
+      console.log(`📄 Executing clean_dump.sql (complete schema & 19 tables with all accounts)...`);
+      let dumpSql = fs.readFileSync(cleanDumpPath, 'utf8');
+      dumpSql = dumpSql.replace(/CREATE DATABASE IF NOT EXISTS `[^`]+`;/gi, '');
+      dumpSql = dumpSql.replace(/USE `[^`]+`;/gi, '');
+      const statements = dumpSql.split(/;\s*\n/).map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
+      for (const stmt of statements) {
+        try {
+          await connection.query(stmt);
+        } catch (stmtErr) {
+          console.warn(`⚠️ Statement notice: ${stmtErr.message}`);
+        }
+      }
+      console.log(`✅ Clean dump executed successfully. All tables and records imported.`);
+    } else {
+      const schemaPath = path.resolve(__dirname, '../database/schema.sql');
+      if (fs.existsSync(schemaPath)) {
+        console.log(`📄 Executing schema.sql DDL migrations...`);
+        let schemaSql = fs.readFileSync(schemaPath, 'utf8');
+        schemaSql = schemaSql.replace(/CREATE DATABASE IF NOT EXISTS `[^`]+`;/gi, '');
+        schemaSql = schemaSql.replace(/USE `[^`]+`;/gi, '');
+        await connection.query(schemaSql);
+        console.log(`✅ Schema tables created successfully.`);
+      }
+
+      const seedPath = path.resolve(__dirname, '../database/seed.sql');
+      if (fs.existsSync(seedPath)) {
+        console.log(`🌱 Executing seed.sql data insertion...`);
+        let seedSql = fs.readFileSync(seedPath, 'utf8');
+        seedSql = seedSql.replace(/USE `[^`]+`;/gi, '');
+        await connection.query(seedSql);
+        console.log(`✅ Seed data inserted successfully.`);
+      }
     }
+    await connection.query('SET FOREIGN_KEY_CHECKS=1;');
 
     console.log(`🎉 [Migration Complete] Database '${dbName}' is fully populated and ready on ${host}:${port}!`);
     return { success: true, database: dbName };

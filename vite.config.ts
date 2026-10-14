@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
 
+import fs from 'fs'
+
 function figmaAssetResolver() {
   return {
     name: 'figma-asset-resolver',
@@ -16,6 +18,36 @@ function figmaAssetResolver() {
   }
 }
 
+// Automatically sync compiled production bundles to Laravel's public directory
+// so Laravel serves the frontend and backend in a unified single runtime environment
+function syncLaravelPublic() {
+  return {
+    name: 'sync-laravel-public',
+    closeBundle() {
+      const distDir = path.resolve(__dirname, 'dist')
+      const publicDir = path.resolve(__dirname, 'public')
+      const distAssets = path.join(distDir, 'assets')
+      const publicAssets = path.join(publicDir, 'assets')
+      const distIndex = path.join(distDir, 'index.html')
+      const publicIndex = path.join(publicDir, 'index.html')
+
+      if (!fs.existsSync(publicAssets)) {
+        fs.mkdirSync(publicAssets, { recursive: true })
+      }
+
+      if (fs.existsSync(distAssets)) {
+        for (const file of fs.readdirSync(distAssets)) {
+          fs.copyFileSync(path.join(distAssets, file), path.join(publicAssets, file))
+        }
+      }
+
+      if (fs.existsSync(distIndex)) {
+        fs.copyFileSync(distIndex, publicIndex)
+      }
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     figmaAssetResolver(),
@@ -23,6 +55,7 @@ export default defineConfig({
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
+    syncLaravelPublic(),
   ],
   resolve: {
     alias: {
@@ -37,6 +70,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/uploads': {
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,

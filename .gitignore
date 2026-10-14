@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+vendor/
 
 # Production build
 dist/
@@ -23,4 +24,16 @@ Thumbs.db
 .vscode/
 .idea/
 scratch/
+Guna.UI-Framework-Lib/
+Mailjs/
+database/*.sql
+cert/
+public/uploads/*
+!public/uploads/.gitkeep
+server/uploads/*
+!server/uploads/.gitkeep
+storage/logs/*
+storage/framework/sessions/*
+storage/framework/cache/data/*
+storage/framework/views/*
 

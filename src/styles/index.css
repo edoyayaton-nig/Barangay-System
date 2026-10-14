@@ -1,6 +1,7 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+@import './guna.css';
 
 /* Sonner Notification Toast: Close Button on Right Side */
 [data-sonner-toast] [data-close-button] {

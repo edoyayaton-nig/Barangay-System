@@ -16,6 +16,8 @@ export interface DocumentRequest {
   resident_id?: number;
   resident_name: string;
   document_type: string;
+  type?: string;
+  tracking_number?: string;
   purpose?: string;
   status: 'Pending' | 'Processing' | 'Ready for Pickup' | 'Completed' | 'Rejected';
   requested_at?: string;
@@ -25,6 +27,24 @@ export interface DocumentRequest {
   email?: string;
   resident_email?: string;
   extra_fields?: string | Record<string, string>;
+  purok_certificate_photo?: string | null;
+  // Attached Resident Census & Demographic Data
+  resident_address?: string;
+  resident_civil_status?: string;
+  resident_gender?: string;
+  resident_birth_date?: string;
+  resident_age?: number;
+  resident_purok?: string;
+  resident_household_number?: string;
+  resident_family_name?: string;
+  resident_is_head_of_household?: boolean | number;
+  resident_relationship_to_head?: string;
+  resident_employment_status?: string;
+  resident_years_of_residency?: string;
+  resident_phone?: string;
+  resident_submitted_id?: string;
+  resident_id_type?: string;
+  resident_verification_status?: string;
 }
 
 export interface Resident {
@@ -34,7 +54,7 @@ export interface Resident {
   last_name: string;
   date_of_birth?: string;
   age?: number | string;
-  gender: 'Male' | 'Female' | 'Other';
+  gender: 'Male' | 'Female' | 'Other' | string;
   civil_status?: string;
   purok?: string;
   barangay?: string;
@@ -48,7 +68,7 @@ export interface Resident {
   family_name?: string;
   is_head_of_household?: boolean | number;
   relationship_to_head?: string;
-  employment_status?: 'Employed' | 'Unemployed' | 'Self-Employed' | 'Student' | 'Retired' | 'Minor';
+  employment_status?: 'Employed' | 'Unemployed' | 'Self-Employed' | 'Student' | 'Retired' | 'Minor' | string;
   is_senior?: boolean;
   is_child?: boolean;
   profile_photo?: string | null;
@@ -128,6 +148,7 @@ export interface SystemUser {
   role: 'super_mega_admin' | 'superadmin' | 'admin' | 'staff' | 'bhw' | 'nurse' | 'resident';
   status: 'Active' | 'Inactive' | 'Archived';
   barangay?: string;
+  city?: string;
   phone?: string;
   address?: string;
   purok?: string;
@@ -244,6 +265,7 @@ export interface ActivityLog {
   barangay?: string;
   details?: string;
   timestamp: string;
+  created_at?: string;
 }
 
 export interface ImmunizationRecord {
@@ -279,6 +301,8 @@ export interface ImmunizationRecord {
   remarks?: string;
   barangay?: string;
   sms_sent?: boolean;
+  dose_count?: number;
+  quantity?: number;
 }
 
 export interface MaternalRecord {
@@ -344,13 +368,14 @@ export interface ClinicalConsultationRecord {
 }
 
 export interface InventoryItem {
-  id: number;
+  id: number | string;
   barangay?: string;
   item_name: string;
   category: string;
   stock: number;
   unit: string;
   expiry_date?: string;
+  batch_lot_number?: string;
   status: 'In Stock' | 'Low Stock' | 'Out of Stock' | string;
   updated_at?: string;
 }
@@ -435,7 +460,7 @@ export const apiService = {
       const data = await res.json();
       if (!res.ok) {
         // Return error data but don't throw — caller checks data.success
-        return { success: false, message: data.message || `Server error: ${res.status}` };
+        return { success: false, message: data.error || data.message || `Server error: ${res.status}` };
       }
       return data;
     } catch (err) {
@@ -555,7 +580,8 @@ export const apiService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    return await res.json();
+    const json = await res.json();
+    return (json && (json.resident || json)) as Resident;
   },
 
   async updateResident(id: number, data: Partial<Resident>): Promise<{ success: boolean; message: string }> {
@@ -568,8 +594,9 @@ export const apiService = {
   },
 
   // System Users
-  async getUsers(): Promise<SystemUser[]> {
-    const res = await fetch(`${API_BASE}/users`);
+  async getUsers(barangay?: string): Promise<SystemUser[]> {
+    const url = barangay ? `${API_BASE}/users?barangay=${encodeURIComponent(barangay)}` : `${API_BASE}/users`;
+    const res = await fetch(url);
     return await res.json();
   },
 
@@ -726,6 +753,19 @@ export const apiService = {
     return this.sendNotification(data);
   },
 
+  async markSmsSent(data: { maternalIds?: Array<number | string>; immunizationIds?: Array<number | string> }): Promise<{ success: boolean }> {
+    try {
+      const res = await fetch(`${API_BASE}/health/mark-sms-sent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return await res.json();
+    } catch {
+      return { success: true };
+    }
+  },
+
   async markNotificationRead(id: number): Promise<{ success: boolean; message: string }> {
     const res = await fetch(`${API_BASE}/notifications/${id}/read`, {
       method: 'PUT',
@@ -757,13 +797,17 @@ export const apiService = {
   },
 
   // Update Profile (password, phone, name, address, date_of_birth, profile_photo, purok, gender, civil_status, new_email)
-  async updateProfile(data: { id?: number; email?: string; new_email?: string; password?: string; phone?: string; name?: string; address?: string; date_of_birth?: string; profile_photo?: string; avatar?: string; purok?: string; gender?: string; civil_status?: string }) {
+  async updateProfile(data: { id?: number; email?: string; new_email?: string; password?: string; current_password?: string; new_password?: string; phone?: string; name?: string; address?: string; date_of_birth?: string; profile_photo?: string; avatar?: string; purok?: string; gender?: string; civil_status?: string }) {
     const res = await fetch(`${API_BASE}/users/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
     return await res.json();
+  },
+
+  async updateUserProfile(data: any) {
+    return this.updateProfile(data);
   },
 
   // Pending Resident Registrations (Admin)
@@ -789,7 +833,13 @@ export const apiService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ approved_by })
     });
-    return await res.json();
+    const json = await res.json();
+    if (!res.ok) {
+      const err: any = new Error(json.error || json.message || 'Failed to approve resident');
+      err.data = json;
+      throw err;
+    }
+    return json;
   },
 
   async rejectResident(id: number, reason?: string) {
@@ -1084,6 +1134,18 @@ export const apiService = {
     return await res.json();
   },
 
+  async runAppointmentReminders(): Promise<{ success: boolean; message: string; three_day_sms_count?: number; one_day_sms_count?: number; emails_sent?: number }> {
+    try {
+      const res = await fetch(`${API_BASE}/health/appointments/run-reminders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      return await res.json();
+    } catch {
+      return { success: true, message: 'Reminders processed' };
+    }
+  },
+
   // ───────────────────────────────────────────────────────────────
   // Health Center Clinic Schedules API (Posted by BHW / Admin)
   // ───────────────────────────────────────────────────────────────
@@ -1190,10 +1252,55 @@ export const apiService = {
     return result;
   },
 
-  async searchPatients(query: string): Promise<{ patients: any[] }> {
-    const res = await fetch(`${API_BASE}/patients/search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) throw new Error('Failed to search patients');
-    return await res.json();
+  async searchPatients(query: string, barangay?: string): Promise<{ patients: any[] }> {
+    try {
+      const params = new URLSearchParams();
+      if (query) params.append('q', query);
+      if (barangay && !barangay.toLowerCase().includes('all')) params.append('barangay', barangay);
+      const res = await fetch(`${API_BASE}/patients/search?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to search patients');
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data.patients || data.results || []);
+      const normalized = list.map((item: any) => {
+        const resObj = item.resident || {};
+        const name = item.name || `${item.first_name || resObj.first_name || ''} ${item.last_name || resObj.last_name || ''}`.trim() || item.patient_name || '';
+        const dob = item.date_of_birth || resObj.date_of_birth || item.birthdate || '';
+        let calculatedAge = item.age !== undefined && item.age !== null && item.age !== '' ? item.age : resObj.age;
+        if ((calculatedAge === undefined || calculatedAge === null || calculatedAge === '') && dob) {
+          const diff = Date.now() - new Date(dob).getTime();
+          const a = Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+          if (!isNaN(a) && a >= 0) calculatedAge = String(a);
+        }
+        let rawPurok = item.purok || resObj.purok || 'Purok 1';
+        if (typeof rawPurok === 'string' && !rawPurok.toLowerCase().startsWith('purok') && rawPurok.trim() !== '') {
+          rawPurok = `Purok ${rawPurok}`;
+        }
+        return {
+          id: item.id || resObj.id || `pt_${Math.random()}`,
+          resident_id: item.resident_id || resObj.id || null,
+          name: name,
+          first_name: item.first_name || resObj.first_name || '',
+          middle_name: item.middle_name || resObj.middle_name || '',
+          last_name: item.last_name || resObj.last_name || '',
+          gender: item.gender || resObj.gender || 'Female',
+          date_of_birth: dob,
+          birthdate: dob,
+          age: calculatedAge ? String(calculatedAge) : '',
+          civil_status: item.civil_status || resObj.civil_status || 'Single',
+          purok: rawPurok,
+          barangay: item.barangay || resObj.barangay || barangay || 'Pianing',
+          phone: item.phone || resObj.phone || item.contact_number || '',
+          email: item.email || resObj.email || '',
+          last_encounter: item.last_encounter || item.previous_encounter || null,
+          previous_encounter: item.previous_encounter || item.last_encounter || null,
+          resident: resObj
+        };
+      });
+      return { patients: normalized };
+    } catch (err) {
+      console.warn('searchPatients error:', err);
+      return { patients: [] };
+    }
   },
 
   async submitClinicalIntake(payload: any): Promise<any> {

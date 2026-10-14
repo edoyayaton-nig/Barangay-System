@@ -25,8 +25,8 @@ const EMAIL_SECURE  = process.env.EMAIL_SECURE !== 'false';   // true by default
 const BARANGAY_NAME = process.env.VITE_BARANGAY_NAME || process.env.BARANGAY_NAME || 'Barangay Pianing';
 const EMAIL_FROM    = process.env.EMAIL_FROM    || `"${BARANGAY_NAME} System" <${EMAIL_USER}>`;
 
-const EMAILJS_SERVICE_ID  = process.env.VITE_EMAILJS_SERVICE_ID  || process.env.EMAILJS_SERVICE_ID  || 'service_6nk2ylj';
-const EMAILJS_TEMPLATE_ID = process.env.VITE_EMAILJS_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || 'template_tjcwzij';
+const EMAILJS_SERVICE_ID  = process.env.VITE_EMAILJS_SERVICE_ID  || process.env.EMAILJS_SERVICE_ID  || 'service_dfjlsa5';
+const EMAILJS_TEMPLATE_ID = process.env.VITE_EMAILJS_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || 'template_fnn902a';
 const EMAILJS_PUBLIC_KEY  = process.env.VITE_EMAILJS_PUBLIC_KEY  || process.env.EMAILJS_PUBLIC_KEY  || '';
 const EMAILJS_PRIVATE_KEY = process.env.VITE_EMAILJS_PRIVATE_KEY || process.env.EMAILJS_PRIVATE_KEY || '';
 

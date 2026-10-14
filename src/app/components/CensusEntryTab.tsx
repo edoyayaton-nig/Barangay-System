@@ -12,6 +12,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { apiService, Resident, HouseholdGroup, CensusAnalytics } from '../../services/api';
+import { notifyHealthDataChanged, subscribeHealthDataSync } from '../../services/healthSync';
 import { exportToCsv, downloadOfficialPdf } from '../../utils/exportCsv';
 import ResidentProfileModal from './ResidentProfileModal';
 import { Card, CardContent } from './ui/card';
@@ -166,16 +167,10 @@ export default function CensusEntryTab({
   useEffect(() => {
     loadData(true);
 
-    // Real-time synchronization broadcast channel listener
-    let channel: BroadcastChannel | null = null;
-    try {
-      channel = new BroadcastChannel('barangay_health_sync');
-      channel.onmessage = event => {
-        if (event.data?.type === 'HEALTH_DATA_SYNC') {
-          loadData(false);
-        }
-      };
-    } catch {}
+    // Real-time synchronization bus listener
+    const unsubscribeSync = subscribeHealthDataSync(() => {
+      loadData(false);
+    });
 
     // Polling fail-safe every 5 seconds
     const interval = setInterval(() => {
@@ -183,7 +178,7 @@ export default function CensusEntryTab({
     }, 5000);
 
     return () => {
-      if (channel) channel.close();
+      unsubscribeSync();
       clearInterval(interval);
     };
   }, [barangay, selectedPurok]);
@@ -296,12 +291,7 @@ export default function CensusEntryTab({
       resetForm();
 
       if (onSync) onSync();
-      try {
-        const ch = new BroadcastChannel('barangay_health_sync');
-        ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
-        ch.close();
-      } catch {}
-
+      notifyHealthDataChanged('CENSUS_RESIDENT_ADDED');
       loadData(false);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to add resident. Please try again.');

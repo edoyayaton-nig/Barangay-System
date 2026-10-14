@@ -15,6 +15,7 @@ import { Upload, Camera, AlertTriangle, CheckCircle2, User, Phone, MapPin, X, Ey
 import { apiService } from '../../services/api';
 import { saveStoredUser } from '../../utils/safeStorage';
 import { toast } from 'sonner';
+import { compressImage } from '../../utils/imageCompressor';
 
 interface ResubmitIdModalProps {
   isOpen: boolean;
@@ -52,19 +53,25 @@ export default function ResubmitIdModal({
     }
   }, [user, isOpen]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size exceeds limit', { description: 'Please select an image smaller than 5MB.' });
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('File size exceeds limit', { description: 'Please select an image smaller than 15MB.' });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setIdImage(reader.result as string);
+    try {
+      const compressed = await compressImage(file, 1200, 1200, 0.75);
+      setIdImage(compressed);
       toast.success('ID photo loaded!');
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setIdImage(reader.result as string);
+        toast.success('ID photo loaded!');
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleResubmit = async (e: React.FormEvent) => {

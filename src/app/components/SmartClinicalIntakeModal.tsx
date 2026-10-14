@@ -34,9 +34,12 @@ import {
   Edit2,
   Plus,
   Trash2,
-  ShieldCheck
+  ShieldCheck,
+  X,
+  ChevronDown
 } from 'lucide-react';
 import { apiService, InventoryItem } from '../../services/api';
+import { notifyHealthDataChanged } from '../../services/healthSync';
 import { toast } from 'sonner';
 
 interface SmartClinicalIntakeModalProps {
@@ -143,6 +146,72 @@ export default function SmartClinicalIntakeModal({
       null;
   }, [medInputName, activeCatalog]);
 
+  const [showIntakeMedSuggestions, setShowIntakeMedSuggestions] = useState(false);
+  const [highlightedIntakeMedIndex, setHighlightedIntakeMedIndex] = useState(-1);
+  const intakeMedInputRef = useRef<HTMLInputElement>(null);
+
+  const availableIntakeMeds = useMemo(() => {
+    const meds = activeCatalog.filter(i => {
+      const cat = (i.category || '').toLowerCase();
+      if (cat.includes('vaccine')) return false;
+      return i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin' || cat.includes('med') || cat.includes('vitamin');
+    });
+    return meds.length > 0 ? meds : activeCatalog.filter(i => !((i.category || '').toLowerCase().includes('vaccine')));
+  }, [activeCatalog]);
+
+  const filteredIntakeMeds = useMemo(() => {
+    const q = medInputName.trim().toLowerCase();
+    if (!q) return availableIntakeMeds;
+    return availableIntakeMeds.filter(m =>
+      m.item_name.toLowerCase().includes(q) ||
+      (m.category && m.category.toLowerCase().includes(q)) ||
+      (m.unit && m.unit.toLowerCase().includes(q))
+    );
+  }, [availableIntakeMeds, medInputName]);
+
+  const handleSelectIntakeMed = (med: InventoryItem) => {
+    setMedInputName(med.item_name);
+    setMedInputQty('1');
+    const match = med.item_name.match(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|nebules?)\b/i);
+    if (match) {
+      setMedInputDosage(match[0]);
+    } else {
+      setMedInputDosage('');
+    }
+    setShowIntakeMedSuggestions(false);
+    setHighlightedIntakeMedIndex(-1);
+    toast.success(`Selected ${med.item_name} (${med.stock} ${med.unit || 'units'} available)`);
+  };
+
+  const handleIntakeMedKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showIntakeMedSuggestions) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        setShowIntakeMedSuggestions(true);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIntakeMedIndex(prev => (prev < filteredIntakeMeds.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIntakeMedIndex(prev => (prev > 0 ? prev - 1 : filteredIntakeMeds.length - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedIntakeMedIndex >= 0 && highlightedIntakeMedIndex < filteredIntakeMeds.length) {
+        handleSelectIntakeMed(filteredIntakeMeds[highlightedIntakeMedIndex]);
+      } else if (filteredIntakeMeds.length > 0) {
+        handleSelectIntakeMed(filteredIntakeMeds[0]);
+      } else {
+        setShowIntakeMedSuggestions(false);
+      }
+    } else if (e.key === 'Escape') {
+      setShowIntakeMedSuggestions(false);
+      setHighlightedIntakeMedIndex(-1);
+    }
+  };
+
   // Auto-detect strength/dosage in selected medicine name
   const isDosageInName = useMemo(() => {
     if (!medInputName) return false;
@@ -229,27 +298,47 @@ export default function SmartClinicalIntakeModal({
     if (searchQuery.trim().length >= 2) {
       setIsSearching(true);
       const timeout = setTimeout(() => {
-        apiService.searchPatients(searchQuery)
-          .then(res => setSearchResults(res.patients || []))
+        apiService.searchPatients(searchQuery, barangay)
+          .then(res => {
+            const list = res?.patients || [];
+            setSearchResults(list);
+            if (list.length > 0) {
+              setShowNameSuggestions(true);
+            }
+          })
           .catch(() => setSearchResults([]))
           .finally(() => setIsSearching(false));
-      }, 300);
+      }, 200);
       return () => clearTimeout(timeout);
     } else {
       setSearchResults([]);
+      setIsSearching(false);
+      setShowNameSuggestions(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, barangay]);
 
   const selectMatchedPatient = (p: any) => {
     setMatchedPatient(p);
     setPatientName(p.name);
-    setGender(p.gender || 'Female');
-    setBirthday(p.date_of_birth ? p.date_of_birth.split('T')[0] : '');
+    setSearchQuery(p.name);
+    setShowNameSuggestions(false);
+    setGender(p.gender === 'Male' ? 'Male' : 'Female');
+    const dob = p.date_of_birth || p.birthdate || '';
+    if (dob) {
+      setBirthday(dob.split('T')[0]);
+    }
+    if (p.age) {
+      setAge(String(p.age));
+    }
     setCivilStatus(p.civil_status || 'Single');
-    setPurok(p.purok || 'Purok 1');
-    setPhone(p.phone || '');
+    let pVal = p.purok ? String(p.purok) : 'Purok 1';
+    if (!pVal.toLowerCase().startsWith('purok')) {
+      pVal = `Purok ${pVal}`;
+    }
+    setPurok(pVal);
+    setPhone(p.phone ? p.phone.replace(/\D/g, '').slice(0, 11) : '');
     setEmail(p.email || '');
-    setPreviousEncounter(p.previous_encounter || null);
+    setPreviousEncounter(p.previous_encounter || p.last_encounter || null);
     setIsVerifiedSame(null);
   };
 
@@ -411,11 +500,7 @@ export default function SmartClinicalIntakeModal({
         description: `Program: ${actualProgram} | Instant sync to Health Registry`
       });
 
-      try {
-        const ch = new BroadcastChannel('barangay_health_sync');
-        ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
-        ch.close();
-      } catch {}
+      notifyHealthDataChanged('CLINICAL_INTAKE_SUBMITTED', { record: createdRecord });
 
       if (onSuccess) onSuccess(createdRecord);
       handleReset();
@@ -510,11 +595,11 @@ export default function SmartClinicalIntakeModal({
                     <div>
                       <p className="font-bold text-slate-800">{p.name}</p>
                       <p className="text-[11px] text-slate-500">
-                        {p.gender} · {p.purok} · Phone: {p.phone || 'No phone'}
+                        {p.gender} · {p.purok} · Phone: {p.phone || 'No phone'} · Age: {p.age || '—'}
                       </p>
                     </div>
                     <Badge variant="outline" className="bg-teal-50 text-teal-700 text-[10px] font-semibold border-teal-200">
-                      Select Patient
+                      Auto-Fill &amp; Recall
                     </Badge>
                   </div>
                 ))}
@@ -586,9 +671,15 @@ export default function SmartClinicalIntakeModal({
                       setPatientName(clean);
                       setSearchQuery(clean);
                       setShowNameSuggestions(true);
+                      if (matchedPatient && clean !== matchedPatient.name) {
+                        setMatchedPatient(null);
+                      }
                     }}
                     onFocus={() => {
                       if (searchResults.length > 0) setShowNameSuggestions(true);
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowNameSuggestions(false), 250);
                     }}
                     placeholder="Type name (matches database automatically)"
                     required
@@ -628,7 +719,7 @@ export default function SmartClinicalIntakeModal({
                         <div>
                           <span className="font-bold text-slate-800 group-hover:text-teal-700 block">{p.name}</span>
                           <span className="text-[10px] text-slate-500 block">
-                            {p.gender} · {p.purok || 'Pianing'} · {p.phone || 'No phone'}
+                            {p.gender} · {p.purok || 'Pianing'} · {p.phone || 'No phone'} · Age: {p.age || '—'}
                           </span>
                         </div>
                         <Badge variant="outline" className="text-[9px] bg-white border-teal-300 text-teal-700 shrink-0">
@@ -1030,43 +1121,149 @@ export default function SmartClinicalIntakeModal({
                       )}
                     </div>
 
-                    <Select
-                      value={medInputName}
-                      onValueChange={(val) => {
-                        setMedInputName(val);
-                        setMedInputQty('1');
-                        const match = val.match(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|nebules?)\b/i);
-                        if (match) {
-                          setMedInputDosage(match[0]);
-                        } else {
-                          setMedInputDosage('');
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-9.5 text-xs bg-white rounded-xl border-slate-200 shadow-xs focus:ring-2 focus:ring-teal-500">
-                        <SelectValue placeholder="Select medication from inventory..." />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-64">
-                        {activeCatalog
-                          .filter(i => i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin')
-                          .map(med => (
-                            <SelectItem key={med.id} value={med.item_name} disabled={med.stock <= 0}>
-                              <div className="flex items-center justify-between gap-3 w-full text-xs py-1">
-                                <span className="font-semibold text-slate-800">{med.item_name}</span>
-                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                                  med.stock <= 0
-                                    ? 'bg-red-50 text-red-600'
-                                    : med.stock <= 20
-                                    ? 'bg-amber-50 text-amber-700'
-                                    : 'bg-emerald-50 text-emerald-700'
-                                }`}>
-                                  {med.stock <= 0 ? '0 (Out)' : `${med.stock} ${med.unit || 'units'}`}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="relative">
+                      <div className="relative flex items-center">
+                        <Search size={14} className="absolute left-3 text-teal-600 pointer-events-none" />
+                        <Input
+                          ref={intakeMedInputRef}
+                          value={medInputName}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setMedInputName(val);
+                            setShowIntakeMedSuggestions(true);
+                            setHighlightedIntakeMedIndex(-1);
+                            const match = val.match(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|iu|nebules?)\b/i);
+                            if (match) {
+                              setMedInputDosage(match[0]);
+                            }
+                          }}
+                          onFocus={() => setShowIntakeMedSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowIntakeMedSuggestions(false), 200)}
+                          onKeyDown={handleIntakeMedKeyDown}
+                          placeholder="Type medication name or select from inventory..."
+                          autoComplete="off"
+                          className="h-9.5 text-xs bg-white rounded-xl border-slate-200 shadow-xs pl-8.5 pr-8 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-medium"
+                        />
+                        {medInputName ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMedInputName('');
+                              setMedInputDosage('');
+                              setMedInputQty('1');
+                              setShowIntakeMedSuggestions(true);
+                              intakeMedInputRef.current?.focus();
+                            }}
+                            className="absolute right-2.5 text-slate-400 hover:text-slate-700 p-1 cursor-pointer rounded-md hover:bg-slate-100 transition-colors"
+                            title="Clear medicine selection"
+                          >
+                            <X size={13} />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowIntakeMedSuggestions(prev => !prev);
+                              intakeMedInputRef.current?.focus();
+                            }}
+                            className="absolute right-2.5 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                            tabIndex={-1}
+                          >
+                            <ChevronDown size={14} className={`transition-transform duration-200 ${showIntakeMedSuggestions ? 'rotate-180 text-teal-600' : ''}`} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Suggestions Dropdown */}
+                      {showIntakeMedSuggestions && (
+                        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-teal-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100">
+                          <div className="p-2 bg-gradient-to-r from-teal-50/90 to-emerald-50/90 text-[10px] font-bold text-teal-800 flex items-center justify-between px-3 sticky top-0 z-10 backdrop-blur-xs border-b border-teal-100">
+                            <span className="flex items-center gap-1.5">
+                              <Pill size={12} className="text-teal-600" />
+                              {medInputName ? `Matching Inventory Medicines (${filteredIntakeMeds.length})` : `Available Inventory Stock (${filteredIntakeMeds.length})`}
+                            </span>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => { e.preventDefault(); setShowIntakeMedSuggestions(false); }}
+                              className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer p-0.5 rounded hover:bg-white/60"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          {filteredIntakeMeds.length > 0 ? (
+                            filteredIntakeMeds.map((med, idx) => {
+                              const isSelected = selectedIntakeInvItem?.id === med.id || medInputName.toLowerCase().trim() === med.item_name.toLowerCase().trim();
+                              const isHighlighted = highlightedIntakeMedIndex === idx;
+                              const isOutOfStock = med.stock <= 0;
+                              return (
+                                <button
+                                  key={med.id}
+                                  type="button"
+                                  disabled={isOutOfStock}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleSelectIntakeMed(med);
+                                  }}
+                                  onMouseEnter={() => setHighlightedIntakeMedIndex(idx)}
+                                  className={`w-full text-left p-2.5 transition-colors flex items-center justify-between text-xs cursor-pointer group ${
+                                    isOutOfStock ? 'opacity-50 cursor-not-allowed bg-slate-50' :
+                                    isSelected ? 'bg-teal-50/90 font-semibold' :
+                                    isHighlighted ? 'bg-teal-50/50' : 'hover:bg-teal-50/40'
+                                  }`}
+                                >
+                                  <div className="flex-1 min-w-0 pr-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`font-semibold block truncate ${isSelected ? 'text-teal-800 font-bold' : 'text-slate-800 group-hover:text-teal-700'}`}>
+                                        {med.item_name}
+                                      </span>
+                                      {isSelected && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0" />
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-500 block truncate">
+                                      {med.category || 'Essential Medicine'} · {med.unit || 'units'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                                      med.stock <= 0
+                                        ? 'bg-rose-100 text-rose-700'
+                                        : med.stock <= 20
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-emerald-100 text-emerald-800'
+                                    }`}>
+                                      {med.stock <= 0 ? '0 (Out)' : `${med.stock} ${med.unit || 'units'}`}
+                                    </span>
+                                    {!isOutOfStock && (
+                                      <Badge variant="outline" className="text-[9px] bg-white border-teal-300 text-teal-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        Auto-Fill
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="p-3 text-center text-xs text-slate-500 bg-slate-50">
+                              <p className="font-medium text-slate-700">No stock item matching &ldquo;{medInputName}&rdquo;</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">You can still type and prescribe this as a custom medication.</p>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setShowIntakeMedSuggestions(false);
+                                  toast.info(`Using custom medication: ${medInputName}`);
+                                }}
+                                className="mt-2 text-[11px] font-bold text-teal-700 hover:text-teal-800 bg-teal-100/70 hover:bg-teal-100 px-3 py-1 rounded-lg transition-colors cursor-pointer"
+                              >
+                                Prescribe &ldquo;{medInputName}&rdquo; as Custom Med
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Step 2: Choose Quantity (Dynamic limit based on selected medicine) */}

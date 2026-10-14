@@ -149,6 +149,15 @@ function cleanBusinessName(f: Record<string, string>, purpose?: string): string 
   return 'General Merchandise / Sari-Sari Store';
 }
 
+function cleanPermitDetails(f: Record<string, string>, doc: DocumentRequest) {
+  const bizName = f['Business Name'] || f['Store Name'] || f['Company Name'] || 'COMMERCIAL ESTABLISHMENT';
+  const representative = f['Representative'] || f['representative'] || doc.resident_name || 'CITIZEN';
+  const repAddress = f['Representative Address'] || f['rep_address'] || (doc as any).resident_address || 'Pianing, Butuan City';
+  const activityDates = f['Activity Dates'] || f['activity_dates'] || '';
+  const activityDesc = f['Activity Description'] || f['activity_description'] || 'conduct a demonstration on their products within the vicinity of the Barangay';
+  return { bizName, representative, repAddress, activityDates, activityDesc };
+}
+
 function cleanEmploymentDetails(f: Record<string, string>) {
   const position = f['Job Position'] || f['Position'] || f['Role'] || f['Designation'] || 'Barangay Worker';
   const employer = f['Employer'] || f['Company'] || f['Office'] || f['Establishment'] || 'Barangay Pianing';
@@ -514,10 +523,27 @@ function getCertificateBody(doc: DocumentRequest): string {
           ${certifiedBy}
         </div>`;
 
-    // ── BUSINESS CLEARANCE / BUSINESS CERTIFICATE / PERMIT ───────────────────
+    // ── BUSINESS PERMIT (cert_01 – distinct from Business Clearance) ─────────
+    case 'Business Permit': {
+      const permit = cleanPermitDetails(f, doc);
+      return `
+        <div class="doc-wrapper">
+          ${logoHeaderPunong}
+          <div class="doc-title">PERMIT</div>
+          <p class="salute">TO WHOM IT MAY CONCERN:</p>
+          <p class="para">This is to certify that <strong style="text-decoration:underline;">${permit.bizName.toUpperCase()}</strong> through its representative
+            <strong>${permit.representative}</strong> of legal age, ${civilStatus}, a resident of ${permit.repAddress}
+            (as document presented), came to this office to obtain a permit to ${permit.activityDesc}${permit.activityDates ? ` on ${permit.activityDates}` : ''}.</p>
+          <p class="para">This certification is issued upon the request of the party for whatever legal purposes it may serve best.</p>
+          <p class="para">Issued this <strong>${day}</strong> day of <strong><u>${month} ${year}</u></strong>
+            at Barangay Pianing, Butuan City, Philippines.</p>
+          ${certifiedBy}
+        </div>`;
+    }
+
+    // ── BUSINESS CLEARANCE / BUSINESS CERTIFICATE ────────────────────────────
     case 'Barangay Business Clearance':
     case 'Business Clearance':
-    case 'Business Permit':
     case 'Business Certificate':
       return `
         <div class="doc-wrapper">
@@ -560,6 +586,70 @@ function getCertificateBody(doc: DocumentRequest): string {
           <p class="para" style="line-height: 1.65; margin-bottom: 22px;">This certification is being issued upon the requesting party for whatever legal purposes it may serve best.</p>
           <p class="para" style="line-height: 1.65; margin-bottom: 24px;">Given this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at the Office of the Punong Barangay of Pianing, Butuan City, Philippines.</p>
           ${certifiedBy}
+        </div>`;
+    }
+
+    // ── BARANGAY ID ───────────────────────────────────────────────────────────
+    case 'Barangay ID': {
+      const idNum = doc.request_code || `BID-${doc.id || 'N/A'}`;
+      const rawAddr = (doc as any).resident_address || `Purok ${purok}, Barangay Pianing, Butuan City`;
+      const dob = (doc as any).resident_birth_date || (doc as any).date_of_birth || f['Date of Birth'] || '';
+      const dobFormatted = dob ? (() => { try { return new Date(dob).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }); } catch { return dob; } })() : '';
+      const gender = (f['Gender'] || (doc as any).resident_gender || 'Male');
+      const emerContact = f['Emergency Contact'] || f['emergency_contact'] || '';
+      const emerPhone = f['Emergency Phone'] || f['emergency_phone'] || '';
+      return `
+        <div class="doc-wrapper" style="display:flex; justify-content:center; align-items:flex-start; padding-top:40px;">
+          <div style="width:3.375in; border:2px solid #1e3a8a; border-radius:12px; overflow:hidden; font-family:Arial,sans-serif; font-size:8pt;">
+            <div style="background:linear-gradient(135deg,#1e3a8a,#2563eb); color:#fff; padding:8px 12px; text-align:center;">
+              <table width="100%"><tr>
+                <td width="40" style="vertical-align:middle;"><img src="${BUTUAN_LOGO_BASE64}" width="35" height="35" /></td>
+                <td style="text-align:center; vertical-align:middle;">
+                  <div style="font-size:6pt;">Republic of the Philippines</div>
+                  <div style="font-size:7pt; font-weight:bold;">BARANGAY PIANING</div>
+                  <div style="font-size:6pt;">Butuan City</div>
+                </td>
+                <td width="40" style="vertical-align:middle; text-align:right;"><img src="${PIANING_LOGO_BASE64}" width="35" height="35" /></td>
+              </tr></table>
+              <div style="font-size:10pt; font-weight:bold; margin-top:4px; letter-spacing:1px;">BARANGAY ID</div>
+            </div>
+            <div style="padding:10px 14px; background:#fff; color:#000;">
+              <table width="100%"><tr>
+                <td style="vertical-align:top; width:65%;">
+                  <div style="font-size:7pt; color:#64748b; margin-bottom:2px;">ID Number</div>
+                  <div style="font-size:9pt; font-weight:bold; margin-bottom:6px;">${idNum}</div>
+                  <div style="font-size:7pt; color:#64748b; margin-bottom:2px;">Full Name</div>
+                  <div style="font-size:10pt; font-weight:bold; margin-bottom:6px;">${name.toUpperCase()}</div>
+                  <div style="font-size:7pt; color:#64748b; margin-bottom:2px;">Address</div>
+                  <div style="font-size:8pt; margin-bottom:6px;">${rawAddr}</div>
+                </td>
+                <td style="vertical-align:top; text-align:center; width:35%;">
+                  <div style="width:1in; height:1in; border:1px solid #cbd5e1; background:#f1f5f9; margin:0 auto 4px auto; display:flex; align-items:center; justify-content:center;">
+                    <span style="font-size:7pt; color:#94a3b8;">PHOTO</span>
+                  </div>
+                </td>
+              </tr></table>
+              <table width="100%" style="font-size:8pt; margin-top:4px;"><tr>
+                <td><strong>Date of Birth:</strong> ${dobFormatted}</td>
+                <td><strong>Gender:</strong> ${gender}</td>
+              </tr><tr>
+                <td><strong>Civil Status:</strong> ${civilStatus}</td>
+                <td>&nbsp;</td>
+              </tr></table>
+              ${emerContact ? `<div style="margin-top:6px; font-size:7pt; border-top:1px solid #e2e8f0; padding-top:4px;"><strong>Emergency Contact:</strong> ${emerContact}${emerPhone ? ` — ${emerPhone}` : ''}</div>` : ''}
+              <table width="100%" style="margin-top:12px;"><tr>
+                <td style="width:50%; text-align:center; font-size:7pt;">
+                  <div style="border-top:1px solid #000; width:90%; margin:0 auto;"></div>
+                  Holder's Signature
+                </td>
+                <td style="width:50%; text-align:center; font-size:7pt;">
+                  <div style="border-top:1px solid #000; width:90%; margin:0 auto;"></div>
+                  <strong>VIRGENIA S. GOLANDRINA</strong><br/>Punong Barangay
+                </td>
+              </tr></table>
+              <div style="text-align:center; font-size:6pt; color:#94a3b8; margin-top:6px;">Date Issued: ${fDate()}</div>
+            </div>
+          </div>
         </div>`;
     }
 
@@ -722,9 +812,24 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
           <CertifiedBySig />
         </>);
 
+      case 'Business Permit': {
+        const permit = cleanPermitDetails(f, doc);
+        return (<>
+          <OfficialHeader office="OFFICE OF THE PUNONG BARANGAY" />
+          <h2 className={title}>PERMIT</h2>
+          <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
+          <p className={p}>This is to certify that <strong className="underline">{permit.bizName.toUpperCase()}</strong> through its representative
+            {' '}<strong>{permit.representative}</strong> of legal age, {civilStatus}, a resident of {permit.repAddress}
+            {' '}(as document presented), came to this office to obtain a permit to {permit.activityDesc}{permit.activityDates ? ` on ${permit.activityDates}` : ''}.</p>
+          <p className={p}>This certification is issued upon the request of the party for whatever legal purposes it may serve best.</p>
+          <p className={p}>Issued this <strong>{day}</strong> day of{' '}
+            <strong><u>{month} {year}</u></strong> at Barangay Pianing, Butuan City, Philippines.</p>
+          <CertifiedBySig />
+        </>);
+      }
+
       case 'Barangay Business Clearance':
       case 'Business Clearance':
-      case 'Business Permit':
       case 'Business Certificate':
         return (<>
           <OfficialHeader office="OFFICE OF THE SANGGUNIANG BARANGAY" />
@@ -766,6 +871,76 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
             <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at the Office of the Punong Barangay of Pianing, Butuan City, Philippines.</p>
           <CertifiedBySig />
         </>);
+      }
+
+      case 'Barangay ID': {
+        const idNum = doc.request_code || `BID-${doc.id || 'N/A'}`;
+        const rawAddr = (doc as any).resident_address || `Purok ${purok}, Barangay Pianing, Butuan City`;
+        const dob = (doc as any).resident_birth_date || (doc as any).date_of_birth || f['Date of Birth'] || '';
+        const dobFormatted = dob ? (() => { try { return new Date(dob).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }); } catch { return dob; } })() : '';
+        const idGender = (f['Gender'] || (doc as any).resident_gender || 'Male');
+        const emerContact = f['Emergency Contact'] || f['emergency_contact'] || '';
+        const emerPhone = f['Emergency Phone'] || f['emergency_phone'] || '';
+        return (
+          <div className="flex justify-center items-start pt-10">
+            <div className="border-2 border-blue-900 rounded-xl overflow-hidden" style={{ width: '3.375in', fontFamily: 'Arial, sans-serif', fontSize: '8pt' }}>
+              {/* Card Header */}
+              <div className="text-white text-center py-2 px-3" style={{ background: 'linear-gradient(135deg, #1e3a8a, #2563eb)' }}>
+                <div className="flex items-center justify-between">
+                  <img src={BUTUAN_LOGO_BASE64} alt="" className="w-[35px] h-[35px]" />
+                  <div className="flex-1 px-2">
+                    <p style={{ fontSize: '6pt' }}>Republic of the Philippines</p>
+                    <p style={{ fontSize: '7pt', fontWeight: 'bold' }}>BARANGAY PIANING</p>
+                    <p style={{ fontSize: '6pt' }}>Butuan City</p>
+                  </div>
+                  <img src={PIANING_LOGO_BASE64} alt="" className="w-[35px] h-[35px]" />
+                </div>
+                <p style={{ fontSize: '10pt', fontWeight: 'bold', marginTop: '4px', letterSpacing: '1px' }}>BARANGAY ID</p>
+              </div>
+              {/* Card Body */}
+              <div className="bg-white text-black p-3">
+                <div className="flex">
+                  <div style={{ width: '65%' }}>
+                    <p style={{ fontSize: '7pt', color: '#64748b', marginBottom: '2px' }}>ID Number</p>
+                    <p style={{ fontSize: '9pt', fontWeight: 'bold', marginBottom: '6px' }}>{idNum}</p>
+                    <p style={{ fontSize: '7pt', color: '#64748b', marginBottom: '2px' }}>Full Name</p>
+                    <p style={{ fontSize: '10pt', fontWeight: 'bold', marginBottom: '6px' }}>{name.toUpperCase()}</p>
+                    <p style={{ fontSize: '7pt', color: '#64748b', marginBottom: '2px' }}>Address</p>
+                    <p style={{ fontSize: '8pt', marginBottom: '6px' }}>{rawAddr}</p>
+                  </div>
+                  <div style={{ width: '35%' }} className="text-center">
+                    <div className="border border-slate-300 bg-slate-50 flex items-center justify-center mx-auto" style={{ width: '1in', height: '1in' }}>
+                      <span style={{ fontSize: '7pt', color: '#94a3b8' }}>PHOTO</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-between mt-1" style={{ fontSize: '8pt' }}>
+                  <div><strong>Date of Birth:</strong> {dobFormatted}</div>
+                  <div><strong>Gender:</strong> {idGender}</div>
+                </div>
+                <div style={{ fontSize: '8pt' }}>
+                  <strong>Civil Status:</strong> {civilStatus}
+                </div>
+                {emerContact && (
+                  <div className="mt-1.5 pt-1 border-t border-slate-200" style={{ fontSize: '7pt' }}>
+                    <strong>Emergency Contact:</strong> {emerContact}{emerPhone ? ` — ${emerPhone}` : ''}
+                  </div>
+                )}
+                <div className="flex justify-between mt-3" style={{ fontSize: '7pt' }}>
+                  <div className="text-center" style={{ width: '45%' }}>
+                    <div className="border-t border-black mx-auto" style={{ width: '90%' }}></div>
+                    Holder's Signature
+                  </div>
+                  <div className="text-center" style={{ width: '45%' }}>
+                    <div className="border-t border-black mx-auto" style={{ width: '90%' }}></div>
+                    <strong>VIRGENIA S. GOLANDRINA</strong><br/>Punong Barangay
+                  </div>
+                </div>
+                <p className="text-center mt-1.5" style={{ fontSize: '6pt', color: '#94a3b8' }}>Date Issued: {fDate()}</p>
+              </div>
+            </div>
+          </div>
+        );
       }
 
       default:

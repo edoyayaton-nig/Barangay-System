@@ -13,9 +13,9 @@ export interface EmailJsConfig {
 }
 
 const DEFAULT_CONFIG: EmailJsConfig = {
-  serviceId: (import.meta as any).env?.VITE_EMAILJS_SERVICE_ID || 'service_6nk2ylj',
-  templateId: (import.meta as any).env?.VITE_EMAILJS_TEMPLATE_ID || 'template_tjcwzij',
-  publicKey: (import.meta as any).env?.VITE_EMAILJS_PUBLIC_KEY || ''
+  serviceId: (import.meta as any).env?.VITE_EMAILJS_SERVICE_ID || 'service_dfjlsa5',
+  templateId: (import.meta as any).env?.VITE_EMAILJS_TEMPLATE_ID || 'template_fnn902a',
+  publicKey: (import.meta as any).env?.VITE_EMAILJS_PUBLIC_KEY || 'rSYz738xJ3j-_8e-2'
 };
 
 // Retrieve configuration (strictly scoped per barangay jurisdiction)
@@ -60,24 +60,11 @@ export function getEmailJsConfig(barangayName?: string): EmailJsConfig {
         }
       }
 
-      // 3. For Pianing only, fallback to .env default if not yet customized
-      if (cleanBrgy === 'pianing') {
-        return DEFAULT_CONFIG;
-      }
-
-      // 4. Any other barangay without saved credentials gets completely blank credentials
-      return {
-        serviceId: '',
-        templateId: '',
-        publicKey: ''
-      };
+      // 3. Fallback to DEFAULT_CONFIG so all 4 accounts (Superadmin, Admin, Nurse, BHW) work seamlessly
+      return DEFAULT_CONFIG;
     }
   } catch {}
-  return {
-    serviceId: '',
-    templateId: '',
-    publicKey: ''
-  };
+  return DEFAULT_CONFIG;
 }
 
 export function saveEmailJsConfig(config: Partial<EmailJsConfig>, barangayName?: string) {
@@ -262,12 +249,78 @@ export async function sendDocumentReadyEmail(doc: {
 }
 
 /**
- * 4. Unified Resident Notification Dispatcher
- * Records persistent in-app notification in notificationStore AND dispatches email to resident's Gmail via EmailJS
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. iProg SMS Gateway Integration
+// API Key: c54932a5cb3127cb6fecb3cfc20b14a9c399305b
+// ─────────────────────────────────────────────────────────────────────────────
+export const IPROG_SMS_TOKEN = 'c54932a5cb3127cb6fecb3cfc20b14a9c399305b';
+export const IPROG_SMS_URL = 'https://www.iprogsms.com/api/v1/sms_messages';
+
+export function formatPhilippineMobile(raw?: string): string {
+  if (!raw) return '';
+  let cleaned = String(raw).replace(/[^\d+]/g, '');
+  if (cleaned.startsWith('+63')) cleaned = '0' + cleaned.slice(3);
+  else if (cleaned.startsWith('63') && cleaned.length === 12) cleaned = '0' + cleaned.slice(2);
+  if (!cleaned.startsWith('0') && cleaned.length === 10) cleaned = '0' + cleaned;
+  return cleaned;
+}
+
+export async function sendLiveSmsNotification(
+  phone: string,
+  message: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const cleanPhone = formatPhilippineMobile(phone);
+  if (!cleanPhone || cleanPhone.length < 10) {
+    return { success: false, error: 'Invalid Philippine phone number' };
+  }
+
+  // 1. Primary: Use local Laravel proxy to prevent CORS issues in browser
+  try {
+    const res = await fetch('/api/sms/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: cleanPhone, message }),
+    });
+    const data = await res.json();
+    if (data.success || data.status === 200) {
+      console.log(`✅ [iProg SMS Proxy] Successfully sent to ${cleanPhone}:`, data);
+      return { success: true, messageId: data.messageId || data.message_id };
+    }
+  } catch (backendErr) {
+    console.warn('⚠️ [iProg SMS Proxy] Retrying with direct gateway...', backendErr);
+  }
+
+  // 2. Direct Gateway Fallback
+  try {
+    const directRes = await fetch(IPROG_SMS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        api_token: IPROG_SMS_TOKEN,
+        phone_number: cleanPhone,
+        message,
+      }),
+    });
+    const data = await directRes.json();
+    if (data.status === 200 || (data.message && data.message.includes('queued')) || data.message_id) {
+      console.log(`✅ [iProg SMS Direct] Successfully sent to ${cleanPhone}:`, data);
+      return { success: true, messageId: data.message_id };
+    }
+    return { success: false, error: data.message || 'SMS gateway rejected' };
+  } catch (directErr: any) {
+    console.warn('❌ [iProg SMS Direct Error]:', directErr?.message);
+    return { success: false, error: directErr?.message || 'Network error' };
+  }
+}
+
+/**
+ * 5. Unified Resident Notification Dispatcher
+ * Records persistent In-App notification, dispatches Email (via EmailJS/Mail), AND sends live SMS via iProg SMS Gateway
  */
 export async function dispatchResidentNotification(params: {
   residentEmail: string;
   residentName?: string;
+  phone?: string;
   type?: 'account' | 'document' | 'health' | 'system';
   title: string;
   message: string;
@@ -276,9 +329,11 @@ export async function dispatchResidentNotification(params: {
   refCode?: string;
   barangay?: string;
   sendEmail?: boolean;
-}): Promise<{ inApp: boolean; email: boolean; error?: string }> {
+  sendSms?: boolean;
+}): Promise<{ inApp: boolean; email: boolean; sms: boolean; error?: string }> {
   let inAppSuccess = false;
   let emailSuccess = false;
+  let smsSuccess = false;
   const cleanEmail = (params.residentEmail || '').toLowerCase().trim();
 
   // 1. In-App Notification (Permanently retained in resident's Notification Center)
@@ -290,7 +345,7 @@ export async function dispatchResidentNotification(params: {
         message: params.message,
         status_badge: params.statusBadge || 'Update',
         badge_color: params.badgeColor || 'indigo',
-        ref_code: params.refCode
+        ref_code: params.refCode,
       });
       inAppSuccess = true;
     } catch (inAppErr) {
@@ -308,7 +363,7 @@ export async function dispatchResidentNotification(params: {
         message: params.message,
         barangay: params.barangay || 'Pianing',
         status: params.statusBadge,
-        request_code: params.refCode
+        request_code: params.refCode,
       });
       emailSuccess = emailResult.success;
     } catch (emailErr: any) {
@@ -316,6 +371,17 @@ export async function dispatchResidentNotification(params: {
     }
   }
 
-  return { inApp: inAppSuccess, email: emailSuccess };
+  // 3. Live SMS Delivery via iProg SMS Gateway (API Key: c54932a5cb3127cb6fecb3cfc20b14a9c399305b)
+  if (params.sendSms !== false && params.phone) {
+    try {
+      const smsMsg = `Barangay ${params.barangay || 'Pianing'}: ${params.message}`;
+      const smsResult = await sendLiveSmsNotification(params.phone, smsMsg);
+      smsSuccess = smsResult.success;
+    } catch (smsErr) {
+      console.warn('⚠️ [iProg SMS] Automated SMS dispatch failed:', smsErr);
+    }
+  }
+
+  return { inApp: inAppSuccess, email: emailSuccess, sms: smsSuccess };
 }
 

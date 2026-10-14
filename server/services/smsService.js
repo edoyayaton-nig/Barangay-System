@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const IPROG_API_TOKEN = process.env.IPROG_SMS_API_TOKEN || '7f5d3b5896bd1bb943db25362f59eebed3f557e4';
-const IPROG_API_URL = process.env.IPROG_SMS_API_URL || 'https://sms.iprogtech.com/api/v1/sms_messages';
+const IPROG_API_TOKEN = process.env.IPROG_SMS_API_TOKEN || 'c54932a5cb3127cb6fecb3cfc20b14a9c399305b';
+const IPROG_API_URL = process.env.IPROG_SMS_API_URL || 'https://www.iprogsms.com/api/v1/sms_messages';
 
 /**
  * Standardize Philippine mobile numbers to valid 11-digit 09xxxxxxxxx or international format

@@ -5,12 +5,13 @@ import {
   CheckCircle2, PlusCircle, RefreshCcw, LogOut, MapPin, Pill,
   Syringe, Calendar, Check, X, Menu, Phone, Edit2, Trash2, Bell,
   AlertTriangle, Send, Package, ClipboardList, UserPlus, Users, Save, Archive, Eye, User,
-  Sparkles, Filter, ShieldCheck, UserCheck, ChevronRight, UserCircle, Plus,
+  Sparkles, Filter, ShieldCheck, UserCheck, ChevronRight, ChevronDown, UserCircle, Plus,
   Search, CalendarPlus, XCircle, BarChart3, Download, Printer
 } from 'lucide-react';
 import {
   apiService, ImmunizationRecord, MaternalRecord,
-  HealthAppointment, ClinicSchedule, Resident, SmsNotification
+  HealthAppointment, ClinicSchedule, Resident, SmsNotification,
+  InventoryItem
 } from '../../services/api';
 import { exportToCsv, printOfficialReport, downloadOfficialPdf } from '../../utils/exportCsv';
 import PatientDetailModal, { PatientRecordData } from '../components/PatientDetailModal';
@@ -21,6 +22,13 @@ import ProfileSettingsView from '../components/ProfileSettingsView';
 import SmsDetailsModal from '../components/SmsDetailsModal';
 import BatchSmsReminderModal, { DuePatientItem } from '../components/BatchSmsReminderModal';
 import CensusEntryTab from '../components/CensusEntryTab';
+import GmailNotificationHub from '../components/GmailNotificationHub';
+import {
+  notifyHealthDataChanged,
+  subscribeHealthDataSync,
+  isReminderMarkedSent,
+  saveSentReminderIds
+} from '../../services/healthSync';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -30,6 +38,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
+import { dispatchResidentNotification } from '../../services/emailJsService';
+import ManualResidentNotifyModal from '../components/ManualResidentNotifyModal';
 
 // ── Interfaces ─────────────────────────────────────────────────────────────
 
@@ -49,30 +59,27 @@ interface ClinicalConsultation {
   status?: string;
 }
 
-interface InventoryItem {
-  id: number | string;
-  item_name: string;
-  category: string;
-  stock: number;
-  unit: string;
-  expiry_date: string;
-  status: string;
-}
-
 interface PrenatalRecord {
   id: number | string;
   patient_name: string;
+  mother_name?: string;
   contact_number: string;
   age: number | string;
   barangay: string;
   gravida: string; para: string;
   lmp: string; edd: string; aog_weeks: string;
-  bp: string; weight: string; temp: string;
+  aog?: string;
+  bp: string;
+  blood_pressure?: string;
+  weight: string; temp: string;
   fetal_heart_rate: string; fundic_height: string;
   next_visit_date: string; next_visit_note: string;
   prescribed_meds: string; attending_nurse: string;
-  visit_date: string; visit_number: number;
+  visit_date?: string; visit_number: number;
   sms_sent: boolean;
+  remarks?: string;
+  iron_folic_given?: string | boolean;
+  risk_level?: string;
 }
 
 interface ImmunRecord {
@@ -87,13 +94,17 @@ interface ImmunRecord {
   height?: string;
   temp?: string;
   vaccine_given: string;
+  vaccine_name?: string;
   dose_number: string;
   batch_number?: string;
   date_given: string;
+  date_administered?: string;
   next_due_date: string;
   remarks?: string;
   attending_nurse: string;
+  administered_by?: string;
   sms_sent: boolean;
+  status?: string;
 }
 
 interface WeeklySchedule {
@@ -223,6 +234,7 @@ export default function NurseDashboard() {
   const [isIntakeOpen, setIsIntakeOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isBatchSmsOpen, setIsBatchSmsOpen] = useState(false);
+  const [batchSmsInitialService, setBatchSmsInitialService] = useState<'Child Immunization' | 'Maternal Health'>('Maternal Health');
   const [notifications, setNotifications] = useState<SmsNotification[]>([]);
   const [selectedSms, setSelectedSms] = useState<SmsNotification | null>(null);
   const [isSendSmsModalOpen, setIsSendSmsModalOpen] = useState(false);
@@ -269,6 +281,25 @@ export default function NurseDashboard() {
   const [isEditScheduleOpen, setIsEditScheduleOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<WeeklySchedule | null>(null);
 
+  // Manual Resident Notification Modal State
+  const [isManualNotifyOpen, setIsManualNotifyOpen] = useState(false);
+  const [selectedNotifyResident, setSelectedNotifyResident] = useState<any | null>(null);
+  const [notifyCategory, setNotifyCategory] = useState<'general' | 'document' | 'health' | 'account'>('health');
+
+  // In-flight form submission states (prevent double-clicks & duplicate records)
+  const [isSubmittingConsult, setIsSubmittingConsult] = useState(false);
+  const [isSubmittingPrenatal, setIsSubmittingPrenatal] = useState(false);
+  const [isSubmittingImmun, setIsSubmittingImmun] = useState(false);
+  const [isSubmittingInventory, setIsSubmittingInventory] = useState(false);
+  const [isSubmittingSchedule, setIsSubmittingSchedule] = useState(false);
+  const [isSubmittingSms, setIsSubmittingSms] = useState(false);
+
+  // Philippine Mobile Number Validator (e.g. 09171234567, 11 digits)
+  const isValidPHMobile = (phone: string): boolean => {
+    const clean = (phone || '').replace(/\D/g, '');
+    return clean.length === 11 && clean.startsWith('09');
+  };
+
   // ══ Consult Form State ══
   const [cName, setCName] = useState('');
   const [cNameSearchResults, setCNameSearchResults] = useState<any[]>([]);
@@ -292,6 +323,9 @@ export default function NurseDashboard() {
   // Dynamic Prescription Builder
   const [cPrescriptions, setCPrescriptions] = useState<PrescribedMedItem[]>([]);
   const [medName, setMedName] = useState('');
+  const [showMedSuggestions, setShowMedSuggestions] = useState(false);
+  const [highlightedMedIndex, setHighlightedMedIndex] = useState(-1);
+  const medInputRef = useRef<HTMLInputElement>(null);
   const [medDose, setMedDose] = useState('');
   const [medQty, setMedQty] = useState('1'); // Starting from 1 with unrestricted freedom
   const [medFreq, setMedFreq] = useState('');
@@ -343,6 +377,35 @@ export default function NurseDashboard() {
   const [pMeds, setPMeds] = useState('');
   const [pMedQty, setPMedQty] = useState('0');
   const [showPMedSuggestions, setShowPMedSuggestions] = useState(false);
+
+  // Auto-calculate EDD (Estimated Date of Delivery) and AOG (Age of Gestation) from LMP
+  useEffect(() => {
+    if (pLmp) {
+      const cleanDate = pLmp.split('T')[0];
+      const parts = cleanDate.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        const lmpDate = new Date(y, m, d);
+        if (!isNaN(lmpDate.getTime())) {
+          // Naegele's rule / 280 days standard gestation
+          const eddDate = new Date(lmpDate.getTime() + 280 * 24 * 60 * 60 * 1000);
+          const eddY = eddDate.getFullYear();
+          const eddM = String(eddDate.getMonth() + 1).padStart(2, '0');
+          const eddD = String(eddDate.getDate()).padStart(2, '0');
+          setPEdd(`${eddY}-${eddM}-${eddD}`);
+
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const diffDays = Math.max(0, Math.floor((today.getTime() - lmpDate.getTime()) / (1000 * 60 * 60 * 24)));
+          const weeks = Math.floor(diffDays / 7);
+          const days = diffDays % 7;
+          setPAog(weeks > 0 ? `${weeks} wks ${days}d` : '1 wk');
+        }
+      }
+    }
+  }, [pLmp]);
 
   // ══ Immunization Form State ══
   const [iChildFirstName, setIChildFirstName] = useState('');
@@ -409,6 +472,71 @@ export default function NurseDashboard() {
       inventory.find(i => i.item_name.toLowerCase().includes(lower) || lower.includes(i.item_name.toLowerCase())) ||
       null;
   }, [medName, inventory]);
+
+  // Available medicines for prescription search
+  const availableMedicines = useMemo(() => {
+    const meds = inventory.filter(i => {
+      const cat = (i.category || '').toLowerCase();
+      if (cat.includes('vaccine')) return false;
+      return i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin' || cat.includes('med') || cat.includes('vitamin');
+    });
+    return meds.length > 0 ? meds : inventory.filter(i => !((i.category || '').toLowerCase().includes('vaccine')));
+  }, [inventory]);
+
+  // Real-time filtered medicines matching user input
+  const filteredMedicines = useMemo(() => {
+    const q = medName.trim().toLowerCase();
+    if (!q) return availableMedicines;
+    return availableMedicines.filter(m =>
+      m.item_name.toLowerCase().includes(q) ||
+      (m.category && m.category.toLowerCase().includes(q)) ||
+      (m.unit && m.unit.toLowerCase().includes(q))
+    );
+  }, [availableMedicines, medName]);
+
+  const handleSelectMedicine = (med: InventoryItem) => {
+    setMedName(med.item_name);
+    setMedQty('1');
+    const doseMatch = med.item_name.match(/\b\d+(\.\d+)?\s*(mg|g|ml|mcg|iu|%)\b/i);
+    if (doseMatch) {
+      setMedDose(doseMatch[0]);
+    } else {
+      setMedDose('');
+    }
+    setMedFreq('');
+    setShowMedSuggestions(false);
+    setHighlightedMedIndex(-1);
+    toast.success(`Selected ${med.item_name} (${med.stock} ${med.unit || 'units'} available)`);
+  };
+
+  const handleMedKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showMedSuggestions) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        setShowMedSuggestions(true);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedMedIndex(prev => (prev < filteredMedicines.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedMedIndex(prev => (prev > 0 ? prev - 1 : filteredMedicines.length - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedMedIndex >= 0 && highlightedMedIndex < filteredMedicines.length) {
+        handleSelectMedicine(filteredMedicines[highlightedMedIndex]);
+      } else if (filteredMedicines.length > 0) {
+        handleSelectMedicine(filteredMedicines[0]);
+      } else {
+        setShowMedSuggestions(false);
+      }
+    } else if (e.key === 'Escape') {
+      setShowMedSuggestions(false);
+      setHighlightedMedIndex(-1);
+    }
+  };
 
   // Full list of maternal vitamins from inventory + standard health center stock
   const maternalVitaminsList = useMemo(() => {
@@ -509,8 +637,15 @@ export default function NurseDashboard() {
         apiService.getInventory(nurseBarangay).catch(() => []),
         apiService.getResidents(nurseBarangay).catch(() => [])
       ]);
-      setAppointments(apts || []);
-      setResidents(Array.isArray(liveRes) ? liveRes : []);
+      const cleanBrgy = nurseBarangay.toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      const belongsToNurseBrgy = (item: any) => {
+        const b = ((item.barangay || '').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim());
+        const addr = (item.address || '').toLowerCase();
+        return !b || b === cleanBrgy || b.includes(cleanBrgy) || addr.includes(cleanBrgy);
+      };
+
+      setAppointments((apts || []).filter(belongsToNurseBrgy));
+      setResidents((Array.isArray(liveRes) ? liveRes : []).filter(belongsToNurseBrgy));
       const isHealthWorkerNotification = (n: any) => {
         const type = (n.type || '').toLowerCase();
         const msg = (n.message || '').toLowerCase();
@@ -584,7 +719,7 @@ export default function NurseDashboard() {
           attending_nurse: m.attending_nurse || nurseName,
           visit_date: m.last_visit ? String(m.last_visit).split('T')[0] : new Date().toISOString().split('T')[0],
           visit_number: Number(m.visit_number) || (String(m.next_visit_note || m.notes || '').includes('2nd') ? 2 : 1),
-          sms_sent: Boolean(m.sms_sent)
+          sms_sent: Boolean(m.sms_sent || isReminderMarkedSent(m.id, 'maternal'))
         })));
       } else {
         setPrenatalRecords([]);
@@ -609,7 +744,7 @@ export default function NurseDashboard() {
           next_due_date: i.due_date ? String(i.due_date).split('T')[0] : (i.next_due_date || ''),
           remarks: i.remarks || 'Cleared for routine vaccination',
           attending_nurse: i.administered_by || i.attending_nurse || nurseName,
-          sms_sent: Boolean(i.sms_sent)
+          sms_sent: Boolean(i.sms_sent || isReminderMarkedSent(i.id, 'immunization'))
         })));
       } else {
         setImmunRecords([]);
@@ -629,6 +764,13 @@ export default function NurseDashboard() {
       } else {
         setWeeklySchedules([]);
       }
+
+      // Automatically trigger 3-day advance SMS appointment reminders via iProg SMS Gateway
+      apiService.runAppointmentReminders().then(remRes => {
+        if (remRes?.three_day_sms_count && remRes.three_day_sms_count > 0) {
+          console.log(`⏰ [Nurse Auto-Reminders] Dispatched ${remRes.three_day_sms_count} 3-day appointment SMS reminders.`);
+        }
+      }).catch(() => {});
     } catch { 
       if (showLoading) toast.error('Failed to refresh records'); 
     } finally { 
@@ -639,55 +781,80 @@ export default function NurseDashboard() {
   useEffect(() => { 
     loadData(); 
 
-    let channel: BroadcastChannel | null = null;
-    try {
-      channel = new BroadcastChannel('barangay_health_sync');
-      channel.onmessage = (event) => {
-        if (event.data?.type === 'HEALTH_DATA_SYNC') {
-          loadData(false);
-        }
-      };
-    } catch {}
+    // Centralized Global Reactive Data Synchronization Bus
+    const unsubscribeSync = subscribeHealthDataSync(() => {
+      loadData(false);
+    });
 
     const interval = setInterval(() => {
       loadData(false);
-    }, 4000);
+    }, 5000);
 
     return () => {
-      if (channel) channel.close();
+      unsubscribeSync();
       clearInterval(interval);
     };
   }, [nurseBarangay]);
 
-  // Due alerts calculation
+  // Re-fetch and sync whenever active sidebar tab changes to ensure immediate dashboard metric reactivity
+  useEffect(() => {
+    loadData(false);
+  }, [activeTab]);
+
+  // Timezone-safe date diff helper: returns calendar day diff from today (negative = past/overdue, 0 = due today, positive = future)
+  const getDaysDiffFromToday = (dateStr: string): number => {
+    if (!dateStr) return 999;
+    const clean = String(dateStr).split('T')[0];
+    const parts = clean.split('-');
+    if (parts.length < 3) return 999;
+    const target = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    if (isNaN(target.getTime())) return 999;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  // Reactive Due alerts calculation — strictly excludes sent/resolved records
   const overduePrenatal = useMemo(() =>
-    prenatalRecords.filter(r => r.next_visit_date && new Date(r.next_visit_date) <= new Date()), [prenatalRecords]);
+    prenatalRecords.filter(r => !r.sms_sent && !isReminderMarkedSent(r.id, 'maternal') && r.next_visit_date && getDaysDiffFromToday(r.next_visit_date) <= 0),
+    [prenatalRecords]
+  );
 
   const overdueImmun = useMemo(() =>
-    immunRecords.filter(r => r.next_due_date && new Date(r.next_due_date) <= new Date()), [immunRecords]);
+    immunRecords.filter(r => !r.sms_sent && !isReminderMarkedSent(r.id, 'immunization') && r.next_due_date && getDaysDiffFromToday(r.next_due_date) <= 0),
+    [immunRecords]
+  );
 
   const upcomingPrenatal = useMemo(() =>
     prenatalRecords.filter(r => {
-      if (!r.next_visit_date) return false;
-      const diff = (new Date(r.next_visit_date).getTime() - Date.now()) / 86400000;
-      return diff >= -1 && diff <= 30;
-    }), [prenatalRecords]);
+      if (r.sms_sent || isReminderMarkedSent(r.id, 'maternal') || !r.next_visit_date) return false;
+      const diff = getDaysDiffFromToday(r.next_visit_date);
+      return diff > 0 && diff <= 30;
+    }),
+    [prenatalRecords]
+  );
 
   const upcomingImmun = useMemo(() =>
     immunRecords.filter(r => {
-      if (!r.next_due_date) return false;
-      const diff = (new Date(r.next_due_date).getTime() - Date.now()) / 86400000;
-      return diff >= -1 && diff <= 30;
-    }), [immunRecords]);
+      if (r.sms_sent || isReminderMarkedSent(r.id, 'immunization') || !r.next_due_date) return false;
+      const diff = getDaysDiffFromToday(r.next_due_date);
+      return diff > 0 && diff <= 30;
+    }),
+    [immunRecords]
+  );
 
   // Combined Due Patients List for Safe Batch SMS Modal
   const duePatientsList = useMemo<DuePatientItem[]>(() => {
     const list: DuePatientItem[] = [];
     overduePrenatal.forEach(p => {
+      const matchRes = residents.find(r => 
+        (r.first_name + ' ' + r.last_name).toLowerCase().trim() === (p.patient_name || '').toLowerCase().trim()
+      );
       list.push({
         id: `mat-${p.id}`,
         name: p.patient_name,
-        phone: p.contact_number,
+        phone: p.contact_number || matchRes?.phone || '',
+        email: matchRes?.email || '',
         service: 'Prenatal Check-up',
         detail: `Visit #${p.visit_number} (${p.aog_weeks} wks)`,
         dueDate: p.next_visit_date,
@@ -697,10 +864,14 @@ export default function NurseDashboard() {
     });
     upcomingPrenatal.forEach(p => {
       if (!list.find(item => item.name === p.patient_name)) {
+        const matchRes = residents.find(r => 
+          (r.first_name + ' ' + r.last_name).toLowerCase().trim() === (p.patient_name || '').toLowerCase().trim()
+        );
         list.push({
           id: `mat-up-${p.id}`,
           name: p.patient_name,
-          phone: p.contact_number,
+          phone: p.contact_number || matchRes?.phone || '',
+          email: matchRes?.email || '',
           service: 'Prenatal Check-up',
           detail: `Visit #${p.visit_number}`,
           dueDate: p.next_visit_date,
@@ -710,10 +881,15 @@ export default function NurseDashboard() {
       }
     });
     overdueImmun.forEach(i => {
+      const matchRes = residents.find(r => 
+        (r.first_name + ' ' + r.last_name).toLowerCase().trim() === (i.guardian || '').toLowerCase().trim() ||
+        (r.first_name + ' ' + r.last_name).toLowerCase().trim() === (i.child_name || '').toLowerCase().trim()
+      );
       list.push({
         id: `imm-${i.id}`,
         name: i.child_name,
-        phone: i.contact_number,
+        phone: i.contact_number || matchRes?.phone || '',
+        email: matchRes?.email || '',
         service: 'Child Immunization',
         detail: `${i.vaccine_given} (${i.dose_number})`,
         dueDate: i.next_due_date,
@@ -723,10 +899,15 @@ export default function NurseDashboard() {
     });
     upcomingImmun.forEach(i => {
       if (!list.find(item => item.name === i.child_name)) {
+        const matchRes = residents.find(r => 
+          (r.first_name + ' ' + r.last_name).toLowerCase().trim() === (i.guardian || '').toLowerCase().trim() ||
+          (r.first_name + ' ' + r.last_name).toLowerCase().trim() === (i.child_name || '').toLowerCase().trim()
+        );
         list.push({
           id: `imm-up-${i.id}`,
           name: i.child_name,
-          phone: i.contact_number,
+          phone: i.contact_number || matchRes?.phone || '',
+          email: matchRes?.email || '',
           service: 'Child Immunization',
           detail: `${i.vaccine_given} (${i.dose_number})`,
           dueDate: i.next_due_date,
@@ -736,7 +917,7 @@ export default function NurseDashboard() {
       }
     });
     return list;
-  }, [overduePrenatal, upcomingPrenatal, overdueImmun, upcomingImmun]);
+  }, [overduePrenatal, upcomingPrenatal, overdueImmun, upcomingImmun, residents]);
 
   // Open 360 Patient Profile Modal with intelligent tab focus
   const openPatient360 = (name: string, phone: string, barangay?: string, preferredTab?: 'overview' | 'consultations' | 'maternal' | 'immunizations') => {
@@ -746,7 +927,7 @@ export default function NurseDashboard() {
     }));
 
     const patientPrenatal = prenatalRecords.filter(p => p.patient_name.toLowerCase() === name.toLowerCase()).map(p => ({
-      id: p.id, date: p.visit_date, gravida: p.gravida, para: p.para, lmp: p.lmp, edd: p.edd, aog: p.aog_weeks,
+      id: p.id, date: p.visit_date || '', gravida: p.gravida, para: p.para, lmp: p.lmp, edd: p.edd, aog: p.aog_weeks,
       bp: p.bp, fhr: p.fetal_heart_rate, next_visit: p.next_visit_date, meds: p.prescribed_meds, attending: p.attending_nurse,
       visit_number: p.visit_number
     }));
@@ -860,7 +1041,15 @@ export default function NurseDashboard() {
 
   const handleCreateConsultation = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingConsult) return;
     if (!cName.trim()) { toast.error('Patient name is required'); return; }
+    if (cPhone.trim() && !isValidPHMobile(cPhone)) {
+      toast.error('Invalid Philippine mobile number', {
+        description: 'Please enter a valid 11-digit mobile number starting with 09 (e.g. 09171234567).'
+      });
+      return;
+    }
+    setIsSubmittingConsult(true);
 
     const cleanSys = cBpSys.replace(/\D/g, '');
     const cleanDia = cBpDia.replace(/\D/g, '');
@@ -983,19 +1172,30 @@ export default function NurseDashboard() {
         setApptToCompleteId(null);
       }
 
-      loadData();
+      loadData(false);
+      notifyHealthDataChanged('CONSULTATION_SAVED');
     } catch {
       toast.error('Could not save to remote server (cached locally)');
+    } finally {
+      setIsSubmittingConsult(false);
     }
   };
 
   const handleCreatePrenatal = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingPrenatal) return;
     const combinedMotherName = [pFirstName.trim(), pMiddleName.trim(), pLastName.trim()].filter(Boolean).join(' ') || pName.trim();
     if (!combinedMotherName) { toast.error("Mother's first and last name are required"); return; }
     if (!pPhone.trim()) { toast.error('Contact number is required for SMS reminders'); return; }
+    if (!isValidPHMobile(pPhone)) {
+      toast.error('Invalid Philippine mobile number', {
+        description: 'Please enter a valid 11-digit mobile number starting with 09 (e.g. 09171234567).'
+      });
+      return;
+    }
     if (!pLmp) { toast.error('Last Menstrual Period (LMP) is required'); return; }
     if (!pNextDate) { toast.error('Next visit date is required'); return; }
+    setIsSubmittingPrenatal(true);
 
     const cleanSys = pBpSys.replace(/\D/g, '') || '120';
     const cleanDia = pBpDia.replace(/\D/g, '') || '80';
@@ -1063,18 +1263,29 @@ export default function NurseDashboard() {
       setPName(''); setPPhone(''); setPAge(''); setPLmp(''); setPEdd(''); setPAog('');
       setPBpSys('120'); setPBpDia('80'); setPWeight(''); setPFhr(''); setPFh('');
       setPNextDate(''); setPNextNote('');
-      loadData();
+      loadData(false);
+      notifyHealthDataChanged('PRENATAL_SAVED');
     } catch {
       toast.error('Saved to local view (server offline)');
+    } finally {
+      setIsSubmittingPrenatal(false);
     }
   };
 
   const handleCreateImmun = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingImmun) return;
     const combinedChildName = [iChildFirstName.trim(), iChildMiddleName.trim(), iChildLastName.trim()].filter(Boolean).join(' ') || iChild.trim();
     if (!combinedChildName) { toast.error("Child's first and last name are required"); return; }
     if (!iPhone.trim()) { toast.error('Guardian contact number is required'); return; }
+    if (!isValidPHMobile(iPhone)) {
+      toast.error('Invalid Philippine mobile number', {
+        description: 'Please enter a valid 11-digit mobile number starting with 09 (e.g. 09171234567).'
+      });
+      return;
+    }
     if (!iGuardian.trim()) { toast.error('Guardian name is required'); return; }
+    setIsSubmittingImmun(true);
 
     const activeVaccine = iCustomVaccine.trim() || iVaccine;
 
@@ -1146,23 +1357,24 @@ export default function NurseDashboard() {
       setIChildFirstName(''); setIChildMiddleName(''); setIChildLastName('');
       setIChild(''); setIPhone(''); setIAge(''); setIGuardian('');
       setICustomVaccine(''); setINextDue(''); setIVaccineQty('1');
-      loadData();
+      loadData(false);
+      notifyHealthDataChanged('IMMUNIZATION_SAVED');
     } catch {
       toast.error('Saved to local view (server offline)');
+    } finally {
+      setIsSubmittingImmun(false);
     }
   };
 
   const triggerHealthSync = () => {
-    try {
-      const ch = new BroadcastChannel('barangay_health_sync');
-      ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
-      ch.close();
-    } catch {}
+    notifyHealthDataChanged('HEALTH_DATA_SYNC');
   };
 
   const handleAddInventory = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingInventory) return;
     if (!invName.trim()) { toast.error('Item name is required'); return; }
+    setIsSubmittingInventory(true);
     const qty = parseInt(invStock) || 0;
     const payload: Partial<InventoryItem> = {
       barangay: nurseBarangay,
@@ -1182,6 +1394,8 @@ export default function NurseDashboard() {
       setInventory(prev => [{ id: Date.now(), ...payload } as any, ...prev]);
       toast.success(`${invName} added to local inventory`);
       triggerHealthSync();
+    } finally {
+      setIsSubmittingInventory(false);
     }
     setIsInventoryOpen(false);
     setInvName(''); setInvCat('Vaccine (EPI)'); setInvStock(''); setInvUnit('vials'); setInvExpiry('');
@@ -1241,7 +1455,9 @@ export default function NurseDashboard() {
 
   const handlePostSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingSchedule) return;
     if (!sTitle.trim()) { toast.error('Title is required'); return; }
+    setIsSubmittingSchedule(true);
     const newSch: WeeklySchedule = {
       id: Date.now(), title: sTitle.trim(), service_type: sService,
       day: sDay, time_slot: sTime, location: sLocation, assigned_to: nurseName,
@@ -1262,7 +1478,9 @@ export default function NurseDashboard() {
       if (created && created.id) {
         setWeeklySchedules(prev => prev.map(s => s.id === newSch.id ? { ...s, id: created.id } : s));
       }
-    } catch {}
+    } catch {} finally {
+      setIsSubmittingSchedule(false);
+    }
     toast.success('Weekly clinic schedule posted!');
     setIsScheduleOpen(false);
     setSTitle('');
@@ -1304,10 +1522,18 @@ export default function NurseDashboard() {
 
   const handleSendCustomSms = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingSms) return;
     if (!composeRecipient || !composePhone || !composeMessage) {
       toast.error('Recipient name, phone, and message are required');
       return;
     }
+    if (!isValidPHMobile(composePhone)) {
+      toast.error('Invalid Philippine mobile number', {
+        description: 'Please enter a valid 11-digit mobile number starting with 09 (e.g. 09171234567).'
+      });
+      return;
+    }
+    setIsSubmittingSms(true);
     try {
       await apiService.sendNotification({
         recipient_name: composeRecipient,
@@ -1319,9 +1545,12 @@ export default function NurseDashboard() {
       toast.success(`SMS alert dispatched to ${composeRecipient}!`);
       setIsSendSmsModalOpen(false);
       setComposeRecipient(''); setComposePhone(''); setComposeMessage('');
-      loadData();
+      loadData(false);
+      notifyHealthDataChanged('CUSTOM_SMS_SENT');
     } catch {
       toast.error('Failed to dispatch SMS');
+    } finally {
+      setIsSubmittingSms(false);
     }
   };
 
@@ -1340,6 +1569,9 @@ export default function NurseDashboard() {
     if (!selectedAppt) return;
     setIsSchedulingLoading(true);
     try {
+      const apt = selectedAppt;
+      const clinicLocation = `Barangay ${apt.barangay || nurseBarangay || 'Pianing'} Health Center & Primary Clinic (Purok 1, Barangay ${apt.barangay || nurseBarangay || 'Pianing'}, Butuan City)`;
+
       await apiService.updateAppointment(selectedAppt.id, {
         status: 'Approved',
         scheduled_date: schedDate,
@@ -1349,8 +1581,27 @@ export default function NurseDashboard() {
         user_name: nurseName,
         user_role: 'nurse'
       });
+
+      if (apt.resident_email || apt.resident_phone) {
+        dispatchResidentNotification({
+          residentEmail: apt.resident_email || '',
+          residentName: apt.resident_name,
+          phone: apt.resident_phone,
+          type: 'health',
+          title: `🏥 Appointment Confirmed: ${apt.service_type}`,
+          message: `Hello ${apt.resident_name}! Your appointment for ${apt.service_type} has been CONFIRMED for ${schedDate} (${schedTime}) at ${clinicLocation}. Ref: ${apt.appointment_code}. Please arrive 10 minutes early.`,
+          statusBadge: 'Approved',
+          badgeColor: 'emerald',
+          refCode: apt.appointment_code,
+          barangay: apt.barangay || nurseBarangay || 'Pianing'
+        }).then(res => {
+          if (res.sms) toast.info(`📱 Live SMS sent to ${apt.resident_phone}`);
+          if (res.email) toast.info(`📧 Email confirmation sent to ${apt.resident_email}`);
+        }).catch(() => {});
+      }
+
       toast.success('Appointment Confirmed & Scheduled!', {
-        description: `Auto-notification sent to ${selectedAppt.resident_name} for ${schedDate} at ${schedTime}.`
+        description: `Auto-notification sent to ${selectedAppt.resident_name} for ${schedDate} at ${schedTime} at ${clinicLocation}.`
       });
       setIsApptModalOpen(false);
       setSelectedAppt(null);
@@ -1418,7 +1669,7 @@ export default function NurseDashboard() {
 
     // Auto-fill Age & Gender from patient / resident registry
     try {
-      const res = await apiService.searchPatients(apt.resident_name);
+      const res = await apiService.searchPatients(apt.resident_name, nurseBarangay);
       const match = res?.patients?.find((p: any) => 
         p.name.toLowerCase().includes(apt.resident_name.toLowerCase()) || 
         apt.resident_name.toLowerCase().includes(p.name.toLowerCase())
@@ -1661,13 +1912,20 @@ export default function NurseDashboard() {
     return getResidentEncounterCount(apt.resident_name, apt.resident_phone) >= 1;
   };
 
-  const menuItems = [
+  const menuItems: Array<{
+    id: string;
+    label: string;
+    icon: any;
+    badge?: number | string;
+    badgeColor?: string;
+    action?: () => void;
+  }> = [
     { id: 'overview', label: 'Clinical Overview', icon: Activity },
     { id: 'consultations', label: 'Patient Consultations', icon: Stethoscope },
-    { id: 'maternal', label: 'Prenatal & Maternal', icon: Heart },
-    { id: 'immunizations', label: 'EPI Immunizations', icon: Baby },
+    { id: 'maternal', label: 'Prenatal & Maternal', icon: Heart, badge: overduePrenatal.length || undefined, badgeColor: 'bg-red-600 text-white' },
+    { id: 'immunizations', label: 'EPI Immunizations', icon: Baby, badge: overdueImmun.length || undefined, badgeColor: 'bg-red-600 text-white' },
     { id: 'schedule', label: 'Weekly Schedule', icon: CalendarCheck },
-    { id: 'appointments', label: 'Resident Appointments', icon: CalendarCheck, badge: appointments.filter(a => a.status === 'Pending').length || undefined, badgeColor: 'bg-red-600 text-white' },
+    { id: 'appointments', label: 'Resident Appointments', icon: CalendarCheck, badge: appointments.filter(a => (a.status || '').toLowerCase() === 'pending').length || undefined, badgeColor: 'bg-red-600 text-white' },
     { id: 'inventory', label: 'Vaccines & Medicine Supply', icon: Pill },
     { id: 'census', label: 'Populations & Census Registry', icon: Users },
     { id: 'reports', label: 'Health Reports & Analytics', icon: BarChart3 },
@@ -1699,9 +1957,8 @@ export default function NurseDashboard() {
       }
       if (maternalFilterVisit === '3rd') return r.visit_number >= 3 || (r.next_visit_note || '').toLowerCase().includes('3rd');
       if (maternalFilterVisit === 'due') {
-        const isOverdue = r.next_visit_date && new Date(r.next_visit_date) <= new Date();
-        const isDueSoon = r.next_visit_date && (new Date(r.next_visit_date).getTime() - Date.now()) / 86400000 <= 7;
-        return isOverdue || isDueSoon;
+        const diff = getDaysDiffFromToday(r.next_visit_date);
+        return r.next_visit_date && diff <= 7;
       }
       return true;
     });
@@ -1715,9 +1972,8 @@ export default function NurseDashboard() {
       if (immunFilterDose === 'dose2') return r.dose_number.includes('2');
       if (immunFilterDose === 'dose3') return r.dose_number.includes('3') || r.dose_number.toLowerCase().includes('booster');
       if (immunFilterDose === 'due') {
-        const isOverdue = r.next_due_date && new Date(r.next_due_date) <= new Date();
-        const isDueSoon = r.next_due_date && (new Date(r.next_due_date).getTime() - Date.now()) / 86400000 <= 7;
-        return isOverdue || isDueSoon;
+        const diff = getDaysDiffFromToday(r.next_due_date);
+        return r.next_due_date && diff <= 7;
       }
       return true;
     });
@@ -1773,6 +2029,20 @@ export default function NurseDashboard() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedNotifyResident(null);
+                setNotifyCategory('health');
+                setIsManualNotifyOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 rounded-lg shadow-xs transition-all cursor-pointer"
+              title="Manually dispatch SMS, Email (EmailJS), and In-App health notice to any patient"
+            >
+              <Send size={13} />
+              <span className="hidden sm:inline">Send Health Notice</span>
+            </button>
+
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-semibold shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               Nurse Station Active
@@ -1827,18 +2097,20 @@ export default function NurseDashboard() {
                     setActiveTab(item.id as any);
                   }
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                   isActive
-                    ? 'bg-teal-50 text-teal-800 font-bold shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
+                    : 'text-slate-600 hover:bg-[#6458FF]/10 hover:text-[#6458FF]'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <item.icon size={17} className={`shrink-0 ${isActive ? 'text-teal-700' : 'text-slate-500'}`} />
+                  <item.icon size={17} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                   <span>{item.label}</span>
                 </div>
                 {(item as any).badge !== undefined && (
-                  <span className="ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${
+                    isActive ? 'bg-white/25 text-white' : 'bg-[#FF6492] text-white'
+                  }`}>
                     {(item as any).badge}
                   </span>
                 )}
@@ -1879,28 +2151,20 @@ export default function NurseDashboard() {
                       setActiveTab(item.id as any);
                     }
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? 'bg-teal-50 text-teal-800 font-bold border border-teal-200/80 shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
+                      : 'text-slate-600 hover:bg-[#6458FF]/10 hover:text-[#6458FF]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <item.icon size={17} className={`shrink-0 ${isActive ? 'text-teal-700' : 'text-slate-500'}`} />
+                    <item.icon size={17} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                     <span>{item.label}</span>
                   </div>
-                  {item.id === 'maternal' && overduePrenatal.length > 0 && (
-                    <span className="ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                      {overduePrenatal.length}
-                    </span>
-                  )}
-                  {item.id === 'immunizations' && overdueImmun.length > 0 && (
-                    <span className="ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                      {overdueImmun.length}
-                    </span>
-                  )}
                   {(item as any).badge !== undefined && (
-                    <span className="ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${
+                      isActive ? 'bg-white/25 text-white' : 'bg-[#FF6492] text-white'
+                    }`}>
                       {(item as any).badge}
                     </span>
                   )}
@@ -2114,10 +2378,10 @@ export default function NurseDashboard() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setActiveTab('schedules')}
+                      onClick={() => setActiveTab('appointments')}
                       className="text-[11px] h-7 border-amber-300 text-amber-900 bg-white hover:bg-amber-100 cursor-pointer rounded-lg"
                     >
-                      View Schedules &rarr;
+                      View Appointments &rarr;
                     </Button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
@@ -2135,10 +2399,7 @@ export default function NurseDashboard() {
                         </div>
                         <Button
                           size="sm"
-                          onClick={() => {
-                            setSelectedApptForConfirm(apt);
-                            setIsConfirmApptModalOpen(true);
-                          }}
+                          onClick={() => handleOpenApptModal(apt)}
                           className="mt-2 bg-amber-600 hover:bg-amber-700 text-white text-[11px] h-7 rounded-lg cursor-pointer w-full"
                         >
                           Confirm Slot
@@ -2471,7 +2732,10 @@ export default function NurseDashboard() {
 
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={() => setIsBatchSmsOpen(true)}
+                    onClick={() => {
+                      setBatchSmsInitialService('Maternal Health');
+                      setIsBatchSmsOpen(true);
+                    }}
                     className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold gap-1.5 shadow-xs cursor-pointer rounded-xl h-9 px-3.5"
                   >
                     <Send size={13} className="text-amber-700" />
@@ -2539,8 +2803,9 @@ export default function NurseDashboard() {
                   </TableHeader>
                   <TableBody>
                     {filteredMaternal.map((r, idx) => {
-                      const isOverdue = r.next_visit_date && new Date(r.next_visit_date) <= new Date();
-                      const isDueSoon = r.next_visit_date && !isOverdue && (new Date(r.next_visit_date).getTime() - Date.now()) / 86400000 <= 7;
+                      const diff = getDaysDiffFromToday(r.next_visit_date);
+                      const isOverdue = r.next_visit_date && diff <= 0;
+                      const isDueSoon = r.next_visit_date && !isOverdue && diff <= 7;
                       const isSecondVisit = r.visit_number === 2 || (r.visit_number === 1 && Boolean(r.next_visit_date)) || (r.next_visit_note || '').toLowerCase().includes('2nd');
 
                       return (
@@ -2652,7 +2917,10 @@ export default function NurseDashboard() {
 
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={() => setIsBatchSmsOpen(true)}
+                    onClick={() => {
+                      setBatchSmsInitialService('Child Immunization');
+                      setIsBatchSmsOpen(true);
+                    }}
                     className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold gap-1.5 shadow-xs cursor-pointer rounded-xl h-9 px-3.5"
                   >
                     <Send size={13} className="text-amber-700" />
@@ -2719,8 +2987,9 @@ export default function NurseDashboard() {
                   </TableHeader>
                   <TableBody>
                     {filteredImmun.map((r, idx) => {
-                      const isOverdue = r.next_due_date && new Date(r.next_due_date) <= new Date();
-                      const isDueSoon = r.next_due_date && !isOverdue && (new Date(r.next_due_date).getTime() - Date.now()) / 86400000 <= 7;
+                      const diff = getDaysDiffFromToday(r.next_due_date);
+                      const isOverdue = r.next_due_date && diff <= 0;
+                      const isDueSoon = r.next_due_date && !isOverdue && diff <= 7;
                       const isDose2 = r.dose_number.includes('2');
 
                       return (
@@ -2853,7 +3122,7 @@ export default function NurseDashboard() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={loadData}
+                    onClick={() => loadData(true)}
                     variant="outline"
                     size="sm"
                     className="text-xs gap-1.5 h-8 border-slate-300 hover:bg-slate-50 cursor-pointer"
@@ -3224,7 +3493,7 @@ export default function NurseDashboard() {
               <GmailNotificationHub
                 notifications={notifications}
                 onRefresh={loadData}
-                onOpenDetails={n => setSelectedSms(n)}
+                onOpenDetails={(n: any) => setSelectedSms(n)}
                 onOpenCompose={() => setIsSendSmsModalOpen(true)}
                 currentUserRole="nurse"
                 barangay={nurseBarangay}
@@ -3360,7 +3629,7 @@ export default function NurseDashboard() {
                               i.child_name,
                               i.gender || 'Male',
                               i.contact_number || 'N/A',
-                              i.vaccine_name,
+                              i.vaccine_name || i.vaccine_given || '—',
                               i.dose_number,
                               i.date_administered || new Date().toISOString().split('T')[0],
                               i.administered_by || 'Clinic Nurse'
@@ -3553,8 +3822,8 @@ export default function NurseDashboard() {
                       return sys >= 140 || dia >= 90;
                     }).length;
                     const fever = consultations.filter(c => parseFloat((c.temp || '0').replace(/[^\d.]/g, '')) >= 37.8).length;
-                    const overduePrenatalCount = prenatalRecords.filter(r => r.next_visit_date && new Date(r.next_visit_date) <= new Date()).length;
-                    const overdueVaccineCount = immunRecords.filter(r => r.next_due_date && new Date(r.next_due_date) <= new Date()).length;
+                    const overduePrenatalCount = prenatalRecords.filter(r => r.next_visit_date && getDaysDiffFromToday(r.next_visit_date) <= 0).length;
+                    const overdueVaccineCount = immunRecords.filter(r => r.next_due_date && getDaysDiffFromToday(r.next_due_date) <= 0).length;
                     return (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-xl">
@@ -3640,11 +3909,16 @@ export default function NurseDashboard() {
         onClose={() => setIsBatchSmsOpen(false)}
         duePatients={duePatientsList}
         barangay={nurseBarangay}
+        initialService={batchSmsInitialService}
         attendingName={nurseName}
         onBatchSent={(sentIds) => {
-          setPrenatalRecords(prev => prev.map(p => sentIds.includes(`mat-${p.id}`) ? { ...p, sms_sent: true } : p));
-          setImmunRecords(prev => prev.map(i => sentIds.includes(`imm-${i.id}`) ? { ...i, sms_sent: true } : i));
-          loadData();
+          saveSentReminderIds(sentIds);
+          const cleanMatIds = sentIds.map(id => String(id).replace(/^(mat-up-|mat-)/, ''));
+          const cleanImmIds = sentIds.map(id => String(id).replace(/^(imm-up-|imm-)/, ''));
+          setPrenatalRecords(prev => prev.map(p => (cleanMatIds.includes(String(p.id)) || sentIds.includes(String(p.id)) || isReminderMarkedSent(p.id, 'maternal')) ? { ...p, sms_sent: true } : p));
+          setImmunRecords(prev => prev.map(i => (cleanImmIds.includes(String(i.id)) || sentIds.includes(String(i.id)) || isReminderMarkedSent(i.id, 'immunization')) ? { ...i, sms_sent: true } : i));
+          notifyHealthDataChanged('SMS_REMINDER_RESOLVED', { sentIds });
+          loadData(false);
         }}
       />
 
@@ -3654,7 +3928,11 @@ export default function NurseDashboard() {
         onClose={() => setIsPatientModalOpen(false)}
         patient={selectedPatientModal}
         initialTab={patientModalTab}
-        onSendSmsSuccess={() => toast.success('SMS notification sent to patient')}
+        onSendSmsSuccess={() => {
+          toast.success('SMS notification sent to patient');
+          notifyHealthDataChanged('SMS_PATIENT_SENT');
+          loadData(false);
+        }}
         onLogReturnVisit={handleLogReturnVisitFromModal}
       />
 
@@ -3667,7 +3945,8 @@ export default function NurseDashboard() {
           if (created) {
             setConsultations(prev => [created, ...prev]);
           }
-          loadData();
+          notifyHealthDataChanged('INTAKE_SUBMITTED');
+          loadData(false);
         }}
         barangay={nurseBarangay}
         attendingWorker={nurseName}
@@ -3712,10 +3991,13 @@ export default function NurseDashboard() {
                       setCName(clean);
                       if (clean.trim().length >= 2) {
                         setIsCNameSearching(true);
-                        apiService.searchPatients(clean)
+                        apiService.searchPatients(clean, nurseBarangay)
                           .then(res => {
-                            setCNameSearchResults(res.patients || []);
-                            setShowCNameSuggestions(true);
+                            const list = res?.patients || [];
+                            setCNameSearchResults(list);
+                            if (list.length > 0) {
+                              setShowCNameSuggestions(true);
+                            }
                           })
                           .catch(() => setCNameSearchResults([]))
                           .finally(() => setIsCNameSearching(false));
@@ -3726,6 +4008,9 @@ export default function NurseDashboard() {
                     }}
                     onFocus={() => {
                       if (cNameSearchResults.length > 0) setShowCNameSuggestions(true);
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowCNameSuggestions(false), 250);
                     }}
                     placeholder="Type name (matches database automatically, numbers blocked)"
                     required
@@ -3757,13 +4042,18 @@ export default function NurseDashboard() {
                         type="button"
                         onClick={() => {
                           setCName(p.name);
-                          if (p.phone) setCPhone(p.phone);
-                          if (p.gender) setCGender(p.gender as any);
+                          if (p.phone) setCPhone(p.phone.replace(/\D/g, '').slice(0, 11));
+                          if (p.gender) setCGender(p.gender === 'Male' ? 'Male' : 'Female');
                           if (p.age !== undefined && p.age !== null && p.age !== '') {
                             setCAge(String(p.age));
                           } else if (p.date_of_birth) {
                             const calculatedAge = Math.floor((Date.now() - new Date(p.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-                            setCAge(String(calculatedAge));
+                            if (!isNaN(calculatedAge) && calculatedAge > 0) setCAge(String(calculatedAge));
+                          }
+                          if (p.last_encounter?.bp) {
+                            const bpParts = p.last_encounter.bp.replace('mmHg', '').split('/');
+                            if (bpParts[0]) setCBpSys(bpParts[0].trim().replace(/\D/g, ''));
+                            if (bpParts[1]) setCBpDia(bpParts[1].trim().replace(/\D/g, ''));
                           }
                           setShowCNameSuggestions(false);
                           toast.success(`Loaded details for ${p.name}`);
@@ -3773,7 +4063,7 @@ export default function NurseDashboard() {
                         <div>
                           <span className="font-bold text-slate-800 group-hover:text-teal-700 block">{p.name}</span>
                           <span className="text-[10px] text-slate-500 block">
-                            {p.gender} · {p.purok || 'Pianing'} · {p.phone || 'No phone'}
+                            {p.gender} · {p.purok || 'Pianing'} · {p.phone || 'No phone'} · Age: {p.age || '—'}
                           </span>
                         </div>
                         <Badge variant="outline" className="text-[9px] bg-white border-teal-300 text-teal-700 shrink-0">
@@ -3875,15 +4165,15 @@ export default function NurseDashboard() {
                     <span className="text-[10px] text-slate-400">Add multiple meds</span>
                   </div>
 
-                  {/* Step 1: Choose Medicine from Inventory */}
-                  <div className="space-y-1.5">
+                  {/* Step 1: Choose Medicine from Inventory (Typeable, Fillable & Searchable) */}
+                  <div className="space-y-1.5 relative">
                     <div className="flex items-center justify-between">
                       <Label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
                         <span className="w-4 h-4 rounded-full bg-teal-600 text-white text-[10px] flex items-center justify-center font-bold">1</span>
                         Choose Medicine:
                       </Label>
                       {selectedInventoryItem ? (
-                        <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded ${
+                        <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded-md ${
                           selectedInventoryItem.stock <= 0
                             ? 'bg-rose-100 text-rose-700'
                             : selectedInventoryItem.stock < 10
@@ -3893,38 +4183,153 @@ export default function NurseDashboard() {
                           {selectedInventoryItem.stock <= 0 ? 'Out of Stock' : `In Stock: ${selectedInventoryItem.stock} ${selectedInventoryItem.unit}`}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-400">Select medicine to check stock</span>
+                        <span className="text-[10px] text-slate-400">Type or select medicine to check stock</span>
                       )}
                     </div>
-                    <Select value={medName} onValueChange={val => { 
-                      setMedName(val); 
-                      setMedQty('1');
-                      const doseMatch = val.match(/\b\d+(\.\d+)?\s*(mg|g|ml|mcg|iu|%)\b/i);
-                      if (doseMatch) {
-                        setMedDose(doseMatch[0]);
-                      } else {
-                        setMedDose('');
-                      }
-                      setMedFreq('');
-                    }}>
-                      <SelectTrigger className="h-9 text-xs bg-white rounded-xl border-slate-200 shadow-2xs">
-                        <SelectValue placeholder="Select medicine from inventory stock..." />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-56">
-                        {inventory
-                          .filter(i => i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin')
-                          .map(med => (
-                            <SelectItem key={med.id} value={med.item_name} disabled={med.stock <= 0}>
-                              <div className="flex items-center justify-between gap-2 w-full text-xs">
-                                <span>{med.item_name}</span>
-                                <span className={`text-[10px] font-mono font-bold ${med.stock <= 0 ? 'text-red-500' : med.stock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                  ({med.stock} {med.unit})
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+
+                    <div className="relative">
+                      <div className="relative flex items-center">
+                        <Search size={14} className="absolute left-3 text-teal-600 pointer-events-none" />
+                        <Input
+                          ref={medInputRef}
+                          value={medName}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setMedName(val);
+                            setShowMedSuggestions(true);
+                            setHighlightedMedIndex(-1);
+                            const doseMatch = val.match(/\b\d+(\.\d+)?\s*(mg|g|ml|mcg|iu|%)\b/i);
+                            if (doseMatch) {
+                              setMedDose(doseMatch[0]);
+                            }
+                          }}
+                          onFocus={() => setShowMedSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowMedSuggestions(false), 200)}
+                          onKeyDown={handleMedKeyDown}
+                          placeholder="Type medicine name or select from inventory stock..."
+                          autoComplete="off"
+                          className="h-9 text-xs bg-white rounded-xl border-slate-200 shadow-2xs pl-8.5 pr-8 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-medium"
+                        />
+                        {medName ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMedName('');
+                              setMedDose('');
+                              setMedQty('1');
+                              setShowMedSuggestions(true);
+                              medInputRef.current?.focus();
+                            }}
+                            className="absolute right-2.5 text-slate-400 hover:text-slate-700 p-1 cursor-pointer rounded-md hover:bg-slate-100 transition-colors"
+                            title="Clear medicine selection"
+                          >
+                            <X size={13} />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowMedSuggestions(prev => !prev);
+                              medInputRef.current?.focus();
+                            }}
+                            className="absolute right-2.5 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                            tabIndex={-1}
+                          >
+                            <ChevronDown size={14} className={`transition-transform duration-200 ${showMedSuggestions ? 'rotate-180 text-teal-600' : ''}`} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Searchable, Fillable Medicine Suggestions Dropdown */}
+                      {showMedSuggestions && (
+                        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-teal-200 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
+                          <div className="p-2 bg-gradient-to-r from-teal-50/90 to-emerald-50/90 text-[10px] font-bold text-teal-800 flex items-center justify-between px-3 sticky top-0 z-10 backdrop-blur-xs border-b border-teal-100">
+                            <span className="flex items-center gap-1.5">
+                              <Pill size={12} className="text-teal-600" />
+                              {medName ? `Matching Inventory Medicines (${filteredMedicines.length})` : `Available Inventory Stock (${filteredMedicines.length})`}
+                            </span>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => { e.preventDefault(); setShowMedSuggestions(false); }}
+                              className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer p-0.5 rounded hover:bg-white/60"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          {filteredMedicines.length > 0 ? (
+                            filteredMedicines.map((med, idx) => {
+                              const isSelected = selectedInventoryItem?.id === med.id || medName.toLowerCase().trim() === med.item_name.toLowerCase().trim();
+                              const isHighlighted = highlightedMedIndex === idx;
+                              const isOutOfStock = med.stock <= 0;
+                              return (
+                                <button
+                                  key={med.id}
+                                  type="button"
+                                  disabled={isOutOfStock}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleSelectMedicine(med);
+                                  }}
+                                  onMouseEnter={() => setHighlightedMedIndex(idx)}
+                                  className={`w-full text-left p-2.5 transition-colors flex items-center justify-between text-xs cursor-pointer group ${
+                                    isOutOfStock ? 'opacity-50 cursor-not-allowed bg-slate-50' :
+                                    isSelected ? 'bg-teal-50/90 font-semibold' :
+                                    isHighlighted ? 'bg-teal-50/50' : 'hover:bg-teal-50/40'
+                                  }`}
+                                >
+                                  <div className="flex-1 min-w-0 pr-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`font-semibold block truncate ${isSelected ? 'text-teal-800 font-bold' : 'text-slate-800 group-hover:text-teal-700'}`}>
+                                        {med.item_name}
+                                      </span>
+                                      {isSelected && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0" />
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-500 block truncate">
+                                      {med.category || 'Essential Medicine'} · {med.unit || 'units'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                                      med.stock <= 0
+                                        ? 'bg-rose-100 text-rose-700'
+                                        : med.stock < 10
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-emerald-100 text-emerald-800'
+                                    }`}>
+                                      {med.stock <= 0 ? '0 in stock' : `${med.stock} ${med.unit}`}
+                                    </span>
+                                    {!isOutOfStock && (
+                                      <Badge variant="outline" className="text-[9px] bg-white border-teal-300 text-teal-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        Auto-Fill
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="p-3 text-center text-xs text-slate-500 bg-slate-50">
+                              <p className="font-medium text-slate-700">No stock item matching &ldquo;{medName}&rdquo;</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">You can still type and prescribe this as a custom medication.</p>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setShowMedSuggestions(false);
+                                  toast.info(`Using custom medication: ${medName}`);
+                                }}
+                                className="mt-2 text-[11px] font-bold text-teal-700 hover:text-teal-800 bg-teal-100/70 hover:bg-teal-100 px-3 py-1 rounded-lg transition-colors cursor-pointer"
+                              >
+                                Prescribe &ldquo;{medName}&rdquo; as Custom Med
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Step 2: Choose Quantity (Freedom to start from 1) */}
@@ -4312,8 +4717,20 @@ export default function NurseDashboard() {
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setIsNewConsultOpen(false)} className="text-xs rounded-xl border-slate-200">Cancel</Button>
-              <Button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white text-xs gap-1 font-bold cursor-pointer rounded-xl px-4 shadow-xs">
-                <Check size={13} /> Save Encounter Record
+              <Button
+                type="submit"
+                disabled={isSubmittingConsult}
+                className="bg-teal-600 hover:bg-teal-700 text-white text-xs gap-1 font-bold cursor-pointer rounded-xl px-4 shadow-xs disabled:opacity-50"
+              >
+                {isSubmittingConsult ? (
+                  <>
+                    <RefreshCcw size={13} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check size={13} /> Save Encounter Record
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -4468,11 +4885,12 @@ export default function NurseDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div><Label className="text-xs font-semibold">Gravida</Label><Input value={pGravida} onChange={e => setPGravida(e.target.value)} placeholder="G1" className="h-9 text-xs mt-1 rounded-xl font-mono text-center" /></div>
               <div><Label className="text-xs font-semibold">Para</Label><Input value={pPara} onChange={e => setPPara(e.target.value)} placeholder="P0" className="h-9 text-xs mt-1 rounded-xl font-mono text-center" /></div>
               <div><Label className="text-xs font-semibold">LMP <span className="text-red-500">*</span></Label><Input type="date" value={pLmp} onChange={e => setPLmp(e.target.value)} required className="h-9 text-xs mt-1 rounded-xl" /></div>
-              <div><Label className="text-xs font-semibold">EDD</Label><Input type="date" value={pEdd} onChange={e => setPEdd(e.target.value)} className="h-9 text-xs mt-1 rounded-xl" /></div>
+              <div><Label className="text-xs font-semibold">EDD (Est. Delivery)</Label><Input type="date" value={pEdd} onChange={e => setPEdd(e.target.value)} className="h-9 text-xs mt-1 rounded-xl font-mono" /></div>
+              <div><Label className="text-xs font-semibold">AOG (Gestation)</Label><Input value={pAog} onChange={e => setPAog(e.target.value)} placeholder="Calculated" className="h-9 text-xs mt-1 rounded-xl font-semibold text-pink-700 bg-pink-50/50" /></div>
             </div>
 
             {/* FIXED DUAL BP INPUTS & FETAL ASSESSMENT */}
@@ -4641,8 +5059,20 @@ export default function NurseDashboard() {
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setIsNewPrenatalOpen(false)} className="text-xs rounded-xl">Cancel</Button>
-              <Button type="submit" className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold gap-1 cursor-pointer rounded-xl px-4">
-                <Save size={13} /> Save Maternal Record
+              <Button
+                type="submit"
+                disabled={isSubmittingPrenatal}
+                className="bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold gap-1 cursor-pointer rounded-xl px-4 disabled:opacity-50"
+              >
+                {isSubmittingPrenatal ? (
+                  <>
+                    <RefreshCcw size={13} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save size={13} /> Save Maternal Record
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -4924,8 +5354,20 @@ export default function NurseDashboard() {
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={() => setIsNewImmunOpen(false)} className="text-xs rounded-xl">Cancel</Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1 cursor-pointer rounded-xl px-4">
-                <Check size={13} /> Save Immunization Record
+              <Button
+                type="submit"
+                disabled={isSubmittingImmun}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1 cursor-pointer rounded-xl px-4 disabled:opacity-50"
+              >
+                {isSubmittingImmun ? (
+                  <>
+                    <RefreshCcw size={13} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check size={13} /> Save Immunization Record
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -4964,7 +5406,21 @@ export default function NurseDashboard() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsInventoryOpen(false)} className="text-xs rounded-xl">Cancel</Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1 font-bold cursor-pointer rounded-xl"><Check size={13} /> Save Item</Button>
+              <Button
+                type="submit"
+                disabled={isSubmittingInventory}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1 font-bold cursor-pointer rounded-xl disabled:opacity-50"
+              >
+                {isSubmittingInventory ? (
+                  <>
+                    <RefreshCcw size={13} className="animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check size={13} /> Save Item
+                  </>
+                )}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -5044,7 +5500,21 @@ export default function NurseDashboard() {
             <div><Label className="text-xs font-semibold">Location</Label><Input value={sLocation} onChange={e => setSLocation(e.target.value)} className="h-9 text-xs mt-1 rounded-xl" /></div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsScheduleOpen(false)} className="text-xs rounded-xl">Cancel</Button>
-              <Button type="submit" className="bg-violet-600 hover:bg-violet-700 text-white text-xs gap-1 font-bold cursor-pointer rounded-xl"><Check size={13} /> Post Schedule</Button>
+              <Button
+                type="submit"
+                disabled={isSubmittingSchedule}
+                className="bg-violet-600 hover:bg-violet-700 text-white text-xs gap-1 font-bold cursor-pointer rounded-xl disabled:opacity-50"
+              >
+                {isSubmittingSchedule ? (
+                  <>
+                    <RefreshCcw size={13} className="animate-spin" /> Posting...
+                  </>
+                ) : (
+                  <>
+                    <Check size={13} /> Post Schedule
+                  </>
+                )}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -5093,8 +5563,20 @@ export default function NurseDashboard() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsSendSmsModalOpen(false)} className="text-xs rounded-xl">Cancel</Button>
-              <Button type="submit" className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold gap-1.5 cursor-pointer rounded-xl">
-                <Send size={13} /> Dispatch SMS
+              <Button
+                type="submit"
+                disabled={isSubmittingSms}
+                className="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold gap-1.5 cursor-pointer rounded-xl disabled:opacity-50"
+              >
+                {isSubmittingSms ? (
+                  <>
+                    <RefreshCcw size={13} className="animate-spin" /> Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send size={13} /> Dispatch SMS
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -5205,6 +5687,28 @@ export default function NurseDashboard() {
         currentUserEmail={user?.email}
         currentUserId={user?.id}
         currentUserBarangay={nurseBarangay}
+      />
+
+      {/* Manual Health Notice Modal */}
+      <ManualResidentNotifyModal
+        isOpen={isManualNotifyOpen}
+        onClose={() => {
+          setIsManualNotifyOpen(false);
+          setSelectedNotifyResident(null);
+        }}
+        defaultResident={selectedNotifyResident}
+        currentSenderRole="nurse"
+        currentSenderName={nurseName}
+        currentSenderBarangay={nurseBarangay}
+        residentsList={residents.map(r => ({
+          id: r.id,
+          name: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+          email: r.email,
+          phone: r.phone,
+          barangay: (r as any).barangay || nurseBarangay,
+          purok: r.purok
+        }))}
+        initialCategory={notifyCategory}
       />
     </div>
   );

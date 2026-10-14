@@ -43,6 +43,38 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Ensure uploads directory exists and is publicly served for IDs and attachments
+const UPLOADS_DIR = path.resolve(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  try {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  } catch {}
+}
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+// Helper: Safely persist base64 image data URLs to disk to prevent MySQL max_allowed_packet packet overflow
+function saveBase64Image(dataUrl, prefix = 'id') {
+  if (!dataUrl || typeof dataUrl !== 'string') return dataUrl;
+  if (!dataUrl.startsWith('data:image/')) return dataUrl;
+  try {
+    const matches = dataUrl.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+    if (!matches) return dataUrl;
+    let ext = matches[1].toLowerCase().replace('jpeg', 'jpg');
+    if (ext.includes('svg')) ext = 'svg';
+    else if (ext.includes('png')) ext = 'png';
+    else if (ext.includes('webp')) ext = 'webp';
+    else ext = 'jpg';
+    const buffer = Buffer.from(matches[2], 'base64');
+    const filename = `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+    const filePath = path.join(UPLOADS_DIR, filename);
+    fs.writeFileSync(filePath, buffer);
+    return `/uploads/${filename}`;
+  } catch (err) {
+    console.warn('[Uploads] Error saving image to disk:', err.message);
+    return dataUrl;
+  }
+}
+
 // -------------------------------------------------------------
 // Password Hashing & Verification Utilities (Bcrypt)
 // -------------------------------------------------------------
@@ -498,6 +530,7 @@ async function migrateDatabase() {
       await safeAddColumn(pool, 'immunizations', 'batch_lot', "VARCHAR(100) DEFAULT ''");
       await safeAddColumn(pool, 'immunizations', 'remarks', "TEXT NULL");
       await safeAddColumn(pool, 'immunizations', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
+      await safeAddColumn(pool, 'immunizations', 'sms_sent', "TINYINT(1) DEFAULT 0");
 
       await safeAddColumn(pool, 'maternal_records', 'contact_number', "VARCHAR(50) DEFAULT ''");
       await safeAddColumn(pool, 'maternal_records', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
@@ -516,6 +549,7 @@ async function migrateDatabase() {
       await safeAddColumn(pool, 'maternal_records', 'next_visit_date', "DATE NULL");
       await safeAddColumn(pool, 'maternal_records', 'visit_number', "INT DEFAULT 1");
       await safeAddColumn(pool, 'maternal_records', 'next_visit_note', "TEXT NULL");
+      await safeAddColumn(pool, 'maternal_records', 'sms_sent', "TINYINT(1) DEFAULT 0");
     } catch (e) {
       console.warn('Immunizations/Maternal columns migration warning:', e.message);
     }
@@ -1398,6 +1432,9 @@ app.post('/api/auth/register', async (req, res) => {
     residentAddress = `${residentAddress.split(',')[0].trim()}, Barangay ${userBarangay}, ${userCity}`;
   }
 
+  // Safely persist base64 ID photo to server uploads to prevent MySQL packet overflow
+  const finalSubmittedId = saveBase64Image(submitted_id, 'resident_id');
+
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
@@ -1471,8 +1508,8 @@ app.post('/api/auth/register', async (req, res) => {
         let userResult;
         try {
           [userResult] = await pool.query(
-            "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, profile_photo, submitted_id, id_type, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, ?, ?, ?, NOW())",
-            [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress, submitted_id || '', submitted_id || '', req.body.id_type || 'Government ID']
+            "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, profile_photo, submitted_id, id_type, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, NULL, ?, ?, NOW())",
+            [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress, finalSubmittedId || '', req.body.id_type || 'Government ID']
           );
         } catch (uErr) {
           [userResult] = await pool.query(
@@ -1486,13 +1523,13 @@ app.post('/api/auth/register', async (req, res) => {
         try {
           await pool.query(
             "UPDATE residents SET email = ?, phone = ?, submitted_id = ?, id_type = ?, employment_status = ?, verification_status = 'Pending_Review', submitted_at = NOW(), claimed_at = NOW(), linked_user_id = ?, rejection_reason = NULL WHERE id = ?",
-            [cleanEmail, phone || existingRec.phone || '', submitted_id, req.body.id_type || 'Government ID', userEmployment, newUserId, residentIdToUse]
+            [cleanEmail, phone || existingRec.phone || '', finalSubmittedId, req.body.id_type || 'Government ID', userEmployment, newUserId, residentIdToUse]
           );
         } catch (updErr) {
           try {
             await pool.query(
               "UPDATE residents SET email = ?, phone = ?, submitted_id = ?, verification_status = 'Pending_Review', rejection_reason = NULL WHERE id = ?",
-              [cleanEmail, phone || existingRec.phone || '', submitted_id, residentIdToUse]
+              [cleanEmail, phone || existingRec.phone || '', finalSubmittedId, residentIdToUse]
             );
           } catch {}
         }
@@ -1522,7 +1559,7 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(201).json({
           success: true,
           is_claimed: true,
-          user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id: 'submitted', phone, address: residentAddress, city: userCity, purok: existingRec.purok || cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
+          user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id: finalSubmittedId || 'submitted', phone, address: residentAddress, city: userCity, purok: existingRec.purok || cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
           message: 'Existing resident profile linked successfully! Your submitted ID is under review by the Barangay Admin.'
         });
       }
@@ -1531,8 +1568,8 @@ app.post('/api/auth/register', async (req, res) => {
       let userResult;
       try {
         [userResult] = await pool.query(
-          "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, profile_photo, submitted_id, id_type, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, ?, ?, ?, NOW())",
-          [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress, submitted_id || '', submitted_id || '', req.body.id_type || 'Government ID']
+          "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, profile_photo, submitted_id, id_type, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, NULL, ?, ?, NOW())",
+          [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress, finalSubmittedId || '', req.body.id_type || 'Government ID']
         );
       } catch (uErr) {
         [userResult] = await pool.query(
@@ -1545,14 +1582,14 @@ app.post('/api/auth/register', async (req, res) => {
       try {
         const [resResult] = await pool.query(
           "INSERT INTO residents (first_name, middle_name, last_name, date_of_birth, gender, civil_status, employment_status, address, purok, barangay, phone, email, verification_status, submitted_id, id_type, submitted_at, linked_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Review', ?, ?, NOW(), ?)",
-          [firstName, middleName, lastName, dob, userGender, userCivilStatus, userEmployment, residentAddress, cleanPurokNum || '1', userBarangay, phone || '', cleanEmail, submitted_id, req.body.id_type || 'Government ID', newUserId]
+          [firstName, middleName, lastName, dob, userGender, userCivilStatus, userEmployment, residentAddress, cleanPurokNum || '1', userBarangay, phone || '', cleanEmail, finalSubmittedId, req.body.id_type || 'Government ID', newUserId]
         );
         residentIdToUse = resResult.insertId;
       } catch (resErr) {
         try {
           const [resResult] = await pool.query(
             "INSERT INTO residents (first_name, middle_name, last_name, date_of_birth, gender, civil_status, address, barangay, phone, email, verification_status, submitted_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Review', ?)",
-            [firstName, middleName, lastName, dob, userGender, userCivilStatus, residentAddress, userBarangay, phone || '', cleanEmail, submitted_id]
+            [firstName, middleName, lastName, dob, userGender, userCivilStatus, residentAddress, userBarangay, phone || '', cleanEmail, finalSubmittedId]
           );
           residentIdToUse = resResult.insertId;
         } catch (e2) {
@@ -1585,11 +1622,33 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(201).json({
         success: true,
         is_claimed: false,
-        user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id: 'submitted', phone, address: residentAddress, city: userCity, purok: cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
+        user: { id: residentIdToUse, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id: finalSubmittedId || 'submitted', phone, address: residentAddress, city: userCity, purok: cleanPurokNum || '1', barangay: userBarangay, years_of_residency: years_of_residency || '' },
         message: 'Account created! Your submitted ID is under review by the Barangay Admin.'
       });
     } catch (err) {
-      console.warn('MySQL register error:', err.message);
+      console.warn('MySQL register primary error:', err.message);
+      // Emergency recovery: save minimal user & resident directly to MySQL without image so account is NEVER lost
+      try {
+        const [emUser] = await pool.query(
+          "INSERT INTO users (name, email, password_hash, role, status, verification_status, barangay, phone, address, last_login) VALUES (?, ?, ?, ?, 'Active', 'Pending_Review', ?, ?, ?, NOW())",
+          [fullName, cleanEmail, hashedPassword, userRole, userBarangay, phone || '', residentAddress]
+        );
+        const emUserId = emUser.insertId;
+        const [emRes] = await pool.query(
+          "INSERT INTO residents (first_name, middle_name, last_name, date_of_birth, gender, civil_status, employment_status, address, purok, barangay, phone, email, verification_status, linked_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending_Review', ?)",
+          [firstName, middleName, lastName, dob, userGender, userCivilStatus, userEmployment, residentAddress, cleanPurokNum || '1', userBarangay, phone || '', cleanEmail, emUserId]
+        );
+        console.log('✅ [Recovery] Successfully saved account to MySQL database for:', cleanEmail);
+        return res.status(201).json({
+          success: true,
+          is_claimed: false,
+          user: { id: emRes.insertId, name: fullName, first_name: firstName, middle_name: middleName, last_name: lastName, date_of_birth: dob, gender: userGender, civil_status: userCivilStatus, employment_status: userEmployment, email: cleanEmail, role: userRole, verification_status: 'Pending_Review', submitted_id: 'submitted', phone, address: residentAddress, city: userCity, purok: cleanPurokNum || '1', barangay: userBarangay },
+          message: 'Account created! Your submitted ID is under review by the Barangay Admin.'
+        });
+      } catch (fatalErr) {
+        console.error('Fatal MySQL registration failure:', fatalErr.message);
+        return res.status(500).json({ success: false, message: 'Database error creating account: ' + fatalErr.message });
+      }
     }
   }
 
@@ -1809,7 +1868,7 @@ app.get('/api/residents/pending', async (req, res) => {
         FROM users u
         LEFT JOIN residents r ON (LOWER(TRIM(u.email)) = LOWER(TRIM(r.email)) OR (r.linked_user_id IS NOT NULL AND u.id = r.linked_user_id))
         WHERE (u.role = 'resident' OR u.role IS NULL OR r.id IS NOT NULL)
-          AND u.status != 'Archived'
+          AND (u.status != 'Archived' OR u.status IS NULL)
           AND (
             LOWER(COALESCE(r.verification_status, u.verification_status, '')) NOT IN ('verified')
             OR COALESCE(r.verification_status, u.verification_status) IS NULL
@@ -1863,7 +1922,11 @@ app.put('/api/residents/resubmit', async (req, res) => {
         "rejection_reason = NULL"
       ];
       const params = [];
-      if (submitted_id) { updates.push("submitted_id = ?"); params.push(submitted_id); }
+      if (submitted_id) {
+        const savedSubId = saveBase64Image(submitted_id, 'resubmit_id');
+        updates.push("submitted_id = ?");
+        params.push(savedSubId);
+      }
       if (first_name) { updates.push("first_name = ?"); params.push(first_name); }
       if (middle_name !== undefined) { updates.push("middle_name = ?"); params.push(middle_name); }
       if (last_name) { updates.push("last_name = ?"); params.push(last_name); }
@@ -2646,9 +2709,12 @@ app.post('/api/users', async (req, res) => {
       const hashedPassword = await hashPassword(rawPassword);
       const userStatus = status || 'Active';
 
+      const savedId = saveBase64Image(req.body.submitted_id, 'user_id');
+      const userIdType = req.body.id_type || 'Government ID';
+
       const [result] = await pool.query(
-        "INSERT INTO users (name, email, password_hash, role, barangay, city, phone, status, verification_status, employee_id, job_title, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Verified', ?, ?, NOW())",
-        [name.trim(), cleanEmail, hashedPassword, userRole, userBarangay, userCity, userPhone, userStatus, userEmployeeId, userJobTitle]
+        "INSERT INTO users (name, email, password_hash, role, barangay, city, phone, status, verification_status, employee_id, job_title, submitted_id, id_type, last_login) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Verified', ?, ?, ?, ?, NOW())",
+        [name.trim(), cleanEmail, hashedPassword, userRole, userBarangay, userCity, userPhone, userStatus, userEmployeeId, userJobTitle, savedId || null, userIdType]
       );
 
       // If superadmin role, ensure a clean, isolated barangay_settings row exists for their barangay
@@ -2712,16 +2778,19 @@ app.post('/api/users', async (req, res) => {
                 purok = COALESCE(purok, ?),
                 gender = COALESCE(gender, ?),
                 civil_status = COALESCE(civil_status, ?),
-                date_of_birth = COALESCE(date_of_birth, ?)
+                date_of_birth = COALESCE(date_of_birth, ?),
+                submitted_id = COALESCE(?, submitted_id),
+                id_type = COALESCE(?, id_type),
+                linked_user_id = COALESCE(linked_user_id, ?)
               WHERE id = ?`,
-              [cleanEmail, userPhone, householdNum, purokVal, genderVal, civilStatusVal, dobVal, targetResId]
+              [cleanEmail, userPhone, householdNum, purokVal, genderVal, civilStatusVal, dobVal, savedId, userIdType, result.insertId, targetResId]
             );
           } else {
             await pool.query(
               `INSERT INTO residents 
-                (first_name, last_name, email, phone, address, barangay, verification_status, household_number, purok, gender, civil_status, date_of_birth) 
-              VALUES (?, ?, ?, ?, ?, ?, 'Verified', ?, ?, ?, ?, ?)`,
-              [firstName, lastName, cleanEmail, userPhone, `Purok ${purokVal}, Barangay ${userBarangay}, Butuan City`, userBarangay, householdNum, purokVal, genderVal, civilStatusVal, dobVal]
+                (first_name, last_name, email, phone, address, barangay, verification_status, household_number, purok, gender, civil_status, date_of_birth, submitted_id, id_type, linked_user_id) 
+              VALUES (?, ?, ?, ?, ?, ?, 'Verified', ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [firstName, lastName, cleanEmail, userPhone, `Purok ${purokVal}, Barangay ${userBarangay}, Butuan City`, userBarangay, householdNum, purokVal, genderVal, civilStatusVal, dobVal, savedId, userIdType, result.insertId]
             );
           }
         } catch (e) {
@@ -5033,6 +5102,65 @@ app.post('/api/maternal', async (req, res) => {
   if (!mockData.maternal) mockData.maternal = [];
   mockData.maternal.unshift(newMaternal);
   return res.status(201).json(newMaternal);
+});
+
+// -------------------------------------------------------------
+// Safe Mark SMS Sent Endpoint for Clinical Due & Overdue Records
+// -------------------------------------------------------------
+app.post('/api/health/mark-sms-sent', async (req, res) => {
+  const { maternalIds = [], immunizationIds = [], sentIds = [] } = req.body;
+  const pool = getPool();
+
+  const parseCleanIds = (arr) => {
+    return (Array.isArray(arr) ? arr : [])
+      .map(id => {
+        const clean = String(id).replace(/^(mat-up-|imm-up-|mat-|imm-)/, '');
+        const num = parseInt(clean, 10);
+        return isNaN(num) ? null : num;
+      })
+      .filter(Boolean);
+  };
+
+  const matNums = parseCleanIds([...maternalIds, ...sentIds.filter(id => String(id).startsWith('mat'))]);
+  const immNums = parseCleanIds([...immunizationIds, ...sentIds.filter(id => String(id).startsWith('imm'))]);
+  const allNums = parseCleanIds([...maternalIds, ...immunizationIds, ...sentIds]);
+
+  if (pool && getStatus().connected) {
+    try {
+      if (matNums.length > 0) {
+        await pool.query(`UPDATE maternal_records SET sms_sent = 1 WHERE id IN (?)`, [matNums]);
+        await pool.query(`UPDATE clinical_encounters SET sms_sent = 1 WHERE id IN (?)`, [matNums]).catch(() => {});
+      }
+      if (immNums.length > 0) {
+        await pool.query(`UPDATE immunizations SET sms_sent = 1 WHERE id IN (?)`, [immNums]);
+        await pool.query(`UPDATE clinical_encounters SET sms_sent = 1 WHERE id IN (?)`, [immNums]).catch(() => {});
+      }
+      if (allNums.length > 0) {
+        await pool.query(`UPDATE clinical_encounters SET sms_sent = 1 WHERE id IN (?)`, [allNums]).catch(() => {});
+      }
+    } catch (err) {
+      console.warn('DB mark-sms-sent error:', err.message);
+    }
+  }
+
+  // Also update in-memory mock datasets
+  if (mockData.maternal) {
+    mockData.maternal.forEach(m => {
+      if (matNums.includes(m.id) || allNums.includes(m.id)) m.sms_sent = 1;
+    });
+  }
+  if (mockData.immunizations) {
+    mockData.immunizations.forEach(i => {
+      if (immNums.includes(i.id) || allNums.includes(i.id)) i.sms_sent = 1;
+    });
+  }
+  if (mockData.consultations) {
+    mockData.consultations.forEach(c => {
+      if (allNums.includes(c.id)) c.sms_sent = 1;
+    });
+  }
+
+  res.json({ success: true, markedCount: matNums.length + immNums.length });
 });
 
 // -------------------------------------------------------------

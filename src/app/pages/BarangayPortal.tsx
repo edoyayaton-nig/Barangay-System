@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import {
   FileText,
@@ -30,11 +30,18 @@ import {
   Stethoscope,
   Syringe,
   Users,
-  ShieldCheck
+  ShieldCheck,
+  Camera,
+  Eye,
+  FileCheck,
+  UploadCloud,
+  Maximize2
 } from 'lucide-react';
 import { getBarangayContact, getBarangayEmail } from '../../utils/barangays';
 import { saveStoredUser } from '../../utils/safeStorage';
 import { apiService, DocumentRequest, ClinicSchedule, HealthAppointment } from '../../services/api';
+import { compressImage } from '../../utils/imageCompressor';
+import ImageViewerModal from '../components/ImageViewerModal';
 import BarangayChatbot from '../components/BarangayChatbot';
 import ProfileSettingsModal from '../components/ProfileSettingsModal';
 import TermsAndPrivacyModal from '../components/TermsAndPrivacyModal';
@@ -153,6 +160,13 @@ export default function BarangayPortal() {
   const [categories, setCategories] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<PersistentNotification[]>([]);
 
+  // Mandatory Purok President Certificate Attachment State
+  const [purokCertPhoto, setPurokCertPhoto] = useState<string | null>(null);
+  const [purokCertFileName, setPurokCertFileName] = useState('');
+  const [purokCertUploading, setPurokCertUploading] = useState(false);
+  const [viewingPurokPhoto, setViewingPurokPhoto] = useState<string | null>(null);
+  const purokFileInputRef = useRef<HTMLInputElement | null>(null);
+
   // Health Clinic Schedules and Appointment Booking States
   const [clinicSchedules, setClinicSchedules] = useState<ClinicSchedule[]>([]);
   const [myBookings, setMyBookings] = useState<HealthAppointment[]>([]);
@@ -241,6 +255,9 @@ export default function BarangayPortal() {
     setDocType(val);
     setPurpose('');
     setExtraFields({});
+    setPurokCertPhoto(null);
+    setPurokCertFileName('');
+    if (purokFileInputRef.current) purokFileInputRef.current.value = '';
   };
 
   const handleOpenDocModal = (type?: string) => {
@@ -269,6 +286,35 @@ export default function BarangayPortal() {
       setDocType('');
       setExtraFields({});
       setPurpose('');
+      setPurokCertPhoto(null);
+      setPurokCertFileName('');
+      if (purokFileInputRef.current) purokFileInputRef.current.value = '';
+    }
+  };
+
+  // Upload and compress Certificate of Purok President
+  const handlePurokCertUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('File size exceeds limit', { description: 'Please select an image smaller than 15MB.' });
+      return;
+    }
+    setPurokCertUploading(true);
+    setPurokCertFileName(file.name);
+    try {
+      const compressed = await compressImage(file, 1400, 1400, 0.8);
+      setPurokCertPhoto(compressed);
+      toast.success('Certificate of Purok President attached!');
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPurokCertPhoto(reader.result as string);
+        toast.success('Certificate of Purok President attached!');
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setPurokCertUploading(false);
     }
   };
 
@@ -611,16 +657,17 @@ export default function BarangayPortal() {
       return;
     }
 
-    // Auto-build extra_fields from user profile
-    const purok = extractPurok(user?.address);
-    const ageDisplay = calculateAge(user?.date_of_birth || user?.birth_date || user?.birthdate, user?.age);
+    // MANDATORY REQUIREMENT: Certificate of Purok President Photo
+    if (!purokCertPhoto) {
+      toast.error('Certificate of Purok President Required', {
+        description: 'You are required to submit a clear photo of your Certificate / Endorsement from the Purok President before continuing.',
+        duration: 6000,
+      });
+      return;
+    }
+
+    // Form specifics (demographic & purok cert are linked directly to resident census profile)
     const autoExtraFields: Record<string, string> = {
-      'Age': ageDisplay !== '—' ? ageDisplay.replace(' yrs old', '').trim() : '',
-      'Gender': user?.gender || 'Male',
-      'Civil Status': user?.civil_status || user?.civilStatus || 'Single',
-      'Date of Birth': user?.date_of_birth || user?.birth_date || user?.birthdate || '',
-      'Purok / Location': purok || `Barangay ${userBarangay}`,
-      'Home Address': user?.address || `Barangay ${userBarangay}, ${user?.city || 'Butuan City'}`,
       ...extraFields,
     };
     try {
@@ -635,11 +682,14 @@ export default function BarangayPortal() {
         document_type: docType,
         purpose: defaultDocPurpose,
         barangay: user?.barangay || userBarangay || 'Pianing',
+        purok_certificate_photo: purokCertPhoto,
         extra_fields: JSON.stringify(autoExtraFields),
       });
 
       const nextDocs = [created, ...documents];
       setDocuments(nextDocs);
+      setPurokCertPhoto(null);
+      setPurokCertFileName('');
       if (user?.email) {
         localStorage.setItem(`brgy_cached_docs_${user.email.toLowerCase().trim()}`, JSON.stringify(nextDocs));
         dispatchResidentNotification({
@@ -1193,8 +1243,122 @@ export default function BarangayPortal() {
                     />
                   )}
 
+                  {/* ═══ MANDATORY REQUIREMENT: CERTIFICATE OF PUROK PRESIDENT ═══ */}
+                  <div className="border border-indigo-200 bg-gradient-to-br from-indigo-50/50 via-slate-50 to-indigo-50/30 rounded-xl p-3.5 space-y-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                          <ShieldCheck size={18} />
+                        </div>
+                        <div>
+                          <Label className="text-xs font-bold text-slate-900 flex items-center gap-1">
+                            Certificate of Purok President <span className="text-red-500 font-bold">*</span>
+                          </Label>
+                          <p className="text-[11px] text-slate-500">
+                            Required: Upload or snap a clear photo/scan of your Purok President's Endorsement
+                          </p>
+                        </div>
+                      </div>
+                      {purokCertPhoto ? (
+                        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold gap-1 px-2 py-0.5 shadow-2xs">
+                          <CheckCircle2 size={11} /> Photo Attached
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-rose-600 border-rose-300 bg-rose-50 text-[10px] font-bold">
+                          Required
+                        </Badge>
+                      )}
+                    </div>
+
+                    {purokCertPhoto ? (
+                      <div className="border border-emerald-300 bg-white rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            onClick={() => setViewingPurokPhoto(purokCertPhoto)}
+                            className="w-14 h-14 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden cursor-pointer relative group shrink-0 shadow-2xs"
+                            title="Click to zoom full photo"
+                          >
+                            <img src={purokCertPhoto} alt="Purok President Certificate" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                              <Eye size={14} />
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 flex items-center gap-1 truncate">
+                              <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                              <span className="truncate">{purokCertFileName || 'Purok_President_Certificate.jpg'}</span>
+                            </p>
+                            <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                              Ready for submission with this request
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setViewingPurokPhoto(purokCertPhoto)}
+                              className="text-[11px] text-indigo-600 hover:underline font-semibold flex items-center gap-1 mt-1 cursor-pointer"
+                            >
+                              <Maximize2 size={11} /> View / Zoom Full Photo
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => purokFileInputRef.current?.click()}
+                            className="h-8 px-2.5 text-xs text-slate-700 hover:bg-slate-100 font-semibold rounded-lg"
+                          >
+                            <Camera size={13} className="mr-1 text-slate-500" /> Change
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setPurokCertPhoto(null);
+                              setPurokCertFileName('');
+                              if (purokFileInputRef.current) purokFileInputRef.current.value = '';
+                            }}
+                            className="h-8 px-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-lg"
+                            title="Remove photo"
+                          >
+                            <X size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => purokFileInputRef.current?.click()}
+                        className="border-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-white hover:bg-indigo-50/50 rounded-xl p-4 text-center cursor-pointer transition-all shadow-2xs group"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-indigo-100 group-hover:bg-indigo-600 text-indigo-600 group-hover:text-white flex items-center justify-center mx-auto mb-2 transition-colors">
+                          <Camera size={18} />
+                        </div>
+                        <p className="text-xs font-bold text-indigo-900 group-hover:text-indigo-700">
+                          Click to upload or take a photo of your Certificate of Purok President
+                        </p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Supports JPG, PNG, WebP up to 15MB. Ensure signature and seal are visible.
+                        </p>
+                      </div>
+                    )}
+                    <input
+                      ref={purokFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePurokCertUpload}
+                    />
+                  </div>
+
                   <DialogFooter>
-                    <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white w-full h-11 rounded-xl">Submit Request</Button>
+                    <Button
+                      type="submit"
+                      disabled={purokCertUploading}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white w-full h-11 rounded-xl font-bold shadow-md transition-all cursor-pointer"
+                    >
+                      {purokCertUploading ? 'Optimizing Photo...' : 'Submit Request'}
+                    </Button>
                   </DialogFooter>
                 </form>
               )}
@@ -1268,7 +1432,25 @@ export default function BarangayPortal() {
                   documents.map((doc, idx) => (
                     <TableRow key={`doc-${doc.id}-${doc.document_type}-${idx}`} className="text-xs">
                       <TableCell className="font-mono font-semibold text-indigo-600">{doc.request_code}</TableCell>
-                      <TableCell className="font-semibold text-slate-900">{doc.document_type}</TableCell>
+                      <TableCell className="font-semibold text-slate-900">
+                        <div>{doc.document_type}</div>
+                        {doc.purok_certificate_photo ? (
+                          <button
+                            type="button"
+                            onClick={() => setViewingPurokPhoto(doc.purok_certificate_photo || null)}
+                            className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                            title="Click to view submitted Certificate of Purok President"
+                          >
+                            <FileCheck size={11} className="text-emerald-600" />
+                            Purok Cert Attached
+                            <Eye size={10} className="ml-0.5 text-emerald-600" />
+                          </button>
+                        ) : (
+                          <span className="inline-block mt-1 text-[10px] text-slate-400">
+                            Standard Request
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-slate-500">{doc.purpose || '—'}</TableCell>
                       <TableCell>
                         <Badge className={
@@ -1356,6 +1538,16 @@ export default function BarangayPortal() {
           setUser(updated);
           setIsVerified(false);
         }}
+      />
+
+      {/* Lightbox / Fullscreen Viewer for Certificate of Purok President */}
+      <ImageViewerModal
+        isOpen={!!viewingPurokPhoto}
+        onClose={() => setViewingPurokPhoto(null)}
+        imageUrl={viewingPurokPhoto}
+        title="Certificate of Purok President"
+        subtitle="Official Endorsement Submitted by Resident with Document Request"
+        fileName="certificate-of-purok-president.jpg"
       />
     </div>
   );

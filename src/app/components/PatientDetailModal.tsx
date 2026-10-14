@@ -10,6 +10,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { apiService } from '../../services/api';
+import { saveSentReminderIds, notifyHealthDataChanged } from '../../services/healthSync';
 import { toast } from 'sonner';
 
 export interface PatientRecordData {
@@ -39,7 +40,7 @@ export interface PatientRecordData {
   }>;
   prenatal?: Array<{
     id: string | number;
-    date: string;
+    date?: string;
     gravida: string;
     para: string;
     lmp: string;
@@ -50,6 +51,7 @@ export interface PatientRecordData {
     next_visit: string;
     meds: string;
     attending: string;
+    visit_number?: number;
   }>;
   immunizations?: Array<{
     id: string | number;
@@ -59,6 +61,7 @@ export interface PatientRecordData {
     next_due: string;
     batch_number?: string;
     attending: string;
+    age_months?: string | number;
   }>;
 }
 
@@ -119,6 +122,8 @@ export default function PatientDetailModal({ isOpen, onClose, patient, initialTa
         description: `Phone: ${patient.contact_number}`
       });
       setSmsMessage('');
+      saveSentReminderIds([patient.id, `mat-${patient.id}`, `imm-${patient.id}`]);
+      notifyHealthDataChanged('PATIENT_SMS_SENT', { patientId: patient.id });
       if (onSendSmsSuccess) onSendSmsSuccess();
     } catch {
       toast.info(`SMS queued for ${patient.name} (${patient.contact_number}). Message: "${smsMessage.substring(0, 50)}..."`);

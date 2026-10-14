@@ -76,11 +76,13 @@ import {
   Server,
   Copy,
   ExternalLink,
-  UserCog
+  UserCog,
+  FileCheck
 } from 'lucide-react';
 import { apiService, DocumentRequest, Resident, SystemUser, UserPermissions, hasUserPermission, PendingResident, ActivityLog, ClinicSchedule, HealthAppointment, PopulationStats, BarangayOverviewItem, HouseholdGroup, CensusAnalytics } from '../../services/api';
 import { ID_TYPES } from '../../utils/idTypes';
 import { validatePasswordComplexity } from '../../utils/passwordValidation';
+import { compressImage } from '../../utils/imageCompressor';
 import SystemMessenger from '../components/SystemMessenger';
 import ResidentProfileModal from '../components/ResidentProfileModal';
 import DocumentPrintModal from '../components/DocumentPrintModal';
@@ -88,6 +90,7 @@ import DocumentInfoModal from '../components/DocumentInfoModal';
 import PendingApplicantReviewModal from '../components/PendingApplicantReviewModal';
 import UserPermissionsModal from '../components/UserPermissionsModal';
 import ImageViewerModal from '../components/ImageViewerModal';
+import ManualResidentNotifyModal from '../components/ManualResidentNotifyModal';
 import ProfileSettingsView from '../components/ProfileSettingsView';
 import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import NotificationSettingsPanel from '../components/NotificationSettingsPanel';
@@ -215,6 +218,28 @@ export default function AdminDashboard() {
   // Resident Profile Modal
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [selectedResidentId, setSelectedResidentId] = useState<number | null>(null);
+  const [returnToDocOnProfileClose, setReturnToDocOnProfileClose] = useState<DocumentRequest | null>(null);
+
+  const resolveResidentIdForDoc = (doc?: DocumentRequest | null): number => {
+    if (!doc) return 1;
+    if (doc.resident_id && Number(doc.resident_id) > 0) return Number(doc.resident_id);
+    if ((doc as any).matched_resident_id && Number((doc as any).matched_resident_id) > 0) return Number((doc as any).matched_resident_id);
+
+    const docEmail = (doc.email || (doc as any).resident_email || '').toLowerCase().trim();
+    const docName = (doc.resident_name || '').toLowerCase().trim();
+
+    if (docEmail && Array.isArray(residents)) {
+      const match = residents.find(r => (r.email || '').toLowerCase().trim() === docEmail);
+      if (match) return match.id;
+    }
+
+    if (docName && Array.isArray(residents)) {
+      const match = residents.find(r => `${r.first_name} ${r.last_name}`.toLowerCase().trim() === docName);
+      if (match) return match.id;
+    }
+
+    return 1;
+  };
 
   const openResidentProfile = (id: number) => {
     setSelectedResidentId(id);
@@ -251,6 +276,11 @@ export default function AdminDashboard() {
     setSelectedApplicantForReview(applicant);
     setIsApplicantReviewOpen(true);
   };
+
+  // Manual Resident Notification Modal State
+  const [isManualNotifyOpen, setIsManualNotifyOpen] = useState(false);
+  const [selectedNotifyResident, setSelectedNotifyResident] = useState<any | null>(null);
+  const [notifyCategory, setNotifyCategory] = useState<'general' | 'document' | 'health' | 'account'>('general');
 
   // Search & Filter
   const [docSearch, setDocSearch] = useState('');
@@ -292,6 +322,10 @@ export default function AdminDashboard() {
   // Census name-search auto-fill
   const [docNameSuggestions, setDocNameSuggestions] = useState<Resident[]>([]);
   const [showDocNameSuggestions, setShowDocNameSuggestions] = useState(false);
+  // Searchable Resident Selector State for Issue Document Modal
+  const [docResidentSearch, setDocResidentSearch] = useState('');
+  const [isDocSearchDropdownOpen, setIsDocSearchDropdownOpen] = useState(false);
+  const [docSelectedResident, setDocSelectedResident] = useState<Resident | null>(null);
 
   const [newResFirstName, setNewResFirstName] = useState('');
   const [newResMiddleName, setNewResMiddleName] = useState('');
@@ -350,7 +384,28 @@ export default function AdminDashboard() {
   const [resAccLinkedCensusId, setResAccLinkedCensusId] = useState<number | null>(null);
   const [resAccCensusMatch, setResAccCensusMatch] = useState<Resident | null>(null);
   const [isCreatingResAccount, setIsCreatingResAccount] = useState(false);
+  const [allCensusRegistry, setAllCensusRegistry] = useState<Resident[]>([]);
+  const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const resAccFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (isCreateResidentUserOpen || isAddDocOpen) {
+      const targetBg = user?.barangay || 'Pianing';
+      apiService.getResidents(targetBg, 'all')
+        .then(data => {
+          if (Array.isArray(data)) {
+            setAllCensusRegistry(data);
+          }
+        })
+        .catch(err => console.warn('Could not load full census registry:', err));
+    }
+    if (!isCreateResidentUserOpen) {
+      setIsSearchDropdownOpen(false);
+    }
+    if (!isAddDocOpen) {
+      setIsDocSearchDropdownOpen(false);
+    }
+  }, [isCreateResidentUserOpen, isAddDocOpen, user?.barangay]);
 
   const getDynamicAge = (dobString: string): number | null => {
     if (!dobString) return null;
@@ -365,7 +420,7 @@ export default function AdminDashboard() {
     return age >= 0 ? age : null;
   };
 
-  const handleResAccFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleResAccFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -374,18 +429,24 @@ export default function AdminDashboard() {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File too large', { description: 'Max image size is 5MB.' });
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('File too large', { description: 'Max image size is 15MB.' });
       return;
     }
 
     setResAccIdFileName(file.name);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setResAccIdPhoto(reader.result as string);
+    try {
+      const compressed = await compressImage(file, 1200, 1200, 0.75);
+      setResAccIdPhoto(compressed);
       toast.success('Valid ID attached', { description: file.name });
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setResAccIdPhoto(reader.result as string);
+        toast.success('Valid ID attached', { description: file.name });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleClearResAccIdPhoto = () => {
@@ -467,7 +528,7 @@ export default function AdminDashboard() {
   const [showEditUserCurrentPass, setShowEditUserCurrentPass] = useState(false);
   const [showEditUserPass, setShowEditUserPass] = useState(false);
   const [showEditUserConfirmPass, setShowEditUserConfirmPass] = useState(false);
-  const [editUserRole, setEditUserRole] = useState<'superadmin' | 'admin' | 'staff' | 'bhw' | 'nurse' | 'resident'>('staff');
+  const [editUserRole, setEditUserRole] = useState<SystemUser['role']>('staff');
   const [editUserBarangay, setEditUserBarangay] = useState('Pianing');
   const [editUserPhone, setEditUserPhone] = useState('');
   const [editUserStatus, setEditUserStatus] = useState<'Active' | 'Inactive' | 'Archived'>('Active');
@@ -815,16 +876,15 @@ export default function AdminDashboard() {
   const loadData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      // Data isolation: super_mega_admin and superadmin see city-wide by default (undefined = no filter).
-      // Other roles (admin, staff, nurse, bhw) are scoped to their own barangay.
-      const isSuperUser = isSuperMegaAdmin || isSuperAdmin;
-      const activeBarangayParam = isSuperUser ? undefined : userBarangay || undefined;
+      // Data isolation: ONLY platform super_mega_admin sees city-wide by default (undefined = no filter).
+      // All barangay roles (superadmin, admin, staff) are strictly scoped to their assigned barangay.
+      const activeBarangayParam = isSuperMegaAdmin ? undefined : (userBarangay || 'Pianing');
       const [docsData, resData, usersData, statsData, pendingData, catData, logsData, schedData, aptsData, popData, cStats, hhData] = await Promise.all([
         apiService.getDocuments(activeBarangayParam),
         apiService.getResidents(activeBarangayParam, selectedCensusPurok),
-        apiService.getUsers(),
+        apiService.getUsers(activeBarangayParam),
         apiService.getAdminStats(activeBarangayParam),
-        apiService.getPendingResidents(isSuperUser ? undefined : activeBarangayParam),
+        apiService.getPendingResidents(activeBarangayParam),
         apiService.getCategories().catch(() => []),
         apiService.getActivityLogs({ barangay: activeBarangayParam, caller_role: user?.role }).catch(() => []),
         apiService.getClinicSchedules(activeBarangayParam).catch(() => []),
@@ -1172,9 +1232,85 @@ export default function AdminDashboard() {
     setNewDocExtraFields(prev => ({ ...prev, [key]: val }));
   };
 
+  // Search matches for resident selection in Issue Document modal
+  const docResidentMatches = useMemo(() => {
+    const rawSearch = docResidentSearch.trim().toLowerCase();
+    const listToSearch = allCensusRegistry.length > 0 ? allCensusRegistry : residents;
+
+    if (!rawSearch) {
+      return [];
+    }
+
+    const tokens = rawSearch.split(/\s+/).filter(Boolean);
+    const cleanedSearch = rawSearch.replace(/s$/i, '');
+
+    return listToSearch.filter(r => {
+      const fn = (r.first_name || '').toLowerCase();
+      const ln = (r.last_name || '').toLowerCase();
+      const mn = (r.middle_name || '').toLowerCase();
+      const fullName = `${fn} ${mn} ${ln}`.trim();
+      const revFullName = `${ln}, ${fn} ${mn}`.trim();
+      const hh = (r.household_number || '').toLowerCase();
+      const purok = (r.purok || '').toLowerCase();
+      const purokFull = `purok ${purok}`;
+      const brgy = (r.barangay || '').toLowerCase();
+      const addr = (r.address || '').toLowerCase();
+      const phone = (r.phone || '').toLowerCase();
+
+      const searchableHaystack = `${fullName} ${revFullName} ${hh} ${purokFull} ${brgy} ${addr} ${phone}`;
+
+      if (searchableHaystack.includes(rawSearch) || (cleanedSearch.length >= 3 && searchableHaystack.includes(cleanedSearch))) {
+        return true;
+      }
+
+      const allTokensMatch = tokens.every(token => {
+        const cleanTok = token.replace(/s$/i, '');
+        return searchableHaystack.includes(token) || (cleanTok.length >= 3 && searchableHaystack.includes(cleanTok));
+      });
+      return allTokensMatch;
+    }).slice(0, 15);
+  }, [docResidentSearch, allCensusRegistry, residents]);
+
+  const applyDocResidentMatch = (r: Resident) => {
+    setDocSelectedResident(r);
+    setSelectedResidentForDoc(String(r.id));
+    setNewDocResidentId(r.id);
+    const fullName = `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}`.trim();
+    setNewDocName(fullName);
+    setNewDocGender((r.gender === 'Female' ? 'Female' : r.gender === 'Male' ? 'Male' : '') as any);
+    setNewDocCivilStatus(r.civil_status || '');
+    setNewDocPurok(r.purok ? (r.purok.startsWith('Purok') ? r.purok : `Purok ${r.purok}`) : '');
+    const calculatedAge = r.age ? String(r.age) : (r.date_of_birth ? String(getDynamicAge(r.date_of_birth) || '') : '');
+    setNewDocAge(calculatedAge ? `${calculatedAge} years old` : '');
+    setNewDocAddress(r.address || `Purok ${r.purok || ''}, Barangay ${r.barangay || user?.barangay || 'Pianing'}, Butuan City`);
+    setIsDocSearchDropdownOpen(false);
+    setDocResidentSearch('');
+    toast.success(`Resident details auto-filled for ${fullName}!`);
+  };
+
+  const handleUnlinkDocResident = () => {
+    setDocSelectedResident(null);
+    setSelectedResidentForDoc('manual');
+    setNewDocResidentId(null);
+    setDocResidentSearch('');
+    setIsDocSearchDropdownOpen(false);
+  };
+
+  const handleManualDocConstituent = () => {
+    setDocSelectedResident(null);
+    setSelectedResidentForDoc('manual');
+    setNewDocResidentId(null);
+    if (docResidentSearch.trim()) {
+      setNewDocName(docResidentSearch.trim());
+    }
+    setIsDocSearchDropdownOpen(false);
+    toast.info('Switched to Manual / Walk-in constituent entry. You can fill details below.');
+  };
+
   const handleSelectResidentForDoc = (val: string) => {
     setSelectedResidentForDoc(val);
     if (val === 'manual' || !val) {
+      setDocSelectedResident(null);
       setNewDocResidentId(null);
       setNewDocName('');
       setNewDocGender('');
@@ -1184,15 +1320,9 @@ export default function AdminDashboard() {
       setNewDocAddress('');
       return;
     }
-    const r = residents.find(res => String(res.id) === val);
+    const r = (allCensusRegistry.length > 0 ? allCensusRegistry : residents).find(res => String(res.id) === val);
     if (r) {
-      setNewDocResidentId(r.id);
-      setNewDocName(`${r.first_name} ${r.last_name}`.trim());
-      setNewDocGender((r.gender === 'Female' ? 'Female' : r.gender === 'Male' ? 'Male' : '') as any);
-      setNewDocCivilStatus(r.civil_status || '');
-      setNewDocPurok(r.purok ? (r.purok.startsWith('Purok') ? r.purok : `Purok ${r.purok}`) : '');
-      setNewDocAge(r.age ? String(r.age) : '');
-      setNewDocAddress(r.address || `Purok ${r.purok || ''}, Barangay ${r.barangay || 'Pianing'}, Butuan City`);
+      applyDocResidentMatch(r);
     }
   };
 
@@ -1205,7 +1335,8 @@ export default function AdminDashboard() {
       return;
     }
     const q = val.toLowerCase();
-    const matches = residents.filter(r => {
+    const listToSearch = allCensusRegistry.length > 0 ? allCensusRegistry : residents;
+    const matches = listToSearch.filter(r => {
       const full = `${r.first_name} ${r.middle_name || ''} ${r.last_name}`.toLowerCase();
       return full.includes(q);
     }).slice(0, 8);
@@ -1214,17 +1345,9 @@ export default function AdminDashboard() {
   };
 
   const applyDocCensusSuggestion = (r: Resident) => {
-    setNewDocResidentId(r.id);
-    setNewDocName(`${r.first_name} ${r.last_name}`.trim());
-    setNewDocGender((r.gender === 'Female' ? 'Female' : r.gender === 'Male' ? 'Male' : '') as any);
-    setNewDocCivilStatus(r.civil_status || '');
-    setNewDocPurok(r.purok ? (r.purok.startsWith('Purok') ? r.purok : `Purok ${r.purok}`) : '');
-    setNewDocAge(r.age ? String(r.age) : '');
-    setNewDocAddress(r.address || `Purok ${r.purok || ''}, Barangay ${r.barangay || 'Pianing'}, Butuan City`);
+    applyDocResidentMatch(r);
     setShowDocNameSuggestions(false);
     setDocNameSuggestions([]);
-    // Also sync the dropdown selector if they are a registered resident
-    if (!r.is_census_only) setSelectedResidentForDoc(String(r.id));
   };
 
   const handleNewDocTypeChange = (type: string) => {
@@ -1273,16 +1396,51 @@ export default function AdminDashboard() {
 
     const payloadExtra: Record<string, string> = {
       ...newDocExtraFields,
-      'Gender': newDocGender,
-      'Civil Status': newDocCivilStatus,
-      'Purok / Location': newDocPurok,
-      'Home Address': newDocAddress || `Purok ${newDocPurok}, Barangay Pianing, Butuan City`,
-      'Age': newDocAge
     };
 
     try {
+      let finalResidentId = newDocResidentId;
+      const targetBrgy = user?.barangay || 'Pianing';
+
+      // If resident is not linked to existing record, check if they exist or auto-create in Census database
+      if (!finalResidentId && newDocName.trim()) {
+        const nameParts = newDocName.trim().split(/\s+/);
+        const fn = nameParts[0] || 'Walk-in';
+        const ln = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Constituent';
+        const cleanPurok = (newDocPurok || '1').replace(/purok\s*/i, '').trim();
+
+        const listToCheck = allCensusRegistry.length > 0 ? allCensusRegistry : residents;
+        const existingInDb = listToCheck.find(r => 
+          `${r.first_name} ${r.last_name}`.toLowerCase().trim() === newDocName.trim().toLowerCase()
+        );
+
+        if (existingInDb) {
+          finalResidentId = existingInDb.id;
+        } else {
+          try {
+            const autoCreated = await apiService.createResident({
+              first_name: fn,
+              last_name: ln,
+              barangay: targetBrgy,
+              gender: newDocGender || 'Male',
+              civil_status: newDocCivilStatus || 'Single',
+              purok: cleanPurok || '1',
+              address: newDocAddress || `Purok ${cleanPurok}, Barangay ${targetBrgy}, Butuan City`,
+              is_census_only: true
+            });
+            if (autoCreated && (autoCreated as any).id) {
+              finalResidentId = (autoCreated as any).id;
+              toast.success(`Constituent ${fn} ${ln} automatically registered in Barangay Census database!`);
+              loadData(false);
+            }
+          } catch (e) {
+            console.warn('Auto-census registration on doc creation:', e);
+          }
+        }
+      }
+
       const created = await apiService.createDocument({
-        resident_id: newDocResidentId || undefined,
+        resident_id: finalResidentId || undefined,
         resident_name: newDocName.trim(),
         document_type: newDocType,
         purpose: finalPurpose || 'Official Barangay Document',
@@ -1293,7 +1451,7 @@ export default function AdminDashboard() {
 
       const augmentedDoc = {
         ...created,
-        resident_address: newDocAddress || `Purok ${newDocPurok}, Barangay Pianing, Butuan City`,
+        resident_address: newDocAddress || `Purok ${newDocPurok}, Barangay ${targetBrgy}, Butuan City`,
         resident_civil_status: newDocCivilStatus,
         resident_gender: newDocGender,
         resident_age: newDocAge,
@@ -1322,6 +1480,9 @@ export default function AdminDashboard() {
       // Reset form
       setSelectedResidentForDoc('');
       setNewDocResidentId(null);
+      setDocResidentSearch('');
+      setIsDocSearchDropdownOpen(false);
+      setDocSelectedResident(null);
       setNewDocName('');
       setNewDocType('');
       setNewDocGender('');
@@ -1372,11 +1533,12 @@ export default function AdminDashboard() {
         });
       }
 
-      // Automated In-App & EmailJS Notification to Resident's Gmail on Document Status Change
+      // Automated In-App, Email, and SMS Notification to Resident on Document Status Change
       const residentMatch = residents.find(r => r.id === targetDoc?.resident_id || `${r.first_name} ${r.last_name}`.toLowerCase().trim() === (resName || '').toLowerCase().trim());
       const resEmail = (targetDoc as any)?.resident_email || (targetDoc as any)?.email || residentMatch?.email;
+      const resPhone = (targetDoc as any)?.resident_phone || (targetDoc as any)?.phone || residentMatch?.phone;
 
-      if (resEmail && targetDoc) {
+      if ((resEmail || resPhone) && targetDoc) {
         let notifTitle = `📄 Document Status: ${targetDoc.document_type}`;
         let badgeColor: 'blue' | 'indigo' | 'emerald' | 'amber' | 'red' = 'indigo';
         let statusMsg = `Your ${targetDoc.document_type} (Tracking Code: ${targetDoc.request_code}) is now in status: ${nextStatus}.`;
@@ -1396,8 +1558,9 @@ export default function AdminDashboard() {
         }
 
         dispatchResidentNotification({
-          residentEmail: resEmail,
+          residentEmail: resEmail || '',
           residentName: resName,
+          phone: resPhone,
           type: 'document',
           title: notifTitle,
           message: statusMsg,
@@ -1406,6 +1569,9 @@ export default function AdminDashboard() {
           refCode: targetDoc.request_code,
           barangay: targetDoc.barangay || user?.barangay || 'Pianing'
         }).then(res => {
+          if (res.sms) {
+            toast.info(`📱 Live SMS notification dispatched to ${resPhone}`);
+          }
           if (res.email) {
             toast.info(`📧 Status update emailed to ${resEmail}`);
           }
@@ -1437,12 +1603,13 @@ export default function AdminDashboard() {
       // Refresh Purok Population Density after approval mutation
       apiService.getPopulationStats(isSuperMegaAdmin ? undefined : userBarangay).then(p => { if (p) setPopulationStats(p); }).catch(() => {});
 
-      // Automated In-App & EmailJS Notification to Resident's Gmail on Verification
-      if (applicant && applicant.email) {
+      // Automated In-App, Email, and SMS Notification to Resident on Verification
+      if (applicant && (applicant.email || applicant.phone)) {
         const applicantName = applicant.name || `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() || 'Resident';
         dispatchResidentNotification({
-          residentEmail: applicant.email,
+          residentEmail: applicant.email || '',
           residentName: applicantName,
+          phone: applicant.phone,
           type: 'account',
           title: '🎉 Account Verified & Approved',
           message: `Mabuhay ${applicantName}! Your Barangay ${applicant.barangay || user?.barangay || 'Pianing'} resident account has been officially approved and verified by the Barangay Administration. You can now log in to the portal to request clearances, certificates, and access healthcare appointments.`,
@@ -1450,6 +1617,9 @@ export default function AdminDashboard() {
           badgeColor: 'emerald',
           barangay: applicant.barangay || user?.barangay || 'Pianing'
         }).then(res => {
+          if (res.sms) {
+            toast.info(`📱 Live SMS verification sent to ${applicant.phone}`);
+          }
           if (res.email) {
             toast.info(`📧 Verification email dispatched to ${applicant.email}`);
           }
@@ -1791,17 +1961,47 @@ export default function AdminDashboard() {
 
   // Census search matches for resident system user account creation
   const censusMatches = useMemo(() => {
-    const q = (resAccCensusSearch || `${resAccFirstName} ${resAccLastName}`).trim().toLowerCase();
-    if (!q || q.length < 2) return [];
-    return residents.filter(r => {
+    const rawSearch = resAccCensusSearch.trim().toLowerCase();
+    const listToSearch = allCensusRegistry.length > 0 ? allCensusRegistry : residents;
+
+    if (!rawSearch) {
+      return [];
+    }
+
+    const tokens = rawSearch.split(/\s+/).filter(Boolean);
+    const cleanedSearch = rawSearch.replace(/s$/i, ''); // handle plurals e.g. "pianings" -> "pianing"
+
+    return listToSearch.filter(r => {
       const fn = (r.first_name || '').toLowerCase();
       const ln = (r.last_name || '').toLowerCase();
       const mn = (r.middle_name || '').toLowerCase();
-      const full = `${fn} ${mn} ${ln}`.trim();
+      const fullName = `${fn} ${mn} ${ln}`.trim();
+      const revFullName = `${ln}, ${fn} ${mn}`.trim();
       const hh = (r.household_number || '').toLowerCase();
-      return fn.includes(q) || ln.includes(q) || full.includes(q) || hh.includes(q);
-    }).slice(0, 6);
-  }, [resAccCensusSearch, resAccFirstName, resAccLastName, residents]);
+      const purok = (r.purok || '').toLowerCase();
+      const purokFull = `purok ${purok}`;
+      const brgy = (r.barangay || '').toLowerCase();
+      const addr = (r.address || '').toLowerCase();
+      const phone = (r.phone || '').toLowerCase();
+      const email = (r.email || '').toLowerCase();
+
+      const searchableHaystack = `${fullName} ${revFullName} ${hh} ${purokFull} ${brgy} ${addr} ${phone} ${email}`;
+
+      // 1. Direct substring match on entire query or singularized query
+      if (searchableHaystack.includes(rawSearch) || (cleanedSearch.length >= 3 && searchableHaystack.includes(cleanedSearch))) {
+        return true;
+      }
+
+      // 2. All search tokens match somewhere in resident details
+      const allTokensMatch = tokens.every(token => {
+        const cleanTok = token.replace(/s$/i, '');
+        return searchableHaystack.includes(token) || (cleanTok.length >= 3 && searchableHaystack.includes(cleanTok));
+      });
+      if (allTokensMatch) return true;
+
+      return false;
+    }).slice(0, 15);
+  }, [resAccCensusSearch, allCensusRegistry, residents]);
 
   // Auto-fill census information for resident account creation
   const applyCensusMatch = (r: Resident) => {
@@ -1845,16 +2045,15 @@ export default function AdminDashboard() {
     if (r.phone) {
       setResAccPhone(r.phone);
     }
-    if (!resAccEmail) {
-      if (r.email && r.email.includes('@')) {
-        setResAccEmail(r.email);
-      } else {
-        const cleanF = (r.first_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanL = (r.last_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        setResAccEmail(`${cleanF}.${cleanL}@resident.barangay.ph`);
-      }
+    if (r.email && r.email.includes('@')) {
+      setResAccEmail(r.email);
+    } else if (!resAccEmail) {
+      const cleanF = (r.first_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanL = (r.last_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      setResAccEmail(`${cleanF}.${cleanL}@resident.barangay.ph`);
     }
-    toast.success(`Matched Census Record: ${r.first_name} ${r.last_name}! Demographic details auto-filled.`);
+    setIsSearchDropdownOpen(false);
+    toast.success(`Demographics auto-filled from Census Record for ${r.first_name} ${r.last_name}!`);
   };
 
   // Check if system user account already exists
@@ -1918,6 +2117,98 @@ export default function AdminDashboard() {
       const cleanPurokNum = resAccPurok.replace(/purok\s*/i, '').trim() || '1';
       const fullAddress = `Purok ${cleanPurokNum}, Barangay ${assignedBarangay}, ${resAccCity || 'Butuan City'}`;
 
+      let finalCensusId = resAccLinkedCensusId;
+      let addedToCensus = false;
+
+      // 1. If resident is NOT linked to an existing census ID, check database or INSERT them!
+      if (!finalCensusId) {
+        // Search if already in loaded registry to prevent duplicates
+        const existingInRegistry = (allCensusRegistry.length > 0 ? allCensusRegistry : residents).find(r =>
+          r.first_name?.toLowerCase().trim() === resAccFirstName.toLowerCase().trim() &&
+          r.last_name?.toLowerCase().trim() === resAccLastName.toLowerCase().trim() &&
+          (r.barangay || '').toLowerCase().trim() === assignedBarangay.toLowerCase().trim()
+        );
+
+        if (existingInRegistry) {
+          finalCensusId = existingInRegistry.id;
+          try {
+            await apiService.updateResident(existingInRegistry.id, {
+              email: resAccEmail.trim().toLowerCase(),
+              phone: cleanPhone || undefined,
+              verification_status: 'Verified',
+              household_number: resAccHouseholdNum.trim() || undefined,
+              purok: cleanPurokNum,
+              address: fullAddress,
+              id_type: resAccIdType || undefined,
+              submitted_id: resAccIdPhoto || undefined
+            });
+          } catch (syncErr) {
+            console.warn('Sync existing resident warning:', syncErr);
+          }
+        } else {
+          // Resident is NOT in the database: ADD THEM TO THE DATABASE!
+          try {
+            const createdRes = await apiService.createResident({
+              first_name: resAccFirstName.trim(),
+              middle_name: resAccMiddleName.trim() || undefined,
+              last_name: resAccLastName.trim(),
+              barangay: assignedBarangay,
+              date_of_birth: resAccDOB || '2000-01-01',
+              gender: resAccGender,
+              civil_status: resAccCivilStatus || 'Single',
+              years_of_residency: resAccResidencyYears.trim() || '1',
+              address: fullAddress,
+              purok: cleanPurokNum,
+              phone: cleanPhone || undefined,
+              email: resAccEmail.trim().toLowerCase(),
+              id_type: resAccIdType || 'Philippine National ID (PhilSys)',
+              submitted_id: resAccIdPhoto || undefined,
+              household_number: resAccHouseholdNum.trim() || undefined,
+              family_name: resAccLastName.trim(),
+              is_head_of_household: 0,
+              relationship_to_head: 'Member',
+              employment_status: (resAccEmployment as any) || 'Employed',
+              verification_status: 'Verified',
+              is_census_only: false
+            });
+
+            if (createdRes && (createdRes.id || (createdRes as any).resident?.id)) {
+              finalCensusId = createdRes.id || (createdRes as any).resident?.id;
+            }
+            addedToCensus = true;
+
+            // Refresh residents & census households list
+            const freshResidents = await apiService.getResidents(assignedBarangay, 'all');
+            if (Array.isArray(freshResidents)) {
+              setResidents(freshResidents);
+              setAllCensusRegistry(freshResidents);
+              setStats(prev => ({ ...prev, totalResidents: freshResidents.length }));
+            }
+            apiService.getCensusStats(assignedBarangay, 'all').then(d => { if (d) setCensusStats(d); }).catch(() => {});
+            apiService.getHouseholds(assignedBarangay, 'all').then(d => { if (d) setCensusHouseholds(d); }).catch(() => {});
+          } catch (censusCreateErr) {
+            console.warn('Auto-create resident in census registry notice:', censusCreateErr);
+          }
+        }
+      } else {
+        // Linked census resident is in database: update with verified portal email/phone
+        try {
+          await apiService.updateResident(finalCensusId, {
+            email: resAccEmail.trim().toLowerCase(),
+            phone: cleanPhone || undefined,
+            verification_status: 'Verified',
+            household_number: resAccHouseholdNum.trim() || undefined,
+            purok: cleanPurokNum,
+            address: fullAddress,
+            id_type: resAccIdType || undefined,
+            submitted_id: resAccIdPhoto || undefined
+          });
+        } catch (linkErr) {
+          console.warn('Census link sync notice:', linkErr);
+        }
+      }
+
+      // 2. Create the System User portal account linked to census resident
       await apiService.createUser({
         name: fullName,
         email: resAccEmail.trim().toLowerCase(),
@@ -1941,31 +2232,27 @@ export default function AdminDashboard() {
         id_type: resAccIdType,
         submitted_id: resAccIdPhoto || undefined,
         verification_status: 'Verified',
-        resident_id: resAccLinkedCensusId || undefined
+        resident_id: finalCensusId || undefined
       } as any);
 
-      if (resAccLinkedCensusId) {
-        try {
-          await apiService.updateResident(resAccLinkedCensusId, {
-            email: resAccEmail.trim().toLowerCase(),
-            phone: cleanPhone || undefined,
-            verification_status: 'Verified',
-            household_number: resAccHouseholdNum.trim() || undefined,
-            purok: cleanPurokNum,
-            address: fullAddress,
-            id_type: resAccIdType,
-            submitted_id: resAccIdPhoto || undefined
-          });
-        } catch (linkErr) {
-          console.warn('Census link sync notice:', linkErr);
-        }
+      // Refresh users list so new resident account appears instantly in User Management
+      const freshUsers = await apiService.getUsers();
+      if (Array.isArray(freshUsers)) {
+        setUsers(freshUsers);
       }
 
-      toast.success(`Resident portal account created for ${fullName}!`, {
-        description: `Login Email: ${resAccEmail.trim().toLowerCase()} • Access: Verified Resident`
-      });
+      if (addedToCensus) {
+        toast.success(`Resident account created & added to Census Database!`, {
+          description: `${fullName} is registered in Census Registry & can log in with ${resAccEmail.trim().toLowerCase()}`
+        });
+      } else {
+        toast.success(`Resident portal account created for ${fullName}!`, {
+          description: `Login Email: ${resAccEmail.trim().toLowerCase()} • Access: Verified Resident`
+        });
+      }
 
       setIsCreateResidentUserOpen(false);
+      setIsSearchDropdownOpen(false);
       setResAccCensusSearch('');
       setResAccFirstName('');
       setResAccMiddleName('');
@@ -2631,35 +2918,32 @@ export default function AdminDashboard() {
 
   // Check if a system user account is visible to the current administrator
   const isUserForAdmin = (u: SystemUser) => {
-    if (isSuperMegaAdmin || isSuperAdmin) return true;
+    if (isSuperMegaAdmin) return true;
     if (u.role === 'superadmin' && !isSuperAdmin) return false;
-    const adminBrgy = (user?.barangay || '').toLowerCase().trim();
-    const uBrgy = (u.barangay || '').toLowerCase().trim();
+    const adminBrgy = (userBarangay || 'Pianing').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+    const uBrgy = (u.barangay || '').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
     if (!adminBrgy) return true;
-    return uBrgy === adminBrgy;
+    return uBrgy === adminBrgy || (u.barangay || '').toLowerCase().includes(adminBrgy);
   };
 
   // Check if an address or record belongs to current admin's barangay
   const belongsToMyBarangay = (itemAddressOrBarangay?: string, itemEmail?: string, itemBarangay?: string) => {
-    if (isSuperMegaAdmin || isSuperAdmin) return true;
-    if (!currentAdminBarangay || currentAdminBarangay.includes('all') || currentAdminBarangay.includes('city-wide')) return true;
-
-    const cleanAdminB = currentAdminBarangay.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+    if (isSuperMegaAdmin) return true;
+    const cleanAdminB = (userBarangay || 'Pianing').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+    if (!cleanAdminB || cleanAdminB.includes('all') || cleanAdminB.includes('city-wide')) return true;
 
     // Direct barangay field match
     if (itemBarangay) {
-      const bLower = itemBarangay.toLowerCase().trim();
-      const cleanItemB = bLower.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
-      if (bLower === currentAdminBarangay || bLower.includes(cleanAdminB) || cleanAdminB.includes(cleanItemB) || cleanItemB === cleanAdminB) {
+      const bLower = itemBarangay.toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      if (bLower === cleanAdminB || bLower.includes(cleanAdminB) || cleanAdminB.includes(bLower)) {
         return true;
       }
     }
 
     // Direct address field check
     if (itemAddressOrBarangay) {
-      const target = itemAddressOrBarangay.toLowerCase().trim();
-      const cleanTarget = target.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
-      if (target.includes(currentAdminBarangay) || target.includes(cleanAdminB) || cleanTarget.includes(cleanAdminB)) {
+      const target = itemAddressOrBarangay.toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      if (target.includes(cleanAdminB)) {
         return true;
       }
     }
@@ -2667,7 +2951,7 @@ export default function AdminDashboard() {
     // Email check
     if (itemEmail) {
       const targetEm = itemEmail.toLowerCase().trim();
-      if (targetEm.includes(currentAdminBarangay) || targetEm.includes(cleanAdminB)) return true;
+      if (targetEm.includes(cleanAdminB)) return true;
     }
 
     return false;
@@ -2675,15 +2959,14 @@ export default function AdminDashboard() {
 
   // Filtered lists — Documents tab shows ONLY active requests for this barangay
   const isDocForMyBarangay = (doc: DocumentRequest) => {
-    if (isSuperMegaAdmin || isSuperAdmin) return true;
-    if (!currentAdminBarangay || currentAdminBarangay.includes('all') || currentAdminBarangay.includes('city-wide')) return true;
-    const cleanAdminB = currentAdminBarangay.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+    if (isSuperMegaAdmin) return true;
+    const cleanAdminB = (userBarangay || 'Pianing').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+    if (!cleanAdminB || cleanAdminB.includes('all') || cleanAdminB.includes('city-wide')) return true;
 
     // 1. Direct barangay check
-    const docB = ((doc as any).barangay || '').toLowerCase().trim();
+    const docB = ((doc as any).barangay || '').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
     if (docB) {
-      const cleanDocB = docB.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
-      return docB === currentAdminBarangay || docB.includes(cleanAdminB) || cleanAdminB.includes(cleanDocB) || cleanDocB === cleanAdminB;
+      return docB === cleanAdminB || docB.includes(cleanAdminB) || cleanAdminB.includes(docB);
     }
 
     // 2. Match with resident registry
@@ -2693,7 +2976,7 @@ export default function AdminDashboard() {
       (`${r.first_name} ${r.last_name}`.toLowerCase().trim() === (doc.resident_name || '').toLowerCase().trim())
     );
     if (res) {
-      return belongsToMyBarangay(res.address || (res as any).barangay, res.email, (res as any).barangay);
+      return belongsToMyBarangay(res.address, res.email, (res as any).barangay);
     }
 
     // 3. Match with user accounts (including restored users)
@@ -2785,17 +3068,25 @@ export default function AdminDashboard() {
     );
   });
 
-  // Pending resident approvals — with barangay filter and search support
+  // Pending resident approvals — with strict barangay scoping and search support
   const myPendingResidents = pendingResidents
     .filter(res => {
-      if (approvalBarangayFilter === 'all') return true;
-      const bLower = (res.barangay || '').toLowerCase().trim();
-      const filterLower = approvalBarangayFilter.toLowerCase().trim();
-      const cleanItemB = bLower.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
-      const cleanFilterB = filterLower.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
-      if (bLower === filterLower || cleanItemB === cleanFilterB || bLower.includes(cleanFilterB)) return true;
+      if (isSuperMegaAdmin) {
+        if (approvalBarangayFilter === 'all') return true;
+        const bLower = (res.barangay || '').toLowerCase().trim();
+        const filterLower = approvalBarangayFilter.toLowerCase().trim();
+        const cleanItemB = bLower.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+        const cleanFilterB = filterLower.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+        if (bLower === filterLower || cleanItemB === cleanFilterB || bLower.includes(cleanFilterB)) return true;
+        const addr = (res.address || '').toLowerCase();
+        return addr.includes(cleanFilterB);
+      }
+
+      // Local Barangay Superadmin / Admin / Staff: strictly isolated to their own barangay
+      const cleanAdminB = (userBarangay || 'Pianing').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      const bLower = (res.barangay || '').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
       const addr = (res.address || '').toLowerCase();
-      return addr.includes(cleanFilterB);
+      return bLower === cleanAdminB || bLower.includes(cleanAdminB) || cleanAdminB.includes(bLower) || addr.includes(cleanAdminB);
     })
     .filter(res => {
       if (!approvalSearch.trim()) return true;
@@ -2957,6 +3248,21 @@ export default function AdminDashboard() {
               </button>
             )}
 
+            {/* Manual Resident Notification Dispatcher */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedNotifyResident(null);
+                setNotifyCategory('general');
+                setIsManualNotifyOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-xs transition-all cursor-pointer"
+              title="Manually dispatch SMS, Email (EmailJS), and In-App notice to any resident"
+            >
+              <Send size={13} />
+              <span className="hidden sm:inline">Send Notice</span>
+            </button>
+
             {/* User Avatar Profile Menu */}
             <div className="relative flex items-center gap-1.5 pl-2 border-l border-slate-200">
               <button
@@ -3031,22 +3337,24 @@ export default function AdminDashboard() {
                     setActiveTab(item.id);
                   }
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                   isActive
-                    ? 'bg-blue-50 text-blue-700 font-bold border border-blue-100/80 shadow-2xs'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
+                    : 'text-slate-600 hover:bg-[#6458FF]/10 hover:text-[#6458FF]'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {item.icon ? (
-                    <item.icon size={18} className={`shrink-0 ${isActive ? 'text-blue-700' : 'text-slate-500'}`} />
+                    <item.icon size={18} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                   ) : (
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ml-1 mr-0.5 ${isActive ? 'bg-blue-700' : 'bg-slate-400'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ml-1 mr-0.5 ${isActive ? 'bg-white' : 'bg-slate-400'}`} />
                   )}
                   <span className="truncate">{item.label}</span>
                 </div>
                 {(item as any).badge !== undefined && (
-                  <span className="ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${
+                    isActive ? 'bg-white/25 text-white' : 'bg-[#FF6492] text-white'
+                  }`}>
                     {(item as any).badge}
                   </span>
                 )}
@@ -3096,22 +3404,24 @@ export default function AdminDashboard() {
                       setActiveTab(item.id);
                     }
                   }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700 font-bold border border-blue-100/80 shadow-2xs'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
+                      : 'text-slate-600 hover:bg-[#6458FF]/10 hover:text-[#6458FF]'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     {item.icon ? (
-                      <item.icon size={18} className={`shrink-0 ${isActive ? 'text-blue-700' : 'text-slate-500'}`} />
+                      <item.icon size={18} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                     ) : (
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ml-1 mr-0.5 ${isActive ? 'bg-blue-700' : 'bg-slate-400'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ml-1 mr-0.5 ${isActive ? 'bg-white' : 'bg-slate-400'}`} />
                     )}
                     <span className="truncate">{item.label}</span>
                   </div>
                   {(item as any).badge !== undefined && (
-                    <span className="ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${
+                      isActive ? 'bg-white/25 text-white' : 'bg-[#FF6492] text-white'
+                    }`}>
                       {(item as any).badge}
                     </span>
                   )}
@@ -3299,6 +3609,9 @@ export default function AdminDashboard() {
                       onClick={() => {
                         setSelectedResidentForDoc('');
                         setNewDocResidentId(null);
+                        setDocResidentSearch('');
+                        setIsDocSearchDropdownOpen(false);
+                        setDocSelectedResident(null);
                         setNewDocName('');
                         setNewDocType('');
                         setNewDocGender('');
@@ -3591,9 +3904,13 @@ export default function AdminDashboard() {
                                     <td className="py-3.5 px-4 text-slate-500">{displayDate}</td>
                                     <td className="py-3.5 px-4 text-right">
                                       {isCompleted ? (
-                                        <span className="inline-block bg-blue-600 text-white font-medium text-xs px-3.5 py-1 rounded-md shadow-xs">
+                                        <button
+                                          onClick={() => openDocInfo(doc)}
+                                          className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-3.5 py-1 rounded-md shadow-xs cursor-pointer"
+                                          title="View document specifics & resident census details"
+                                        >
                                           Completed
-                                        </span>
+                                        </button>
                                       ) : (
                                         <button
                                           onClick={() => openDocInfo(doc)}
@@ -3747,7 +4064,7 @@ export default function AdminDashboard() {
                             {(populationStats?.gender?.male ?? 0).toLocaleString()}
                           </span>
                           <span className="text-[10px] text-slate-400 block mt-0.5">
-                            {populationStats?.total_population ? Math.round(((populationStats.gender.male) / populationStats.total_population) * 100) : 0}% of residents
+                            {populationStats?.total_population ? Math.round(((populationStats?.gender?.male ?? 0) / populationStats.total_population) * 100) : 0}% of residents
                           </span>
                         </div>
                         <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200/80 dark:border-slate-700">
@@ -3756,7 +4073,7 @@ export default function AdminDashboard() {
                             {(populationStats?.gender?.female ?? 0).toLocaleString()}
                           </span>
                           <span className="text-[10px] text-slate-400 block mt-0.5">
-                            {populationStats?.total_population ? Math.round(((populationStats.gender.female) / populationStats.total_population) * 100) : 0}% of residents
+                            {populationStats?.total_population ? Math.round(((populationStats?.gender?.female ?? 0) / populationStats.total_population) * 100) : 0}% of residents
                           </span>
                         </div>
                       </div>
@@ -3814,18 +4131,22 @@ export default function AdminDashboard() {
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-                          {approvalBarangayFilter === 'all'
-                            ? ((isSuperAdmin || isSuperMegaAdmin) ? 'Central Governance Desk — Citizen Identity Verification & Accreditation Desk' : 'All Barangays — Citizen Identity Verification Desk')
-                            : `Barangay ${approvalBarangayFilter} — Citizen Identity Verification & Accreditation Desk`}
+                          {isSuperMegaAdmin ? (
+                            approvalBarangayFilter === 'all'
+                              ? 'Municipal Central Governance — Citizen Identity Verification Desk'
+                              : `Barangay ${approvalBarangayFilter} — Citizen Identity Verification Desk`
+                          ) : (
+                            `Barangay ${userBarangay || 'Pianing'} — Citizen Identity Verification Desk`
+                          )}
                         </h2>
                         <Badge className="bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                           {myPendingResidents.length} Pending Review
                         </Badge>
                       </div>
                       <p className="text-xs text-slate-500 max-w-2xl mt-1 leading-relaxed">
-                        {approvalBarangayFilter === 'all'
+                        {isSuperMegaAdmin && approvalBarangayFilter === 'all'
                           ? 'Review and authenticate submitted Government IDs from registered residents across all 86 Barangays in Butuan City. Verified citizens receive official accreditation to request clearances, certifications, and civic services.'
-                          : `Review and authenticate submitted Government IDs from registered residents of Barangay ${approvalBarangayFilter}. Verified citizens receive official accreditation to request clearances, certifications, and civic services.`}
+                          : `Review and authenticate submitted Government IDs from registered residents of Barangay ${isSuperMegaAdmin ? approvalBarangayFilter : (userBarangay || 'Pianing')}. Verified citizens receive official accreditation to request clearances, certifications, and civic services.`}
                       </p>
                     </div>
                   </div>
@@ -3881,16 +4202,23 @@ export default function AdminDashboard() {
 
                 <div className="flex items-center gap-2.5 w-full sm:w-auto">
                   <div className="w-full sm:w-60 shrink-0">
-                    <select
-                      value={approvalBarangayFilter}
-                      onChange={e => setApprovalBarangayFilter(e.target.value)}
-                      className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white cursor-pointer transition-all shadow-2xs"
-                    >
-                      <option value="all">🌐 All Barangays (City-Wide)</option>
-                      {BUTUAN_BARANGAYS.map(b => (
-                        <option key={b} value={b}>📍 Barangay {b}</option>
-                      ))}
-                    </select>
+                    {isSuperMegaAdmin ? (
+                      <select
+                        value={approvalBarangayFilter}
+                        onChange={e => setApprovalBarangayFilter(e.target.value)}
+                        className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white cursor-pointer transition-all shadow-2xs"
+                      >
+                        <option value="all">🌐 All Barangays (City-Wide)</option>
+                        {BUTUAN_BARANGAYS.map(b => (
+                          <option key={b} value={b}>📍 Barangay {b}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="h-9 px-3 bg-blue-50/80 border border-blue-200/80 rounded-xl flex items-center gap-1.5 text-xs font-semibold text-blue-700 shadow-2xs">
+                        <MapPin size={13} className="text-blue-600 shrink-0" />
+                        <span className="truncate">Barangay {userBarangay || 'Pianing'} Desk</span>
+                      </div>
+                    )}
                   </div>
                   <div className="text-xs text-slate-500 font-medium px-2 whitespace-nowrap">
                     <span>Showing <strong>{myPendingResidents.length}</strong> applicant{myPendingResidents.length !== 1 ? 's' : ''}</span>
@@ -4097,6 +4425,9 @@ export default function AdminDashboard() {
                     onClick={() => {
                       setSelectedResidentForDoc('');
                       setNewDocResidentId(null);
+                      setDocResidentSearch('');
+                      setIsDocSearchDropdownOpen(false);
+                      setDocSelectedResident(null);
                       setNewDocName('');
                       setNewDocType('');
                       setNewDocGender('');
@@ -4272,7 +4603,14 @@ export default function AdminDashboard() {
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-slate-700 font-medium">
-                                  <span className="font-semibold text-slate-800">{doc.document_type}</span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-semibold text-slate-800">{doc.document_type}</span>
+                                    {doc.purok_certificate_photo && (
+                                      <span className="inline-flex items-center gap-0.5 text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full font-semibold" title="Certificate of Purok President photo attached">
+                                        <FileCheck size={9} /> Purok Cert
+                                      </span>
+                                    )}
+                                  </div>
                                   {doc.purpose && (
                                     <span className="block text-[11px] text-slate-400 truncate max-w-[240px]">
                                       {doc.purpose}
@@ -6305,11 +6643,14 @@ export default function AdminDashboard() {
                         <Label className="text-xs font-semibold">System Role</Label>
                         <Select
                           value={editUserRole}
-                          onValueChange={(val: 'superadmin' | 'admin' | 'staff' | 'bhw' | 'resident') => setEditUserRole(val)}
+                          onValueChange={(val: SystemUser['role']) => setEditUserRole(val)}
                         >
                           <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {isSuperAdmin && (
+                            {(isSuperMegaAdmin || editingUser?.role === 'super_mega_admin') && (
+                              <SelectItem value="super_mega_admin">Super Mega Admin</SelectItem>
+                            )}
+                            {(isSuperAdmin || isSuperMegaAdmin) && (
                               <>
                                 <SelectItem value="superadmin">Super Admin</SelectItem>
                                 <SelectItem value="admin">Barangay Admin</SelectItem>
@@ -8927,7 +9268,27 @@ export default function AdminDashboard() {
       {/* Resident 360° Profile Modal */}
       <ResidentProfileModal
         isOpen={profileModalOpen}
-        onClose={() => setProfileModalOpen(false)}
+        onClose={() => {
+          setProfileModalOpen(false);
+          setSelectedResidentId(null);
+          if (returnToDocOnProfileClose) {
+            const docToReopen = returnToDocOnProfileClose;
+            setReturnToDocOnProfileClose(null);
+            setSelectedInfoDoc(docToReopen);
+            setIsDocInfoOpen(true);
+          }
+        }}
+        returnDocTitle={returnToDocOnProfileClose ? `${returnToDocOnProfileClose.document_type} (${returnToDocOnProfileClose.request_code})` : undefined}
+        onBackToDoc={() => {
+          setProfileModalOpen(false);
+          setSelectedResidentId(null);
+          if (returnToDocOnProfileClose) {
+            const docToReopen = returnToDocOnProfileClose;
+            setReturnToDocOnProfileClose(null);
+            setSelectedInfoDoc(docToReopen);
+            setIsDocInfoOpen(true);
+          }
+        }}
         residentId={selectedResidentId}
         canVerify={isSuperAdmin || hasUserPermission(user, 'can_verify_residents')}
         onStatusUpdated={loadData}
@@ -9364,6 +9725,9 @@ export default function AdminDashboard() {
                 <Label className="text-xs font-bold text-slate-800">
                   Search Barangay Census to Auto-Fill
                 </Label>
+                <span className="text-[10px] text-slate-500 font-normal hidden sm:inline">
+                  (Searchable Dropdown • Auto-Syncs to Database)
+                </span>
               </div>
               {resAccCensusMatch && (
                 <button
@@ -9390,70 +9754,137 @@ export default function AdminDashboard() {
                     setResAccIdFileName('');
                     if (resAccFileInputRef.current) resAccFileInputRef.current.value = '';
                   }}
-                  className="text-[11px] text-red-600 hover:text-red-700 font-semibold cursor-pointer"
+                  className="text-[11px] text-red-600 hover:text-red-700 font-semibold cursor-pointer flex items-center gap-1"
                 >
-                  Unlink Census Record
+                  <X size={12} />
+                  Unlink Record
                 </button>
               )}
             </div>
 
             {!resAccCensusMatch ? (
-              <>
-                <div className="relative">
-                  <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
+              <div className="relative">
+                <div className="relative flex items-center">
+                  <Search size={14} className="absolute left-2.5 text-slate-400 pointer-events-none" />
                   <Input
                     value={resAccCensusSearch}
-                    onChange={e => setResAccCensusSearch(e.target.value)}
-                    placeholder="Type name (e.g. Maria, Juan, Santos) or household #..."
-                    className="text-xs pl-8 bg-white border-slate-300 focus:border-blue-500 rounded-lg"
+                    onChange={e => {
+                      setResAccCensusSearch(e.target.value);
+                      setIsSearchDropdownOpen(true);
+                    }}
+                    placeholder="Type name, letter, household #, or purok to auto-fill..."
+                    className="text-xs pl-8 pr-8 bg-white border-slate-300 focus:border-blue-500 rounded-lg h-9 shadow-xs"
                   />
                   {resAccCensusSearch && (
                     <button
                       type="button"
-                      onClick={() => setResAccCensusSearch('')}
-                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      onClick={() => {
+                        setResAccCensusSearch('');
+                        setIsSearchDropdownOpen(false);
+                      }}
+                      className="absolute right-2 p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                      title="Clear search"
                     >
-                      <X size={14} />
+                      <X size={13} />
                     </button>
                   )}
                 </div>
 
-                {/* Census Auto-fill suggestions */}
-                {censusMatches.length > 0 && (
-                  <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-40 overflow-y-auto">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2.5 py-1 bg-slate-50">
-                      Matching Inhabitants in Census ({censusMatches.length})
-                    </p>
-                    {censusMatches.map(r => (
-                      <div
-                        key={r.id}
-                        className="p-2 flex items-center justify-between hover:bg-blue-50 transition-colors gap-2"
-                      >
+                {/* Dropdown Menu — ONLY displays when the user types something! */}
+                {resAccCensusSearch.trim().length > 0 && isSearchDropdownOpen && (
+                  <div className="mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100 max-h-56 overflow-y-auto z-20">
+                    <div className="px-3 py-1.5 bg-slate-50 flex items-center justify-between text-[11px] font-semibold text-slate-600">
+                      <span>
+                        Matching Census Records for &quot;{resAccCensusSearch.trim()}&quot; ({censusMatches.length})
+                      </span>
+                      <span className="text-[10px] text-blue-600 font-normal">
+                        Click resident to auto-fill
+                      </span>
+                    </div>
+
+                    {censusMatches.length > 0 ? (
+                      censusMatches.map(r => (
+                        <div
+                          key={r.id}
+                          onClick={() => applyCensusMatch(r)}
+                          className="p-2.5 flex items-center justify-between hover:bg-blue-50/80 cursor-pointer transition-colors gap-2 group"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                              {(r.first_name || 'R').charAt(0).toUpperCase()}
+                            </div>
+                            <div className="truncate">
+                              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700">
+                                {r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}
+                              </p>
+                              <p className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
+                                <span>Household: <strong className="font-mono text-blue-600">{r.household_number || 'N/A'}</strong></span>
+                                <span>•</span>
+                                <span>Purok {r.purok || '1'}</span>
+                                {r.gender && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{r.gender}</span>
+                                  </>
+                                )}
+                                {r.barangay && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-slate-400">Brgy. {r.barangay}</span>
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              applyCensusMatch(r);
+                            }}
+                            className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shadow-2xs shrink-0 cursor-pointer"
+                          >
+                            Auto-Fill
+                          </Button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3.5 text-center space-y-2">
+                        <div className="flex items-center justify-center text-amber-500">
+                          <AlertCircle size={20} />
+                        </div>
                         <div>
                           <p className="text-xs font-bold text-slate-800">
-                            {r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}
+                            No matching census record found for &quot;{resAccCensusSearch}&quot;
                           </p>
-                          <p className="text-[11px] text-slate-500">
-                            Household: <span className="font-mono text-blue-600 font-medium">{r.household_number || 'N/A'}</span> • Purok {r.purok || '1'} • Gender: {r.gender}
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            This resident is not yet registered in the Barangay Census database.
                           </p>
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => applyCensusMatch(r)}
-                          className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shadow-2xs shrink-0 cursor-pointer"
-                        >
-                          Auto-Fill
-                        </Button>
+                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-800 flex items-center justify-between text-left gap-2">
+                          <div>
+                            <span className="font-bold text-emerald-900 block">✨ Auto-Registration Enabled</span>
+                            <span>Fill out Step 1 &amp; Step 2 below. When you create the account, this resident will be <strong>automatically added to the Barangay Census database</strong>!</span>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => setIsSearchDropdownOpen(false)}
+                            className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 cursor-pointer"
+                          >
+                            Fill Form Below
+                          </Button>
+                        </div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
-              </>
+              </div>
             ) : (
               <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="p-1 bg-emerald-100 rounded-full text-emerald-700">
+                  <div className="p-1.5 bg-emerald-100 rounded-full text-emerald-700">
                     <CheckCircle2 size={16} />
                   </div>
                   <div>
@@ -9465,9 +9896,24 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                 </div>
-                <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
-                  Census Verified
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
+                    Database Linked
+                  </Badge>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setResAccCensusMatch(null);
+                      setResAccLinkedCensusId(null);
+                      setIsSearchDropdownOpen(true);
+                    }}
+                    className="h-6 text-[10px] px-2 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100 cursor-pointer"
+                  >
+                    Change
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -9485,12 +9931,7 @@ export default function AdminDashboard() {
                   <Label className="text-xs font-semibold text-slate-700">First Name *</Label>
                   <Input
                     value={resAccFirstName}
-                    onChange={e => {
-                      setResAccFirstName(e.target.value);
-                      if (!resAccCensusMatch && e.target.value.length >= 2) {
-                        setResAccCensusSearch(e.target.value);
-                      }
-                    }}
+                    onChange={e => setResAccFirstName(e.target.value)}
                     placeholder="e.g. Juan"
                     className="text-xs mt-1 bg-white border-slate-300"
                     required
@@ -9509,12 +9950,7 @@ export default function AdminDashboard() {
                   <Label className="text-xs font-semibold text-slate-700">Last Name *</Label>
                   <Input
                     value={resAccLastName}
-                    onChange={e => {
-                      setResAccLastName(e.target.value);
-                      if (!resAccCensusMatch && e.target.value.length >= 2) {
-                        setResAccCensusSearch(`${resAccFirstName} ${e.target.value}`);
-                      }
-                    }}
+                    onChange={e => setResAccLastName(e.target.value)}
                     placeholder="e.g. Dela Cruz"
                     className="text-xs mt-1 bg-white border-slate-300"
                     required
@@ -9830,10 +10266,20 @@ export default function AdminDashboard() {
       {/* Document Info / Specifics Viewer Modal */}
       <DocumentInfoModal
         isOpen={isDocInfoOpen}
-        onClose={() => setIsDocInfoOpen(false)}
+        onClose={() => {
+          setIsDocInfoOpen(false);
+          setReturnToDocOnProfileClose(null);
+        }}
         document={selectedInfoDoc}
         onUpdateStatus={(id, status) => handleUpdateDocStatus(id, status)}
         onPrint={(doc) => openPrintModal(doc)}
+        onViewResidentProfile={(resId, fromDoc) => {
+          const targetDoc = fromDoc || selectedInfoDoc;
+          setReturnToDocOnProfileClose(targetDoc);
+          setIsDocInfoOpen(false);
+          const resolvedId = (resId && resId > 1) ? resId : resolveResidentIdForDoc(targetDoc);
+          openResidentProfile(resolvedId);
+        }}
         canEdit={true}
       />
 
@@ -10569,22 +11015,215 @@ export default function AdminDashboard() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateDocument} className="space-y-4 py-2 text-xs">
-            {/* 1. Select Registered Resident or Manual Walk-in */}
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold text-slate-700">Select Registered Resident <span className="text-slate-400 font-normal">(or type name below to search Census)</span></Label>
-              <Select value={selectedResidentForDoc} onValueChange={handleSelectResidentForDoc}>
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="Select Registered Resident / Walk-in..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-56">
-                  <SelectItem value="manual">✍️ Manual / Walk-in Constituent</SelectItem>
-                  {residents.filter(r => !r.is_census_only).map(r => (
-                    <SelectItem key={`res-opt-${r.id}`} value={String(r.id)}>
-                      👤 {r.first_name} {r.last_name} ({r.purok ? (r.purok.startsWith('Purok') ? r.purok : `Purok ${r.purok}`) : 'Pianing'} • {r.gender})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* 1. Searchable Registered Resident / Census Selector */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Search size={13} className="text-blue-600" />
+                  Select Registered Resident / Census Search
+                  <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">
+                    (Searchable Dropdown • Auto-Syncs to Database)
+                  </span>
+                </Label>
+                {docSelectedResident && (
+                  <button
+                    type="button"
+                    onClick={handleUnlinkDocResident}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-semibold cursor-pointer flex items-center gap-1"
+                  >
+                    <X size={12} />
+                    Unlink Record
+                  </button>
+                )}
+              </div>
+
+              {!docSelectedResident ? (
+                <div className="relative">
+                  <div className="relative flex items-center">
+                    <Search size={14} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+                    <Input
+                      value={docResidentSearch}
+                      onChange={e => {
+                        setDocResidentSearch(e.target.value);
+                        setIsDocSearchDropdownOpen(true);
+                      }}
+                      onFocus={() => {
+                        if (docResidentSearch.trim().length > 0) {
+                          setIsDocSearchDropdownOpen(true);
+                        }
+                      }}
+                      placeholder="Type name, letter, household #, or purok to auto-fill..."
+                      className="text-xs pl-8 pr-8 bg-white border-slate-300 focus:border-blue-500 rounded-lg h-9 shadow-xs"
+                    />
+                    {docResidentSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDocResidentSearch('');
+                          setIsDocSearchDropdownOpen(false);
+                        }}
+                        className="absolute right-2 p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                        title="Clear search"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown Menu — ONLY displays when the user types something! */}
+                  {docResidentSearch.trim().length > 0 && isDocSearchDropdownOpen && (
+                    <div className="mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100 max-h-56 overflow-y-auto z-20">
+                      <div className="px-3 py-1.5 bg-slate-50 flex items-center justify-between text-[11px] font-semibold text-slate-600">
+                        <span>
+                          Matching Residents &amp; Census for &quot;{docResidentSearch.trim()}&quot; ({docResidentMatches.length})
+                        </span>
+                        <span className="text-[10px] text-blue-600 font-normal">
+                          Click resident to auto-fill
+                        </span>
+                      </div>
+
+                      {/* Quick Manual Walk-in Option */}
+                      <div
+                        onClick={handleManualDocConstituent}
+                        className="p-2.5 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-100"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">✍️</span>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-800">
+                              Manual / Walk-in Constituent: &quot;{docResidentSearch.trim()}&quot;
+                            </p>
+                            <p className="text-[10px] text-slate-500">
+                              Proceed without linking to an existing database record
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleManualDocConstituent();
+                          }}
+                          className="h-6 px-2 text-[10px] font-semibold"
+                        >
+                          Use Manual
+                        </Button>
+                      </div>
+
+                      {docResidentMatches.length > 0 ? (
+                        docResidentMatches.map(r => (
+                          <div
+                            key={`doc-res-match-${r.id}`}
+                            onClick={() => applyDocResidentMatch(r)}
+                            className="p-2.5 flex items-center justify-between hover:bg-blue-50/80 cursor-pointer transition-colors gap-2 group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                                {(r.first_name || 'R').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="truncate">
+                                <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700">
+                                  {r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}
+                                </p>
+                                <p className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
+                                  <span>Household: <strong className="font-mono text-blue-600">{r.household_number || 'N/A'}</strong></span>
+                                  <span>•</span>
+                                  <span>Purok {r.purok || '1'}</span>
+                                  {r.gender && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{r.gender}</span>
+                                    </>
+                                  )}
+                                  <span>•</span>
+                                  <span className={r.is_census_only ? 'text-amber-600' : 'text-emerald-600 font-medium'}>
+                                    {r.is_census_only ? 'Census Inhabitant' : 'Registered Resident'}
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                applyDocResidentMatch(r);
+                              }}
+                              className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shadow-2xs shrink-0 cursor-pointer"
+                            >
+                              Auto-Fill
+                            </Button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-3.5 text-center space-y-2">
+                          <div className="flex items-center justify-center text-amber-500">
+                            <AlertCircle size={20} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-800">
+                              No matching resident found for &quot;{docResidentSearch}&quot;
+                            </p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              This resident is not yet registered in the Barangay database.
+                            </p>
+                          </div>
+                          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-800 flex items-center justify-between text-left gap-2">
+                            <div>
+                              <span className="font-bold text-emerald-900 block">✨ Auto-Registration Enabled</span>
+                              <span>Enter constituent details below. When you issue the document, this person will be <strong>automatically added to the Barangay Census database</strong>!</span>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleManualDocConstituent}
+                              className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 cursor-pointer"
+                            >
+                              Fill Form Below
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-emerald-100 rounded-full text-emerald-700">
+                      <CheckCircle2 size={16} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-emerald-950">
+                        Linked: {docSelectedResident.first_name} {docSelectedResident.last_name}
+                      </p>
+                      <p className="text-[11px] text-emerald-800">
+                        Household: <span className="font-mono font-semibold">{docSelectedResident.household_number || 'HH-N/A'}</span> • Purok {docSelectedResident.purok || '1'} • {docSelectedResident.gender || '—'} • {docSelectedResident.is_census_only ? 'Census Record' : 'Registered Resident'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
+                      Database Linked
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setDocSelectedResident(null);
+                        setDocResidentSearch('');
+                        setIsDocSearchDropdownOpen(true);
+                      }}
+                      className="h-6 text-[10px] px-2 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100 cursor-pointer"
+                    >
+                      Change
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 2. Resident Profile Card */}
@@ -10903,8 +11542,30 @@ export default function AdminDashboard() {
           onApprove={async (id: number) => {
             setIsApprovingApplicant(true);
             try {
+              const applicant = selectedApplicantForReview;
               await apiService.approveResident(id, user?.name || 'Admin');
               toast.success('Resident account approved and verified!');
+              if (applicant && (applicant.email || applicant.phone)) {
+                const applicantName = applicant.name || `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() || 'Resident';
+                dispatchResidentNotification({
+                  residentEmail: applicant.email || '',
+                  residentName: applicantName,
+                  phone: applicant.phone,
+                  type: 'account',
+                  title: '🎉 Account Verified & Approved',
+                  message: `Mabuhay ${applicantName}! Your Barangay ${applicant.barangay || user?.barangay || 'Pianing'} resident account has been officially approved and verified by the Barangay Administration. You can now log in to the portal to request clearances, certificates, and access healthcare appointments.`,
+                  statusBadge: 'Verified',
+                  badgeColor: 'emerald',
+                  barangay: applicant.barangay || user?.barangay || 'Pianing'
+                }).then(res => {
+                  if (res.sms) {
+                    toast.info(`📱 Live SMS verification sent to ${applicant.phone}`);
+                  }
+                  if (res.email) {
+                    toast.info(`📧 Verification email dispatched to ${applicant.email}`);
+                  }
+                }).catch(() => {});
+              }
               setIsApplicantReviewOpen(false);
               setSelectedApplicantForReview(null);
               loadData();
@@ -10932,6 +11593,28 @@ export default function AdminDashboard() {
         }}
         user={selectedUserForPermissions}
         onSave={handleSavePermissions}
+      />
+
+      {/* Manual Resident Notification Dispatcher Modal */}
+      <ManualResidentNotifyModal
+        isOpen={isManualNotifyOpen}
+        onClose={() => {
+          setIsManualNotifyOpen(false);
+          setSelectedNotifyResident(null);
+        }}
+        defaultResident={selectedNotifyResident}
+        currentSenderRole={isSuperAdmin ? 'superadmin' : 'admin'}
+        currentSenderName={user?.name || 'Barangay Administrator'}
+        currentSenderBarangay={userBarangay || 'Pianing'}
+        residentsList={barangayResidents.map(r => ({
+          id: r.id,
+          name: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+          email: r.email,
+          phone: r.phone,
+          barangay: (r as any).barangay || userBarangay || 'Pianing',
+          purok: r.purok
+        }))}
+        initialCategory={notifyCategory}
       />
     </div>
   );

@@ -6,3 +6,6 @@ declare module 'react-dom/client' {
     unmount(): void;
   };
 }
+
+declare module 'html2pdf.js';
+

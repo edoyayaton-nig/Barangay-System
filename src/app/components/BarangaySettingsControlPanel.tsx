@@ -261,7 +261,7 @@ const PLACEHOLDER_TAGS = [
 ];
 
 export default function BarangaySettingsControlPanel() {
-  const [subTab, setSubTab] = useState<'templates' | 'clients' | 'gateway'>('templates');
+  const [subTab, setSubTab] = useState<'templates' | 'clients' | 'gateway' | 'tenants'>('templates');
 
   // ── Target Barangay Selector (for Templates) ────────────────
   const [targetBarangay, setTargetBarangay] = useState<string>('all'); // 'all' or client barangay name
