@@ -246,86 +246,106 @@ class DocumentController extends Controller
 
     public function update(Request $request, $id)
     {
-        $doc = DocumentRequest::find($id);
-        if (!$doc) {
-            return response()->json(['error' => 'Document request not found'], 404);
-        }
-
-        $oldStatus = $doc->status;
-        $newStatus = $request->input('status', $doc->status);
-
-        $doc->update([
-            'status' => $newStatus,
-            'processed_at' => in_array($newStatus, ['Processing', 'Ready for Pickup', 'Completed', 'Rejected']) ? now() : $doc->processed_at,
-            'processed_by' => $request->input('processed_by', 'Barangay Staff'),
-            'remarks' => $request->input('remarks', $doc->remarks),
-        ]);
-
-        ActivityLog::create([
-            'user_name' => $request->input('processed_by', 'Staff'),
-            'user_role' => 'staff',
-            'action' => "Updated document request {$doc->request_code} to {$newStatus}",
-        ]);
-
-        // Send notifications across In-App, Email, and SMS on status change
-        if ($oldStatus !== $newStatus) {
-            $resident = Resident::find($doc->resident_id);
-            if (!$resident && !empty($doc->email)) {
-                $resident = Resident::whereRaw('LOWER(email) = ?', [strtolower($doc->email)])->first();
-            }
-            $user = !empty($doc->email) ? User::whereRaw('LOWER(email) = ?', [strtolower($doc->email)])->first() : null;
-            $phone = $resident?->phone ?: ($user?->phone ?: '');
-
-            if (!empty($doc->email)) {
-                EmailService::sendDocumentStatusEmail(
-                    $doc->email,
-                    $doc->resident_name,
-                    $doc->document_type,
-                    $doc->request_code,
-                    $newStatus,
-                    $doc->remarks,
-                    $doc->barangay
-                );
-
-                try {
-                    $notifTitle = $newStatus === 'Completed'
-                        ? "✅ Document Claimed: {$doc->document_type}"
-                        : ($newStatus === 'Ready for Pickup' ? "🎉 Ready for Pick-Up: {$doc->document_type}" : "📄 Status: {$doc->document_type}");
-                    $notifMsg = $newStatus === 'Completed'
-                        ? "Your {$doc->document_type} ({$doc->request_code}) has been officially claimed and marked as COMPLETED. Thank you!"
-                        : ($newStatus === 'Ready for Pickup'
-                            ? "Your requested {$doc->document_type} ({$doc->request_code}) is now PRINTED, SIGNED, and READY FOR PICKUP at Barangay {$doc->barangay} Hall. Please bring a valid ID."
-                            : "Your requested {$doc->document_type} ({$doc->request_code}) is now in status: {$newStatus}." . ($doc->remarks ? " Remarks: {$doc->remarks}" : ""));
-
-                    UserNotification::create([
-                        'recipient_email' => $doc->email,
-                        'type' => 'Document',
-                        'title' => $notifTitle,
-                        'message' => $notifMsg,
-                        'ref_code' => $doc->request_code,
-                        'is_read' => 0,
-                        'created_at' => now(),
-                    ]);
-                } catch (\Throwable $ne) {}
+        try {
+            $doc = DocumentRequest::find($id);
+            if (!$doc) {
+                return response()->json(['error' => 'Document request not found'], 404);
             }
 
-            // Live SMS via iProg SMS Gateway for Completed and Ready for Pickup
-            if (!empty($phone)) {
-                if ($newStatus === 'Completed') {
-                    SmsService::sendLiveSms(
-                        $phone,
-                        "Barangay {$doc->barangay}: Hello {$doc->resident_name}! Your {$doc->document_type} ({$doc->request_code}) has been marked as COMPLETED. Thank you for using our digital portal!"
-                    );
-                } elseif ($newStatus === 'Ready for Pickup') {
-                    SmsService::sendLiveSms(
-                        $phone,
-                        "Magandang araw {$doc->resident_name}! Your {$doc->document_type} ({$doc->request_code}) is now READY FOR PICKUP at Barangay {$doc->barangay} Hall. Please bring a valid ID."
-                    );
+            $oldStatus = $doc->status;
+            $newStatus = $request->input('status', $doc->status);
+            $processedBy = trim((string)$request->input('processed_by', '')) ?: 'Barangay Staff';
+
+            $updateData = [
+                'status' => $newStatus,
+                'processed_at' => in_array($newStatus, ['Processing', 'Ready for Pickup', 'Completed', 'Rejected']) ? now() : $doc->processed_at,
+                'processed_by' => $processedBy,
+                'remarks' => $request->input('remarks', $doc->remarks),
+            ];
+
+            $doc->update($updateData);
+
+            try {
+                ActivityLog::create([
+                    'user_name' => $processedBy,
+                    'user_role' => 'staff',
+                    'action' => "Updated document request {$doc->request_code} to {$newStatus}",
+                ]);
+            } catch (\Throwable $ae) {
+                \Illuminate\Support\Facades\Log::warning("ActivityLog update warning: " . $ae->getMessage());
+            }
+
+            // Send notifications across In-App, Email, and SMS on status change
+            if ($oldStatus !== $newStatus) {
+                $resident = Resident::find($doc->resident_id);
+                if (!$resident && !empty($doc->email)) {
+                    $resident = Resident::whereRaw('LOWER(email) = ?', [strtolower($doc->email)])->first();
+                }
+                $user = !empty($doc->email) ? User::whereRaw('LOWER(email) = ?', [strtolower($doc->email)])->first() : null;
+                $phone = $resident?->phone ?: ($user?->phone ?: '');
+
+                if (!empty($doc->email)) {
+                    try {
+                        EmailService::sendDocumentStatusEmail(
+                            $doc->email,
+                            $doc->resident_name,
+                            $doc->document_type,
+                            $doc->request_code,
+                            $newStatus,
+                            $doc->remarks,
+                            $doc->barangay
+                        );
+                    } catch (\Throwable $ee) {
+                        \Illuminate\Support\Facades\Log::warning("EmailService status update warning: " . $ee->getMessage());
+                    }
+
+                    try {
+                        $notifTitle = $newStatus === 'Completed'
+                            ? "✅ Document Claimed: {$doc->document_type}"
+                            : ($newStatus === 'Ready for Pickup' ? "🎉 Ready for Pick-Up: {$doc->document_type}" : "📄 Status: {$doc->document_type}");
+                        $notifMsg = $newStatus === 'Completed'
+                            ? "Your {$doc->document_type} ({$doc->request_code}) has been officially claimed and marked as COMPLETED. Thank you!"
+                            : ($newStatus === 'Ready for Pickup'
+                                ? "Your requested {$doc->document_type} ({$doc->request_code}) is now PRINTED, SIGNED, and READY FOR PICKUP at Barangay {$doc->barangay} Hall. Please bring a valid ID."
+                                : "Your requested {$doc->document_type} ({$doc->request_code}) is now in status: {$newStatus}." . ($doc->remarks ? " Remarks: {$doc->remarks}" : ""));
+
+                        UserNotification::create([
+                            'recipient_email' => $doc->email,
+                            'type' => 'Document',
+                            'title' => $notifTitle,
+                            'message' => $notifMsg,
+                            'ref_code' => $doc->request_code,
+                            'is_read' => 0,
+                            'created_at' => now(),
+                        ]);
+                    } catch (\Throwable $ne) {}
+                }
+
+                // Live SMS via iProg SMS Gateway for Completed and Ready for Pickup
+                if (!empty($phone)) {
+                    try {
+                        if ($newStatus === 'Completed') {
+                            SmsService::sendLiveSms(
+                                $phone,
+                                "Barangay {$doc->barangay}: Hello {$doc->resident_name}! Your {$doc->document_type} ({$doc->request_code}) has been marked as COMPLETED. Thank you for using our digital portal!"
+                            );
+                        } elseif ($newStatus === 'Ready for Pickup') {
+                            SmsService::sendLiveSms(
+                                $phone,
+                                "Magandang araw {$doc->resident_name}! Your {$doc->document_type} ({$doc->request_code}) is now READY FOR PICKUP at Barangay {$doc->barangay} Hall. Please bring a valid ID."
+                            );
+                        }
+                    } catch (\Throwable $se) {
+                        \Illuminate\Support\Facades\Log::warning("SmsService update warning: " . $se->getMessage());
+                    }
                 }
             }
-        }
 
-        return response()->json(['success' => true, 'document' => $doc]);
+            return response()->json(['success' => true, 'document' => $doc]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Document update error: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to update document: ' . $e->getMessage()], 500);
+        }
     }
 
     public function destroy($id)
