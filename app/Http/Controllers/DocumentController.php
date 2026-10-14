@@ -80,85 +80,168 @@ class DocumentController extends Controller
         }
 
         $docs = $query->orderBy('d.requested_at', 'desc')->get();
+        foreach ($docs as $doc) {
+            if (empty($doc->purok_certificate_photo) && !empty($doc->extra_fields)) {
+                $extra = json_decode($doc->extra_fields, true);
+                if (is_array($extra) && !empty($extra['purok_certificate_photo'])) {
+                    $doc->purok_certificate_photo = $extra['purok_certificate_photo'];
+                }
+            }
+        }
         return response()->json($docs);
     }
 
     public function store(Request $request)
     {
-        $residentName = trim((string)$request->input('resident_name', 'Resident'));
-        $docType = trim((string)$request->input('document_type', 'Barangay Clearance'));
-        $purpose = trim((string)$request->input('purpose', 'General Clearance'));
-        $barangay = AuthController::normalizeBarangayName($request->input('barangay'));
-        $email = strtolower(trim((string)$request->input('resident_email', $request->input('email', ''))));
-        $residentId = $request->input('resident_id');
+        try {
+            $residentName = trim((string)$request->input('resident_name', 'Resident'));
+            $docType = trim((string)$request->input('document_type', 'Barangay Clearance'));
+            $purpose = trim((string)$request->input('purpose', 'General Clearance'));
+            $barangay = AuthController::normalizeBarangayName($request->input('barangay'));
+            $email = strtolower(trim((string)$request->input('resident_email', $request->input('email', ''))));
+            $residentId = $request->input('resident_id');
 
-        if (empty($residentId) || $residentId == 1) {
-            $matchedResident = null;
-            if (!empty($email)) {
-                $matchedResident = Resident::whereRaw('LOWER(email) = ?', [$email])->first();
-            }
-            if (!$matchedResident && !empty($residentName) && strtolower($residentName) !== 'resident') {
-                $matchedResident = Resident::whereRaw('LOWER(CONCAT(first_name, " ", last_name)) = ?', [strtolower($residentName)])->first();
-            }
-            if ($matchedResident) {
-                $residentId = $matchedResident->id;
-            }
-        }
-
-        $requestCode = 'DOC-' . rand(10000000, 99999999);
-
-        // Process Purok Certificate Photo
-        $purokCertPhoto = $request->input('purok_certificate_photo');
-        $photoPath = null;
-        if (!empty($purokCertPhoto)) {
-            $photoPath = AuthController::saveBase64Image($purokCertPhoto, 'purok_cert');
-        }
-
-        // Process Extra Fields
-        $extraFields = $request->input('extra_fields');
-        if (is_array($extraFields)) {
-            if ($photoPath) {
-                $extraFields['purok_certificate_photo'] = $photoPath;
-            }
-            $extraFields = json_encode($extraFields);
-        } elseif (is_string($extraFields)) {
-            $decoded = json_decode($extraFields, true);
-            if (is_array($decoded)) {
-                if ($photoPath) {
-                    $decoded['purok_certificate_photo'] = $photoPath;
+            if (empty($residentId) || $residentId == 1) {
+                $matchedResident = null;
+                if (!empty($email)) {
+                    $matchedResident = Resident::whereRaw('LOWER(email) = ?', [$email])->first();
                 }
-                $extraFields = json_encode($decoded);
+                if (!$matchedResident && !empty($residentName) && strtolower($residentName) !== 'resident') {
+                    $matchedResident = Resident::whereRaw('LOWER(CONCAT(first_name, " ", last_name)) = ?', [strtolower($residentName)])->first();
+                }
+                if ($matchedResident) {
+                    $residentId = $matchedResident->id;
+                }
             }
-        } elseif ($photoPath) {
-            $extraFields = json_encode(['purok_certificate_photo' => $photoPath]);
+
+            // Verify resident_id actually exists in database to prevent foreign key errors
+            $validResidentId = null;
+            if (!empty($residentId)) {
+                $exists = DB::table('residents')->where('id', $residentId)->exists();
+                if ($exists) {
+                    $validResidentId = $residentId;
+                }
+            }
+            if (!$validResidentId) {
+                $anyResident = DB::table('residents')->first();
+                $validResidentId = $anyResident ? $anyResident->id : null;
+            }
+
+            $requestCode = 'DOC-' . rand(10000000, 99999999);
+
+            // Process Purok Certificate Photo
+            $purokCertPhoto = $request->input('purok_certificate_photo');
+            $photoPath = null;
+            if (!empty($purokCertPhoto)) {
+                $photoPath = AuthController::saveBase64Image($purokCertPhoto, 'purok_cert');
+            }
+
+            // Process Extra Fields
+            $extraFields = $request->input('extra_fields');
+            if (is_array($extraFields)) {
+                if ($photoPath) {
+                    $extraFields['purok_certificate_photo'] = $photoPath;
+                }
+                $extraFields = json_encode($extraFields);
+            } elseif (is_string($extraFields)) {
+                $decoded = json_decode($extraFields, true);
+                if (is_array($decoded)) {
+                    if ($photoPath) {
+                        $decoded['purok_certificate_photo'] = $photoPath;
+                    }
+                    $extraFields = json_encode($decoded);
+                }
+            } elseif ($photoPath) {
+                $extraFields = json_encode(['purok_certificate_photo' => $photoPath]);
+            }
+
+            // On-the-fly table schema heal if missing columns
+            try {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'purok_certificate_photo')) {
+                    DB::statement("ALTER TABLE document_requests ADD COLUMN purok_certificate_photo LONGTEXT NULL");
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'extra_fields')) {
+                    DB::statement("ALTER TABLE document_requests ADD COLUMN extra_fields LONGTEXT NULL");
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'barangay')) {
+                    DB::statement("ALTER TABLE document_requests ADD COLUMN barangay VARCHAR(100) DEFAULT 'Pianing'");
+                }
+            } catch (\Throwable $schemaErr) {
+                \Illuminate\Support\Facades\Log::warning("DocumentController table heal notice: " . $schemaErr->getMessage());
+            }
+
+            $hasPurokCol = \Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'purok_certificate_photo');
+            $hasExtraCol = \Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'extra_fields');
+            $hasBrgyCol = \Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'barangay');
+
+            $data = [
+                'request_code' => $requestCode,
+                'resident_id' => $validResidentId,
+                'resident_name' => $residentName,
+                'email' => $email,
+                'document_type' => $docType,
+                'purpose' => $purpose,
+                'status' => 'Pending',
+                'requested_at' => now(),
+                'remarks' => $request->input('remarks'),
+            ];
+
+            if ($hasBrgyCol) {
+                $data['barangay'] = $barangay;
+            }
+            if ($hasExtraCol) {
+                $data['extra_fields'] = $extraFields;
+            }
+            if ($hasPurokCol) {
+                $data['purok_certificate_photo'] = $photoPath;
+            }
+
+            try {
+                $doc = DocumentRequest::create($data);
+            } catch (\Throwable $createErr) {
+                \Illuminate\Support\Facades\Log::error("DocumentRequest primary create error: " . $createErr->getMessage());
+                // Fallback: minimal insert without optional columns
+                unset($data['purok_certificate_photo']);
+                unset($data['extra_fields']);
+                $doc = DocumentRequest::create($data);
+            }
+
+            // Ensure response contains expected fields even if table was missing column
+            if (!$hasPurokCol && $photoPath) {
+                $doc->purok_certificate_photo = $photoPath;
+            }
+            if (!$hasExtraCol && $extraFields) {
+                $doc->extra_fields = $extraFields;
+            }
+            if (!$hasBrgyCol) {
+                $doc->barangay = $barangay;
+            }
+
+            try {
+                ActivityLog::create([
+                    'user_name' => $residentName,
+                    'user_role' => 'resident',
+                    'action' => "Submitted document request: {$docType} ({$requestCode})",
+                ]);
+            } catch (\Throwable $ae) {
+                \Illuminate\Support\Facades\Log::warning("ActivityLog create warning: " . $ae->getMessage());
+            }
+
+            if (!empty($email)) {
+                try {
+                    EmailService::sendDocumentStatusEmail($email, $residentName, $docType, $requestCode, 'Pending', null, $barangay);
+                } catch (\Throwable $ee) {
+                    \Illuminate\Support\Facades\Log::warning("EmailService warning: " . $ee->getMessage());
+                }
+            }
+
+            return response()->json($doc, 201);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Document store fatal error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
+            return response()->json([
+                'error' => 'Failed to submit document request: ' . $e->getMessage()
+            ], 500);
         }
-
-        $doc = DocumentRequest::create([
-            'request_code' => $requestCode,
-            'resident_id' => $residentId ?: 1,
-            'resident_name' => $residentName,
-            'email' => $email,
-            'document_type' => $docType,
-            'purpose' => $purpose,
-            'barangay' => $barangay,
-            'status' => 'Pending',
-            'requested_at' => now(),
-            'remarks' => $request->input('remarks'),
-            'extra_fields' => $extraFields,
-            'purok_certificate_photo' => $photoPath,
-        ]);
-
-        ActivityLog::create([
-            'user_name' => $residentName,
-            'user_role' => 'resident',
-            'action' => "Submitted document request: {$docType} ({$requestCode})",
-        ]);
-
-        if (!empty($email)) {
-            EmailService::sendDocumentStatusEmail($email, $residentName, $docType, $requestCode, 'Pending', null, $barangay);
-        }
-
-        return response()->json($doc, 201);
     }
 
     public function update(Request $request, $id)

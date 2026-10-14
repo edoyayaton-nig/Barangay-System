@@ -82,6 +82,14 @@ class ResidentController extends Controller
                 $q->orWhereRaw('LOWER(email) = ?', [$email]);
             }
         })->get();
+        foreach ($docRequests as $doc) {
+            if (empty($doc->purok_certificate_photo) && !empty($doc->extra_fields)) {
+                $extra = json_decode($doc->extra_fields, true);
+                if (is_array($extra) && !empty($extra['purok_certificate_photo'])) {
+                    $doc->purok_certificate_photo = $extra['purok_certificate_photo'];
+                }
+            }
+        }
 
         $maternal = MaternalRecord::where('resident_id', $id)
             ->orWhereRaw('LOWER(mother_name) = ?', [strtolower("{$resident->first_name} {$resident->last_name}")])

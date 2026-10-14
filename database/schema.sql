@@ -79,17 +79,22 @@ CREATE TABLE IF NOT EXISTS `residents` (
 -- 3. Document Clearance & Certificate Requests
 CREATE TABLE IF NOT EXISTS `document_requests` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `request_code` VARCHAR(20) NOT NULL UNIQUE,
-  `resident_id` INT NOT NULL,
+  `request_code` VARCHAR(50) NOT NULL UNIQUE,
+  `resident_id` INT NULL DEFAULT NULL,
   `resident_name` VARCHAR(100) NOT NULL,
   `email` VARCHAR(100) DEFAULT '',
   `document_type` VARCHAR(100) NOT NULL,
-  `purpose` VARCHAR(255) DEFAULT '',
-  `status` ENUM('Pending', 'Processing', 'Completed', 'Rejected') NOT NULL DEFAULT 'Pending',
+  `purpose` TEXT DEFAULT NULL,
+  `status` VARCHAR(50) NOT NULL DEFAULT 'Pending',
   `requested_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `processed_at` DATETIME NULL,
   `processed_by` VARCHAR(100) DEFAULT '',
-  `remarks` TEXT DEFAULT NULL
+  `remarks` TEXT DEFAULT NULL,
+  `barangay` VARCHAR(100) DEFAULT 'Pianing',
+  `extra_fields` LONGTEXT DEFAULT NULL,
+  `purok_certificate_photo` LONGTEXT DEFAULT NULL,
+  KEY `idx_doc_status` (`status`),
+  KEY `idx_doc_barangay` (`barangay`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 4. Maternal Healthcare Records
