@@ -245,6 +245,26 @@ export interface PendingResident {
   verification_status: 'Pending_Review' | 'Verified' | 'Rejected';
   rejection_reason?: string;
   profile_photo?: string | null;
+  census_match_status?: 'has_record' | 'no_record';
+  similarity_score?: number;
+  closest_census_record?: any | null;
+  similarity_discrepancies?: string[];
+}
+
+export interface CensusSimilarityCandidate {
+  resident: Resident;
+  score: number;
+  name_similarity: number;
+  discrepancies: string[];
+}
+
+export interface CensusSimilarityResult {
+  applicant: PendingResident;
+  census_match_status: 'has_record' | 'no_record';
+  similarity_score: number;
+  closest_census_record: Resident | null;
+  discrepancies: string[];
+  candidates: CensusSimilarityCandidate[];
 }
 
 export interface CensusResidentSearchResult {
@@ -881,17 +901,26 @@ export const apiService = {
     }
   },
 
-  async approveResident(id: number, approved_by?: string) {
+  async approveResident(id: number, approved_by?: string, link_census_id?: number) {
     const res = await fetch(`${API_BASE}/residents/${id}/approve`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ approved_by })
+      body: JSON.stringify({ approved_by, link_census_id })
     });
     const json = await res.json();
     if (!res.ok) {
       const err: any = new Error(json.error || json.message || 'Failed to approve resident');
       err.data = json;
       throw err;
+    }
+    return json;
+  },
+
+  async getCensusSimilarity(id: number): Promise<CensusSimilarityResult> {
+    const res = await fetch(`${API_BASE}/residents/${id}/census-similarity`);
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.error || 'Failed to calculate census similarity');
     }
     return json;
   },

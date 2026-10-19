@@ -54,6 +54,7 @@ Route::delete('/users/{id}', [AuthController::class, 'deleteUser']);
 Route::get('/residents', [ResidentController::class, 'index']);
 Route::get('/residents/census-lookup', [ResidentController::class, 'censusLookup']);
 Route::get('/residents/pending', [ResidentController::class, 'getPending']);
+Route::get('/residents/{id}/census-similarity', [ResidentController::class, 'censusSimilarity']);
 Route::get('/residents/{id}/full-profile', [ResidentController::class, 'fullProfile']);
 Route::post('/residents', [ResidentController::class, 'store']);
 Route::put('/residents/resubmit', [ResidentController::class, 'resubmit']);

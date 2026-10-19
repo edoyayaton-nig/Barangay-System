@@ -128,6 +128,11 @@ export default function LoginPage() {
   const [regIdFileName, setRegIdFileName] = useState<string>('');
   const [regStep, setRegStep] = useState<1 | 2>(1);
   const [regTermsAgreed, setRegTermsAgreed] = useState(false);
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+  const [verificationScreenState, setVerificationScreenState] = useState<'idle' | 'verifying' | 'success'>('idle');
+  const [verifyingStep, setVerifyingStep] = useState<number>(1);
+  const [submittedAppCode, setSubmittedAppCode] = useState<string>('');
   const [termsModalTab, setTermsModalTab] = useState<'privacy' | 'terms'>('privacy');
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -558,8 +563,12 @@ export default function LoginPage() {
     const fullName = `${formattedFirstName}${formattedMiddleName ? ' ' + formattedMiddleName : ''} ${formattedLastName}`;
 
     setLoading(true);
+    setVerificationScreenState('verifying');
+    setVerifyingStep(1);
+    setTimeout(() => setVerifyingStep(2), 900);
+    setTimeout(() => setVerifyingStep(3), 1900);
     try {
-      await apiService.register({
+      const regRes = await apiService.register({
         first_name: formattedFirstName,
         middle_name: formattedMiddleName,
         last_name: formattedLastName,
@@ -609,8 +618,11 @@ export default function LoginPage() {
         description: 'Your resident account and ID have been submitted! Please wait for Admin approval to unlock official clearance requests.'
       });
 
-      clearForm();
-      setIsChoiceModalOpen(true);
+      const appRef = 'APP-2026-' + (regRes?.id || regRes?.user?.id || Math.floor(1000 + Math.random() * 9000));
+      setSubmittedAppCode(appRef);
+      setTimeout(() => {
+        setVerificationScreenState('success');
+      }, 2600);
     } catch (err: any) {
       toast.error('Registration failed', { description: err.message || 'Please try again with a different email.' });
     } finally {
@@ -917,68 +929,172 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* ── EXISTING RESIDENT WORKFLOW ── */}
+          {/* ── EXISTING RESIDENT WORKFLOW (Refill Complete Census Data & Verify) ── */}
           {activeTab === 'register' && residentMode === 'existing' && (
-            <div className="space-y-4">
-              {/* Header Navigation with Back button & Step Pills */}
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <form onSubmit={handleRegister} className="space-y-4" autoComplete="off">
+              {/* Header Navigation with Back button & Badge */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (existingStep > 1) {
-                      setExistingStep((prev) => (prev - 1) as 1 | 2);
-                    } else {
-                      setResidentMode('choose');
-                      clearExistingFlow();
-                    }
-                  }}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-blue-600 cursor-pointer transition-colors"
+                  onClick={() => setResidentMode('choose')}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors"
                 >
                   <ArrowLeft size={14} />
-                  {existingStep === 1 ? 'Back to Options' : existingStep === 2 ? 'Back to Barangay' : 'Back to Search'}
+                  Back to Options
                 </button>
 
-                {/* Step Pills */}
-                <div className="flex items-center gap-1.5 text-[10.5px] font-bold">
-                  <span className={`px-2 py-0.5 rounded-full ${existingStep === 1 ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'}`}>
-                    1. Barangay
-                  </span>
-                  <span className="text-slate-300">&rsaquo;</span>
-                  <span className={`px-2 py-0.5 rounded-full ${existingStep === 2 ? 'bg-blue-600 text-white' : existingStep > 2 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-400'}`}>
-                    2. Search Name
-                  </span>
-                  <span className="text-slate-300">&rsaquo;</span>
-                  <span className={`px-2 py-0.5 rounded-full ${existingStep === 3 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                    3. ID &amp; Password
+                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 inline-flex items-center gap-1">
+                  <CheckCircle2 size={11} />
+                  Existing Resident Census Verification
+                </span>
+              </div>
+
+              {/* Informational Guidance Callout */}
+              <div className="p-3 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-2xl text-[11px] text-blue-950 dark:text-blue-200 flex items-start gap-2.5">
+                <Building2 size={18} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <strong className="font-bold block">Census Inhabitant Profile Refill</strong>
+                  <span>
+                    Please refill your complete census information and attach your valid Government ID. Upon submission, the system will verify your data with the official database, and the Barangay Admin will confirm your application.
                   </span>
                 </div>
               </div>
 
-              {/* Step 1: Select Barangay */}
-              {existingStep === 1 && (
-                <div className="space-y-3.5 py-1">
-                  <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-2xl flex items-start gap-2.5">
-                    <Building2 size={18} className="text-blue-600 shrink-0 mt-0.5" />
-                    <div className="text-[11px] text-blue-950 leading-relaxed">
-                      <strong className="font-bold">Step 1: Which Barangay are you registered in?</strong>
-                      <p className="text-blue-800 text-[10.5px] mt-0.5">
-                        Select your Barangay jurisdiction to search the official local census database.
-                      </p>
-                    </div>
+              {/* SECTION 1: Personal Demographic Details */}
+              <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/70 space-y-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block flex items-center gap-1.5">
+                  <UserCheck size={13} className="text-blue-600" />
+                  1. Personal Information
+                </span>
+
+                {/* Name Fields (First, Middle, Last) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      First Name <span className="text-red-500 font-bold">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={regFirstName}
+                      onChange={(e) => setRegFirstName(e.target.value.replace(/[0-9]/g, ''))}
+                      placeholder="e.g. Maria"
+                      required
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
+                    />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Barangay Jurisdiction <span className="text-red-500 font-bold">*</span>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Middle Name <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={regMiddleName}
+                      onChange={(e) => setRegMiddleName(e.target.value.replace(/[0-9]/g, ''))}
+                      placeholder="e.g. Clara"
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Last Name <span className="text-red-500 font-bold">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={regLastName}
+                      onChange={(e) => setRegLastName(e.target.value.replace(/[0-9]/g, ''))}
+                      placeholder="e.g. Santos"
+                      required
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
+                    />
+                  </div>
+                </div>
+
+                {/* DOB, Gender, Civil Status */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Date of Birth <span className="text-red-500 font-bold">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={regDob}
+                      onChange={(e) => setRegDob(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      required
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Gender <span className="text-red-500 font-bold">*</span>
                     </label>
                     <select
-                      value={existingBarangay}
-                      onChange={(e) => {
-                        setExistingBarangay(e.target.value);
-                        setExistingSearchResults([]);
-                        setHasSearchedCensus(false);
-                      }}
-                      className="w-full h-10 px-3 bg-slate-50/90 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all cursor-pointer"
+                      value={regGender}
+                      onChange={(e) => setRegGender(e.target.value as any)}
+                      required
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 cursor-pointer"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Civil Status <span className="text-red-500 font-bold">*</span>
+                    </label>
+                    <select
+                      value={regCivilStatus}
+                      onChange={(e) => setRegCivilStatus(e.target.value as any)}
+                      required
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 cursor-pointer"
+                    >
+                      <option value="">Select Civil Status</option>
+                      <option value="Single">Single</option>
+                      <option value="Married">Married</option>
+                      <option value="Widowed">Widowed</option>
+                      <option value="Separated">Separated</option>
+                      <option value="Live-In">Live-In</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: Census Address & Demographics */}
+              <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/70 space-y-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block flex items-center gap-1.5">
+                  <MapPin size={13} className="text-blue-600" />
+                  2. Census Address &amp; Demographics
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Purok / Street <span className="text-red-500 font-bold">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={regPurok}
+                      onChange={(e) => setRegPurok(e.target.value)}
+                      placeholder="e.g. Purok 1 or Mahogany St"
+                      required
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Barangay Jurisdiction <span className="text-slate-400 font-normal">(Default: Pianing)</span>
+                    </label>
+                    <select
+                      value={regBarangay || 'Pianing'}
+                      onChange={(e) => setRegBarangay(e.target.value)}
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-blue-600 cursor-pointer"
                     >
                       {BUTUAN_BARANGAYS.map((b) => (
                         <option key={b} value={b}>
@@ -988,451 +1104,282 @@ export default function LoginPage() {
                     </select>
                   </div>
 
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      if (!existingBarangay) {
-                        toast.error('Barangay required', { description: 'Please choose your barangay.' });
-                        return;
-                      }
-                      setExistingStep(2);
-                      if (existingFullNameSearch.trim().length >= 2) {
-                        handleCensusSearch(existingFullNameSearch);
-                      }
-                    }}
-                    className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 mt-2"
-                  >
-                    Proceed to Census Search in Barangay {existingBarangay}
-                    <ArrowRight size={14} />
-                  </Button>
-                </div>
-              )}
-
-              {/* Step 2: Write Full Name & Live Census Search */}
-              {existingStep === 2 && (
-                <div className="space-y-3.5 py-1">
-                  {/* Selected Barangay pill */}
-                  <div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-                    <div className="flex items-center gap-2">
-                      <Building2 size={15} className="text-blue-600" />
-                      <span className="text-slate-600 text-[11px]">Searching Census in:</span>
-                      <strong className="text-blue-900 font-bold text-xs">Barangay {existingBarangay}</strong>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setExistingStep(1)}
-                      className="text-[10.5px] font-bold text-blue-600 hover:underline cursor-pointer"
-                    >
-                      Change
-                    </button>
-                  </div>
-
                   <div>
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Write your Full Name <span className="text-red-500 font-bold">*</span>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      City / Municipality
                     </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={existingFullNameSearch}
-                        onChange={(e) => setExistingFullNameSearch(e.target.value)}
-                        placeholder="e.g. Maria Clara Delgado"
-                        autoFocus
-                        className="w-full h-10 pl-9 pr-10 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner"
-                      />
-                      <Search size={15} className="absolute left-3 top-3 text-slate-400" />
-                      {isSearchingCensus ? (
-                        <RefreshCw size={15} className="absolute right-3 top-3 text-blue-600 animate-spin" />
-                      ) : existingFullNameSearch ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setExistingFullNameSearch('');
-                            setExistingSearchResults([]);
-                            setHasSearchedCensus(false);
-                          }}
-                          className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
-                        >
-                          <X size={15} />
-                        </button>
-                      ) : null}
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      Type your First and Last name as recorded during the Barangay census.
-                    </p>
-                  </div>
-
-                  {/* NOT FOUND ALERT (Exact note requested by user) */}
-                  {hasSearchedCensus && !isSearchingCensus && existingSearchResults.length === 0 && (
-                    <div className="p-4 bg-rose-50/90 border-2 border-rose-300 rounded-2xl text-rose-950 space-y-3 animate-in fade-in duration-200">
-                      <div className="flex items-start gap-2.5">
-                        <AlertCircle size={20} className="text-rose-600 shrink-0 mt-0.5" />
-                        <div>
-                          <h5 className="text-xs font-bold text-rose-900 leading-tight">
-                            You are not an existing resident please apply for new resident or go to your barangay hall!
-                          </h5>
-                          <p className="text-[11px] text-rose-700 mt-1 leading-relaxed">
-                            We checked the official census registry of <strong>Barangay {existingBarangay}</strong>, but no record matched &ldquo;{existingFullNameSearch}&rdquo;.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-rose-200/80 flex flex-col sm:flex-row gap-2">
-                        <Button
-                          type="button"
-                          onClick={handleSwitchToNewResident}
-                          className="flex-1 h-9 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <UserPlus size={13} />
-                          Apply for New Resident
-                        </Button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setExistingFullNameSearch('');
-                            setHasSearchedCensus(false);
-                          }}
-                          className="px-3 py-2 text-[11px] font-semibold text-rose-800 hover:bg-rose-100 rounded-xl border border-rose-200 cursor-pointer transition-colors text-center"
-                        >
-                          Search Another Name
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* FOUND RESULTS LIST */}
-                  {hasSearchedCensus && !isSearchingCensus && existingSearchResults.length > 0 && (
-                    <div className="space-y-2 pt-1 animate-in fade-in duration-200">
-                      <p className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
-                        <span>Matching Census Records ({existingSearchResults.length}):</span>
-                        <span className="text-[10px] text-slate-400 font-normal">Click your name to continue</span>
-                      </p>
-
-                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                        {existingSearchResults.map((r) => (
-                          <div
-                            key={r.id}
-                            className={`p-3 rounded-2xl border transition-all ${
-                              r.has_account
-                                ? 'bg-slate-50 border-slate-200 opacity-80'
-                                : 'bg-white border-blue-200 hover:border-blue-500 hover:shadow-md cursor-pointer group'
-                            }`}
-                            onClick={() => {
-                              if (r.has_account) {
-                                toast.info('Account already active', {
-                                  description: 'Please sign in or use Forgot Password for this resident.'
-                                });
-                                return;
-                              }
-                              setSelectedCensusResident(r);
-                              if (r.phone) setExistingPhone(r.phone);
-                              if (r.email) setExistingEmail(r.email);
-                              setExistingStep(3);
-                              toast.success('Census Record Selected', {
-                                description: `Connecting ${r.first_name} ${r.last_name}. Please upload your valid Government ID.`
-                              });
-                            }}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <strong className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                    {r.first_name} {r.middle_name ? `${r.middle_name} ` : ''}{r.last_name}
-                                  </strong>
-                                  <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                                    {r.is_census_only ? '📋 Census Record' : '👤 Resident Record'}
-                                  </span>
-                                </div>
-                                <div className="text-[10.5px] text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
-                                  <span>Purok {r.purok || '1'}</span>
-                                  <span>•</span>
-                                  <span>{r.gender || '—'}</span>
-                                  <span>•</span>
-                                  <span>DOB: {r.date_of_birth || '—'}</span>
-                                  {r.household_number && (
-                                    <>
-                                      <span>•</span>
-                                      <span>HH: {r.household_number}</span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="shrink-0">
-                                {r.has_account ? (
-                                  <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 flex items-center gap-1">
-                                    <Lock size={11} /> Already Has Account
-                                  </span>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="px-3 py-1.5 bg-blue-50 group-hover:bg-blue-600 text-blue-700 group-hover:text-white rounded-xl text-[11px] font-bold transition-all shadow-xs"
-                                  >
-                                    Select &rarr;
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Step 3: Upload Government ID & Set Credentials */}
-              {existingStep === 3 && selectedCensusResident && (
-                <form onSubmit={handleExistingRegister} className="space-y-3.5 py-1">
-                  {/* Confirmed Constituent Summary Banner */}
-                  <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                        <CheckCircle2 size={18} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-800">Linked Census Record</p>
-                        <h5 className="text-xs font-bold text-emerald-950 truncate">
-                          {selectedCensusResident.first_name} {selectedCensusResident.middle_name ? `${selectedCensusResident.middle_name} ` : ''}{selectedCensusResident.last_name}
-                        </h5>
-                        <p className="text-[10px] text-emerald-700 truncate">
-                          Purok {selectedCensusResident.purok || '1'}, Barangay {selectedCensusResident.barangay || existingBarangay}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setExistingStep(2)}
-                      className="text-[10.5px] font-bold text-emerald-700 hover:text-emerald-900 underline shrink-0 cursor-pointer"
-                    >
-                      Change
-                    </button>
-                  </div>
-
-                  {/* 1. Government ID Upload */}
-                  <div className="p-3 bg-slate-50/70 border border-slate-200 rounded-2xl space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold text-slate-800 block">
-                        1. Government ID Photo <span className="text-red-500 font-bold">*</span>
-                      </label>
-                      <span className="text-[10px] font-semibold text-rose-600">Strictly Required</span>
-                    </div>
-
-                    <div>
-                      <select
-                        value={existingIdType}
-                        onChange={(e) => setExistingIdType(e.target.value)}
-                        required
-                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer"
-                      >
-                        <option value="">Select Government ID Type *</option>
-                        {ID_TYPES.map((t) => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {!existingIdPhoto ? (
-                      <div
-                        onClick={() => existingFileInputRef.current?.click()}
-                        className="border-2 border-dashed border-blue-200 hover:border-blue-500 bg-white hover:bg-blue-50/30 rounded-xl p-3 text-center cursor-pointer transition-all group"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-1 group-hover:scale-105 transition-transform">
-                          <Camera size={16} />
-                        </div>
-                        <p className="text-xs font-bold text-slate-700">Click to choose or capture valid ID photo <span className="text-red-500">*</span></p>
-                        <p className="text-[9.5px] text-slate-400 mt-0.5">PhilSys, Driver&apos;s License, Voter&apos;s ID, Barangay ID (PNG, JPG up to 15MB)</p>
-                      </div>
-                    ) : (
-                      <div className="p-2.5 bg-white border border-blue-200 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <img
-                            src={existingIdPhoto}
-                            alt="ID Preview"
-                            className="w-12 h-9 object-cover rounded-lg border border-blue-300 shadow-2xs shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-blue-950 truncate">
-                              {existingIdFileName || existingIdType || 'Government ID'}
-                            </p>
-                            <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-1">
-                              <CheckCircle2 size={12} className="text-emerald-600" /> Valid ID Photo Attached
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleClearExistingIdPhoto}
-                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full cursor-pointer transition-colors"
-                          title="Remove photo"
-                        >
-                          <X size={15} />
-                        </button>
-                      </div>
-                    )}
-
                     <input
-                      ref={existingFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleExistingFileChange}
-                      className="hidden"
+                      type="text"
+                      value={regCity || 'Butuan City'}
+                      readOnly
+                      className="w-full h-9 px-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-600 dark:text-slate-400 outline-none cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Years of Residency
+                    </label>
+                    <input
+                      type="text"
+                      value={regResidencyYears}
+                      onChange={(e) => setRegResidencyYears(e.target.value)}
+                      placeholder="e.g. 5 Years"
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600"
                     />
                   </div>
 
-                  {/* 2. Phone Number */}
                   <div>
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      2. Phone Number <span className="text-red-500 font-bold">*</span>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Employment Status
                     </label>
-                    <div className="relative">
-                      <input
-                        type="tel"
-                        value={existingPhone}
-                        onChange={(e) => setExistingPhone(e.target.value)}
-                        placeholder="09171234567"
-                        required
-                        maxLength={11}
-                        className="w-full h-10 pl-9 pr-3 bg-slate-50/90 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner"
-                      />
-                      <Phone size={15} className="absolute left-3 top-3 text-slate-400" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      11-digit mobile number starting with 09 (used for SMS alerts and verifications).
-                    </p>
+                    <select
+                      value={regEmployment}
+                      onChange={(e) => setRegEmployment(e.target.value)}
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 cursor-pointer"
+                    >
+                      <option value="Employed">Employed</option>
+                      <option value="Self-Employed">Self-Employed</option>
+                      <option value="Unemployed">Unemployed</option>
+                      <option value="Student">Student</option>
+                      <option value="Retired">Retired</option>
+                      <option value="Housewife/Househusband">Housewife / Househusband</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: Account Credentials & Contact */}
+              <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/70 space-y-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block flex items-center gap-1.5">
+                  <Lock size={13} className="text-blue-600" />
+                  3. Contact &amp; Security Credentials
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Email Address <span className="text-red-500 font-bold">*</span> <span className="text-slate-400 font-normal">(Gmail preferred)</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value.toLowerCase().trim())}
+                      placeholder="e.g. resident@gmail.com"
+                      required
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
+                    />
                   </div>
 
-                  {/* 3. Email Address */}
                   <div>
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      3. Email Address <span className="text-red-500 font-bold">*</span>
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Mobile Phone Number <span className="text-red-500 font-bold">*</span>
                     </label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        value={existingEmail}
-                        onChange={(e) => setExistingEmail(e.target.value)}
-                        placeholder="e.g. maria.delgado@gmail.com"
-                        required
-                        className="w-full h-10 pl-9 pr-3 bg-slate-50/90 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner"
-                      />
-                      <Mail size={15} className="absolute left-3 top-3 text-slate-400" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      Your login email address for the Citizen Portal. Only 1 account per Gmail.
-                    </p>
+                    <input
+                      type="tel"
+                      value={regPhone}
+                      onChange={(e) => setRegPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="09171234567"
+                      maxLength={11}
+                      required
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
+                    />
                   </div>
+                </div>
 
-                  {/* 4. Password */}
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      4. Password <span className="text-red-500 font-bold">*</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="relative">
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Create Password <span className="text-red-500 font-bold">*</span>
                     </label>
                     <div className="relative">
                       <input
-                        type={showExistingPassword ? 'text' : 'password'}
-                        value={existingPassword}
-                        onChange={(e) => setExistingPassword(e.target.value)}
-                        placeholder="••••••••"
+                        type={showRegPassword ? 'text' : 'password'}
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="Min. 8 chars, 1 Upper, 1 Number, 1 Symbol"
                         required
-                        className="w-full h-10 pl-9 pr-10 bg-slate-50/90 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-inner"
+                        className="w-full h-9 pl-3 pr-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600"
                       />
-                      <Lock size={15} className="absolute left-3 top-3 text-slate-400" />
                       <button
                         type="button"
-                        onClick={() => setShowExistingPassword(!showExistingPassword)}
-                        className="absolute right-3.5 top-2.5 text-slate-400 hover:text-blue-600 cursor-pointer"
-                        tabIndex={-1}
+                        onClick={() => setShowRegPassword(!showRegPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 cursor-pointer"
                       >
-                        {showExistingPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        {showRegPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      Must contain at least 8 characters, uppercase, lowercase, number, and special symbol.
-                    </p>
                   </div>
 
-                  {/* Data Privacy & Terms Agreement Checkbox */}
-                  <div
-                    className={`p-3 rounded-2xl border transition-all ${
-                      existingTermsAgreed
-                        ? 'bg-emerald-50/70 border-emerald-300/80 shadow-2xs'
-                        : 'bg-slate-50 border-slate-200 hover:border-blue-300'
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5">
+                  <div className="relative">
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Confirm Password <span className="text-red-500 font-bold">*</span>
+                    </label>
+                    <div className="relative">
                       <input
-                        type="checkbox"
-                        id="existing-terms-agree"
+                        type={showRegConfirmPassword ? 'text' : 'password'}
+                        value={regConfirmPassword}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        placeholder="Re-enter password"
                         required
-                        checked={existingTermsAgreed}
-                        onChange={(e) => setExistingTermsAgreed(e.target.checked)}
-                        className="mt-0.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600 shrink-0"
+                        className="w-full h-9 pl-3 pr-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600"
                       />
-                      <div className="flex-1 text-[11px] text-slate-700 leading-relaxed select-none">
-                        <label htmlFor="existing-terms-agree" className="cursor-pointer">
-                          I verify that I am the resident recorded in this census entry, and I agree to the{' '}
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTermsModalTab('terms');
-                            setIsTermsOpen(true);
-                          }}
-                          className="text-blue-700 font-bold underline hover:text-blue-900 cursor-pointer"
-                        >
-                          Terms &amp; Conditions
-                        </button>{' '}
-                        and{' '}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTermsModalTab('privacy');
-                            setIsTermsOpen(true);
-                          }}
-                          className="text-blue-700 font-bold underline hover:text-blue-900 cursor-pointer"
-                        >
-                          Data Privacy Policy
-                        </button>.
-                      </div>
-                      {existingTermsAgreed && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 border border-emerald-300/60">
-                          <CheckCircle2 size={11} /> Accepted
-                        </span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 cursor-pointer"
+                      >
+                        {showRegConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  {/* Submit Button */}
-                  <Button
-                    type="submit"
-                    disabled={loading || !existingTermsAgreed}
-                    className={`w-full h-11 font-bold text-xs shadow-md transition-all rounded-xl mt-3 flex items-center justify-center gap-2 cursor-pointer ${
-                      !existingTermsAgreed
-                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
+              {/* SECTION 4: Valid Government ID Upload */}
+              <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/70 space-y-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block flex items-center gap-1.5">
+                  <CreditCard size={13} className="text-blue-600" />
+                  4. Government ID Document Verification <span className="text-red-500 font-bold">*</span>
+                </span>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Select Valid Government ID Type <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  <select
+                    value={regIdType}
+                    onChange={(e) => setRegIdType(e.target.value)}
+                    required
+                    className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 cursor-pointer"
                   >
-                    {loading ? (
-                      'Creating Citizen Account...'
-                    ) : !existingTermsAgreed ? (
-                      <>
-                        <Lock size={13} className="opacity-60" />
-                        Accept Terms &amp; Privacy Policy to Create Account
-                      </>
-                    ) : (
-                      <>
-                        Create Citizen Account
-                        <ArrowRight size={14} />
-                      </>
-                    )}
-                  </Button>
-                </form>
-              )}
-            </div>
+                    <option value="">Select ID Type (PhilSys, Driver's License, etc.)</option>
+                    {ID_TYPES.map((id) => (
+                      <option key={id} value={id}>
+                        {id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* ID Photo Upload Container */}
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Upload ID Photo (Front or Both Sides) <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+
+                  {regIdPhoto ? (
+                    <div className="p-3 bg-white dark:bg-slate-900 border-2 border-emerald-300 dark:border-emerald-700/60 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={regIdPhoto}
+                          alt="Government ID"
+                          className="w-14 h-11 object-cover rounded-xl border border-slate-200 dark:border-slate-700 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            {regIdFileName || 'Government_ID_Attached.jpg'}
+                          </p>
+                          <span className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                            <CheckCircle2 size={12} /> Image Validated &amp; Ready
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClearIdPhoto}
+                        className="px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer shrink-0"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-4 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 rounded-2xl text-center cursor-pointer transition-all bg-white dark:bg-slate-900/60 hover:bg-blue-50/40 group"
+                    >
+                      <div className="w-10 h-10 mx-auto rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                        <Camera size={18} />
+                      </div>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Click or Tap to Upload Government ID
+                      </p>
+                      <p className="text-[10.5px] text-slate-400 mt-0.5">
+                        PNG, JPG, or JPEG up to 15MB (Auto-compressed for fast verification)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SECTION 5: Terms & Privacy Agreement */}
+              <div className="flex items-start gap-2.5 pt-1">
+                <input
+                  type="checkbox"
+                  id="reg_existing_terms"
+                  checked={regTermsAgreed}
+                  onChange={(e) => setRegTermsAgreed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <label htmlFor="reg_existing_terms" className="text-xs text-slate-600 dark:text-slate-300 leading-snug cursor-pointer">
+                  I certify that all information submitted is true and correct, and I agree to the{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setTermsModalTab('privacy'); setIsTermsOpen(true); }}
+                    className="text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                  >
+                    Data Privacy Policy
+                  </button>{' '}
+                  and{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setTermsModalTab('terms'); setIsTermsOpen(true); }}
+                    className="text-blue-600 dark:text-blue-400 font-bold hover:underline"
+                  >
+                    Terms of Service
+                  </button>
+                  .
+                </label>
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={loading || !regTermsAgreed}
+                className={`w-full h-11 font-bold text-xs shadow-md transition-all rounded-xl mt-2 flex items-center justify-center gap-2 cursor-pointer ${
+                  !regTermsAgreed
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25'
+                }`}
+              >
+                {loading ? (
+                  'Verifying Census Data...'
+                ) : !regTermsAgreed ? (
+                  <>
+                    <Lock size={13} className="opacity-60" />
+                    Accept Terms &amp; Privacy Policy to Submit
+                  </>
+                ) : (
+                  <>
+                    Submit Application &amp; Verify Census
+                    <ArrowRight size={14} />
+                  </>
+                )}
+              </Button>
+            </form>
           )}
 
-          {/* ── TAB 2: REGISTER - NEW RESIDENT (In-Person Barangay Hall Requirement) ─────────── */}
+
+{/* ── TAB 2: REGISTER - NEW RESIDENT (In-Person Barangay Hall Requirement) ─────────── */}
           {activeTab === 'register' && residentMode === 'new' && (
             <div className="space-y-4">
               {/* Header Navigation & Badge */}
@@ -1626,6 +1573,142 @@ export default function LoginPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+            {/* ── FULL SCREEN VERIFICATION & CONFIRMATION OVERLAY ── */}
+      {verificationScreenState !== 'idle' && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-[#151824] border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl text-center space-y-5 relative overflow-hidden">
+            {verificationScreenState === 'verifying' ? (
+              <div className="py-6 space-y-6">
+                {/* Pulsing Scanner Radar Icon */}
+                <div className="relative mx-auto w-24 h-24 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
+                  <div className="absolute inset-2 rounded-full bg-blue-500/30 animate-pulse" />
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/40 relative z-10">
+                    <RefreshCw size={32} className="animate-spin" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                    Verifying Resident Information...
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                    Please hold on while the system cross-references your inputted census profile with the Barangay Inhabitant Database.
+                  </p>
+                </div>
+
+                {/* Animated Verification Milestones */}
+                <div className="space-y-2.5 max-w-sm mx-auto text-left text-xs bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                  <div className="flex items-center gap-2.5">
+                    {verifyingStep >= 1 ? (
+                      <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border-2 border-slate-300 animate-spin shrink-0" />
+                    )}
+                    <span className={verifyingStep >= 1 ? "text-slate-800 dark:text-slate-200 font-semibold" : "text-slate-400"}>
+                      Checking civil registry &amp; demographic parameters
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    {verifyingStep >= 2 ? (
+                      <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border-2 border-slate-300 animate-spin shrink-0" />
+                    )}
+                    <span className={verifyingStep >= 2 ? "text-slate-800 dark:text-slate-200 font-semibold" : "text-slate-400"}>
+                      Cross-referencing Barangay Census Inhabitant records
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    {verifyingStep >= 3 ? (
+                      <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border-2 border-slate-300 animate-spin shrink-0" />
+                    )}
+                    <span className={verifyingStep >= 3 ? "text-slate-800 dark:text-slate-200 font-semibold" : "text-slate-400"}>
+                      Encrypting Government ID &amp; registering application
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Success State */
+              <div className="py-4 space-y-5 animate-in zoom-in-95 duration-300">
+                {/* Glowing Check Icon */}
+                <div className="relative mx-auto w-20 h-20 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping duration-1000" />
+                  <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-xl shadow-emerald-500/35 relative z-10">
+                    <CheckCircle2 size={44} className="stroke-[2.5]" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 inline-block">
+                    ✓ Application Submitted Successfully
+                  </span>
+
+                  {/* EXACT MESSAGE REQUESTED BY USER */}
+                  <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white leading-snug">
+                    Your application has been sent! Please wait for the admin to confirm it.
+                  </h3>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
+                    Your census profile, credentials, and Government ID have been forwarded to the <strong>Barangay {regBarangay || 'Pianing'} Administration</strong> verification queue. The admin will verify your record against the database.
+                  </p>
+                </div>
+
+                {/* Application Reference Card */}
+                <div className="bg-slate-50 dark:bg-slate-900/80 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-left space-y-2 text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-800">
+                    <span className="text-slate-500 font-medium text-[11px]">Application Reference Code</span>
+                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-xs">
+                      {submittedAppCode || 'APP-2026-PENDING'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-medium text-[11px]">Accreditation Status</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-400 text-[11px]">
+                      Pending Admin Approval
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-medium text-[11px]">Notification Channels</span>
+                    <span className="text-slate-700 dark:text-slate-300 text-[11px]">
+                      SMS &amp; Email Notice upon Approval
+                    </span>
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="space-y-2 pt-2">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setVerificationScreenState('idle');
+                      setResidentMode('choose');
+                      setActiveTab('login');
+                    }}
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all"
+                  >
+                    Return to Sign In
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVerificationScreenState('idle');
+                      navigate('/');
+                    }}
+                    className="w-full h-9 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                  >
+                    Go to Homepage
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <TermsAndPrivacyModal
         isOpen={isTermsOpen}

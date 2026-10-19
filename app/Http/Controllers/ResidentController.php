@@ -132,6 +132,113 @@ class ResidentController extends Controller
         ]);
     }
 
+    public static function calculateCensusSimilarity($applicant, $census): array
+    {
+        $appFirstName = strtolower(trim((string)($applicant->first_name ?? $applicant['first_name'] ?? '')));
+        $appLastName = strtolower(trim((string)($applicant->last_name ?? $applicant['last_name'] ?? '')));
+        $appMiddleName = strtolower(trim((string)($applicant->middle_name ?? $applicant['middle_name'] ?? '')));
+        $appFullName = trim("{$appFirstName} {$appLastName}");
+        $appPurok = trim((string)($applicant->purok ?? $applicant['purok'] ?? ''));
+        $appDob = trim((string)($applicant->date_of_birth ?? $applicant['date_of_birth'] ?? ''));
+        $appGender = strtolower(trim((string)($applicant->gender ?? $applicant['gender'] ?? '')));
+        $appAddress = strtolower(trim((string)($applicant->address ?? $applicant['address'] ?? '')));
+
+        $cenFirstName = strtolower(trim((string)($census->first_name ?? '')));
+        $cenLastName = strtolower(trim((string)($census->last_name ?? '')));
+        $cenMiddleName = strtolower(trim((string)($census->middle_name ?? '')));
+        $cenFullName = trim("{$cenFirstName} {$cenLastName}");
+        $cenPurok = trim((string)($census->purok ?? ''));
+        $cenDob = trim((string)($census->date_of_birth ?? ''));
+        $cenGender = strtolower(trim((string)($census->gender ?? '')));
+        $cenAddress = strtolower(trim((string)($census->address ?? '')));
+
+        // 1. Name Similarity (up to 60 points)
+        $namePercent = 0;
+        similar_text($appFullName, $cenFullName, $namePercent);
+
+        if (!empty($appMiddleName) || !empty($cenMiddleName)) {
+            $appFullMid = trim("{$appFirstName} {$appMiddleName} {$appLastName}");
+            $cenFullMid = trim("{$cenFirstName} {$cenMiddleName} {$cenLastName}");
+            $midPercent = 0;
+            similar_text($appFullMid, $cenFullMid, $midPercent);
+            $namePercent = max($namePercent, $midPercent);
+        }
+
+        // Soundex / Metaphone check for phonetic equivalence
+        if (!empty($appLastName) && !empty($cenLastName) && soundex($appLastName) === soundex($cenLastName)) {
+            if (!empty($appFirstName) && !empty($cenFirstName) && soundex($appFirstName) === soundex($cenFirstName)) {
+                $namePercent = max($namePercent, 82);
+            }
+        }
+
+        $nameScore = ($namePercent / 100) * 60;
+
+        // 2. Purok / Street Match (up to 15 points)
+        $purokScore = 0;
+        $appPurokNum = preg_replace('/[^0-9]/', '', $appPurok);
+        $cenPurokNum = preg_replace('/[^0-9]/', '', $cenPurok);
+        if (!empty($appPurokNum) && !empty($cenPurokNum) && $appPurokNum === $cenPurokNum) {
+            $purokScore = 15;
+        } elseif (!empty($appPurokNum) && str_contains($cenAddress, "purok {$appPurokNum}")) {
+            $purokScore = 13;
+        } elseif (!empty($appPurok) && !empty($cenPurok)) {
+            $pPercent = 0;
+            similar_text(strtolower($appPurok), strtolower($cenPurok), $pPercent);
+            $purokScore = ($pPercent / 100) * 10;
+        }
+
+        // 3. Date of Birth Match (up to 15 points)
+        $dobScore = 0;
+        if (!empty($appDob) && !empty($cenDob) && $appDob !== '2000-01-01' && $cenDob !== '2000-01-01') {
+            if ($appDob === $cenDob) {
+                $dobScore = 15;
+            } else {
+                $appYear = substr($appDob, 0, 4);
+                $cenYear = substr($cenDob, 0, 4);
+                if ($appYear === $cenYear && !empty($appYear)) {
+                    $dobScore = 8;
+                }
+            }
+        }
+
+        // 4. Gender & Address Token Overlap (up to 10 points)
+        $extraScore = 0;
+        if (!empty($appGender) && !empty($cenGender) && $appGender === $cenGender) {
+            $extraScore += 4;
+        }
+        if (!empty($appAddress) && !empty($cenAddress)) {
+            $addrPercent = 0;
+            similar_text($appAddress, $cenAddress, $addrPercent);
+            $extraScore += ($addrPercent / 100) * 6;
+        }
+
+        $totalScore = (int)round(min(100, $nameScore + $purokScore + $dobScore + $extraScore));
+
+        // Discrepancy details
+        $discrepancies = [];
+        $appOrigFirst = $applicant->first_name ?? $applicant['first_name'] ?? '';
+        $appOrigLast = $applicant->last_name ?? $applicant['last_name'] ?? '';
+        $appOrigAddr = $applicant->address ?? $applicant['address'] ?? '';
+        if ($appFullName !== $cenFullName) {
+            $discrepancies[] = "Name variation: Inputted '{$appOrigFirst} {$appOrigLast}' vs Census record '{$census->first_name} {$census->last_name}'";
+        }
+        if (!empty($appPurokNum) && !empty($cenPurokNum) && $appPurokNum !== $cenPurokNum) {
+            $discrepancies[] = "Purok mismatch: Inputted 'Purok {$appPurokNum}' vs Official Census 'Purok {$cenPurokNum}'";
+        }
+        if (!empty($appDob) && !empty($cenDob) && $appDob !== $cenDob) {
+            $discrepancies[] = "Birthdate difference: Inputted '{$appDob}' vs Census record '{$cenDob}'";
+        }
+        if (!empty($appOrigAddr) && !empty($census->address) && strtolower(trim($appOrigAddr)) !== strtolower(trim($census->address))) {
+            $discrepancies[] = "Address variation: Inputted '{$appOrigAddr}' vs Census '{$census->address}'";
+        }
+
+        return [
+            'score' => $totalScore,
+            'name_similarity' => (int)round($namePercent),
+            'discrepancies' => $discrepancies,
+        ];
+    }
+
     public function getPending(Request $request)
     {
         $query = Resident::where(function ($q) {
@@ -149,7 +256,94 @@ class ResidentController extends Controller
         }
 
         $pending = $query->orderBy('submitted_at', 'desc')->get();
-        return response()->json($pending);
+
+        // Cross-reference each pending application against official census records
+        $pendingIds = $pending->pluck('id')->toArray();
+        $censusPool = Resident::whereNotIn('id', $pendingIds)
+            ->where(function ($q) {
+                $q->where('is_census_only', 1)
+                  ->orWhere('verification_status', 'Verified');
+            })
+            ->get();
+
+        $enriched = $pending->map(function ($p) use ($censusPool) {
+            $bestScore = 0;
+            $bestCensus = null;
+            $bestDiscrepancies = [];
+
+            $pBarangay = strtolower(AuthController::normalizeBarangayName($p->barangay));
+            $candidates = $censusPool->filter(function ($c) use ($pBarangay) {
+                $cBarangay = strtolower(AuthController::normalizeBarangayName($c->barangay));
+                return empty($pBarangay) || empty($cBarangay) || $pBarangay === $cBarangay;
+            });
+            if ($candidates->isEmpty()) {
+                $candidates = $censusPool;
+            }
+
+            foreach ($candidates as $c) {
+                $sim = self::calculateCensusSimilarity($p, $c);
+                if ($sim['score'] > $bestScore) {
+                    $bestScore = $sim['score'];
+                    $bestCensus = $c;
+                    $bestDiscrepancies = $sim['discrepancies'];
+                }
+            }
+
+            $pArray = $p->toArray();
+            // Minimum threshold for "Has Record": 55% similarity
+            $hasRecord = ($bestScore >= 55 && $bestCensus !== null);
+            $pArray['census_match_status'] = $hasRecord ? 'has_record' : 'no_record';
+            $pArray['similarity_score'] = $bestScore;
+            $pArray['closest_census_record'] = $hasRecord ? $bestCensus : null;
+            $pArray['similarity_discrepancies'] = $bestDiscrepancies;
+
+            return $pArray;
+        });
+
+        return response()->json($enriched);
+    }
+
+    public function censusSimilarity($id)
+    {
+        $applicant = Resident::find($id);
+        if (!$applicant) {
+            return response()->json(['error' => 'Applicant not found'], 404);
+        }
+
+        $censusPool = Resident::where('id', '!=', $applicant->id)
+            ->where(function ($q) {
+                $q->where('is_census_only', 1)
+                  ->orWhere('verification_status', 'Verified');
+            })
+            ->get();
+
+        $results = [];
+        foreach ($censusPool as $c) {
+            $sim = self::calculateCensusSimilarity($applicant, $c);
+            if ($sim['score'] >= 25) {
+                $results[] = [
+                    'resident' => $c,
+                    'score' => $sim['score'],
+                    'name_similarity' => $sim['name_similarity'],
+                    'discrepancies' => $sim['discrepancies'],
+                ];
+            }
+        }
+
+        usort($results, fn($a, $b) => $b['score'] <=> $a['score']);
+        $topCandidates = array_slice($results, 0, 6);
+
+        $best = $topCandidates[0] ?? null;
+        $hasRecord = ($best && $best['score'] >= 55);
+
+        return response()->json([
+            'applicant' => $applicant,
+            'census_match_status' => $hasRecord ? 'has_record' : 'no_record',
+            'similarity_score' => $best['score'] ?? 0,
+            'closest_census_record' => $best['resident'] ?? null,
+            'discrepancies' => $best['discrepancies'] ?? [],
+            'candidates' => $topCandidates,
+        ]);
     }
 
     public function fullProfile($id)
@@ -342,6 +536,18 @@ class ResidentController extends Controller
                 'verification_status' => 'Verified',
                 'rejection_reason' => null,
             ]);
+        }
+
+        $linkCensusId = $request->input('link_census_id');
+        if (!empty($linkCensusId)) {
+            $cen = Resident::find($linkCensusId);
+            if ($cen) {
+                $cen->update([
+                    'linked_user_id' => $user?->id ?: ($resident?->linked_user_id ?: $resident?->id),
+                    'verification_status' => 'Verified',
+                    'is_census_only' => 0,
+                ]);
+            }
         }
 
         $email = $resident?->email ?: ($user?->email ?: '');

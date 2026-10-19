@@ -516,6 +516,7 @@ export default function AdminDashboard() {
   const [userCategoryTab, setUserCategoryTab] = useState<'all' | 'officials' | 'residents' | 'archived'>('all');
   const [userBarangayFilter, setUserBarangayFilter] = useState('all');
   const [approvalBarangayFilter, setApprovalBarangayFilter] = useState('all');
+  const [approvalCensusFilter, setApprovalCensusFilter] = useState<'all' | 'has_record' | 'no_record'>('all');
   const [userSearchText, setUserSearchText] = useState('');
 
   // Edit User Modal State (Super Admin & Admin)
@@ -3069,8 +3070,8 @@ export default function AdminDashboard() {
     );
   });
 
-  // Pending resident approvals — with strict barangay scoping and search support
-  const myPendingResidents = pendingResidents
+  // Pending resident approvals — with strict barangay scoping, similarity census matching, and search support
+  const basePendingResidents = pendingResidents
     .filter(res => {
       if (isSuperMegaAdmin) {
         if (approvalBarangayFilter === 'all') return true;
@@ -3101,6 +3102,16 @@ export default function AdminDashboard() {
         (res.id_type || '').toLowerCase().includes(q)
       );
     });
+
+  const pendingHasRecordCount = basePendingResidents.filter(r => r.census_match_status === 'has_record').length;
+  const pendingNoRecordCount = basePendingResidents.filter(r => r.census_match_status !== 'has_record').length;
+
+  const myPendingResidents = basePendingResidents.filter(res => {
+    if (approvalCensusFilter === 'all') return true;
+    if (approvalCensusFilter === 'has_record') return res.census_match_status === 'has_record';
+    if (approvalCensusFilter === 'no_record') return res.census_match_status !== 'has_record';
+    return true;
+  });
 
   // Dynamic Barangay-scoped Stats
   const brgyPendingDocsCount = barangayDocs.filter(d => d.status === 'Pending' || d.status === 'Processing' || d.status === 'Ready for Pickup').length;
@@ -4172,11 +4183,27 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* KPI Summary Counter Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
                   <div className="bg-slate-50/80 border border-slate-200/90 rounded-xl p-3.5">
                     <span className="text-[11px] text-slate-500 font-medium block">Pending Verification Queue</span>
-                    <span className="text-2xl font-extrabold text-slate-900 block mt-0.5">{myPendingResidents.length}</span>
+                    <span className="text-2xl font-extrabold text-slate-900 block mt-0.5">{basePendingResidents.length}</span>
                     <span className="text-[10px] text-amber-700 font-medium mt-0.5 block">Awaiting identity validation</span>
+                  </div>
+                  <div className="bg-emerald-50/60 border border-emerald-200/90 rounded-xl p-3.5">
+                    <span className="text-[11px] text-emerald-800 font-semibold block flex items-center gap-1">
+                      <CheckCircle2 size={12} className="text-emerald-600" />
+                      Has Census Record
+                    </span>
+                    <span className="text-2xl font-extrabold text-emerald-950 block mt-0.5">{pendingHasRecordCount}</span>
+                    <span className="text-[10px] text-emerald-700 font-medium mt-0.5 block">&ge;50% similarity match found</span>
+                  </div>
+                  <div className="bg-amber-50/60 border border-amber-200/90 rounded-xl p-3.5">
+                    <span className="text-[11px] text-amber-800 font-semibold block flex items-center gap-1">
+                      <AlertTriangle size={12} className="text-amber-600" />
+                      No Census Record
+                    </span>
+                    <span className="text-2xl font-extrabold text-amber-950 block mt-0.5">{pendingNoRecordCount}</span>
+                    <span className="text-[10px] text-amber-700 font-medium mt-0.5 block">No census match &ge;50%</span>
                   </div>
                   <div className="bg-slate-50/80 border border-slate-200/90 rounded-xl p-3.5">
                     <span className="text-[11px] text-slate-500 font-medium block">Accredited Citizen Accounts</span>
@@ -4187,8 +4214,8 @@ export default function AdminDashboard() {
               </div>
 
               {/* Action Bar: Search Input & Quick Controls */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs">
-                <div className="relative flex-1 w-full sm:max-w-md">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs">
+                <div className="relative flex-1 w-full md:max-w-md">
                   <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <Input
                     placeholder="Search applicant name, reference code, email, or address..."
@@ -4206,7 +4233,46 @@ export default function AdminDashboard() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                {/* Census Match Status Filter Tabs */}
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-semibold shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setApprovalCensusFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      approvalCensusFilter === 'all'
+                        ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/70'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    All ({basePendingResidents.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setApprovalCensusFilter('has_record')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      approvalCensusFilter === 'has_record'
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'text-emerald-700 hover:text-emerald-900'
+                    }`}
+                  >
+                    <CheckCircle2 size={12} />
+                    Has Record ({pendingHasRecordCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setApprovalCensusFilter('no_record')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      approvalCensusFilter === 'no_record'
+                        ? 'bg-amber-600 text-white shadow-2xs'
+                        : 'text-amber-700 hover:text-amber-900'
+                    }`}
+                  >
+                    <AlertTriangle size={12} />
+                    No Record ({pendingNoRecordCount})
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2.5 w-full md:w-auto">
                   <div className="w-full sm:w-60 shrink-0">
                     {isSuperMegaAdmin ? (
                       <select
@@ -4236,11 +4302,12 @@ export default function AdminDashboard() {
               <Card className="border-slate-200 bg-white shadow-xs rounded-2xl overflow-hidden">
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
-                    <Table className="w-full text-left min-w-[760px]">
+                    <Table className="w-full text-left min-w-[860px]">
                       <TableHeader>
                         <TableRow className="bg-slate-50/90 border-b border-slate-200">
                           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 pl-4 py-3.5">Applicant Citizen</TableHead>
                           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 py-3.5">Application Ref</TableHead>
+                          <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 py-3.5">Census Record Status</TableHead>
                           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 py-3.5">Submitted Date</TableHead>
                           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 py-3.5">Verification Status</TableHead>
                           <TableHead className="text-[11px] font-bold uppercase tracking-wider text-slate-500 pr-4 py-3.5 text-right">Review Actions</TableHead>
@@ -4249,7 +4316,7 @@ export default function AdminDashboard() {
                       <TableBody className="divide-y divide-slate-100">
                         {myPendingResidents.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={5} className="text-center py-16">
+                            <TableCell colSpan={6} className="text-center py-16">
                               <div className="flex flex-col items-center justify-center max-w-md mx-auto text-slate-400">
                                 <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center mb-3 shadow-2xs border border-slate-200">
                                   <ShieldCheck size={24} />
@@ -4308,6 +4375,31 @@ export default function AdminDashboard() {
                                 <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md font-mono text-[11px]">
                                   APP-#{r.id}
                                 </span>
+                              </TableCell>
+                              <TableCell>
+                                {r.census_match_status === 'has_record' ? (
+                                  <div className="flex flex-col gap-1">
+                                    <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full w-fit shadow-2xs">
+                                      <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                      Has Record ({r.similarity_score ?? 85}%)
+                                    </span>
+                                    {r.closest_census_record && (
+                                      <span className="text-[10px] text-slate-600 truncate max-w-[170px] pl-0.5 font-medium" title={`${r.closest_census_record.name} (${r.closest_census_record.purok || ''})`}>
+                                        Match: {r.closest_census_record.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full w-fit shadow-2xs">
+                                      <AlertTriangle size={12} className="text-amber-600 shrink-0" />
+                                      No Record
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 pl-0.5">
+                                      No census match &ge;50%
+                                    </span>
+                                  </div>
+                                )}
                               </TableCell>
                               <TableCell className="text-slate-600 text-[11px]">
                                 {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recent'}
@@ -11541,15 +11633,16 @@ export default function AdminDashboard() {
         <PendingApplicantReviewModal
           applicant={selectedApplicantForReview}
           isOpen={isApplicantReviewOpen}
+          allResidents={residents}
           onClose={() => {
             setIsApplicantReviewOpen(false);
             setSelectedApplicantForReview(null);
           }}
-          onApprove={async (id: number) => {
+          onApprove={async (id: number, linkCensusId?: number) => {
             setIsApprovingApplicant(true);
             try {
               const applicant = selectedApplicantForReview;
-              await apiService.approveResident(id, user?.name || 'Admin');
+              await apiService.approveResident(id, user?.name || 'Admin', linkCensusId);
               toast.success('Resident account approved and verified!');
               if (applicant && (applicant.email || applicant.phone)) {
                 const applicantName = applicant.name || `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() || 'Resident';
