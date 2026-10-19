@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN npm run build
+RUN npm run build && cp -r dist/* public/
 
 # Stage 2: Unified Production Runtime (PHP 8.2 + Node.js)
 FROM php:8.2-cli-alpine
