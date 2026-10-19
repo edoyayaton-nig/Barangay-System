@@ -1706,22 +1706,22 @@ export default function BhwDashboard() {
               )}
 
               {/* ═══ SECTION: BHW FIELD HEALTH ANALYTICS & COMMUNITY INTELLIGENCE ═══ */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100">
+              <div className="bg-white dark:bg-[#151824] rounded-2xl border border-slate-200 dark:border-[#2E3650] p-5 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl">
-                      <BarChart2 className="text-emerald-600" size={18} />
+                    <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl">
+                      <BarChart2 className="text-emerald-600 dark:text-emerald-400" size={18} />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">BHW Field Analytics &amp; Health Intelligence</h3>
-                      <p className="text-xs text-slate-500">Live operational metrics and community coverage status for Barangay {user?.barangay || 'Pianing'}.</p>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">BHW Field Analytics &amp; Health Intelligence</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Live operational metrics and community coverage status for Barangay {user?.barangay || 'Pianing'}.</p>
                     </div>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setActiveTab('reports')}
-                    className="text-xs h-8 border-slate-200 cursor-pointer rounded-xl text-slate-600 hover:text-slate-900"
+                    className="text-xs h-8 border-slate-200 dark:border-slate-700 cursor-pointer rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                   >
                     View Detailed Reports &rarr;
                   </Button>
@@ -1734,16 +1734,16 @@ export default function BhwDashboard() {
                     const totalScheduled = immunizations.length || 1;
                     const rate = Math.min(100, Math.round((completedDoses / totalScheduled) * 100));
                     return (
-                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 flex flex-col justify-between">
+                      <div className="bg-slate-50/70 dark:bg-[#1A1D2D] border border-slate-200/80 dark:border-[#2E3650] rounded-xl p-3.5 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-xs font-bold text-slate-700">EPI Immunization Coverage</span>
-                            <Syringe size={15} className="text-blue-600" />
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">EPI Immunization Coverage</span>
+                            <Syringe size={15} className="text-blue-600 dark:text-blue-400" />
                           </div>
-                          <p className="text-2xl font-black text-blue-700">{rate}%</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">{completedDoses} administered of {totalScheduled} target doses</p>
+                          <p className="text-2xl font-black text-blue-700 dark:text-blue-400">{rate}%</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{completedDoses} administered of {totalScheduled} target doses</p>
                         </div>
-                        <div className="w-full bg-slate-200 rounded-full h-2 mt-3">
+                        <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 mt-3">
                           <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${rate}%` }} />
                         </div>
                       </div>
@@ -1756,19 +1756,19 @@ export default function BhwDashboard() {
                     const moderate = maternalRecords.filter(m => m.risk_level === 'Moderate').length;
                     const low = maternalRecords.filter(m => m.risk_level === 'Low' || !m.risk_level).length;
                     return (
-                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 flex flex-col justify-between">
+                      <div className="bg-slate-50/70 dark:bg-[#1A1D2D] border border-slate-200/80 dark:border-[#2E3650] rounded-xl p-3.5 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-xs font-bold text-slate-700">Maternal Health Risk</span>
-                            <Heart size={15} className="text-pink-600" />
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Maternal Health Risk</span>
+                            <Heart size={15} className="text-pink-600 dark:text-pink-400" />
                           </div>
-                          <p className="text-2xl font-black text-pink-700">{maternalRecords.length}</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">Mothers currently under active care</p>
+                          <p className="text-2xl font-black text-pink-700 dark:text-pink-400">{maternalRecords.length}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Mothers currently under active care</p>
                         </div>
                         <div className="flex gap-1.5 mt-3">
-                          <span className="text-[10px] bg-red-100 text-red-800 border border-red-200 px-1.5 py-0.5 rounded font-bold">{high} High</span>
-                          <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-bold">{moderate} Mod</span>
-                          <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">{low} Low</span>
+                          <span className="text-[10px] bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800/60 px-1.5 py-0.5 rounded font-bold">{high} High</span>
+                          <span className="text-[10px] bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 px-1.5 py-0.5 rounded font-bold">{moderate} Mod</span>
+                          <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 px-1.5 py-0.5 rounded font-bold">{low} Low</span>
                         </div>
                       </div>
                     );
@@ -1780,16 +1780,16 @@ export default function BhwDashboard() {
                     const total = appointments.length;
                     const pct = total > 0 ? Math.round((confirmed / total) * 100) : 0;
                     return (
-                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 flex flex-col justify-between">
+                      <div className="bg-slate-50/70 dark:bg-[#1A1D2D] border border-slate-200/80 dark:border-[#2E3650] rounded-xl p-3.5 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-xs font-bold text-slate-700">Appointment Fulfillment</span>
-                            <CalendarCheck size={15} className="text-emerald-600" />
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Appointment Fulfillment</span>
+                            <CalendarCheck size={15} className="text-emerald-600 dark:text-emerald-400" />
                           </div>
-                          <p className="text-2xl font-black text-emerald-700">{pct}%</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">{confirmed} confirmed of {total} requested visits</p>
+                          <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400">{pct}%</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{confirmed} confirmed of {total} requested visits</p>
                         </div>
-                        <div className="w-full bg-slate-200 rounded-full h-2 mt-3">
+                        <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 mt-3">
                           <div className="bg-emerald-600 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
@@ -1801,18 +1801,18 @@ export default function BhwDashboard() {
                     const sent = notifications.filter(n => n.status === 'Sent' || !n.status).length;
                     const pending = notifications.filter(n => n.status === 'Pending').length;
                     return (
-                      <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 flex flex-col justify-between">
+                      <div className="bg-slate-50/70 dark:bg-[#1A1D2D] border border-slate-200/80 dark:border-[#2E3650] rounded-xl p-3.5 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-xs font-bold text-slate-700">SMS Health Reminders</span>
-                            <Bell size={15} className="text-purple-600" />
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">SMS Health Reminders</span>
+                            <Bell size={15} className="text-purple-600 dark:text-purple-400" />
                           </div>
-                          <p className="text-2xl font-black text-purple-700">{notifications.length}</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">Health alert dispatches sent to residents</p>
+                          <p className="text-2xl font-black text-purple-700 dark:text-purple-400">{notifications.length}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Health alert dispatches sent to residents</p>
                         </div>
                         <div className="flex gap-1.5 mt-3">
-                          <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">{sent} Sent</span>
-                          {pending > 0 && <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-bold">{pending} Pending</span>}
+                          <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 px-1.5 py-0.5 rounded font-bold">{sent} Sent</span>
+                          {pending > 0 && <span className="text-[10px] bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 px-1.5 py-0.5 rounded font-bold">{pending} Pending</span>}
                         </div>
                       </div>
                     );
@@ -2668,18 +2668,18 @@ export default function BhwDashboard() {
 
                       <form onSubmit={handleCreateMaternalRecord} className="space-y-3.5 pt-3">
                         {/* Top Searchable Resident Database Blank */}
-                        <div className="relative p-3.5 bg-gradient-to-r from-pink-50/90 via-rose-50/60 to-pink-50/90 border border-pink-200/90 rounded-2xl shadow-sm">
+                        <div className="relative p-3.5 bg-gradient-to-r from-pink-50/90 via-rose-50/60 to-pink-50/90 dark:from-pink-950/40 dark:via-rose-950/30 dark:to-pink-950/40 border border-pink-200/90 dark:border-pink-900/50 rounded-2xl shadow-sm">
                           <div className="flex items-center justify-between mb-1.5">
-                            <Label className="text-xs font-bold text-pink-900 flex items-center gap-1.5">
-                              <Search size={13} className="text-pink-600" />
-                              Search Resident in Database <span className="text-[11px] font-normal text-pink-700/80">(Auto-fill)</span>
+                            <Label className="text-xs font-bold text-pink-900 dark:text-pink-200 flex items-center gap-1.5">
+                              <Search size={13} className="text-pink-600 dark:text-pink-400" />
+                              Search Resident in Database <span className="text-[11px] font-normal text-pink-700/80 dark:text-pink-300/80">(Auto-fill)</span>
                             </Label>
                             {isBhwMSearching ? (
-                              <span className="text-[10px] text-pink-600 font-semibold animate-pulse flex items-center gap-1">
+                              <span className="text-[10px] text-pink-600 dark:text-pink-400 font-semibold animate-pulse flex items-center gap-1">
                                 <Loader2 size={11} className="animate-spin" /> Searching database...
                               </span>
                             ) : bhwMSearchResults.length > 0 ? (
-                              <span className="text-[10px] text-pink-700 font-bold bg-pink-100/80 border border-pink-300 px-2 py-0.5 rounded-full">
+                              <span className="text-[10px] text-pink-700 dark:text-pink-300 font-bold bg-pink-100/80 dark:bg-pink-950/60 border border-pink-300 dark:border-pink-800/60 px-2 py-0.5 rounded-full">
                                 {bhwMSearchResults.length} match{bhwMSearchResults.length > 1 ? 'es' : ''} found
                               </span>
                             ) : (
@@ -3882,18 +3882,18 @@ export default function BhwDashboard() {
 
           <form onSubmit={handleCreateImmunization} className="p-5 space-y-4">
             {/* Top Searchable Resident Database Blank */}
-            <div className="relative p-3.5 bg-gradient-to-r from-blue-50/90 via-sky-50/60 to-blue-50/90 border border-blue-200/90 rounded-2xl shadow-sm">
+            <div className="relative p-3.5 bg-gradient-to-r from-blue-50/90 via-sky-50/60 to-blue-50/90 dark:from-blue-950/40 dark:via-sky-950/30 dark:to-blue-950/40 border border-blue-200/90 dark:border-blue-900/50 rounded-2xl shadow-sm">
               <div className="flex items-center justify-between mb-1.5">
-                <Label className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                  <Search size={13} className="text-blue-600" />
-                  Search Resident in Database <span className="text-[11px] font-normal text-blue-700/80">(Auto-fill)</span>
+                <Label className="text-xs font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                  <Search size={13} className="text-blue-600 dark:text-blue-400" />
+                  Search Resident in Database <span className="text-[11px] font-normal text-blue-700/80 dark:text-blue-300/80">(Auto-fill)</span>
                 </Label>
                 {isBhwCSearching ? (
-                  <span className="text-[10px] text-blue-600 font-semibold animate-pulse flex items-center gap-1">
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold animate-pulse flex items-center gap-1">
                     <Loader2 size={11} className="animate-spin" /> Searching database...
                   </span>
                 ) : bhwCSearchResults.length > 0 ? (
-                  <span className="text-[10px] text-blue-700 font-bold bg-blue-100/80 border border-blue-300 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] text-blue-700 dark:text-blue-300 font-bold bg-blue-100/80 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-800/60 px-2 py-0.5 rounded-full">
                     {bhwCSearchResults.length} match{bhwCSearchResults.length > 1 ? 'es' : ''} found
                   </span>
                 ) : (

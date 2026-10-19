@@ -1260,17 +1260,17 @@ export default function BarangayPortal() {
                   )}
 
                   {/* ═══ MANDATORY REQUIREMENT: CERTIFICATE OF PUROK PRESIDENT ═══ */}
-                  <div className="border border-indigo-200 bg-gradient-to-br from-indigo-50/50 via-slate-50 to-indigo-50/30 rounded-xl p-3.5 space-y-3">
+                  <div className="border border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-br from-indigo-50/50 via-slate-50 to-indigo-50/30 dark:from-indigo-950/30 dark:via-[#1A1D2D] dark:to-[#151824] rounded-xl p-3.5 space-y-3">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                           <ShieldCheck size={18} />
                         </div>
                         <div>
-                          <Label className="text-xs font-bold text-slate-900 flex items-center gap-1">
+                          <Label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
                             Certificate of Purok President <span className="text-red-500 font-bold">*</span>
                           </Label>
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
                             Required: Upload or snap a clear photo/scan of your Purok President's Endorsement
                           </p>
                         </div>
@@ -1509,14 +1509,14 @@ export default function BarangayPortal() {
 
         {/* ─── Health Clinic Schedules & Appointment Booking ─── */}
         {/* Referral banner to Health Center Portal */}
-        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
               <Heart size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-emerald-900">Need Health Center Services?</h3>
-              <p className="text-xs text-emerald-700">Check clinic schedules, book appointments, and view your upcoming maternal &amp; immunization revisits.</p>
+              <h3 className="font-bold text-sm text-emerald-900 dark:text-emerald-200">Need Health Center Services?</h3>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">Check clinic schedules, book appointments, and view your upcoming maternal &amp; immunization revisits.</p>
             </div>
           </div>
           <Button

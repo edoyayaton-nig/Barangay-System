@@ -464,50 +464,50 @@ export default function ResidentPortal() {
             </Button>
           </div>
         ) : !isVerified ? (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
                 <AlertTriangle size={22} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm text-amber-900">Verification Pending Review</h3>
-                  <Badge variant="secondary" className="bg-amber-200 text-amber-900 border-amber-300 text-[10px]">
+                  <h3 className="font-bold text-sm text-amber-900 dark:text-amber-200">Verification Pending Review</h3>
+                  <Badge variant="secondary" className="bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700/60 text-[10px]">
                     Pending
                   </Badge>
                 </div>
-                <p className="text-xs text-amber-800 mt-1 leading-relaxed max-w-2xl">
+                <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed max-w-2xl">
                   Your uploaded ID is under review by the Barangay Admin. Document requests will be unlocked once approved.
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-amber-100/80 border border-amber-300 text-amber-900 px-3.5 py-2 rounded-xl text-xs font-semibold shrink-0">
-              <Clock size={15} className="animate-spin text-amber-700" />
+            <div className="flex items-center gap-2 bg-amber-100/80 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 px-3.5 py-2 rounded-xl text-xs font-semibold shrink-0">
+              <Clock size={15} className="animate-spin text-amber-700 dark:text-amber-400" />
               <span>Awaiting Barangay Admin Approval</span>
             </div>
           </div>
         ) : (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs text-emerald-900">
+          <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs text-emerald-900 dark:text-emerald-200">
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={18} className="text-emerald-600" />
+              <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400" />
               <span className="font-bold">Account Status: Verified Resident</span>
             </div>
-            <Badge className="bg-emerald-600">Online Requests Unlocked</Badge>
+            <Badge className="bg-emerald-600 dark:bg-emerald-700">Online Requests Unlocked</Badge>
           </div>
         )}
 
         {/* Active Clinic Appointments Tracker */}
         {myBookings.length > 0 && (
-          <div className="bg-white rounded-2xl border border-violet-100 p-4 shadow-xs space-y-3">
+          <div className="bg-white dark:bg-[#151824] rounded-2xl border border-violet-100 dark:border-[#2E3650] p-4 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <CalendarPlus className="text-violet-600" size={15} /> Your Clinic Appointment Reservations ({myBookings.length})
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <CalendarPlus className="text-violet-600 dark:text-violet-400" size={15} /> Your Clinic Appointment Reservations ({myBookings.length})
               </span>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => navigate('/resident/health')}
-                className="h-6 px-2 text-[11px] text-violet-600 hover:text-violet-700 hover:bg-violet-50 font-semibold gap-1 rounded-lg cursor-pointer"
+                className="h-6 px-2 text-[11px] text-violet-600 dark:text-violet-400 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 font-semibold gap-1 rounded-lg cursor-pointer"
               >
                 <span>Health Portal</span>
                 <ArrowRight size={11} />
@@ -515,10 +515,10 @@ export default function ResidentPortal() {
             </div>
             <div className="grid sm:grid-cols-2 gap-2.5">
               {myBookings.slice(0, 4).map((b, i) => (
-                <div key={b.id || i} className={`border rounded-xl p-3 text-xs space-y-1.5 flex flex-col justify-between ${b.status === 'Cancelled' ? 'bg-rose-50/40 border-rose-200/80' : 'bg-slate-50 border-slate-200/80'}`}>
+                <div key={b.id || i} className={`border rounded-xl p-3 text-xs space-y-1.5 flex flex-col justify-between ${b.status === 'Cancelled' ? 'bg-rose-50/40 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900/40' : 'bg-slate-50 dark:bg-[#1A1D2D] border-slate-200/80 dark:border-[#2E3650]'}`}>
                   <div>
                     <div className="flex items-center justify-between gap-1.5">
-                      <span className={`font-bold ${b.status === 'Cancelled' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>{b.service_type}</span>
+                      <span className={`font-bold ${b.status === 'Cancelled' ? 'text-slate-500 line-through' : 'text-slate-800 dark:text-white'}`}>{b.service_type}</span>
                       <Badge className={`text-[10px] border-0 shrink-0 ${
                         b.status === 'Approved' ? 'bg-emerald-100 text-emerald-800 font-bold' :
                         b.status === 'Completed' ? 'bg-blue-100 text-blue-800 font-bold' :
@@ -570,27 +570,27 @@ export default function ResidentPortal() {
         {/* Two Resident Portals */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Card 1: Barangay Portal */}
-          <Card className="border-indigo-200 bg-gradient-to-br from-white to-indigo-50/50 hover:shadow-lg transition-all duration-200 flex flex-col justify-between">
+          <Card className="border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-br from-white to-indigo-50/50 dark:from-[#1A1D2D] dark:to-[#151824] hover:shadow-lg transition-all duration-200 flex flex-col justify-between">
             <CardHeader>
               <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mb-2 shadow-md">
                 <Building2 size={24} />
               </div>
-              <CardTitle className="text-lg font-bold text-slate-900">Barangay Portal</CardTitle>
-              <CardDescription className="text-xs text-slate-600 leading-relaxed">
+              <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Barangay Portal</CardTitle>
+              <CardDescription className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 Request official barangay clearances, residency certificates, business permits, certificates of indigency, and barangay IDs.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-1.5 text-[11px]">
-                <Badge variant="outline" className="bg-indigo-50 border-indigo-200 text-indigo-700">Barangay Clearance</Badge>
-                <Badge variant="outline" className="bg-indigo-50 border-indigo-200 text-indigo-700">Residency Cert</Badge>
-                <Badge variant="outline" className="bg-indigo-50 border-indigo-200 text-indigo-700">Business Permit</Badge>
-                <Badge variant="outline" className="bg-indigo-50 border-indigo-200 text-indigo-700">Indigency Cert</Badge>
-                <Badge variant="outline" className="bg-indigo-50 border-indigo-200 text-indigo-700">Barangay ID</Badge>
+                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300">Barangay Clearance</Badge>
+                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300">Residency Cert</Badge>
+                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300">Business Permit</Badge>
+                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300">Indigency Cert</Badge>
+                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300">Barangay ID</Badge>
               </div>
               <Button
                 onClick={() => navigate('/resident/barangay')}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-10 shadow-sm flex items-center justify-center gap-1.5"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-10 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 Enter Barangay Portal
                 <ArrowRight size={15} />
@@ -599,27 +599,27 @@ export default function ResidentPortal() {
           </Card>
 
           {/* Card 2: Health Center Portal */}
-          <Card className="border-emerald-200 bg-gradient-to-br from-white to-emerald-50/50 hover:shadow-lg transition-all duration-200 flex flex-col justify-between">
+          <Card className="border-emerald-200 dark:border-emerald-900/60 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#1A1D2D] dark:to-[#151824] hover:shadow-lg transition-all duration-200 flex flex-col justify-between">
             <CardHeader>
               <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center mb-2 shadow-md">
                 <Heart size={24} />
               </div>
-              <CardTitle className="text-lg font-bold text-slate-900">Health Center Portal</CardTitle>
-              <CardDescription className="text-xs text-slate-600 leading-relaxed">
+              <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Health Center Portal</CardTitle>
+              <CardDescription className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 Request health center documents including medical certificates, health clearances, child immunization records, and maternal care records.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-1.5 text-[11px]">
-                <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-700">Medical Cert</Badge>
-                <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-700">Health Clearance</Badge>
-                <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-700">Immunization Record</Badge>
-                <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-700">Prenatal Record</Badge>
-                <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-700">Postnatal Record</Badge>
+                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">Medical Cert</Badge>
+                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">Health Clearance</Badge>
+                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">Immunization Record</Badge>
+                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">Prenatal Record</Badge>
+                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">Postnatal Record</Badge>
               </div>
               <Button
                 onClick={() => navigate('/resident/health')}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-10 shadow-sm flex items-center justify-center gap-1.5"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-10 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 Enter Health Center Portal
                 <ArrowRight size={15} />
@@ -667,38 +667,38 @@ export default function ResidentPortal() {
             </div>
             <form onSubmit={handleBookAppointment} className="p-5 space-y-4">
               {!isVerified && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-900">
-                  <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+                  <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                   <div>
                     <p className="font-bold">Residency Verification Required</p>
-                    <p className="text-[11px] text-amber-700 mt-0.5">
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
                       Your resident profile is awaiting Barangay Admin approval. Appointment booking unlocks once your residency is verified.
                     </p>
                   </div>
                 </div>
               )}
-              <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 text-xs space-y-1.5">
-                <p className="font-bold text-violet-900">{selectedSchedule.title || selectedSchedule.service_type}</p>
-                <p className="text-slate-600 flex items-center gap-1.5"><Clock size={12} /> {selectedSchedule.day_of_week || (selectedSchedule as any).day} · {selectedSchedule.time_slot}</p>
-                {selectedSchedule.location && <p className="text-slate-600 flex items-center gap-1.5"><MapPin size={12} /> {selectedSchedule.location}</p>}
+              <div className="bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800/60 rounded-xl p-3 text-xs space-y-1.5">
+                <p className="font-bold text-violet-900 dark:text-violet-200">{selectedSchedule.title || selectedSchedule.service_type}</p>
+                <p className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5"><Clock size={12} /> {selectedSchedule.day_of_week || (selectedSchedule as any).day} · {selectedSchedule.time_slot}</p>
+                {selectedSchedule.location && <p className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5"><MapPin size={12} /> {selectedSchedule.location}</p>}
               </div>
               {/* Resident Info Preview */}
-              <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+              <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 dark:bg-[#151824] border border-slate-200 dark:border-[#2E3650] rounded-xl text-xs">
                 <div>
                   <span className="text-[10px] text-slate-400 font-semibold uppercase">Patient Name</span>
-                  <p className="font-bold text-slate-900 truncate">{user?.name || 'Resident'}</p>
+                  <p className="font-bold text-slate-900 dark:text-white truncate">{user?.name || 'Resident'}</p>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 font-semibold uppercase">Contact Phone</span>
-                  <p className="font-bold text-slate-800 font-mono truncate">{user?.phone || user?.contact_number || 'None provided'}</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-200 font-mono truncate">{user?.phone || user?.contact_number || 'None provided'}</p>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 font-semibold uppercase">Barangay</span>
-                  <p className="font-medium text-slate-800">Brgy. {residentBrgy}</p>
+                  <p className="font-medium text-slate-800 dark:text-slate-200">Brgy. {residentBrgy}</p>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 font-semibold uppercase">Purok</span>
-                  <p className="font-medium text-slate-800">
+                  <p className="font-medium text-slate-800 dark:text-slate-200">
                     {user?.purok
                       ? (String(user.purok).toLowerCase().startsWith('purok') ? user.purok : `Purok ${user.purok}`)
                       : (user?.address?.match(/purok\s*([0-9A-Za-z]+)/i)?.[0] || 'Purok 1')}
@@ -842,9 +842,9 @@ export default function ResidentPortal() {
                 />
               </div>
 
-              <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 text-[11px] text-amber-900">
+              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-xl p-3 text-[11px] text-amber-900 dark:text-amber-200">
                 <p className="font-semibold">Note on Clinic Slots:</p>
-                <p className="text-amber-800 mt-0.5">Cancelling releases this slot for other barangay residents. You can re-book whenever ready.</p>
+                <p className="text-amber-800 dark:text-amber-300 mt-0.5">Cancelling releases this slot for other barangay residents. You can re-book whenever ready.</p>
               </div>
             </div>
           )}

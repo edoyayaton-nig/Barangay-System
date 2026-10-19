@@ -2373,11 +2373,11 @@ export default function NurseDashboard() {
 
               {/* ═══ SECTION: ACTION REQUIRED - NEW APPOINTMENT REQUESTS ═══ */}
               {appointments.filter(a => (a.status || '').toLowerCase() === 'pending').length > 0 && (
-                <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 shadow-xs">
-                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-amber-200/70">
+                <div className="bg-amber-50/90 dark:bg-[#1A1D2D] border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 shadow-xs">
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-amber-200/70 dark:border-amber-900/40">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                      <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                      <h4 className="text-xs font-bold text-amber-950 dark:text-amber-300 uppercase tracking-wider">
                         New Resident Clinic Appointments ({appointments.filter(a => (a.status || '').toLowerCase() === 'pending').length} Pending)
                       </h4>
                     </div>
@@ -2385,23 +2385,23 @@ export default function NurseDashboard() {
                       size="sm"
                       variant="outline"
                       onClick={() => setActiveTab('appointments')}
-                      className="text-[11px] h-7 border-amber-300 text-amber-900 bg-white hover:bg-amber-100 cursor-pointer rounded-lg"
+                      className="text-[11px] h-7 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-300 bg-white dark:bg-[#151824] hover:bg-amber-100 dark:hover:bg-amber-950/40 cursor-pointer rounded-lg"
                     >
                       View Appointments &rarr;
                     </Button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                     {appointments.filter(a => (a.status || '').toLowerCase() === 'pending').slice(0, 3).map(apt => (
-                      <div key={`nurse-pend-${apt.id}`} className="bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs flex flex-col justify-between">
+                      <div key={`nurse-pend-${apt.id}`} className="bg-white dark:bg-[#151824] p-2.5 rounded-xl border border-amber-200 dark:border-[#2E3650] shadow-2xs flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-900 truncate">{apt.resident_name}</span>
-                            <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white truncate">{apt.resident_name}</span>
+                            <span className="text-[9px] font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.2 rounded border border-emerald-200 dark:border-emerald-800/60">
                               {apt.appointment_code}
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-600 mt-0.5 font-medium">{apt.service_type}</p>
-                          <p className="text-[10px] text-slate-400">📅 {apt.preferred_date} • ⏰ {apt.preferred_time || 'Morning'}</p>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 font-medium">{apt.service_type}</p>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-400">📅 {apt.preferred_date} • ⏰ {apt.preferred_time || 'Morning'}</p>
                         </div>
                         <Button
                           size="sm"
@@ -2440,9 +2440,9 @@ export default function NurseDashboard() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Program Consultations Breakdown */}
-                  <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 space-y-2.5">
-                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
-                      <Stethoscope size={14} className="text-teal-600" />
+                  <div className="bg-slate-50/70 dark:bg-[#1A1D2D] border border-slate-200/80 dark:border-[#2E3650] rounded-xl p-4 space-y-2.5">
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
+                      <Stethoscope size={14} className="text-teal-600 dark:text-teal-400" />
                       Consultations by Clinical Program
                     </h4>
                     <div className="space-y-2 pt-1">
@@ -2461,10 +2461,10 @@ export default function NurseDashboard() {
                         return (
                           <div key={prog.label}>
                             <div className="flex items-center justify-between text-[11px] mb-1">
-                              <span className="text-slate-600 font-medium">{prog.label}</span>
-                              <span className="font-bold text-slate-900">{count} <span className="text-slate-400 font-normal">({pct}%)</span></span>
+                              <span className="text-slate-600 dark:text-slate-300 font-medium">{prog.label}</span>
+                              <span className="font-bold text-slate-900 dark:text-white">{count} <span className="text-slate-400 dark:text-slate-400 font-normal">({pct}%)</span></span>
                             </div>
-                            <div className="w-full bg-slate-200 rounded-full h-1.5">
+                            <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5">
                               <div className={`${prog.color} h-1.5 rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
                             </div>
                           </div>
@@ -2474,8 +2474,8 @@ export default function NurseDashboard() {
                   </div>
 
                   {/* Vital Signs Alerts & Clinical Thresholds */}
-                  <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 space-y-2.5">
-                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                  <div className="bg-slate-50/70 dark:bg-[#1A1D2D] border border-slate-200/80 dark:border-[#2E3650] rounded-xl p-4 space-y-2.5">
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
                       <AlertTriangle size={14} className="text-red-500" />
                       Vital Signs &amp; Follow-up Threshold Alerts
                     </h4>
@@ -2493,32 +2493,32 @@ export default function NurseDashboard() {
                       }).length;
                       return (
                         <div className="space-y-2 pt-1">
-                          <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-red-100 shadow-2xs">
+                          <div className="flex items-center justify-between p-2.5 bg-white dark:bg-[#151824] rounded-lg border border-red-100 dark:border-red-950/40 shadow-2xs">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                              <span className="text-xs font-semibold text-slate-800">Stage 2 Hypertension (BP &ge; 140/90)</span>
+                              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Stage 2 Hypertension (BP &ge; 140/90)</span>
                             </div>
-                            <span className="text-xs font-bold font-mono text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">
+                            <span className="text-xs font-bold font-mono text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded border border-red-200 dark:border-red-800/60">
                               {hypertensive} {hypertensive === 1 ? 'patient' : 'patients'}
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-amber-100 shadow-2xs">
+                          <div className="flex items-center justify-between p-2.5 bg-white dark:bg-[#151824] rounded-lg border border-amber-100 dark:border-amber-950/40 shadow-2xs">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                              <span className="text-xs font-semibold text-slate-800">High Fever Infection (Temp &ge; 38.5°C)</span>
+                              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">High Fever Infection (Temp &ge; 38.5°C)</span>
                             </div>
-                            <span className="text-xs font-bold font-mono text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            <span className="text-xs font-bold font-mono text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800/60">
                               {febrile} {febrile === 1 ? 'patient' : 'patients'}
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-purple-100 shadow-2xs">
+                          <div className="flex items-center justify-between p-2.5 bg-white dark:bg-[#151824] rounded-lg border border-purple-100 dark:border-purple-950/40 shadow-2xs">
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
-                              <span className="text-xs font-semibold text-slate-800">Overdue Prenatal / Immunization</span>
+                              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Overdue Prenatal / Immunization</span>
                             </div>
-                            <span className="text-xs font-bold font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                            <span className="text-xs font-bold font-mono text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800/60">
                               {duePatientsList.length} scheduled
                             </span>
                           </div>
@@ -2530,22 +2530,22 @@ export default function NurseDashboard() {
 
                 {/* Medicine & Vaccine Stock Depletion Alert */}
                 {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock' || i.stock < 25).length > 0 && (
-                  <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl">
+                  <div className="p-3 bg-amber-50/70 dark:bg-[#1A1D2D] border border-amber-200/80 dark:border-amber-900/50 rounded-xl">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                        <Pill size={14} className="text-amber-700" />
+                      <span className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                        <Pill size={14} className="text-amber-700 dark:text-amber-400" />
                         Critically Low Medicine &amp; Vaccine Stock Alert
                       </span>
-                      <span className="text-[10px] text-amber-800 font-semibold">Immediate Replenishment Required</span>
+                      <span className="text-[10px] text-amber-800 dark:text-amber-400 font-semibold">Immediate Replenishment Required</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {inventory.filter(i => i.status === 'Low Stock' || i.status === 'Out of Stock' || i.stock < 25).slice(0, 4).map(item => (
-                        <div key={`inv-${item.id}`} className="bg-white p-2.5 rounded-lg border border-amber-200 shadow-2xs flex items-center justify-between">
+                        <div key={`inv-${item.id}`} className="bg-white dark:bg-[#151824] p-2.5 rounded-lg border border-amber-200 dark:border-[#2E3650] shadow-2xs flex items-center justify-between">
                           <div className="truncate">
-                            <p className="text-xs font-bold text-slate-800 truncate">{item.item_name}</p>
-                            <p className="text-[10px] text-slate-400">{item.category}</p>
+                            <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.item_name}</p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-400">{item.category}</p>
                           </div>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono shrink-0 ml-1.5 ${item.stock <= 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono shrink-0 ml-1.5 ${item.stock <= 0 ? 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300' : 'bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300'}`}>
                             {item.stock} {item.unit}
                           </span>
                         </div>
@@ -2815,27 +2815,27 @@ export default function NurseDashboard() {
                       const isSecondVisit = r.visit_number === 2 || (r.visit_number === 1 && Boolean(r.next_visit_date)) || (r.next_visit_note || '').toLowerCase().includes('2nd');
 
                       return (
-                        <TableRow key={`prn-${r.id}-${idx}`} className={`text-xs hover:bg-slate-50/70 transition-colors ${isOverdue ? 'bg-red-50/40' : isDueSoon ? 'bg-amber-50/40' : ''}`}>
+                        <TableRow key={`prn-${r.id}-${idx}`} className={`text-xs hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors ${isOverdue ? 'bg-red-50/40 dark:bg-red-950/20' : isDueSoon ? 'bg-amber-50/40 dark:bg-amber-950/20' : ''}`}>
                           <TableCell>
                             <button
                               onClick={() => openPatient360(r.patient_name, r.contact_number, r.barangay, 'maternal')}
-                              className="font-bold text-slate-900 hover:text-pink-700 text-left cursor-pointer flex items-center gap-1.5"
+                              className="font-bold text-slate-900 dark:text-white hover:text-pink-700 dark:hover:text-pink-400 text-left cursor-pointer flex items-center gap-1.5"
                             >
                               <Heart size={13} className="text-pink-600" />
                               {r.patient_name}
                             </button>
-                            <span className="text-[11px] text-slate-500 block ml-4.5">
-                              {r.age} yrs · {r.gravida} {r.para} · <span className="font-mono">{r.contact_number}</span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 block ml-4.5">
+                              {r.age} yrs · {r.gravida} {r.para} · <span className="font-mono text-slate-600 dark:text-slate-300">{r.contact_number}</span>
                             </span>
                           </TableCell>
 
                           <TableCell className="whitespace-nowrap min-w-[130px]">
                             <div className="space-y-1">
-                              <Badge className={`text-[10px] font-bold border ${isSecondVisit ? 'bg-purple-100 text-purple-900 border-purple-300' : 'bg-slate-100 text-slate-800 border-slate-200'}`}>
+                              <Badge className={`text-[10px] font-bold border ${isSecondVisit ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-900 dark:text-purple-300 border-purple-300 dark:border-purple-800/60' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700'}`}>
                                 {isSecondVisit ? '⭐ 2nd Visit' : `Visit #${r.visit_number}`}
                               </Badge>
                               {isSecondVisit && r.next_visit_date && (
-                                <span className="text-[10px] text-purple-700 font-semibold block">
+                                <span className="text-[10px] text-purple-700 dark:text-purple-400 font-semibold block">
                                   Due: {r.next_visit_date}
                                 </span>
                               )}
@@ -2843,32 +2843,32 @@ export default function NurseDashboard() {
                           </TableCell>
 
                           <TableCell>
-                            <span className="font-bold text-slate-800">{r.aog_weeks} wks AOG</span>
-                            <span className="text-[10px] text-slate-400 block font-mono">EDD: {r.edd || '—'}</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-100">{r.aog_weeks} wks AOG</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-400 block font-mono">EDD: {r.edd || '—'}</span>
                           </TableCell>
 
                           <TableCell>
-                            <span className="font-mono font-semibold text-slate-800">BP: {r.bp}</span>
-                            <span className="text-[10px] text-slate-500 block">FHR: {r.fetal_heart_rate} · Fundic: {r.fundic_height}</span>
+                            <span className="font-mono font-semibold text-slate-800 dark:text-slate-100">BP: {r.bp}</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 block">FHR: {r.fetal_heart_rate} · Fundic: {r.fundic_height}</span>
                           </TableCell>
 
                           <TableCell>
-                            <span className="font-medium text-slate-800 text-[11px] block">
+                            <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px] block">
                               {r.prescribed_meds || (r.iron_folic_given ? 'Iron + Folic Acid' : '—')}
                             </span>
                           </TableCell>
 
                           <TableCell>
-                            <span className={`font-semibold font-mono ${isOverdue ? 'text-red-700' : isDueSoon ? 'text-amber-700' : 'text-slate-800'}`}>
+                            <span className={`font-semibold font-mono ${isOverdue ? 'text-red-700 dark:text-red-400' : isDueSoon ? 'text-amber-700 dark:text-amber-400' : 'text-slate-800 dark:text-slate-200'}`}>
                               {r.next_visit_date || 'No revisit set'}
                             </span>
-                            <span className="text-[10px] text-slate-500 font-medium block truncate max-w-[150px]">
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium block truncate max-w-[150px]">
                               {r.next_visit_note || (r.visit_number === 1 ? '2nd Visit Follow-up' : 'Routine follow-up')}
                             </span>
                           </TableCell>
 
                           <TableCell>
-                            <Badge className={`text-[10px] border-0 font-bold ${isOverdue ? 'bg-red-100 text-red-700' : isDueSoon ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                            <Badge className={`text-[10px] font-bold border ${isOverdue ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/60' : isDueSoon ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60' : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'}`}>
                               {isOverdue ? 'Overdue' : isDueSoon ? 'Due Soon' : 'On Track'}
                             </Badge>
                           </TableCell>
@@ -2879,7 +2879,7 @@ export default function NurseDashboard() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => openPatient360(r.patient_name, r.contact_number, r.barangay, 'maternal')}
-                                className="text-[10px] h-7 px-2 border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer rounded-lg"
+                                className="text-[10px] h-7 px-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer rounded-lg"
                               >
                                 Record Details
                               </Button>
@@ -2999,44 +2999,44 @@ export default function NurseDashboard() {
                       const isDose2 = r.dose_number.includes('2');
 
                       return (
-                        <TableRow key={`imm-${r.id}-${idx}`} className={`text-xs hover:bg-slate-50/70 transition-colors ${isOverdue ? 'bg-red-50/40' : isDueSoon ? 'bg-amber-50/40' : ''}`}>
+                        <TableRow key={`imm-${r.id}-${idx}`} className={`text-xs hover:bg-slate-50/70 dark:hover:bg-slate-800/60 transition-colors ${isOverdue ? 'bg-red-50/40 dark:bg-red-950/20' : isDueSoon ? 'bg-amber-50/40 dark:bg-amber-950/20' : ''}`}>
                           <TableCell>
                             <button
                               onClick={() => openPatient360(r.child_name, r.contact_number, r.barangay, 'immunizations')}
-                              className="font-bold text-slate-900 hover:text-blue-700 text-left cursor-pointer flex items-center gap-1.5"
+                              className="font-bold text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 text-left cursor-pointer flex items-center gap-1.5"
                             >
-                              <Baby size={13} className="text-blue-600" />
+                              <Baby size={13} className="text-blue-600 dark:text-blue-400" />
                               {r.child_name}
                             </button>
-                            <span className="text-[11px] text-slate-500 block ml-4.5">
-                              {r.age_months} mos · Guardian: {r.guardian} · <span className="font-mono">{r.contact_number}</span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 block ml-4.5">
+                              {r.age_months} mos · Guardian: {r.guardian} · <span className="font-mono text-slate-600 dark:text-slate-300">{r.contact_number}</span>
                             </span>
                           </TableCell>
 
                           <TableCell>
-                            <span className="font-bold text-slate-900 block">{r.vaccine_given}</span>
-                            <Badge className={`text-[9px] font-bold border mt-0.5 ${isDose2 ? 'bg-purple-100 text-purple-900 border-purple-300' : 'bg-blue-100 text-blue-900 border-blue-200'}`}>
+                            <span className="font-bold text-slate-900 dark:text-white block">{r.vaccine_given}</span>
+                            <Badge className={`text-[9px] font-bold border mt-0.5 ${isDose2 ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-900 dark:text-purple-300 border-purple-300 dark:border-purple-800/60' : 'bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border-blue-200 dark:border-blue-800/60'}`}>
                               {r.dose_number}
                             </Badge>
                           </TableCell>
 
-                          <TableCell className="font-mono text-slate-600 text-[11px]">
+                          <TableCell className="font-mono text-slate-600 dark:text-slate-300 text-[11px]">
                             {r.batch_number || 'LOT-2026-X9'}
                           </TableCell>
 
-                          <TableCell className="font-mono text-slate-600 text-[11px]">
+                          <TableCell className="font-mono text-slate-600 dark:text-slate-300 text-[11px]">
                             {r.date_given}
                           </TableCell>
 
                           <TableCell>
-                            <span className={`font-semibold font-mono ${isOverdue ? 'text-red-700' : isDueSoon ? 'text-amber-700' : 'text-slate-800'}`}>
+                            <span className={`font-semibold font-mono ${isOverdue ? 'text-red-700 dark:text-red-400' : isDueSoon ? 'text-amber-700 dark:text-amber-400' : 'text-slate-800 dark:text-slate-200'}`}>
                               {r.next_due_date || 'Completed Series'}
                             </span>
-                            {isOverdue && <span className="text-[10px] text-red-600 block font-bold">⚠️ Overdue</span>}
+                            {isOverdue && <span className="text-[10px] text-red-600 dark:text-red-400 block font-bold">⚠️ Overdue</span>}
                           </TableCell>
 
                           <TableCell className="max-w-[200px]">
-                            <span className="text-[11px] text-slate-600 truncate block" title={r.remarks}>
+                            <span className="text-[11px] text-slate-600 dark:text-slate-400 truncate block" title={r.remarks}>
                               {r.remarks || 'Cleared for routine vaccination'}
                             </span>
                           </TableCell>
@@ -3046,7 +3046,7 @@ export default function NurseDashboard() {
                               size="sm"
                               variant="outline"
                               onClick={() => openPatient360(r.child_name, r.contact_number, r.barangay, 'immunizations')}
-                              className="text-[10px] h-7 px-2 border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer rounded-lg"
+                              className="text-[10px] h-7 px-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer rounded-lg"
                             >
                               Record Details
                             </Button>
@@ -4248,16 +4248,16 @@ export default function NurseDashboard() {
 
                       {/* Searchable, Fillable Medicine Suggestions Dropdown */}
                       {showMedSuggestions && (
-                        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-teal-200 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100">
-                          <div className="p-2 bg-gradient-to-r from-teal-50/90 to-emerald-50/90 text-[10px] font-bold text-teal-800 flex items-center justify-between px-3 sticky top-0 z-10 backdrop-blur-xs border-b border-teal-100">
+                        <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-[#151824] border border-teal-200 dark:border-teal-900/60 rounded-xl shadow-xl max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                          <div className="p-2 bg-gradient-to-r from-teal-50/90 to-emerald-50/90 dark:from-teal-950/60 dark:to-emerald-950/60 text-[10px] font-bold text-teal-800 dark:text-teal-300 flex items-center justify-between px-3 sticky top-0 z-10 backdrop-blur-xs border-b border-teal-100 dark:border-teal-900/40">
                             <span className="flex items-center gap-1.5">
-                              <Pill size={12} className="text-teal-600" />
+                              <Pill size={12} className="text-teal-600 dark:text-teal-400" />
                               {medName ? `Matching Inventory Medicines (${filteredMedicines.length})` : `Available Inventory Stock (${filteredMedicines.length})`}
                             </span>
                             <button
                               type="button"
                               onMouseDown={(e) => { e.preventDefault(); setShowMedSuggestions(false); }}
-                              className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer p-0.5 rounded hover:bg-white/60"
+                              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs cursor-pointer p-0.5 rounded hover:bg-white/60 dark:hover:bg-slate-800"
                             >
                               ✕
                             </button>
@@ -4279,9 +4279,9 @@ export default function NurseDashboard() {
                                   }}
                                   onMouseEnter={() => setHighlightedMedIndex(idx)}
                                   className={`w-full text-left p-2.5 transition-colors flex items-center justify-between text-xs cursor-pointer group ${
-                                    isOutOfStock ? 'opacity-50 cursor-not-allowed bg-slate-50' :
-                                    isSelected ? 'bg-teal-50/90 font-semibold' :
-                                    isHighlighted ? 'bg-teal-50/50' : 'hover:bg-teal-50/40'
+                                    isOutOfStock ? 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-900' :
+                                    isSelected ? 'bg-teal-50/90 dark:bg-teal-950/60 font-semibold text-teal-900 dark:text-teal-200' :
+                                    isHighlighted ? 'bg-teal-50/50 dark:bg-teal-950/40 text-slate-800 dark:text-slate-200' : 'hover:bg-teal-50/40 dark:hover:bg-teal-950/30 text-slate-800 dark:text-slate-200'
                                   }`}
                                 >
                                   <div className="flex-1 min-w-0 pr-2">

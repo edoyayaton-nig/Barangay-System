@@ -79,39 +79,34 @@ html.dark .bg-white:not([data-keep-white]):not(.keep-white) {
   background-color: #151824 !important;
 }
 
-html.dark .bg-slate-50:not([data-keep-slate]):not(.keep-slate),
-html.dark .bg-gray-50,
-html.dark .bg-zinc-50 {
+html.dark [class*="bg-white/"]:not([data-keep-white]):not(.keep-white) {
+  background-color: rgba(21, 24, 36, 0.95) !important;
+}
+
+html.dark [class*="bg-slate-50"]:not([data-keep-slate]):not(.keep-slate),
+html.dark [class*="bg-gray-50"],
+html.dark [class*="bg-zinc-50"] {
   background-color: #1A1D2D !important;
 }
 
-html.dark .bg-slate-100:not([data-keep-slate]):not(.keep-slate),
-html.dark .bg-gray-100,
-html.dark .bg-zinc-100 {
+html.dark [class*="bg-slate-100"]:not([data-keep-slate]):not(.keep-slate),
+html.dark [class*="bg-gray-100"],
+html.dark [class*="bg-zinc-100"] {
   background-color: #202538 !important;
 }
 
-html.dark .bg-slate-200,
-html.dark .bg-gray-200,
-html.dark .bg-zinc-200 {
+html.dark [class*="bg-slate-200"],
+html.dark [class*="bg-gray-200"],
+html.dark [class*="bg-zinc-200"] {
   background-color: #293046 !important;
 }
 
-html.dark .bg-white\/80,
-html.dark .bg-white\/90,
-html.dark .bg-white\/95 {
-  background-color: rgba(21, 24, 36, 0.92) !important;
-}
-
-html.dark .bg-slate-50\/80,
-html.dark .bg-slate-50\/50,
-html.dark .bg-slate-50\/90 {
-  background-color: rgba(26, 29, 45, 0.9) !important;
-}
-
-html.dark .bg-slate-100\/80,
-html.dark .bg-slate-100\/50 {
-  background-color: rgba(32, 37, 56, 0.9) !important;
+/* Universal suppression of light gradients in dark mode */
+html.dark [class*="from-white"]:not([class*="dark:from-"]),
+html.dark [class*="from-slate-50"]:not([class*="dark:from-"]),
+html.dark [class*="from-gray-50"]:not([class*="dark:from-"]) {
+  background-image: none !important;
+  background-color: #151824 !important;
 }
 
 /* 2. Primary & Secondary Text Colors */
@@ -174,78 +169,82 @@ html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
 }
 
 /* 4. Soft Pastel Metric Cards & Badges */
-html.dark .bg-blue-50, html.dark .bg-blue-100 {
+html.dark [class*="bg-blue-50"], html.dark [class*="bg-blue-100"] {
   background-color: rgba(59, 130, 246, 0.16) !important;
   border-color: rgba(59, 130, 246, 0.3) !important;
 }
-html.dark .bg-indigo-50, html.dark .bg-indigo-100, html.dark .bg-indigo-50\/50, html.dark .bg-indigo-50\/70 {
+html.dark [class*="bg-indigo-50"], html.dark [class*="bg-indigo-100"] {
   background-color: rgba(99, 102, 241, 0.16) !important;
   border-color: rgba(99, 102, 241, 0.3) !important;
 }
-html.dark .bg-violet-50, html.dark .bg-violet-100 {
+html.dark [class*="bg-violet-50"], html.dark [class*="bg-violet-100"] {
   background-color: rgba(139, 92, 246, 0.16) !important;
   border-color: rgba(139, 92, 246, 0.3) !important;
 }
-html.dark .bg-emerald-50, html.dark .bg-emerald-100 {
+html.dark [class*="bg-emerald-50"], html.dark [class*="bg-emerald-100"],
+html.dark [class*="bg-green-50"], html.dark [class*="bg-green-100"] {
   background-color: rgba(16, 185, 129, 0.16) !important;
   border-color: rgba(16, 185, 129, 0.3) !important;
 }
-html.dark .bg-teal-50, html.dark .bg-teal-100 {
+html.dark [class*="bg-teal-50"], html.dark [class*="bg-teal-100"] {
   background-color: rgba(20, 184, 166, 0.16) !important;
   border-color: rgba(20, 184, 166, 0.3) !important;
 }
-html.dark .bg-amber-50, html.dark .bg-amber-100, html.dark .bg-amber-50\/40, html.dark .bg-amber-100\/80 {
+html.dark [class*="bg-amber-50"], html.dark [class*="bg-amber-100"],
+html.dark [class*="bg-yellow-50"], html.dark [class*="bg-yellow-100"] {
   background-color: rgba(245, 158, 11, 0.16) !important;
   border-color: rgba(245, 158, 11, 0.3) !important;
 }
-html.dark .bg-rose-50, html.dark .bg-rose-100, html.dark .bg-rose-50\/30, html.dark .bg-rose-50\/40,
-html.dark .bg-red-50, html.dark .bg-red-100 {
-  background-color: rgba(244, 63, 94, 0.16) !important;
-  border-color: rgba(244, 63, 94, 0.3) !important;
+html.dark [class*="bg-rose-50"], html.dark [class*="bg-rose-100"],
+html.dark [class*="bg-red-50"], html.dark [class*="bg-red-100"] {
+  background-color: rgba(239, 68, 68, 0.16) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
 }
-html.dark .bg-purple-50, html.dark .bg-purple-100 {
+html.dark [class*="bg-purple-50"], html.dark [class*="bg-purple-100"] {
   background-color: rgba(168, 85, 247, 0.16) !important;
   border-color: rgba(168, 85, 247, 0.3) !important;
 }
-html.dark .bg-sky-50, html.dark .bg-sky-100 {
+html.dark [class*="bg-sky-50"], html.dark [class*="bg-sky-100"] {
   background-color: rgba(14, 165, 233, 0.16) !important;
   border-color: rgba(14, 165, 233, 0.3) !important;
 }
-html.dark .bg-pink-50, html.dark .bg-pink-100 {
+html.dark [class*="bg-pink-50"], html.dark [class*="bg-pink-100"] {
   background-color: rgba(236, 72, 153, 0.16) !important;
   border-color: rgba(236, 72, 153, 0.3) !important;
 }
 
 /* 5. Colored Text Readability Enhancements */
-html.dark .text-blue-700, html.dark .text-blue-800, html.dark .text-blue-900 {
+html.dark [class*="text-blue-700"], html.dark [class*="text-blue-800"], html.dark [class*="text-blue-900"] {
   color: #93C5FD !important;
 }
-html.dark .text-indigo-700, html.dark .text-indigo-800, html.dark .text-indigo-900, html.dark .text-indigo-950 {
+html.dark [class*="text-indigo-700"], html.dark [class*="text-indigo-800"], html.dark [class*="text-indigo-900"], html.dark [class*="text-indigo-950"] {
   color: #A5B4FC !important;
 }
-html.dark .text-violet-700, html.dark .text-violet-800, html.dark .text-violet-900 {
+html.dark [class*="text-violet-700"], html.dark [class*="text-violet-800"], html.dark [class*="text-violet-900"] {
   color: #C4B5FD !important;
 }
-html.dark .text-emerald-700, html.dark .text-emerald-800, html.dark .text-emerald-900 {
+html.dark [class*="text-emerald-700"], html.dark [class*="text-emerald-800"], html.dark [class*="text-emerald-900"],
+html.dark [class*="text-green-700"], html.dark [class*="text-green-800"], html.dark [class*="text-green-900"] {
   color: #6EE7B7 !important;
 }
-html.dark .text-teal-700, html.dark .text-teal-800, html.dark .text-teal-900 {
+html.dark [class*="text-teal-700"], html.dark [class*="text-teal-800"], html.dark [class*="text-teal-900"] {
   color: #5EEAD4 !important;
 }
-html.dark .text-amber-700, html.dark .text-amber-800, html.dark .text-amber-900 {
+html.dark [class*="text-amber-700"], html.dark [class*="text-amber-800"], html.dark [class*="text-amber-900"],
+html.dark [class*="text-yellow-700"], html.dark [class*="text-yellow-800"], html.dark [class*="text-yellow-900"] {
   color: #FCD34D !important;
 }
-html.dark .text-rose-700, html.dark .text-rose-800, html.dark .text-rose-900,
-html.dark .text-red-700, html.dark .text-red-800, html.dark .text-red-900 {
+html.dark [class*="text-rose-700"], html.dark [class*="text-rose-800"], html.dark [class*="text-rose-900"],
+html.dark [class*="text-red-700"], html.dark [class*="text-red-800"], html.dark [class*="text-red-900"] {
   color: #FDA4AF !important;
 }
-html.dark .text-purple-700, html.dark .text-purple-800 {
+html.dark [class*="text-purple-700"], html.dark [class*="text-purple-800"], html.dark [class*="text-purple-900"] {
   color: #D8B4FE !important;
 }
-html.dark .text-sky-700, html.dark .text-sky-800 {
+html.dark [class*="text-sky-700"], html.dark [class*="text-sky-800"], html.dark [class*="text-sky-900"] {
   color: #7DD3FC !important;
 }
-html.dark .text-pink-700, html.dark .text-pink-800 {
+html.dark [class*="text-pink-700"], html.dark [class*="text-pink-800"], html.dark [class*="text-pink-900"] {
   color: #F472B6 !important;
 }
 

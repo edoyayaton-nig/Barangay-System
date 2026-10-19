@@ -1109,15 +1109,15 @@ export default function HealthCenterPortal() {
         </div>
 
         {/* ─── My Medical & Clinical Records Tracker ─── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="bg-white dark:bg-[#151824] rounded-2xl border border-slate-200 dark:border-[#2E3650] shadow-xs overflow-hidden">
           {/* Header */}
-          <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-white via-slate-50/50 to-emerald-50/30">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2E3650] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-white via-slate-50/50 to-emerald-50/30 dark:from-[#1A1D2D] dark:via-[#151824] dark:to-[#151824]">
             <div>
-              <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm sm:text-base">
-                <Activity className="text-emerald-600" size={19} />
+              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm sm:text-base">
+                <Activity className="text-emerald-600 dark:text-emerald-400" size={19} />
                 My Medical &amp; Clinical Records Tracker
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Track your consultations, prescribed medications &amp; dispensed quantities, prenatal milestones, child vaccinations, and upcoming revisits.
               </p>
             </div>
@@ -1126,7 +1126,7 @@ export default function HealthCenterPortal() {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsRecordSummaryOpen(true)}
-                className="text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 gap-1.5 cursor-pointer shadow-xs font-semibold h-8.5 rounded-xl"
+                className="text-xs border-emerald-300 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 gap-1.5 cursor-pointer shadow-xs font-semibold h-8.5 rounded-xl"
               >
                 <Printer size={13} />
                 <span>Print Official Summary</span>
@@ -1135,7 +1135,7 @@ export default function HealthCenterPortal() {
           </div>
 
           {/* Record Type Navigation Tabs */}
-          <div className="px-5 pt-3 pb-2 border-b border-slate-100 bg-slate-50/60">
+          <div className="px-5 pt-3 pb-2 border-b border-slate-100 dark:border-[#2E3650] bg-slate-50/60 dark:bg-[#1A1D2D]/60">
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
               <button
                 type="button"
@@ -1143,13 +1143,13 @@ export default function HealthCenterPortal() {
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                   recordsViewTab === 'consultations'
                     ? 'bg-teal-600 text-white shadow-xs'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    : 'bg-white dark:bg-[#1A1D2D] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#2E3650] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <Stethoscope size={13} />
                 <span>Consultations &amp; Rx</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  recordsViewTab === 'consultations' ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-600'
+                  recordsViewTab === 'consultations' ? 'bg-teal-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                 }`}>
                   {consultations.length}
                 </span>
@@ -1161,13 +1161,13 @@ export default function HealthCenterPortal() {
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                   recordsViewTab === 'maternal'
                     ? 'bg-pink-600 text-white shadow-xs'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    : 'bg-white dark:bg-[#1A1D2D] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#2E3650] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <Heart size={13} />
                 <span>Prenatal Care</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  recordsViewTab === 'maternal' ? 'bg-pink-700 text-white' : 'bg-slate-100 text-slate-600'
+                  recordsViewTab === 'maternal' ? 'bg-pink-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                 }`}>
                   {maternalRecords.length}
                 </span>
@@ -1179,13 +1179,13 @@ export default function HealthCenterPortal() {
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                   recordsViewTab === 'immunizations'
                     ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    : 'bg-white dark:bg-[#1A1D2D] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#2E3650] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <Syringe size={13} />
                 <span>Child Vaccines</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  recordsViewTab === 'immunizations' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'
+                  recordsViewTab === 'immunizations' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                 }`}>
                   {immunizations.length}
                 </span>
@@ -1197,13 +1197,13 @@ export default function HealthCenterPortal() {
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                   recordsViewTab === 'appointments'
                     ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    : 'bg-white dark:bg-[#1A1D2D] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#2E3650] hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <Clock size={13} />
                 <span>Revisits &amp; Bookings</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  recordsViewTab === 'appointments' ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600'
+                  recordsViewTab === 'appointments' ? 'bg-emerald-700 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                 }`}>
                   {revisitTimeline.length}
                 </span>
