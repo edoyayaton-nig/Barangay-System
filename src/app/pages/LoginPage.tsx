@@ -26,7 +26,9 @@ import {
   UserPlus,
   Sparkles,
   BadgeCheck,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle,
+  FileText
 } from 'lucide-react';
 import { apiService, CensusResidentSearchResult } from '../../services/api';
 import { validatePasswordComplexity } from '../../utils/passwordValidation';
@@ -118,7 +120,7 @@ export default function LoginPage() {
   const [regPassword, setRegPassword] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPurok, setRegPurok] = useState('');
-  const [regBarangay, setRegBarangay] = useState('');
+  const [regBarangay, setRegBarangay] = useState('Pianing');
   const [regCity, setRegCity] = useState('');
   const [regEmployment, setRegEmployment] = useState('Employed');
   const [regIdType, setRegIdType] = useState('');
@@ -233,26 +235,12 @@ export default function LoginPage() {
   }, [existingFullNameSearch, existingBarangay, residentMode, existingStep, activeTab]);
 
   const handleSwitchToNewResident = () => {
-    if (existingFullNameSearch.trim()) {
-      const parts = existingFullNameSearch.trim().split(/\s+/);
-      if (parts.length === 1) {
-        setRegFirstName(parts[0]);
-      } else if (parts.length === 2) {
-        setRegFirstName(parts[0]);
-        setRegLastName(parts[1]);
-      } else {
-        setRegFirstName(parts[0]);
-        setRegMiddleName(parts.slice(1, -1).join(' '));
-        setRegLastName(parts[parts.length - 1]);
-      }
-    }
     if (existingBarangay) {
-      setRegCity('Butuan City');
       setRegBarangay(existingBarangay);
     }
     setResidentMode('new');
-    toast.info('Switched to New Resident Registration', {
-      description: 'Your entered name and barangay have been pre-filled.'
+    toast.info('Barangay Hall Registration Required', {
+      description: `Please proceed to your Barangay Hall to register to Barangay ${existingBarangay || 'Pianing'}.`
     });
   };
 
@@ -875,41 +863,41 @@ export default function LoginPage() {
                   onClick={() => {
                     setResidentMode('new');
                   }}
-                  className="group relative bg-gradient-to-b from-emerald-50/70 via-white to-white border-2 border-emerald-200/90 hover:border-emerald-500 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between hover:-translate-y-0.5"
+                  className="group relative bg-gradient-to-b from-amber-50/70 via-white to-white dark:from-amber-950/30 dark:via-[#1A1D2D] dark:to-[#151824] border-2 border-amber-200/90 dark:border-amber-800/60 hover:border-amber-500 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between hover:-translate-y-0.5"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                        <Sparkles size={11} /> FIRST-TIME
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                        <Building2 size={11} /> FIRST-TIME
                       </span>
-                      <span className="text-[10px] font-bold text-emerald-600 group-hover:translate-x-0.5 transition-transform">
-                        New Profile &rarr;
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform">
+                        Barangay Hall &rarr;
                       </span>
                     </div>
 
-                    <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 mb-3 group-hover:scale-105 transition-transform">
-                      <UserPlus size={22} />
+                    <div className="w-11 h-11 rounded-2xl bg-amber-600 text-white flex items-center justify-center shadow-md shadow-amber-500/25 mb-3 group-hover:scale-105 transition-transform">
+                      <Building2 size={22} />
                     </div>
 
-                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-amber-600 transition-colors">
                       NEW RESIDENT
                     </h4>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      First-time resident or not yet registered in the Barangay census. Fill out the demographic form and upload your valid ID for verification.
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      First-time resident or not yet registered in the Barangay census registry. Please proceed to your Barangay Hall to register.
                     </p>
 
-                    <div className="mt-3.5 pt-3 border-t border-emerald-100/80 space-y-1.5 text-[10.5px] text-slate-600">
+                    <div className="mt-3.5 pt-3 border-t border-amber-100/80 dark:border-slate-800 space-y-1.5 text-[10.5px] text-slate-600 dark:text-slate-300">
                       <div className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                        <span>Full demographic &amp; household details</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                        <span>In-person census registration required</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                        <span>Upload valid Government ID</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                        <span>Proceed to your Barangay Hall with valid ID</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                        <span>Reviewed by Barangay Admin for approval</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                        <span>Activate online account once recorded in census</span>
                       </div>
                     </div>
                   </div>
@@ -919,9 +907,9 @@ export default function LoginPage() {
                     onClick={() => {
                       setResidentMode('new');
                     }}
-                    className="w-full mt-4 h-9 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs group-hover:shadow-md transition-all cursor-pointer"
+                    className="w-full mt-4 h-9 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs group-hover:shadow-md transition-all cursor-pointer"
                   >
-                    Register as New Resident
+                    Select New Resident Option
                     <ArrowRight size={13} className="ml-1.5" />
                   </Button>
                 </div>
@@ -1444,525 +1432,154 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* ── TAB 2: REGISTER - NEW RESIDENT (Minimalist, Compact, No Placeholders) ─────────── */}
+          {/* ── TAB 2: REGISTER - NEW RESIDENT (In-Person Barangay Hall Requirement) ─────────── */}
           {activeTab === 'register' && residentMode === 'new' && (
-            <form onSubmit={handleRegister} className="space-y-3" autoComplete="off" method="post" action="#">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="space-y-4">
+              {/* Header Navigation & Badge */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setResidentMode('choose')}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-emerald-600 cursor-pointer transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 cursor-pointer transition-colors"
                 >
                   <ArrowLeft size={14} />
                   Back to Options
                 </button>
 
-                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                  New Resident Registration
-                </span>
-              </div>
-              <input type="text" name="fake_reg_username_fill" className="hidden" tabIndex={-1} autoComplete="off" />
-              <input type="password" name="fake_reg_password_fill" className="hidden" tabIndex={-1} autoComplete="new-password" />
-
-              {/* Amber Alert Callout from Screenshot */}
-              <div className="p-2.5 bg-amber-50/80 border border-amber-200 rounded-xl text-[11px] text-amber-900 flex items-start gap-2">
-                <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
-                <span>
-                  New accounts start as <strong>Unverified</strong>. Online document requests are unlocked after Barangay Admin verification.
+                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 inline-flex items-center gap-1">
+                  <Building2 size={11} />
+                  In-Person Registration Only
                 </span>
               </div>
 
-              {/* Row 1: First Name, Middle Name, Last Name (3 cols) */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    First Name <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={regFirstName}
-                    onChange={(e) => setRegFirstName(e.target.value.replace(/[0-9]/g, ''))}
-                    placeholder="e.g. Maria"
-                    required
-                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    Middle Name <span className="text-slate-400 font-normal">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={regMiddleName}
-                    onChange={(e) => setRegMiddleName(e.target.value.replace(/[0-9]/g, ''))}
-                    placeholder="e.g. Clara"
-                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    Last Name <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={regLastName}
-                    onChange={(e) => setRegLastName(e.target.value.replace(/[0-9]/g, ''))}
-                    placeholder="e.g. Santos"
-                    required
-                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Row 2: Email Address, Password (2 cols) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    Email Address <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="reg_email_field"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="e.g. maria@email.com"
-                    required
-                    autoComplete="off"
-                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    Password <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showRegPassword ? 'text' : 'password'}
-                      name="reg_pwd_field"
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      autoComplete="new-password"
-                      className="w-full h-9 px-3 pr-9 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowRegPassword(!showRegPassword)}
-                      className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                      tabIndex={-1}
-                    >
-                      {showRegPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 font-medium">
-                    <Shield size={11} className="text-blue-600 shrink-0" />
-                    Must contain 8+ chars: uppercase, number &amp; special symbol.
-                  </p>
-                </div>
-
-                {/* Real-time Password Complexity Indicator - shown only while typing */}
-                {regPassword.length > 0 && (
-                  <div className="col-span-1 sm:col-span-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 animate-in fade-in">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                        <Shield size={12} className="text-blue-600" />
-                        Password Requirements
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-semibold font-mono">
-                        {[
-                          regPassword.length >= 8,
-                          /[A-Z]/.test(regPassword),
-                          /[a-z]/.test(regPassword),
-                          /[0-9]/.test(regPassword),
-                          /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(regPassword)
-                        ].filter(Boolean).length} / 5 met
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
-                      <div className={`flex items-center gap-1.5 ${regPassword.length >= 8 ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
-                        <CheckCircle2 size={12} className={regPassword.length >= 8 ? 'text-emerald-600' : 'text-slate-300'} />
-                        <span>8+ characters</span>
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(regPassword) ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
-                        <CheckCircle2 size={12} className={/[A-Z]/.test(regPassword) ? 'text-emerald-600' : 'text-slate-300'} />
-                        <span>Uppercase (A-Z)</span>
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[a-z]/.test(regPassword) ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
-                        <CheckCircle2 size={12} className={/[a-z]/.test(regPassword) ? 'text-emerald-600' : 'text-slate-300'} />
-                        <span>Lowercase (a-z)</span>
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[0-9]/.test(regPassword) ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
-                        <CheckCircle2 size={12} className={/[0-9]/.test(regPassword) ? 'text-emerald-600' : 'text-slate-300'} />
-                        <span>Number (0-9)</span>
-                      </div>
-                      <div className={`col-span-2 flex items-center gap-1.5 ${/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(regPassword) ? 'text-emerald-700 font-semibold' : 'text-slate-500'}`}>
-                        <CheckCircle2 size={12} className={/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(regPassword) ? 'text-emerald-600' : 'text-slate-300'} />
-                        <span>Special char (!@#$%^&amp;* etc.)</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Row 3: Contact Number, Birthday, Gender (3 cols) */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    Contact Number <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                    placeholder="09XXXXXXXXX"
-                    required
-                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-semibold text-slate-700 block">
-                      Birthday <span className="text-red-500 font-bold">*</span>
-                    </label>
-                    {getDynamicAge(regDob) !== null && (
-                      <span className="text-[9px] text-blue-600 font-bold bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
-                        {getDynamicAge(regDob)} yrs
-                      </span>
-                    )}
-                  </div>
-                  <input
-                    type="date"
-                    value={regDob}
-                    onChange={(e) => setRegDob(e.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
-                    required
-                    className="w-full h-9 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    Gender <span className="text-red-500 font-bold">*</span>
-                  </label>
-                  <select
-                    value={regGender}
-                    onChange={(e) => setRegGender(e.target.value as any)}
-                    required
-                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer"
-                  >
-                    <option value="" disabled hidden>Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other / Non-Binary</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Row 4: Civil Status (1 col) */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                  Civil Status <span className="text-red-500 font-bold">*</span>
+              {/* Barangay Jurisdiction Selector */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/80">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <MapPin size={13} className="text-amber-600 dark:text-amber-400" />
+                    Select Your Barangay Jurisdiction:
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal">Butuan City</span>
                 </label>
                 <select
-                  value={regCivilStatus}
-                  onChange={(e) => setRegCivilStatus(e.target.value as any)}
-                  required
-                  className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer font-medium"
+                  value={regBarangay || existingBarangay || 'Pianing'}
+                  onChange={(e) => {
+                    setRegBarangay(e.target.value);
+                    setExistingBarangay(e.target.value);
+                  }}
+                  className="w-full h-10 px-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:border-amber-500 focus:ring-2 focus:ring-amber-200 dark:focus:ring-amber-900/40 outline-none transition-all cursor-pointer"
                 >
-                  <option value="" disabled hidden>Select Civil Status</option>
-                  <option value="Single">Single</option>
-                  <option value="Married">Married</option>
-                  <option value="Widowed">Widowed</option>
-                  <option value="Separated">Separated</option>
-                  <option value="Live-In">Live-In / Common Law</option>
+                  {BUTUAN_BARANGAYS.map((b) => (
+                    <option key={b} value={b} className="dark:bg-slate-900 dark:text-white">
+                      Barangay {b}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* Row 5: Years of Residency in the Barangay (1 col) */}
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                  Years of Residency in the Barangay <span className="text-slate-400 font-normal">(for Certificate of Residency)</span>
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={regResidencyYears}
-                  onChange={(e) => setRegResidencyYears(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="e.g. 5"
-                  className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
-                />
-                <p className="text-[10px] text-slate-400 mt-0.5">Enter number of years only (e.g. 5). Used for official Barangay Certificates &amp; Residency verification.</p>
-              </div>
+              {/* Main Official Notice Card (Prominently in Front) */}
+              <div className="relative overflow-hidden p-6 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/40 dark:via-amber-900/15 dark:to-transparent border-2 border-amber-400/90 dark:border-amber-600/70 rounded-2xl shadow-sm text-center space-y-3.5">
+                <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shadow-lg shadow-amber-500/30">
+                  <Building2 size={28} />
+                </div>
 
-              {/* Row 6: Residential Address */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-slate-700 block">
-                  Residential Address <span className="text-red-500 font-bold">*</span>
-                </label>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {/* Col 1: Purok / Street */}
-                  <div>
-                    <span className="text-[10px] text-slate-500 block mb-0.5 font-medium">
-                      Purok / Street <span className="text-red-500">*</span>
-                    </span>
-                    <input
-                      type="text"
-                      value={regPurok}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setRegPurok(val);
-                        // Auto-detect if user typed barangay name inside purok field (e.g. "Purok 1, Pianing")
-                        if (val.toLowerCase().includes('pianing') && regBarangay.toLowerCase() !== 'pianing') {
-                          setRegBarangay('Pianing');
-                        }
-                      }}
-                      list="reg-purok-suggestions"
-                      placeholder="e.g. Purok 1"
-                      required
-                      className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all"
-                    />
-                    <datalist id="reg-purok-suggestions">
-                      <option value="Purok 1" />
-                      <option value="Purok 2" />
-                      <option value="Purok 3" />
-                      <option value="Purok 4" />
-                      <option value="Purok 5" />
-                      <option value="Purok 6" />
-                    </datalist>
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10.5px] font-extrabold uppercase tracking-wider bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60">
+                    <AlertTriangle size={12} className="text-amber-600 dark:text-amber-400" />
+                    Barangay Census Registration Required
                   </div>
 
-                  {/* Col 2: Barangay (Dropdown Scoped to Selected City/Municipality in Agusan del Norte) */}
-                  <div>
-                    <span className="text-[10px] text-slate-500 block mb-0.5 font-medium">
-                      Barangay <span className="text-red-500">*</span>
-                    </span>
-                    <select
-                      value={regBarangay}
-                      onChange={(e) => setRegBarangay(e.target.value)}
-                      disabled={!regCity}
-                      required
-                      className="w-full h-9 px-2.5 sm:px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer font-medium disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-100"
-                    >
-                      <option value="">{regCity ? 'Select Barangay' : 'Select City / Municipality first'}</option>
-                      {cityBarangays.map((b) => (
-                        <option key={b} value={b}>
-                          Barangay {b}
-                        </option>
-                      ))}
-                    </select>
+                  {/* PROMINENT MESSAGE REQUIRED BY USER */}
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug">
+                    Proceed to your Barangay Hall to register to Barangay {regBarangay || existingBarangay || 'Pianing'}!
+                  </h3>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
+                    Under municipal civil registry policy, brand-new residents cannot fill up an account online. Your initial profiling must be conducted in person at the Barangay Hall.
+                  </p>
+                </div>
+
+                {/* Important Details Card */}
+                <div className="text-left bg-white/90 dark:bg-slate-900/90 p-4 rounded-xl border border-amber-200/90 dark:border-amber-800/60 space-y-2.5 text-xs">
+                  <div className="flex items-start gap-2.5">
+                    <MapPin size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900 dark:text-white font-bold block">Office Location:</strong>
+                      <span className="text-slate-600 dark:text-slate-300 text-[11.5px]">
+                        Barangay {regBarangay || existingBarangay || 'Pianing'} Hall, Government Center, Butuan City
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Col 3: City / Municipality (Agusan del Norte Only Dropdown) */}
-                  <div>
-                    <span className="text-[10px] text-slate-500 block mb-0.5 font-medium">
-                      City / Municipality <span className="text-red-500">*</span>
-                    </span>
-                    <select
-                      value={regCity}
-                      onChange={(e) => {
-                        const newCity = e.target.value;
-                        setRegCity(newCity);
-                        const newBarangays = getBarangaysForCity(newCity);
-                        if (!newBarangays.includes(regBarangay)) {
-                          setRegBarangay('');
-                        }
-                      }}
-                      required
-                      className="w-full h-9 px-2.5 sm:px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer font-medium"
-                    >
-                      <option value="">Select City / Municipality</option>
-                      <optgroup label="Cities (Agusan del Norte)">
-                        {AGUSAN_DEL_NORTE_LGUS.filter((l) => l.isCity).map((c) => (
-                          <option key={c.name} value={c.name}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                      <optgroup label="Municipalities (Agusan del Norte)">
-                        {AGUSAN_DEL_NORTE_LGUS.filter((l) => !l.isCity).map((m) => (
-                          <option key={m.name} value={m.name}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
+                  <div className="flex items-start gap-2.5">
+                    <Calendar size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900 dark:text-white font-bold block">Office Hours:</strong>
+                      <span className="text-slate-600 dark:text-slate-300 text-[11.5px]">
+                        Monday &ndash; Friday, 8:00 AM &ndash; 5:00 PM (Except official holidays)
+                      </span>
+                    </div>
                   </div>
+
+                  <div className="flex items-start gap-2.5">
+                    <FileText size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-900 dark:text-white font-bold block">What to Bring:</strong>
+                      <ul className="text-slate-600 dark:text-slate-300 text-[11.5px] list-disc list-inside space-y-0.5 mt-0.5">
+                        <li>At least one (1) valid Government-issued ID (PhilSys, Voter's, Driver's License, etc.)</li>
+                        <li>Proof of residence (Utility billing, tenancy contract, or Purok endorsement)</li>
+                        <li>Latest 2x2 ID photo (optional / if requested by desk)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Next Steps Info */}
+                <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-left text-[11px] text-amber-950 dark:text-amber-200 flex items-start gap-2">
+                  <CheckCircle2 size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Once recorded in the census:</strong> Return to this portal, choose <strong>Existing Resident</strong>, search your name, and create your online password immediately.
+                  </span>
                 </div>
               </div>
 
-              {/* Row 7: Valid Government ID Type & Upload */}
-              <div className="space-y-2.5 pt-1">
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    Valid Government ID Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={regIdType}
-                    onChange={(e) => setRegIdType(e.target.value)}
-                    required
-                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-100 outline-none transition-all cursor-pointer"
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-1">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const targetBrgy = regBarangay || existingBarangay || 'Pianing';
+                    setExistingBarangay(targetBrgy);
+                    setResidentMode('existing');
+                    setExistingStep(1);
+                  }}
+                  className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Search size={14} />
+                  Check if Name is in Existing Resident Census
+                </Button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setResidentMode('choose')}
+                    className="w-full h-9 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
                   >
-                    <option value="">Select Government ID Type *</option>
-                    {ID_TYPES.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* ID Photo Upload Area */}
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                    Government ID Photo <span className="text-red-500">*</span>
-                  </label>
-                  {!regIdPhoto ? (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border border-dashed border-red-300 hover:border-red-500 bg-red-50/15 hover:bg-red-50/30 rounded-xl p-3 text-center cursor-pointer transition-all group"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-1 group-hover:scale-105 transition-transform">
-                        <Camera size={16} />
-                      </div>
-                      <p className="text-xs font-semibold text-slate-700">Click to choose or capture valid ID photo <span className="text-red-500">*</span></p>
-                      <p className="text-[9px] text-slate-500 mt-0.5">PNG, JPG, or JPEG up to 5MB (Strictly Required)</p>
-                    </div>
-                  ) : (
-                    <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={regIdPhoto}
-                          alt="ID Preview"
-                          className="w-12 h-9 object-cover rounded-lg border border-blue-300 shadow-2xs shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-blue-950 truncate">
-                            {regIdFileName || `${regIdType || 'Government ID'}`}
-                          </p>
-                          <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-1">
-                            <CheckCircle2 size={12} className="text-emerald-600" /> Valid ID Photo Attached
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleClearIdPhoto}
-                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full cursor-pointer transition-colors"
-                        title="Remove photo"
-                      >
-                        <X size={15} />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Strict Requirement Notice Banner */}
-                  <div className="mt-1.5 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-                    <span className="text-amber-600 text-xs mt-0.5 shrink-0">🔒</span>
-                    <p className="text-[10.5px] text-amber-900 leading-tight">
-                      <strong>Strictly Required:</strong> A clear photo of your valid Government ID is required to register. You cannot proceed without uploading a valid ID.
-                    </p>
-                  </div>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
+                    Back to Options
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('login');
+                      setResidentMode('choose');
+                    }}
+                    className="w-full h-9 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl transition-colors cursor-pointer"
+                  >
+                    Return to Sign In
+                  </button>
                 </div>
               </div>
-
-              {/* Data Privacy Act & Terms Agreement Checkbox */}
-              <div
-                className={`p-3.5 rounded-2xl border transition-all ${
-                  regTermsAgreed
-                    ? 'bg-emerald-50/70 border-emerald-300/80 shadow-2xs'
-                    : 'bg-slate-50 border-slate-200/90 hover:border-blue-300'
-                }`}
-              >
-                <div className="flex items-start gap-2.5">
-                  <input
-                    type="checkbox"
-                    id="reg-terms-agree"
-                    required
-                    checked={regTermsAgreed}
-                    onChange={(e) => setRegTermsAgreed(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600 shrink-0"
-                  />
-                  <div className="flex-1 text-[11px] text-slate-700 leading-relaxed select-none">
-                    <label htmlFor="reg-terms-agree" className="cursor-pointer">
-                      I have read and agree to the{' '}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTermsModalTab('terms');
-                        setIsTermsOpen(true);
-                      }}
-                      className="text-blue-700 font-bold underline hover:text-blue-900 cursor-pointer"
-                    >
-                      Terms &amp; Conditions
-                    </button>{' '}
-                    and{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTermsModalTab('privacy');
-                        setIsTermsOpen(true);
-                      }}
-                      className="text-blue-700 font-bold underline hover:text-blue-900 cursor-pointer"
-                    >
-                      Data Privacy Policy
-                    </button>{' '}
-                    under Republic Act No. 10173 (Data Privacy Act of 2012).
-                  </div>
-                  {regTermsAgreed ? (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 border border-emerald-300/60">
-                      <CheckCircle2 size={11} /> Accepted
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTermsModalTab('privacy');
-                        setIsTermsOpen(true);
-                      }}
-                      className="text-[10px] font-semibold text-blue-700 bg-blue-100/70 hover:bg-blue-100 px-2.5 py-0.5 rounded-full shrink-0 cursor-pointer border border-blue-200 transition-colors"
-                    >
-                      Read &amp; Accept
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={loading || !regTermsAgreed}
-                className={`w-full h-10 font-bold text-xs shadow-xs transition-all rounded-xl mt-3 flex items-center justify-center gap-2 ${
-                  !regTermsAgreed
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200 hover:bg-slate-200 shadow-none'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer hover:shadow-md'
-                }`}
-              >
-                {loading ? (
-                  'Creating Account...'
-                ) : !regTermsAgreed ? (
-                  <>
-                    <Lock size={13} className="opacity-60" />
-                    Accept Terms &amp; Privacy Policy to Proceed
-                  </>
-                ) : (
-                  'Create Account'
-                )}
-              </Button>
-            </form>
+            </div>
           )}
 
           <div className="pt-3 text-center border-t border-slate-100 mt-5">
