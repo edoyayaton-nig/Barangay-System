@@ -307,7 +307,7 @@ export default function ManualResidentNotifyModal({
         if (onSent) onSent(res);
         onClose();
       } else {
-        toast.warning('Dispatched with warnings. Please verify recipient email or mobile number.');
+        toast.warning(res.error || 'Dispatched with warnings. Please verify recipient email or mobile number.');
       }
     } catch (err: any) {
       console.error('Manual notification dispatch error:', err);

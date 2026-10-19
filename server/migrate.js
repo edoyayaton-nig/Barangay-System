@@ -141,7 +141,6 @@ async function syncAllSchemas(connection) {
     ['Certificate of Indigency', 'Barangay', 'For medical, educational, burial & DSWD financial assistance'],
     ['Good Moral Clearance', 'Barangay', 'Official character clearance for PRC board exams & school'],
     ['Business Clearance', 'Barangay', 'Barangay commercial permit for sari-sari stores & businesses'],
-    ['Business Retirement Certificate', 'Barangay', 'Official certification for closure or retirement of business'],
     ['Certificate of Employment', 'Barangay', 'Barangay employment certificate & first time jobseeker aid'],
     ['Certificate of Land Occupancy', 'Barangay', 'Proof of actual physical occupancy & lot possession'],
     ['Barangay Activity Permit', 'Barangay', 'Permit for events, product sampling, promotions & gatherings'],
@@ -156,8 +155,12 @@ async function syncAllSchemas(connection) {
         "INSERT INTO document_categories (name, department, description, status) VALUES (?, ?, ?, 'Active') ON DUPLICATE KEY UPDATE department = VALUES(department), description = VALUES(description)",
         cat
       );
-    } catch {}
+    } catch { }
   }
+  try {
+    await connection.query("UPDATE document_categories SET status = 'Active' WHERE LOWER(name) = 'business clearance'");
+    await connection.query("DELETE FROM document_categories WHERE LOWER(name) = 'business retirement certificate'");
+  } catch { }
 
   // 6. Health Appointments
   await safeExecute(connection, `
@@ -278,6 +281,22 @@ async function syncAllSchemas(connection) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  // 12. SMS Notifications Log Table
+  await safeExecute(connection, `
+    CREATE TABLE IF NOT EXISTS \`sms_notifications\` (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      recipient_name VARCHAR(100) NOT NULL,
+      recipient_phone VARCHAR(50) NOT NULL,
+      type VARCHAR(100) NOT NULL,
+      message TEXT NOT NULL,
+      status VARCHAR(50) DEFAULT 'Sent',
+      sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      is_read TINYINT(1) DEFAULT 0
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+  await safeAddColumn(connection, 'sms_notifications', 'is_read', 'TINYINT(1) DEFAULT 0');
+  await safeAddColumn(connection, 'sms_notifications', 'sent_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
+
   // 12. Immunizations
   await safeAddColumn(connection, 'immunizations', 'gender', "VARCHAR(20) DEFAULT 'Male'");
   await safeAddColumn(connection, 'immunizations', 'guardian_name', "VARCHAR(150) DEFAULT ''");
@@ -335,7 +354,7 @@ async function syncAllSchemas(connection) {
           [defaultHash, u.email]
         );
       }
-    } catch {}
+    } catch { }
   }
 
   console.log('✅ Schema synchronization completed.');

@@ -46,6 +46,92 @@ class ResidentController extends Controller
         return response()->json($residents);
     }
 
+    public function censusLookup(Request $request)
+    {
+        $barangay = trim((string)$request->input('barangay', ''));
+        $search = trim((string)$request->input('search', ''));
+
+        if (empty($barangay)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Barangay is required to search census records.',
+                'results' => []
+            ], 400);
+        }
+
+        $norm = AuthController::normalizeBarangayName($barangay);
+        $query = Resident::query();
+        $query->where(function ($q) use ($norm) {
+            $q->whereRaw('LOWER(barangay) = ?', [strtolower($norm)])
+              ->orWhereRaw('LOWER(address) LIKE ?', ['%' . strtolower($norm) . '%']);
+        });
+
+        if (!empty($search)) {
+            $searchClean = trim(preg_replace('/\s+/', ' ', $search));
+            $terms = array_filter(explode(' ', $searchClean));
+            $query->where(function ($q) use ($searchClean, $terms) {
+                $q->whereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ["%{$searchClean}%"])
+                  ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(middle_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", ["%{$searchClean}%"])
+                  ->orWhereRaw("CONCAT(COALESCE(last_name, ''), ', ', COALESCE(first_name, '')) LIKE ?", ["%{$searchClean}%"])
+                  ->orWhere('first_name', 'like', "%{$searchClean}%")
+                  ->orWhere('last_name', 'like', "%{$searchClean}%");
+
+                if (count($terms) > 1) {
+                    $q->orWhere(function ($sub) use ($terms) {
+                        foreach ($terms as $t) {
+                            $sub->where(function ($termQ) use ($t) {
+                                $termQ->where('first_name', 'like', "%{$t}%")
+                                      ->orWhere('middle_name', 'like', "%{$t}%")
+                                      ->orWhere('last_name', 'like', "%{$t}%");
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        $residents = $query->orderBy('last_name')->limit(30)->get();
+
+        $userEmails = User::whereNotNull('email')->pluck('email')->map(fn($e) => strtolower(trim($e)))->toArray();
+        $userIds = User::pluck('id')->toArray();
+
+        $mapped = $residents->map(function ($r) use ($userEmails, $userIds) {
+            $hasAccount = false;
+            if (!empty($r->linked_user_id) && in_array($r->linked_user_id, $userIds)) {
+                $hasAccount = true;
+            } elseif (!empty($r->email) && in_array(strtolower(trim($r->email)), $userEmails)) {
+                $hasAccount = true;
+            }
+
+            return [
+                'id' => $r->id,
+                'first_name' => $r->first_name,
+                'middle_name' => $r->middle_name,
+                'last_name' => $r->last_name,
+                'date_of_birth' => $r->date_of_birth,
+                'gender' => $r->gender,
+                'civil_status' => $r->civil_status,
+                'address' => $r->address,
+                'purok' => $r->purok,
+                'barangay' => $r->barangay,
+                'city' => $r->city,
+                'phone' => $r->phone,
+                'email' => $r->email,
+                'household_number' => $r->household_number,
+                'is_census_only' => (bool)$r->is_census_only,
+                'verification_status' => $r->verification_status,
+                'has_account' => $hasAccount,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'barangay' => $norm,
+            'count' => count($mapped),
+            'results' => $mapped,
+        ]);
+    }
+
     public function getPending(Request $request)
     {
         $query = Resident::where(function ($q) {

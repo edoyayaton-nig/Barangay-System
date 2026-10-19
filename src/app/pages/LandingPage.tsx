@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { apiService } from '../../services/api';
 import SystemNoticeBanner from '../components/SystemNoticeBanner';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -78,6 +79,7 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle variant="pill" />
             <Button
               variant="outline"
               onClick={() => navigate('/login?tab=register')}

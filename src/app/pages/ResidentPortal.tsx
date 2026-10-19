@@ -39,6 +39,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
+import ThemeToggle from '../components/ThemeToggle';
 
 function formatApptDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -324,6 +325,7 @@ export default function ResidentPortal() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle variant="pill" />
             {user && (
               <Button
                 variant="outline"

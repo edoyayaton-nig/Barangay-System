@@ -153,12 +153,13 @@ export default function UserPermissionsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 border-slate-200">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <DialogDescription className="sr-only">Configure granular module permissions and access control for this user.</DialogDescription>
         {/* Header with Personnel Dossier */}
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-700 font-bold text-sm shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 flex items-center justify-center text-purple-700 dark:text-purple-300 font-bold text-sm shadow-xs">
                 {user.profile_photo ? (
                   <img src={user.profile_photo} alt={user.name} className="w-full h-full object-cover rounded-xl" />
                 ) : (
@@ -167,8 +168,8 @@ export default function UserPermissionsModal({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-slate-900">{user.name}</h3>
-                  <Badge variant="outline" className="text-[10px] font-bold border-purple-300 text-purple-700 bg-purple-50">
+                  <DialogTitle className="text-base font-bold text-slate-900 dark:text-white">{user.name}</DialogTitle>
+                  <Badge variant="outline" className="text-[10px] font-bold border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50">
                     {roleLabel}
                   </Badge>
                 </div>

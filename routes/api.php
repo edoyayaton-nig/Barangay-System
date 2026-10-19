@@ -27,8 +27,8 @@ Route::post('/settings/test-sms', [SystemController::class, 'testSms']);
 // Document Categories
 Route::get('/categories', [DocumentController::class, 'getCategories']);
 Route::post('/categories', [DocumentController::class, 'createCategory']);
-Route::put('/categories/{name}', [DocumentController::class, 'updateCategory']);
-Route::delete('/categories/{name}', [DocumentController::class, 'deleteCategory']);
+Route::put('/categories/{name}', [DocumentController::class, 'updateCategory'])->where('name', '.*');
+Route::delete('/categories/{name}', [DocumentController::class, 'deleteCategory'])->where('name', '.*');
 
 // Activity Audit Logs
 Route::get('/activity-logs', [SystemController::class, 'getActivityLogs']);
@@ -52,6 +52,7 @@ Route::delete('/users/{id}', [AuthController::class, 'deleteUser']);
 
 // Resident Demographic Records & Applicant Queue
 Route::get('/residents', [ResidentController::class, 'index']);
+Route::get('/residents/census-lookup', [ResidentController::class, 'censusLookup']);
 Route::get('/residents/pending', [ResidentController::class, 'getPending']);
 Route::get('/residents/{id}/full-profile', [ResidentController::class, 'fullProfile']);
 Route::post('/residents', [ResidentController::class, 'store']);

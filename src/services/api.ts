@@ -247,6 +247,26 @@ export interface PendingResident {
   profile_photo?: string | null;
 }
 
+export interface CensusResidentSearchResult {
+  id: number;
+  first_name: string;
+  middle_name?: string;
+  last_name: string;
+  date_of_birth?: string;
+  gender?: string;
+  civil_status?: string;
+  address?: string;
+  purok?: string;
+  barangay?: string;
+  city?: string;
+  phone?: string;
+  email?: string | null;
+  household_number?: string | null;
+  is_census_only?: boolean;
+  verification_status?: string;
+  has_account?: boolean;
+}
+
 export interface ServiceCategory {
   id: number;
   name: string;
@@ -782,8 +802,42 @@ export const apiService = {
     return await res.json();
   },
 
+  // Census Inhabitant Lookup for Citizen Portal Account Claiming
+  async lookupCensusResidents(barangay: string, search: string): Promise<{ success: boolean; results: CensusResidentSearchResult[]; count: number; error?: string }> {
+    try {
+      const p = new URLSearchParams();
+      if (barangay) p.append('barangay', barangay);
+      if (search) p.append('search', search);
+      const res = await fetch(`${API_BASE}/residents/census-lookup?${p.toString()}`);
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, results: [], count: 0, error: err?.message || 'Census lookup failed' };
+    }
+  },
+
   // Auth Registration
-  async register(data: { name?: string; first_name?: string; middle_name?: string; last_name?: string; date_of_birth?: string; gender?: string; civil_status?: string; employment_status?: string; email: string; password?: string; role?: string; address?: string; phone?: string; submitted_id?: string; id_type?: string; years_of_residency?: string; barangay?: string; city?: string; purok?: string }) {
+  async register(data: {
+    existing_resident_id?: number;
+    name?: string;
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
+    date_of_birth?: string;
+    gender?: string;
+    civil_status?: string;
+    employment_status?: string;
+    email: string;
+    password?: string;
+    role?: string;
+    address?: string;
+    phone?: string;
+    submitted_id?: string;
+    id_type?: string;
+    years_of_residency?: string;
+    barangay?: string;
+    city?: string;
+    purok?: string;
+  }) {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -791,7 +845,7 @@ export const apiService = {
     });
     const json = await res.json();
     if (!res.ok || json.success === false) {
-      throw new Error(json.message || 'Registration failed.');
+      throw new Error(json.error || json.message || 'Registration failed.');
     }
     return json;
   },

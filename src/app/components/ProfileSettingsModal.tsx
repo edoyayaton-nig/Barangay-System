@@ -217,18 +217,19 @@ export default function ProfileSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={open => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-lg bg-white p-0 overflow-hidden shadow-2xl rounded-2xl border border-slate-200">
+      <DialogContent className="max-w-lg bg-white dark:bg-slate-900 p-0 overflow-hidden shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800">
+        <DialogDescription className="sr-only">Update your official resident account profile settings and contact details.</DialogDescription>
         {/* Clean, Soft & Eye-Friendly Header */}
-        <div className="bg-white border-b border-slate-200 p-6 text-slate-900 relative">
+        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-6 text-slate-900 dark:text-white relative">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center text-xl font-bold text-teal-800 tracking-wider shrink-0 shadow-xs">
+            <div className="w-16 h-16 rounded-2xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-xl font-bold text-teal-800 dark:text-teal-300 tracking-wider shrink-0 shadow-xs">
               {getInitials(user?.name)}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight truncate">
+                <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate">
                   {user?.name || 'Resident Profile'}
-                </h2>
+                </DialogTitle>
                 <Badge className={`text-[10px] font-bold px-2 py-0.5 border ${getRoleBadgeColor(user?.role)}`}>
                   {(user?.role || 'Resident').toUpperCase()}
                 </Badge>

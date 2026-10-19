@@ -137,13 +137,14 @@ export default function PatientDetailModal({ isOpen, onClose, patient, initialTa
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
         onPointerDownOutside={(e) => e.preventDefault()}
-        className="bg-white w-[92vw] max-w-3xl max-h-[85vh] overflow-y-auto p-0 rounded-2xl border border-slate-200 shadow-2xl"
+        className="bg-white dark:bg-slate-900 w-[92vw] max-w-3xl max-h-[85vh] overflow-y-auto p-0 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl"
       >
+        <DialogDescription className="sr-only">Detailed patient clinical profile and health appointments overview.</DialogDescription>
         {/* Header - Clean, Soft & Compact */}
-        <div className="bg-white border-b border-slate-100 text-slate-900 p-4 sm:p-5 relative rounded-t-2xl">
+        <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white p-4 sm:p-5 relative rounded-t-2xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800 font-bold text-base shadow-xs shrink-0 overflow-hidden">
+              <div className="w-11 h-11 rounded-xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-800 dark:text-teal-300 font-bold text-base shadow-xs shrink-0 overflow-hidden">
                 {patient.profile_photo && typeof patient.profile_photo === 'string' && patient.profile_photo.trim().length > 0 && patient.profile_photo !== 'null' && patient.profile_photo !== 'undefined' ? (
                   <img src={patient.profile_photo} alt={patient.name} className="w-full h-full object-cover" />
                 ) : (
@@ -152,9 +153,9 @@ export default function PatientDetailModal({ isOpen, onClose, patient, initialTa
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900">{patient.name}</h2>
+                  <DialogTitle className="text-base font-bold text-slate-900 dark:text-white">{patient.name}</DialogTitle>
                   {patient.gender && (
-                    <Badge className="bg-teal-50 text-teal-800 border border-teal-200 text-[10px]">
+                    <Badge className="bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-700 text-[10px]">
                       {patient.gender}
                     </Badge>
                   )}

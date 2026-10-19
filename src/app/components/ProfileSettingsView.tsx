@@ -27,6 +27,7 @@ import {
 import { apiService } from '../../services/api';
 import { saveStoredUser } from '../../utils/safeStorage';
 import { toast } from 'sonner';
+import { useTheme } from '../context/ThemeContext';
 
 interface ProfileSettingsViewProps {
   user: any;
@@ -47,7 +48,8 @@ export default function ProfileSettingsView({ user, onProfileUpdated, darkMode }
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isDark = darkMode ?? (user?.role === 'super_mega_admin');
+  const { isDark: themeIsDark } = useTheme();
+  const isDark = darkMode !== undefined ? darkMode : (themeIsDark || user?.role === 'super_mega_admin');
 
   useEffect(() => {
     if (user) {

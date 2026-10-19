@@ -244,6 +244,85 @@ class AuthController extends Controller
             return response()->json(['error' => 'An account with this email address already exists.'], 409);
         }
 
+        $existingResidentId = $request->input('existing_resident_id');
+        $idType = $request->input('id_type', 'Government ID');
+
+        if (!empty($existingResidentId)) {
+            $existingResident = Resident::find($existingResidentId);
+            if (!$existingResident) {
+                return response()->json([
+                    'error' => 'Selected census resident record could not be found.'
+                ], 404);
+            }
+
+            if (!empty($existingResident->linked_user_id)) {
+                $linkedUser = User::find($existingResident->linked_user_id);
+                if ($linkedUser) {
+                    return response()->json([
+                        'error' => 'This resident is already linked to an active citizen account. Please log in instead or visit your Barangay Hall.'
+                    ], 409);
+                }
+            }
+
+            $firstName = $existingResident->first_name;
+            $middleName = $existingResident->middle_name;
+            $lastName = $existingResident->last_name;
+            $fullName = trim("{$firstName} " . (!empty($middleName) ? "{$middleName} " : "") . "{$lastName}");
+            $barangay = self::normalizeBarangayName($existingResident->barangay ?: $request->input('barangay'));
+            $city = $existingResident->city ?: 'Butuan City';
+            $address = $existingResident->address ?: ("Purok " . ($existingResident->purok ?: '1') . ", Barangay {$barangay}, {$city}");
+            $civilStatus = $existingResident->civil_status ?: 'Single';
+            $phone = trim((string)$request->input('phone', $existingResident->phone ?: '09171234567'));
+
+            // Save image to disk
+            $idPath = self::saveBase64Image($submittedId, 'resident_id');
+
+            $user = User::create([
+                'name' => $fullName,
+                'email' => $email,
+                'password_hash' => Hash::make($password),
+                'role' => 'resident',
+                'status' => 'Active',
+                'verification_status' => 'Pending_Review',
+                'civil_status' => $civilStatus,
+                'phone' => $phone,
+                'address' => $address,
+                'barangay' => $barangay,
+                'city' => $city,
+                'submitted_id' => $idPath,
+                'id_type' => $idType,
+            ]);
+
+            $existingResident->update([
+                'linked_user_id' => $user->id,
+                'phone' => $phone,
+                'email' => $email,
+                'submitted_id' => $idPath,
+                'id_type' => $idType,
+                'verification_status' => 'Pending_Review',
+                'is_census_only' => 0,
+                'submitted_at' => now(),
+            ]);
+
+            ActivityLog::create([
+                'user_name' => $fullName,
+                'user_role' => 'resident',
+                'action' => "Existing Resident Account Claimed: {$fullName} ({$email}) connected census record #{$existingResident->id} with Government ID submitted",
+            ]);
+
+            EmailService::sendRegistrationEmail($email, $fullName, $barangay);
+
+            $userData = $user->toArray();
+            $userData['resident_id'] = $existingResident->id;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Citizen account created! Your account is pending verification.',
+                'user' => $userData,
+                'id' => $user->id,
+            ], 201);
+        }
+
         $firstName = trim((string)$request->input('first_name', ''));
         $lastName = trim((string)$request->input('last_name', ''));
         $fullName = trim("{$firstName} {$lastName}");

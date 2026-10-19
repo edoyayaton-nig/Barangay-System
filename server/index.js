@@ -395,7 +395,6 @@ async function migrateDatabase() {
         { name: 'Certificate of Indigency', department: 'Barangay', description: 'For medical, educational, burial & DSWD financial assistance' },
         { name: 'Good Moral Clearance', department: 'Barangay', description: 'Official character clearance for PRC board exams & school' },
         { name: 'Business Clearance', department: 'Barangay', description: 'Barangay commercial permit for sari-sari stores & businesses' },
-        { name: 'Business Retirement Certificate', department: 'Barangay', description: 'Official certification for closure or retirement of business' },
         { name: 'Certificate of Employment', department: 'Barangay', description: 'Barangay employment certificate & first time jobseeker aid' },
         { name: 'Certificate of Land Occupancy', department: 'Barangay', description: 'Proof of actual physical occupancy & lot possession' },
         { name: 'Barangay Activity Permit', department: 'Barangay', description: 'Permit for events, product sampling, promotions & gatherings' },
@@ -411,6 +410,10 @@ async function migrateDatabase() {
           [cat.name, cat.department, cat.description]
         );
       }
+      try {
+        await pool.query("UPDATE document_categories SET status = 'Active' WHERE LOWER(name) = 'business clearance'");
+        await pool.query("DELETE FROM document_categories WHERE LOWER(name) = 'business retirement certificate'");
+      } catch {}
 
       // Strictly normalize departments to only 'Barangay' and 'Health'
       await pool.query("UPDATE document_categories SET department = 'Health' WHERE department IN ('Health Center', 'Health', 'Medical', 'Clinical')");
@@ -902,14 +905,13 @@ const DEFAULT_CATEGORIES = [
   { id: 3, name: 'Certificate of Indigency', department: 'Barangay', description: 'For medical, educational, burial & DSWD financial assistance', status: 'Active' },
   { id: 4, name: 'Good Moral Clearance', department: 'Barangay', description: 'Official character clearance for PRC board exams & school', status: 'Active' },
   { id: 5, name: 'Business Clearance', department: 'Barangay', description: 'Barangay commercial permit for sari-sari stores & businesses', status: 'Active' },
-  { id: 6, name: 'Business Retirement Certificate', department: 'Barangay', description: 'Official certification for closure or retirement of business', status: 'Active' },
-  { id: 7, name: 'Certificate of Employment', department: 'Barangay', description: 'Barangay employment certificate & first time jobseeker aid', status: 'Active' },
-  { id: 8, name: 'Certificate of Land Occupancy', department: 'Barangay', description: 'Proof of actual physical occupancy & lot possession', status: 'Active' },
-  { id: 9, name: 'Barangay Activity Permit', department: 'Barangay', description: 'Permit for events, product sampling, promotions & gatherings', status: 'Active' },
-  { id: 10, name: 'Medical Certificate', department: 'Health', description: 'Clinical consultation and fitness clearance issued by Barangay Health Center', status: 'Active' },
-  { id: 11, name: 'Sanitary Permit Endorsement', department: 'Health', description: 'Barangay sanitation and health inspection endorsement', status: 'Active' },
-  { id: 12, name: 'Immunization Record Certificate', department: 'Health', description: 'Official child and maternal immunization certification', status: 'Active' },
-  { id: 13, name: 'Health Examination Clearance', department: 'Health', description: 'Standard community health and vitals screening clearance', status: 'Active' }
+  { id: 6, name: 'Certificate of Employment', department: 'Barangay', description: 'Barangay employment certificate & first time jobseeker aid', status: 'Active' },
+  { id: 7, name: 'Certificate of Land Occupancy', department: 'Barangay', description: 'Proof of actual physical occupancy & lot possession', status: 'Active' },
+  { id: 8, name: 'Barangay Activity Permit', department: 'Barangay', description: 'Permit for events, product sampling, promotions & gatherings', status: 'Active' },
+  { id: 9, name: 'Medical Certificate', department: 'Health', description: 'Clinical consultation and fitness clearance issued by Barangay Health Center', status: 'Active' },
+  { id: 10, name: 'Sanitary Permit Endorsement', department: 'Health', description: 'Barangay sanitation and health inspection endorsement', status: 'Active' },
+  { id: 11, name: 'Immunization Record Certificate', department: 'Health', description: 'Official child and maternal immunization certification', status: 'Active' },
+  { id: 12, name: 'Health Examination Clearance', department: 'Health', description: 'Standard community health and vitals screening clearance', status: 'Active' }
 ];
 let inMemoryCategories = [...DEFAULT_CATEGORIES];
 

@@ -60,6 +60,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { FloatingInput, FloatingSelect, FloatingTextarea } from '../components/ui/floating-input';
 import { notificationStore, PersistentNotification } from '../../services/notificationStore';
 import { dispatchResidentNotification } from '../../services/emailJsService';
+import ThemeToggle from '../components/ThemeToggle';
 import { toast } from 'sonner';
 
 const BARANGAY_DOCS = [
@@ -68,7 +69,6 @@ const BARANGAY_DOCS = [
   'Certificate of Indigency',
   'Good Moral Clearance',
   'Business Clearance',
-  'Business Retirement Certificate',
   'Certificate of Employment',
   'Certificate of Land Occupancy',
   'Barangay Activity Permit',
@@ -80,7 +80,6 @@ const DOC_DESCRIPTIONS: Record<string, string> = {
   'Certificate of Indigency':        'For medical, educational, burial & DSWD financial assistance',
   'Good Moral Clearance':            'Official character clearance for PRC board exams & school',
   'Business Clearance':              'Barangay commercial permit for sari-sari stores & businesses',
-  'Business Retirement Certificate': 'Official certification for closure or retirement of business',
   'Certificate of Employment':       'Barangay employment certificate & first time jobseeker aid',
   'Certificate of Land Occupancy':   'Proof of actual physical occupancy & lot possession',
   'Barangay Activity Permit':        'Permit for events, product sampling, promotions & gatherings',
@@ -92,7 +91,6 @@ const DUPLICATE_SUGGESTIONS: Record<string, string> = {
   'Certificate of Indigency':        'An Indigency Certificate request already exists. Please coordinate with the Barangay Social Welfare office.',
   'Good Moral Clearance':            'Your Good Moral Clearance application is under review by the Barangay Secretary.',
   'Business Clearance':              'Your Business Clearance application is currently under review by Barangay Staff.',
-  'Business Retirement Certificate': 'A Business Retirement request is already pending verification.',
   'Certificate of Employment':       'Your Employment Certification is currently being prepared.',
   'Certificate of Land Occupancy':   'A Land Occupancy certification is being reviewed by the Barangay Council.',
   'Barangay Activity Permit':        'Your Activity Permit request is under evaluation by the Punong Barangay.',
@@ -722,25 +720,25 @@ export default function BarangayPortal() {
       <SuperAdminNavigationDock currentRole={user?.role} />
 
       {/* Navbar */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3 shadow-sm">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-4 py-3 shadow-sm transition-colors">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate('/resident')}
-              className="flex items-center gap-1.5 text-xs text-slate-700 border-slate-300 hover:bg-slate-100 rounded-xl h-8 px-2.5 cursor-pointer shadow-xs"
+              className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl h-8 px-2.5 cursor-pointer shadow-xs"
               title="Back to Portals"
             >
-              <ArrowLeft size={13} className="text-slate-600" />
+              <ArrowLeft size={13} className="text-slate-600 dark:text-slate-300" />
               <span className="font-semibold">Back</span>
             </Button>
             <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-indigo-200 flex items-center justify-center">
               <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h1 className="text-sm font-bold text-slate-900 leading-tight">Barangay {userBarangay}</h1>
-              <span className="text-xs text-indigo-600 font-semibold">Resident Portal</span>
+              <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Barangay {userBarangay}</h1>
+              <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">Resident Portal</span>
             </div>
           </div>
 
@@ -758,6 +756,8 @@ export default function BarangayPortal() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle variant="pill" />
+
             {/* Notification Center Trigger */}
             {user && (
               <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
@@ -1149,13 +1149,29 @@ export default function BarangayPortal() {
 
                   {/* Custom Fields for Business Clearance / Business Permit */}
                   {(docType === 'Business Clearance' || docType === 'Business Permit' || docType === 'Business Certificate') && (
-                    <FloatingInput
-                      label="Store / Business Name & Type"
-                      value={extraFields['Business Name'] || ''}
-                      onChange={(e) => setField('Business Name', e.target.value)}
-                      placeholder="e.g. Maria's Sari-Sari Store"
-                      required
-                    />
+                    <div className="space-y-2.5">
+                      <FloatingInput
+                        label="Store / Business Name"
+                        value={extraFields['Business Name'] || ''}
+                        onChange={(e) => setField('Business Name', e.target.value)}
+                        placeholder="e.g. Maria's Sari-Sari Store"
+                        required
+                      />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <FloatingInput
+                          label="Nature of Business"
+                          value={extraFields['Nature of Business'] || ''}
+                          onChange={(e) => setField('Nature of Business', e.target.value)}
+                          placeholder="e.g. Sari-Sari Store / Retail"
+                        />
+                        <FloatingInput
+                          label="Business Location / Address"
+                          value={extraFields['Business Address'] || ''}
+                          onChange={(e) => setField('Business Address', e.target.value)}
+                          placeholder="e.g. Purok 3, Barangay Pianing"
+                        />
+                      </div>
+                    </div>
                   )}
 
                   {/* Custom Fields for Certificate of Employment */}

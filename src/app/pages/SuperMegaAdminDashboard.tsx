@@ -29,6 +29,8 @@ import ProfileSettingsView from '../components/ProfileSettingsView';
 import { ClientBarangay, INITIAL_CLIENTS } from '../components/BarangaySettingsControlPanel';
 import { dispatchResidentNotification } from '../../services/emailJsService';
 import ManualResidentNotifyModal from '../components/ManualResidentNotifyModal';
+import ThemeToggle from '../components/ThemeToggle';
+import { useTheme } from '../context/ThemeContext';
 
 
 /* ─────────────────────────────────────────────────────────── */
@@ -59,14 +61,8 @@ function validatePassword(p: string) {
 }
 
 /* ─────────────────────────────────────────────────────────── */
-/*  Design tokens (dark, eye-friendly palette)                  */
+/*  Accent tokens                                               */
 /* ─────────────────────────────────────────────────────────── */
-const BG = '#0F111E';
-const CARD = '#151824';
-const CARD2 = '#202538';
-const BORDER = '#2E3650';
-const TEXT = '#F8FAFC';
-const MUTED = '#8D99AE';
 const ACCENT_CYAN = '#00C6FF';
 const ACCENT_VIOLET = '#6458FF';
 const ACCENT_EMERALD = '#00B894';
@@ -105,6 +101,14 @@ const BLANK_NEW_SA = {
 
 export default function SuperMegaAdminDashboard() {
   const navigate = useNavigate();
+  const { theme, isDark } = useTheme();
+  const BG = isDark ? '#0F111E' : '#F8FAFC';
+  const CARD = isDark ? '#151824' : '#FFFFFF';
+  const CARD2 = isDark ? '#202538' : '#F1F5F9';
+  const BORDER = isDark ? '#2E3650' : '#E2E8F0';
+  const TEXT = isDark ? '#F8FAFC' : '#0F172A';
+  const MUTED = isDark ? '#8D99AE' : '#64748B';
+
   const [user, setUser] = useState<any>(() => {
     try { return JSON.parse(localStorage.getItem('barangay_user') || 'null'); } catch { return null; }
   });
@@ -808,6 +812,7 @@ export default function SuperMegaAdminDashboard() {
           ))}
         </div>
         <div className="flex items-center gap-2">
+          <ThemeToggle variant="pill" />
           <div className="hidden sm:flex items-center gap-2.5">
             <button
               type="button"
@@ -821,9 +826,9 @@ export default function SuperMegaAdminDashboard() {
               className="cursor-pointer hover:bg-violet-950/40 transition-colors text-left flex items-center gap-2"
               title="Open Profile Settings"
             >
-              <UserCircle size={15} style={{ color: '#C4B5FD' }} />
+              <UserCircle size={15} style={{ color: isDark ? '#C4B5FD' : '#6458FF' }} />
               <div>
-                <p style={{ color: '#C4B5FD', fontSize: 11, fontWeight: 700 }}>{user?.name || 'Super Mega Admin'}</p>
+                <p style={{ color: isDark ? '#C4B5FD' : '#6458FF', fontSize: 11, fontWeight: 700 }}>{user?.name || 'Super Mega Admin'}</p>
                 <p style={{ color: MUTED, fontSize: 9, fontWeight: 600 }}>SYSTEM ROOT OPERATOR</p>
               </div>
             </button>
@@ -843,7 +848,10 @@ export default function SuperMegaAdminDashboard() {
             <aside style={{ background: CARD2, borderRight: `1px solid ${BORDER}`, width: 240 }}
               className="absolute left-0 top-0 bottom-0 flex flex-col py-5 px-3">
               <div className="flex items-center justify-between mb-6 px-2">
-                <p style={{ color: ACCENT_VIOLET, fontWeight: 700, fontSize: 12 }}>Navigation</p>
+                <div className="flex items-center gap-2">
+                  <p style={{ color: ACCENT_VIOLET, fontWeight: 700, fontSize: 12 }}>Navigation</p>
+                  <ThemeToggle variant="compact" />
+                </div>
                 <button onClick={() => setMobileMenuOpen(false)} style={{ color: MUTED }} className="cursor-pointer bg-transparent border-none"><X size={18} /></button>
               </div>
               {sidebarItems.map(item => (
@@ -3145,7 +3153,7 @@ export default function SuperMegaAdminDashboard() {
               <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 20 }}>
                 <ProfileSettingsView
                   user={user}
-                  darkMode={true}
+                  darkMode={isDark}
                   onProfileUpdated={(updated) => {
                     setUser(updated);
                     localStorage.setItem('barangay_user', JSON.stringify(updated));

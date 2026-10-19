@@ -12,8 +12,25 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="format-detection" content="telephone=no" />
     <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
-    <script type="module" crossorigin src="/assets/index-ByV9bzAS.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Cjf2nCWJ.css">
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('smart_barangay_theme') || localStorage.getItem('theme');
+          var isDark = saved === 'dark';
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+            document.documentElement.setAttribute('data-theme', 'dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+            document.documentElement.setAttribute('data-theme', 'light');
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-JIm51t7w.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Dj42KkT8.css">
   </head>
   <body>
     <div id="root"></div>

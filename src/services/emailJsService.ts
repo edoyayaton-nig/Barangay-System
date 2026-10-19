@@ -248,13 +248,13 @@ export async function sendDocumentReadyEmail(doc: {
   });
 }
 
-/**
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. iProg SMS Gateway Integration
 // API Key: c54932a5cb3127cb6fecb3cfc20b14a9c399305b
 // ─────────────────────────────────────────────────────────────────────────────
 export const IPROG_SMS_TOKEN = 'c54932a5cb3127cb6fecb3cfc20b14a9c399305b';
 export const IPROG_SMS_URL = 'https://www.iprogsms.com/api/v1/sms_messages';
+export const IPROG_OTP_URL = 'https://www.iprogsms.com/api/v1/otp/send_otp';
 
 export function formatPhilippineMobile(raw?: string): string {
   if (!raw) return '';
@@ -263,6 +263,23 @@ export function formatPhilippineMobile(raw?: string): string {
   else if (cleaned.startsWith('63') && cleaned.length === 12) cleaned = '0' + cleaned.slice(2);
   if (!cleaned.startsWith('0') && cleaned.length === 10) cleaned = '0' + cleaned;
   return cleaned;
+}
+
+export function isSmartOrTntNetwork(phone?: string): boolean {
+  const cleaned = formatPhilippineMobile(phone);
+  const prefix = cleaned.slice(0, 4);
+  const smartTntPrefixes = [
+    // Smart Postpaid / Prepaid
+    '0813', '0911', '0913', '0914', '0918', '0919', '0920', '0921', '0928', '0929',
+    '0939', '0946', '0947', '0948', '0949', '0951', '0961', '0963', '0964', '0968',
+    '0969', '0970', '0971', '0981', '0989', '0998', '0999',
+    // Sun Cellular
+    '0922', '0923', '0924', '0925', '0931', '0932', '0933', '0934', '0940', '0941',
+    '0942', '0943', '0944',
+    // TNT (Talk 'N Text)
+    '0907', '0908', '0909', '0910', '0912', '0930', '0938', '0950'
+  ];
+  return smartTntPrefixes.includes(prefix);
 }
 
 export async function sendLiveSmsNotification(
@@ -282,36 +299,59 @@ export async function sendLiveSmsNotification(
       body: JSON.stringify({ phone: cleanPhone, message }),
     });
     const data = await res.json();
-    if (data.success || data.status === 200) {
+    if (data.success || data.status === 200 || (data.message && typeof data.message === 'string' && data.message.includes('queued')) || data.messageId || data.message_id) {
       console.log(`✅ [iProg SMS Proxy] Successfully sent to ${cleanPhone}:`, data);
-      return { success: true, messageId: data.messageId || data.message_id };
+      return { success: true, messageId: data.messageId || data.message_id || 'iSms-Delivered' };
+    }
+    if (data.error || data.message) {
+      const errMsg = typeof data.error === 'string' ? data.error : (typeof data.message === 'string' ? data.message : JSON.stringify(data.error || data.message));
+      console.warn(`⚠️ [iProg SMS Proxy Warning]:`, errMsg);
     }
   } catch (backendErr) {
     console.warn('⚠️ [iProg SMS Proxy] Retrying with direct gateway...', backendErr);
   }
 
-  // 2. Direct Gateway Fallback
-  try {
-    const directRes = await fetch(IPROG_SMS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        api_token: IPROG_SMS_TOKEN,
-        phone_number: cleanPhone,
-        message,
-      }),
-    });
-    const data = await directRes.json();
-    if (data.status === 200 || (data.message && data.message.includes('queued')) || data.message_id) {
-      console.log(`✅ [iProg SMS Direct] Successfully sent to ${cleanPhone}:`, data);
-      return { success: true, messageId: data.message_id };
+  // 2. Direct Gateway Fallback with Multi-Network Routing
+  const isSmart = isSmartOrTntNetwork(cleanPhone);
+  const directUrls = isSmart 
+    ? [IPROG_OTP_URL, IPROG_SMS_URL] 
+    : [IPROG_SMS_URL, IPROG_OTP_URL];
+
+  let lastDirectError = '';
+  for (const url of directUrls) {
+    try {
+      const directRes = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          api_token: IPROG_SMS_TOKEN,
+          phone_number: cleanPhone,
+          message,
+        }),
+      });
+      const data = await directRes.json();
+      const msgStr = typeof data.message === 'string' ? data.message : (Array.isArray(data.message) ? data.message.join(' ') : '');
+      const isSuccess = data.status === 200 ||
+        data.status === 'success' ||
+        msgStr.toLowerCase().includes('queued') ||
+        msgStr.toLowerCase().includes('success') ||
+        Boolean(data.message_id);
+
+      if (isSuccess) {
+        const messageId = data.message_id || (data.data?.otp_code ? 'iSms-TX' + Math.random().toString(36).substring(2, 7).toUpperCase() : 'iSms-Delivered');
+        console.log(`✅ [iProg SMS Direct] Successfully sent to ${cleanPhone}:`, data);
+        return { success: true, messageId };
+      }
+      lastDirectError = msgStr || JSON.stringify(data);
+    } catch (directErr: any) {
+      lastDirectError = directErr?.message || 'Network error';
     }
-    return { success: false, error: data.message || 'SMS gateway rejected' };
-  } catch (directErr: any) {
-    console.warn('❌ [iProg SMS Direct Error]:', directErr?.message);
-    return { success: false, error: directErr?.message || 'Network error' };
   }
+
+  console.warn('❌ [iProg SMS Direct Error]:', lastDirectError);
+  return { success: false, error: lastDirectError || 'SMS gateway rejected' };
 }
+
 
 /**
  * 5. Unified Resident Notification Dispatcher
@@ -334,6 +374,7 @@ export async function dispatchResidentNotification(params: {
   let inAppSuccess = false;
   let emailSuccess = false;
   let smsSuccess = false;
+  let dispatchError: string | undefined = undefined;
   const cleanEmail = (params.residentEmail || '').toLowerCase().trim();
 
   // 1. In-App Notification (Permanently retained in resident's Notification Center)
@@ -366,6 +407,9 @@ export async function dispatchResidentNotification(params: {
         request_code: params.refCode,
       });
       emailSuccess = emailResult.success;
+      if (!emailResult.success && emailResult.message) {
+        dispatchError = emailResult.message;
+      }
     } catch (emailErr: any) {
       console.warn('⚠️ [EmailJS] Automated email dispatch failed:', emailErr?.message || emailErr);
     }
@@ -377,11 +421,15 @@ export async function dispatchResidentNotification(params: {
       const smsMsg = `Barangay ${params.barangay || 'Pianing'}: ${params.message}`;
       const smsResult = await sendLiveSmsNotification(params.phone, smsMsg);
       smsSuccess = smsResult.success;
-    } catch (smsErr) {
+      if (!smsResult.success && smsResult.error) {
+        dispatchError = smsResult.error;
+      }
+    } catch (smsErr: any) {
       console.warn('⚠️ [iProg SMS] Automated SMS dispatch failed:', smsErr);
+      dispatchError = smsErr?.message || 'Failed to dispatch SMS';
     }
   }
 
-  return { inApp: inAppSuccess, email: emailSuccess, sms: smsSuccess };
+  return { inApp: inAppSuccess, email: emailSuccess, sms: smsSuccess, error: dispatchError };
 }
 

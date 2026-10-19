@@ -191,7 +191,7 @@ export default function BatchSmsReminderModal({
           await apiService.sendNotification({
             recipient_name: p.name,
             recipient_phone: p.phone,
-            recipient_email: p.email,
+          //  recipient_email: p.email,
             type: p.isOverdue ? 'Overdue Clinical Reminder' : 'Scheduled Clinical Reminder',
             message: msg,
             status: 'Sent'

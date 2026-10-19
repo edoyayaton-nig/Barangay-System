@@ -51,6 +51,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '../components/ui/popove
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
+import ThemeToggle from '../components/ThemeToggle';
 import { getUpcomingOperatingDates, formatOperatingDaysSummary } from '../../utils/scheduleDateUtils';
 import { notificationStore, PersistentNotification } from '../../services/notificationStore';
 
@@ -537,19 +538,19 @@ export default function HealthCenterPortal() {
   }, [nextUpcomingVisit]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans transition-colors">
       <SuperAdminNavigationDock currentRole={user?.role} />
 
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs transition-colors">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               onClick={() => navigate('/resident')}
-              className="flex items-center gap-1 text-xs text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-2.5 h-8 rounded-xl cursor-pointer transition-colors shadow-xs"
+              className="flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 px-2.5 h-8 rounded-xl cursor-pointer transition-colors shadow-xs"
               title="Back to Portals"
             >
-              <ArrowLeft size={13} className="text-slate-600" />
+              <ArrowLeft size={13} className="text-slate-600 dark:text-slate-300" />
               <span className="font-semibold">Back</span>
             </button>
             <div className="w-9 h-9 rounded-xl overflow-hidden shadow-xs border border-emerald-100 bg-white shrink-0">
@@ -557,7 +558,7 @@ export default function HealthCenterPortal() {
             </div>
             <div>
               <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider leading-none">Barangay {user?.barangay || 'Pianing'}</p>
-              <h1 className="text-sm font-bold text-slate-900 leading-tight">Health Center Portal</h1>
+              <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Health Center Portal</h1>
             </div>
           </div>
 
@@ -575,6 +576,7 @@ export default function HealthCenterPortal() {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle variant="pill" />
             {user && (
               <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
                 <PopoverTrigger asChild>

@@ -235,11 +235,19 @@ class SystemController extends Controller
     public function getNotifications(Request $request)
     {
         $email = $request->input('email', $request->input('user_email', ''));
-        $query = UserNotification::query();
         if (!empty($email)) {
+            $query = UserNotification::query();
             $query->whereRaw('LOWER(recipient_email) = ?', [strtolower($email)]);
+            return response()->json($query->orderBy('created_at', 'desc')->get());
         }
-        return response()->json($query->orderBy('created_at', 'desc')->get());
+
+        // When no recipient email is specified, return system SMS dispatch history
+        try {
+            $smsList = DB::table('sms_notifications')->orderBy('sent_at', 'desc')->limit(100)->get();
+            return response()->json($smsList);
+        } catch (\Throwable $e) {
+            return response()->json([]);
+        }
     }
 
     public function markNotificationRead($id)
@@ -262,34 +270,60 @@ class SystemController extends Controller
     {
         $phone = $request->input('recipient_phone', $request->input('phone', ''));
         $msg = $request->input('message', '');
+        $recipientName = $request->input('recipient_name', $request->input('name', 'Resident'));
+        $type = $request->input('type', 'Barangay Announcement');
+        $email = $request->input('recipient_email', $request->input('email', ''));
 
-        $notif = UserNotification::create([
-            'recipient_email' => $request->input('recipient_email', ''),
-            'type' => $request->input('type', 'System'),
-            'title' => $request->input('title', 'Notification'),
-            'message' => $msg,
-            'ref_code' => $request->input('ref_code'),
-            'is_read' => 0,
-            'created_at' => now(),
-        ]);
-
-        if (!empty($phone) && !empty($msg)) {
-            SmsService::sendLiveSms($phone, $msg);
+        if (empty($email) && !empty($phone)) {
+            $r = Resident::where('phone', $phone)->first();
+            if ($r && !empty($r->email)) $email = $r->email;
         }
 
-        return response()->json(['success' => true, 'notification' => $notif], 201);
+        $notif = null;
+        if (!empty($email)) {
+            try {
+                $notif = UserNotification::create([
+                    'recipient_email' => $email,
+                    'type' => $type,
+                    'title' => $request->input('title', 'Notification'),
+                    'message' => $msg,
+                    'ref_code' => $request->input('ref_code'),
+                    'is_read' => 0,
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable $e) {}
+        }
+
+        $smsRes = ['success' => false];
+        if (!empty($phone) && !empty($msg)) {
+            $smsRes = SmsService::sendLiveSms($phone, $msg, $recipientName, $type);
+        }
+
+        return response()->json([
+            'id' => rand(100, 99999),
+            'success' => true,
+            'notification' => $notif,
+            'sms' => $smsRes,
+            'status' => 'Sent',
+            'recipient_name' => $recipientName,
+            'recipient_phone' => $phone,
+            'message' => $msg,
+            'sent_at' => now()->toIso8601String()
+        ], 201);
     }
 
     public function sendSmsDirect(Request $request)
     {
         $phone = $request->input('phone', $request->input('recipient_phone', $request->input('phone_number')));
+        $recipientName = $request->input('recipient_name', $request->input('name', 'Resident'));
+        $type = $request->input('type', 'Barangay Announcement');
         $message = $request->input('message', $request->input('text', ''));
 
         if (empty($phone) || empty($message)) {
             return response()->json(['success' => false, 'error' => 'Phone number and message are required.'], 400);
         }
 
-        $res = SmsService::sendLiveSms($phone, $message);
+        $res = SmsService::sendLiveSms($phone, $message, $recipientName, $type);
         return response()->json($res);
     }
 

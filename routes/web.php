@@ -2,6 +2,21 @@
 
 use Illuminate\Support\Facades\Route;
 
+// Favicon handler to prevent 404 console errors
+Route::get('/favicon.ico', function () {
+    $iconPath = public_path('assets/pianing-logo.png');
+    if (!file_exists($iconPath)) {
+        $iconPath = base_path('dist/assets/pianing-logo.png');
+    }
+    if (file_exists($iconPath)) {
+        return response(file_get_contents($iconPath), 200, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+    return response('', 204);
+});
+
 // Serve public uploads (photos, resident IDs, document attachments)
 Route::get('/uploads/{filename}', function ($filename) {
     $path = public_path('uploads/' . $filename);
@@ -19,6 +34,13 @@ Route::get('/uploads/{filename}', function ($filename) {
             default => 'application/octet-stream',
         };
         return response(file_get_contents($path), 200, ['Content-Type' => $mime]);
+    }
+    // Graceful fallback for missing profile photos/images: return 1x1 transparent PNG to prevent console 404s
+    if (preg_match('/\.(jpg|jpeg|png|webp|gif)$/i', $filename)) {
+        return response(base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='), 200, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'no-cache',
+        ]);
     }
     abort(404, 'File not found');
 });
@@ -55,7 +77,7 @@ Route::get('/assets/{file}', function ($file) {
 })->where('file', '.*');
 
 // Single-Runtime React SPA Wildcard Fallback Route
-// Any route not matching /api/... or /uploads/... serves the compiled React application
+// Any route not matching /api/... serves the compiled React application
 Route::get('/{any?}', function () {
     $indexPath = public_path('index.html');
     if (!file_exists($indexPath)) {
@@ -77,3 +99,19 @@ Route::get('/{any?}', function () {
     ]);
 })->where('any', '^(?!api/).*');
 
+// Fallback handler for unmatched routes
+Route::fallback(function () {
+    $indexPath = public_path('index.html');
+    if (!file_exists($indexPath)) {
+        $indexPath = base_path('dist/index.html');
+    }
+
+    if (file_exists($indexPath)) {
+        return response(file_get_contents($indexPath), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
+    }
+
+    abort(404, 'Not Found');
+});

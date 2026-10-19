@@ -45,7 +45,8 @@ import {
   Trash2,
   Package,
   ClipboardList,
-  XCircle
+  XCircle,
+  Loader2
 } from 'lucide-react';
 import { apiService, ImmunizationRecord, MaternalRecord, SmsNotification, DocumentRequest, HealthAppointment, ClinicSchedule, InventoryItem, Resident } from '../../services/api';
 import SystemMessenger from '../components/SystemMessenger';
@@ -60,6 +61,7 @@ import ProfileSettingsView from '../components/ProfileSettingsView';
 import BatchSmsReminderModal, { DuePatientItem } from '../components/BatchSmsReminderModal';
 import CensusEntryTab from '../components/CensusEntryTab';
 import ManualResidentNotifyModal from '../components/ManualResidentNotifyModal';
+import ThemeToggle from '../components/ThemeToggle';
 import { dispatchResidentNotification } from '../../services/emailJsService';
 import {
   notifyHealthDataChanged,
@@ -286,6 +288,18 @@ export default function BhwDashboard() {
     return { label: 'Recorded', color: 'bg-slate-100 text-slate-700' };
   };
 
+  // Maternal Resident Database Search State in BHW
+  const [bhwMResidentSearch, setBhwMResidentSearch] = useState('');
+  const [bhwMSearchResults, setBhwMSearchResults] = useState<any[]>([]);
+  const [isBhwMSearching, setIsBhwMSearching] = useState(false);
+  const [showBhwMSuggestions, setShowBhwMSuggestions] = useState(false);
+
+  // Child Immunization Resident Database Search State in BHW
+  const [bhwCResidentSearch, setBhwCResidentSearch] = useState('');
+  const [bhwCSearchResults, setBhwCSearchResults] = useState<any[]>([]);
+  const [isBhwCSearching, setIsBhwCSearching] = useState(false);
+  const [showBhwCSuggestions, setShowBhwCSuggestions] = useState(false);
+
   const [smsRecipientName, setSmsRecipientName] = useState('');
   const [smsPhone, setSmsPhone] = useState('');
   const [smsType, setSmsType] = useState('Immunization Reminder');
@@ -360,7 +374,7 @@ export default function BhwDashboard() {
         if (remRes?.three_day_sms_count && remRes.three_day_sms_count > 0) {
           console.log(`⏰ [BHW Auto-Reminders] Dispatched ${remRes.three_day_sms_count} 3-day appointment SMS reminders.`);
         }
-      }).catch(() => {});
+      }).catch(() => { });
     } catch (err) {
       if (showLoading) toast.error('Failed to load health monitoring data');
     } finally {
@@ -409,7 +423,7 @@ export default function BhwDashboard() {
         }).then(res => {
           if (res.sms) toast.info(`📱 Live SMS sent to ${apt.resident_phone}`);
           if (res.email) toast.info(`📧 Email confirmation sent to ${apt.resident_email}`);
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       toast.success('Appointment Approved & Confirmed!', {
@@ -507,7 +521,7 @@ export default function BhwDashboard() {
     try {
       await apiService.updateDocumentStatus(id, nextStatus, user?.name || 'Nurse Maria (BHW)');
       setDocuments(documents.map(d => d.id === id ? { ...d, status: nextStatus, processed_at: new Date().toLocaleDateString(), processed_by: user?.name || 'Nurse Maria (BHW)' } : d));
-      
+
       if (nextStatus === 'Completed') {
         if (resEmail || resPhone) {
           dispatchResidentNotification({
@@ -524,7 +538,7 @@ export default function BhwDashboard() {
           }).then(res => {
             if (res.sms) toast.info(`📱 Live SMS sent to ${resPhone}`);
             if (res.email) toast.info(`📧 Email sent to ${resEmail}`);
-          }).catch(() => {});
+          }).catch(() => { });
         }
 
         toast.success(`Health Document Approved & Ready for Release!`, {
@@ -742,7 +756,7 @@ export default function BhwDashboard() {
   const handleDeleteInventory = async (id: number | string) => {
     try {
       await apiService.deleteInventoryItem(id);
-    } catch {}
+    } catch { }
     setInventory(prev => prev.filter(i => i.id !== id));
     toast.success('Inventory item removed');
     triggerHealthSync();
@@ -763,7 +777,7 @@ export default function BhwDashboard() {
     e.preventDefault();
     const combinedMotherName = [newMotherFirstName.trim(), newMotherMiddleName.trim(), newMotherLastName.trim()].filter(Boolean).join(' ') || newMotherName.trim();
     if (!combinedMotherName) { toast.error("Mother's first and last name are required"); return; }
-    
+
     const bpReading = (newMotherBpSys && newMotherBpDia) ? `${newMotherBpSys}/${newMotherBpDia} mmHg` : '110/70 mmHg';
 
     try {
@@ -866,10 +880,10 @@ export default function BhwDashboard() {
     const doseStr = String(i.dose_number || '').toLowerCase();
     const matchesFilter =
       immFilter === 'all' ? true :
-      immFilter === 'dose1' ? doseStr.includes('1') :
-      immFilter === 'dose2' ? doseStr.includes('2') :
-      immFilter === 'dose3' ? (doseStr.includes('3') || doseStr.includes('booster')) :
-      immFilter === 'overdue' ? i.status === 'Overdue' : true;
+        immFilter === 'dose1' ? doseStr.includes('1') :
+          immFilter === 'dose2' ? doseStr.includes('2') :
+            immFilter === 'dose3' ? (doseStr.includes('3') || doseStr.includes('booster')) :
+              immFilter === 'overdue' ? i.status === 'Overdue' : true;
     return matchesSearch && matchesFilter;
   });
 
@@ -879,17 +893,17 @@ export default function BhwDashboard() {
       m.mother_name.toLowerCase().includes(maternalSearch.toLowerCase()) ||
       (m.pregnancy_status || '').toLowerCase().includes(maternalSearch.toLowerCase());
     const is2nd = (m.pregnancy_status || '').toLowerCase().includes('2nd') ||
-                  ((m as any).visit_type || '').includes('2nd') ||
-                  (m as any).visit_number === 2;
+      ((m as any).visit_type || '').includes('2nd') ||
+      (m as any).visit_number === 2;
     const is1st = (m.pregnancy_status || '').toLowerCase().includes('1st') ||
-                  ((m as any).visit_type || '').includes('1st') ||
-                  (m as any).visit_number === 1;
+      ((m as any).visit_type || '').includes('1st') ||
+      (m as any).visit_number === 1;
     const matchesFilter =
       maternalFilter === 'all' ? true :
-      maternalFilter === '1st' ? is1st :
-      maternalFilter === '2nd' ? is2nd :
-      maternalFilter === 'high_risk' ? m.risk_level === 'High' :
-      maternalFilter === 'due' ? (m.next_visit && new Date(m.next_visit) <= new Date(Date.now() + 7 * 86400000)) : true;
+        maternalFilter === '1st' ? is1st :
+          maternalFilter === '2nd' ? is2nd :
+            maternalFilter === 'high_risk' ? m.risk_level === 'High' :
+              maternalFilter === 'due' ? (m.next_visit && new Date(m.next_visit) <= new Date(Date.now() + 7 * 86400000)) : true;
     return matchesSearch && matchesFilter;
   });
 
@@ -898,7 +912,7 @@ export default function BhwDashboard() {
     ...immunizations
       .filter(i => i.status === 'Overdue' || (i.due_date && new Date(i.due_date) <= new Date(Date.now() + 7 * 86400000)))
       .map(i => {
-        const matchRes = residents.find(r => 
+        const matchRes = residents.find(r =>
           (r.first_name + ' ' + r.last_name).toLowerCase().trim() === ((i as any).guardian_name || (i as any).guardian || '').toLowerCase().trim() ||
           (r.first_name + ' ' + r.last_name).toLowerCase().trim() === (i.child_name || '').toLowerCase().trim()
         );
@@ -918,7 +932,7 @@ export default function BhwDashboard() {
     ...maternalRecords
       .filter(m => m.risk_level === 'High' || (m.next_visit && new Date(m.next_visit) <= new Date(Date.now() + 7 * 86400000)))
       .map(m => {
-        const matchRes = residents.find(r => 
+        const matchRes = residents.find(r =>
           r.id === m.resident_id ||
           (r.first_name + ' ' + r.last_name).toLowerCase().trim() === (m.mother_name || '').toLowerCase().trim()
         );
@@ -959,7 +973,7 @@ export default function BhwDashboard() {
     const matchesStatus = apptStatusFilter === 'all' || (a.status || '').toLowerCase() === apptStatusFilter.toLowerCase();
     const cleanFilterService = apptServiceFilter.toLowerCase();
     const aService = (a.service_type || '').toLowerCase();
-    const matchesService = apptServiceFilter === 'all' || 
+    const matchesService = apptServiceFilter === 'all' ||
       aService === cleanFilterService ||
       aService.includes(cleanFilterService) ||
       cleanFilterService.includes(aService);
@@ -1033,6 +1047,251 @@ export default function BhwDashboard() {
     setBhwCSearchFocus(false);
   };
 
+  const bhwBarangay = user?.barangay || 'Pianing';
+
+  // Search resident database for Maternal Health (BHW)
+  const handleSearchBhwMaternalResident = (query: string) => {
+    setBhwMResidentSearch(query);
+    const qLower = query.trim().toLowerCase();
+    if (qLower.length >= 2) {
+      const localMatches = residents.filter(r => {
+        const fullName = `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}`.toLowerCase();
+        const phone = (r.phone || '').replace(/\D/g, '');
+        return fullName.includes(qLower) || (phone && phone.includes(qLower.replace(/\D/g, '')));
+      }).map(r => ({
+        id: r.id,
+        name: `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}`.trim(),
+        first_name: r.first_name,
+        middle_name: r.middle_name || '',
+        last_name: r.last_name,
+        gender: r.gender || 'Female',
+        age: r.age,
+        date_of_birth: r.date_of_birth,
+        phone: r.phone || '',
+        purok: r.purok,
+        barangay: r.barangay,
+        household_number: r.household_number
+      }));
+
+      if (localMatches.length > 0) {
+        setBhwMSearchResults(localMatches);
+        setShowBhwMSuggestions(true);
+      }
+
+      setIsBhwMSearching(true);
+      apiService.searchPatients(query.trim(), bhwBarangay)
+        .then(res => {
+          const apiList = res?.patients || [];
+          const combined = [...apiList];
+          for (const loc of localMatches) {
+            if (!combined.some(item => (item.id && item.id === loc.id) || item.name?.toLowerCase() === loc.name?.toLowerCase())) {
+              combined.push(loc);
+            }
+          }
+          setBhwMSearchResults(combined);
+          setShowBhwMSuggestions(combined.length > 0);
+        })
+        .catch(() => {
+          if (localMatches.length > 0) {
+            setBhwMSearchResults(localMatches);
+            setShowBhwMSuggestions(true);
+          } else {
+            setBhwMSearchResults([]);
+          }
+        })
+        .finally(() => setIsBhwMSearching(false));
+    } else {
+      setBhwMSearchResults([]);
+      setShowBhwMSuggestions(false);
+    }
+  };
+
+  const selectBhwMaternalResident = (m: any) => {
+    let firstName = m.first_name || '';
+    let middleName = m.middle_name || '';
+    let lastName = m.last_name || '';
+    if (!firstName && m.name) {
+      const parts = m.name.trim().split(/\s+/);
+      firstName = parts[0] || '';
+      if (parts.length === 2) {
+        lastName = parts[1] || '';
+      } else if (parts.length > 2) {
+        middleName = parts[1] || '';
+        lastName = parts.slice(2).join(' ') || '';
+      }
+    }
+
+    setNewMotherFirstName(firstName);
+    setNewMotherMiddleName(middleName);
+    setNewMotherLastName(lastName);
+    setNewMotherName(`${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.trim());
+
+    if (m.phone) setNewMotherPhone(m.phone.replace(/\D/g, '').slice(0, 11));
+
+    if (m.age !== undefined && m.age !== null && m.age !== '') {
+      setNewMotherAge(String(m.age));
+    } else if (m.date_of_birth) {
+      const calculatedAge = Math.floor((Date.now() - new Date(m.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      if (!isNaN(calculatedAge) && calculatedAge > 0) setNewMotherAge(String(calculatedAge));
+    }
+
+    if (m.last_encounter?.bp) {
+      const bpParts = m.last_encounter.bp.replace('mmHg', '').split('/');
+      if (bpParts[0] && !newMotherBpSys) setNewMotherBpSys(bpParts[0].trim().replace(/\D/g, ''));
+      if (bpParts[1] && !newMotherBpDia) setNewMotherBpDia(bpParts[1].trim().replace(/\D/g, ''));
+    }
+
+    setBhwMResidentSearch(`${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.trim());
+    setShowBhwMSuggestions(false);
+    setBhwMSearchFocus(false);
+
+    // Check prior maternal records
+    const motherFullName = `${firstName} ${lastName}`.toLowerCase();
+    const prevVisits = maternalRecords.filter(r =>
+      (r.mother_name || '').toLowerCase().includes(motherFullName) ||
+      motherFullName.includes((r.mother_name || '').toLowerCase())
+    );
+    if (prevVisits.length > 0) {
+      setNewMotherVisitType('Subsequent Follow-up Visit');
+      toast.info(`Found ${prevVisits.length} prior maternal record(s) for ${firstName}. Auto-filled details from Database!`);
+    } else {
+      setNewMotherVisitType('1st Trimester Initial Checkup');
+      toast.success(`Auto-filled resident details for ${firstName} ${lastName} from Database!`);
+    }
+  };
+
+  // Search resident database for Child Immunization (BHW)
+  const handleSearchBhwImmunResident = (query: string) => {
+    setBhwCResidentSearch(query);
+    const qLower = query.trim().toLowerCase();
+    if (qLower.length >= 2) {
+      const localMatches = residents.filter(r => {
+        const fullName = `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}`.toLowerCase();
+        const phone = (r.phone || '').replace(/\D/g, '');
+        return fullName.includes(qLower) || (phone && phone.includes(qLower.replace(/\D/g, '')));
+      }).map(r => ({
+        id: r.id,
+        name: `${r.first_name} ${r.middle_name ? r.middle_name + ' ' : ''}${r.last_name}`.trim(),
+        first_name: r.first_name,
+        middle_name: r.middle_name || '',
+        last_name: r.last_name,
+        gender: r.gender,
+        age: r.age,
+        date_of_birth: r.date_of_birth,
+        phone: r.phone || '',
+        purok: r.purok,
+        barangay: r.barangay,
+        household_number: r.household_number
+      }));
+
+      if (localMatches.length > 0) {
+        setBhwCSearchResults(localMatches);
+        setShowBhwCSuggestions(true);
+      }
+
+      setIsBhwCSearching(true);
+      apiService.searchPatients(query.trim(), bhwBarangay)
+        .then(res => {
+          const apiList = res?.patients || [];
+          const combined = [...apiList];
+          for (const loc of localMatches) {
+            if (!combined.some(item => (item.id && item.id === loc.id) || item.name?.toLowerCase() === loc.name?.toLowerCase())) {
+              combined.push(loc);
+            }
+          }
+          setBhwCSearchResults(combined);
+          setShowBhwCSuggestions(combined.length > 0);
+        })
+        .catch(() => {
+          if (localMatches.length > 0) {
+            setBhwCSearchResults(localMatches);
+            setShowBhwCSuggestions(true);
+          } else {
+            setBhwCSearchResults([]);
+          }
+        })
+        .finally(() => setIsBhwCSearching(false));
+    } else {
+      setBhwCSearchResults([]);
+      setShowBhwCSuggestions(false);
+    }
+  };
+
+  const selectBhwImmunResident = (c: any) => {
+    let firstName = c.first_name || '';
+    let middleName = c.middle_name || '';
+    let lastName = c.last_name || '';
+    if (!firstName && c.name) {
+      const parts = c.name.trim().split(/\s+/);
+      firstName = parts[0] || '';
+      if (parts.length === 2) {
+        lastName = parts[1] || '';
+      } else if (parts.length > 2) {
+        middleName = parts[1] || '';
+        lastName = parts.slice(2).join(' ') || '';
+      }
+    }
+
+    setNewChildFirstName(firstName);
+    setNewChildMiddleName(middleName);
+    setNewChildLastName(lastName);
+    setNewChildName(`${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.trim());
+
+    if (c.gender === 'Female' || c.gender === 'Male') {
+      setNewChildGender(c.gender);
+    }
+
+    if (c.date_of_birth) {
+      const months = Math.floor((Date.now() - new Date(c.date_of_birth).getTime()) / (30.4375 * 24 * 60 * 60 * 1000));
+      if (!isNaN(months) && months >= 0) setNewChildAge(String(months));
+    } else if (c.age != null && c.age !== '') {
+      const numericAge = parseInt(String(c.age), 10);
+      if (!isNaN(numericAge)) {
+        setNewChildAge(numericAge <= 5 ? String(numericAge * 12) : String(numericAge));
+      }
+    }
+
+    if (c.phone) setNewParentPhone(c.phone.replace(/\D/g, '').slice(0, 11));
+
+    let guardianFound = false;
+    if (c.household_number) {
+      const familyMembers = residents.filter(r => r.household_number === c.household_number && r.id !== c.id);
+      const head = familyMembers.find(m => m.is_head_of_household) || familyMembers.find(m => Number(m.age || 0) >= 18) || familyMembers[0];
+      if (head) {
+        setNewGuardianName(`${head.first_name} ${head.last_name}`.trim());
+        guardianFound = true;
+        if (head.phone && !c.phone) setNewParentPhone(head.phone.replace(/\D/g, '').slice(0, 11));
+      }
+    }
+    if (!guardianFound && c.guardian_name) {
+      setNewGuardianName(c.guardian_name);
+      guardianFound = true;
+    }
+    if (!guardianFound && c.resident?.guardian_name) {
+      setNewGuardianName(c.resident.guardian_name);
+      guardianFound = true;
+    }
+
+    setBhwCResidentSearch(`${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.trim());
+    setShowBhwCSuggestions(false);
+    setBhwCSearchFocus(false);
+
+    // Check previous immunizations
+    const childFullName = `${firstName} ${lastName}`.toLowerCase();
+    const prevVaccines = immunizations.filter(r =>
+      (r.child_name || '').toLowerCase().includes(childFullName) ||
+      childFullName.includes((r.child_name || '').toLowerCase())
+    );
+    if (prevVaccines.length > 0) {
+      const nextDose = prevVaccines.length + 1;
+      setNewDoseNumber(String(nextDose));
+      toast.info(`Found ${prevVaccines.length} previous immunization(s) for ${firstName}. Auto-set to Dose ${nextDose}!`);
+    } else {
+      setNewDoseNumber('1');
+      toast.success(`Auto-filled child details for ${firstName} ${lastName} from Database!`);
+    }
+  };
+
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: Home },
     { id: 'appointments', label: 'Appointments & Schedules', icon: CalendarCheck },
@@ -1075,6 +1334,7 @@ export default function BhwDashboard() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle variant="pill" />
 
             {/* Manual Resident Notification Dispatcher */}
             <button
@@ -1161,13 +1421,13 @@ export default function BhwDashboard() {
               )}
             </div>
 
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              BHW Station Active
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                BHW Station Active
+              </span>
+            </div>
           </div>
-        </div>
         </div>
       </header>
 
@@ -1180,9 +1440,8 @@ export default function BhwDashboard() {
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white dark:bg-slate-900 shadow-2xl flex flex-col py-4 border-r border-slate-200 dark:border-slate-800 lg:hidden transform transition-transform duration-300 ease-in-out ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white dark:bg-slate-900 shadow-2xl flex flex-col py-4 border-r border-slate-200 dark:border-slate-800 lg:hidden transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="flex items-center justify-between px-4 pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -1194,14 +1453,17 @@ export default function BhwDashboard() {
               <span className="text-[10px] text-blue-600 font-semibold">BHW Health Portal</span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(false)}
-            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer"
-            aria-label="Close navigation"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <ThemeToggle variant="compact" />
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+              aria-label="Close navigation"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
@@ -1218,11 +1480,10 @@ export default function BhwDashboard() {
                   }
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
-                  isActive
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${isActive
                     ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-[#6458FF]/10 hover:text-[#6458FF] dark:hover:text-white'
-                }`}
+                  }`}
               >
                 <item.icon size={18} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                 <span>{item.label}</span>
@@ -1262,11 +1523,10 @@ export default function BhwDashboard() {
                       setActiveTab(item.id);
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
-                    isActive
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${isActive
                       ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-[#6458FF]/10 hover:text-[#6458FF] dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <item.icon size={18} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
                   <span>{item.label}</span>
@@ -1771,8 +2031,8 @@ export default function BhwDashboard() {
                             <TableCell>
                               <Badge className={
                                 apt.status === 'Approved' ? 'bg-emerald-600 text-white' :
-                                apt.status === 'Completed' ? 'bg-blue-600 text-white' :
-                                apt.status === 'Cancelled' ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'
+                                  apt.status === 'Completed' ? 'bg-blue-600 text-white' :
+                                    apt.status === 'Cancelled' ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'
                               }>
                                 {apt.status}
                               </Badge>
@@ -2175,15 +2435,14 @@ export default function BhwDashboard() {
                         key={f.id}
                         type="button"
                         onClick={() => setImmFilter(f.id as any)}
-                        className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-                          isSelected
+                        className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${isSelected
                             ? f.id === 'dose2'
                               ? 'bg-indigo-600 text-white shadow-xs'
                               : f.id === 'overdue'
-                              ? 'bg-rose-600 text-white shadow-xs'
-                              : 'bg-blue-600 text-white shadow-xs'
+                                ? 'bg-rose-600 text-white shadow-xs'
+                                : 'bg-blue-600 text-white shadow-xs'
                             : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                        }`}
+                          }`}
                       >
                         {f.label}
                       </button>
@@ -2273,7 +2532,7 @@ export default function BhwDashboard() {
                                 <TableCell>
                                   <Badge className={
                                     imm.status === 'Completed' ? 'bg-emerald-600 text-white' :
-                                    imm.status === 'Overdue' ? 'bg-rose-600 text-white font-bold' : 'bg-blue-600 text-white'
+                                      imm.status === 'Overdue' ? 'bg-rose-600 text-white font-bold' : 'bg-blue-600 text-white'
                                   }>
                                     {imm.status}
                                   </Badge>
@@ -2408,6 +2667,88 @@ export default function BhwDashboard() {
                       </DialogHeader>
 
                       <form onSubmit={handleCreateMaternalRecord} className="space-y-3.5 pt-3">
+                        {/* Top Searchable Resident Database Blank */}
+                        <div className="relative p-3.5 bg-gradient-to-r from-pink-50/90 via-rose-50/60 to-pink-50/90 border border-pink-200/90 rounded-2xl shadow-sm">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <Label className="text-xs font-bold text-pink-900 flex items-center gap-1.5">
+                              <Search size={13} className="text-pink-600" />
+                              Search Resident in Database <span className="text-[11px] font-normal text-pink-700/80">(Auto-fill)</span>
+                            </Label>
+                            {isBhwMSearching ? (
+                              <span className="text-[10px] text-pink-600 font-semibold animate-pulse flex items-center gap-1">
+                                <Loader2 size={11} className="animate-spin" /> Searching database...
+                              </span>
+                            ) : bhwMSearchResults.length > 0 ? (
+                              <span className="text-[10px] text-pink-700 font-bold bg-pink-100/80 border border-pink-300 px-2 py-0.5 rounded-full">
+                                {bhwMSearchResults.length} match{bhwMSearchResults.length > 1 ? 'es' : ''} found
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">Type name to autofill</span>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-2.5 text-pink-400" size={15} />
+                            <Input
+                              value={bhwMResidentSearch}
+                              onChange={e => handleSearchBhwMaternalResident(e.target.value)}
+                              onFocus={() => {
+                                if (bhwMSearchResults.length > 0) setShowBhwMSuggestions(true);
+                              }}
+                              placeholder="Type name (matches database automatically, click to autofill)"
+                              className="h-9.5 pl-8.5 pr-8 text-xs rounded-xl border-pink-200 bg-white focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 shadow-sm"
+                            />
+                            {bhwMResidentSearch && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBhwMResidentSearch('');
+                                  setBhwMSearchResults([]);
+                                  setShowBhwMSuggestions(false);
+                                }}
+                                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs cursor-pointer p-0.5"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Suggestions Dropdown */}
+                          {showBhwMSuggestions && bhwMSearchResults.length > 0 && (
+                            <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-pink-300 rounded-xl shadow-2xl max-h-52 overflow-y-auto divide-y divide-slate-100">
+                              <div className="p-2 bg-pink-50/90 text-[10px] font-bold text-pink-900 flex items-center justify-between px-3">
+                                <span>Found in Database ({bhwMSearchResults.length}) — Click to Auto-fill</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowBhwMSuggestions(false)}
+                                  className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              {bhwMSearchResults.map((p: any) => (
+                                <button
+                                  key={`bhw-maternal-db-${p.id}`}
+                                  type="button"
+                                  onClick={() => selectBhwMaternalResident(p)}
+                                  className="w-full text-left p-2.5 hover:bg-pink-50/70 transition-colors flex items-center justify-between text-xs cursor-pointer group"
+                                >
+                                  <div>
+                                    <span className="font-bold text-slate-800 group-hover:text-pink-700 block">
+                                      {p.name || `${p.first_name || ''} ${p.middle_name || ''} ${p.last_name || ''}`.trim()}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 block">
+                                      {p.gender || 'Female'} · {p.purok || 'Brgy. ' + bhwBarangay} · {p.phone || 'No phone'} · Age: {p.age || '—'}
+                                    </span>
+                                  </div>
+                                  <Badge variant="outline" className="text-[9px] bg-pink-50 border-pink-300 text-pink-700 shrink-0 font-semibold group-hover:bg-pink-600 group-hover:text-white transition-colors">
+                                    Auto-fill
+                                  </Badge>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
                         <div className="relative">
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Patient Identification</p>
@@ -2715,15 +3056,14 @@ export default function BhwDashboard() {
                         key={f.id}
                         type="button"
                         onClick={() => setMaternalFilter(f.id as any)}
-                        className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-                          isSelected
+                        className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${isSelected
                             ? f.id === '2nd'
                               ? 'bg-indigo-600 text-white shadow-xs'
                               : f.id === 'high_risk'
-                              ? 'bg-rose-600 text-white shadow-xs'
-                              : 'bg-pink-600 text-white shadow-xs'
+                                ? 'bg-rose-600 text-white shadow-xs'
+                                : 'bg-pink-600 text-white shadow-xs'
                             : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                        }`}
+                          }`}
                       >
                         {f.label}
                       </button>
@@ -2770,8 +3110,8 @@ export default function BhwDashboard() {
                         ) : (
                           filteredMaternalRecords.map(mat => {
                             const is2nd = (mat.pregnancy_status || '').toLowerCase().includes('2nd') ||
-                                          ((mat as any).visit_type || '').includes('2nd') ||
-                                          (mat as any).visit_number === 2;
+                              ((mat as any).visit_type || '').includes('2nd') ||
+                              (mat as any).visit_number === 2;
                             const bp = (mat as any).blood_pressure;
                             return (
                               <TableRow key={mat.id} className="text-xs hover:bg-slate-50/70 transition-colors">
@@ -2822,7 +3162,7 @@ export default function BhwDashboard() {
                                 <TableCell>
                                   <Badge className={
                                     mat.risk_level === 'High' ? 'bg-rose-600 text-white font-bold' :
-                                    mat.risk_level === 'Moderate' ? 'bg-amber-500 text-white font-medium' : 'bg-emerald-600 text-white'
+                                      mat.risk_level === 'Moderate' ? 'bg-amber-500 text-white font-medium' : 'bg-emerald-600 text-white'
                                   }>
                                     {mat.risk_level || 'Low'}
                                   </Badge>
@@ -3270,8 +3610,8 @@ export default function BhwDashboard() {
                     <div className="flex justify-between items-center py-2 border-b">
                       <span>Postnatal Care Checks</span>
                       <span className="font-bold font-mono text-emerald-600">
-                        {maternalRecords.filter(m => 
-                          (m.pregnancy_status || '').toLowerCase().includes('post') || 
+                        {maternalRecords.filter(m =>
+                          (m.pregnancy_status || '').toLowerCase().includes('post') ||
                           ((m as any).visit_type || '').toLowerCase().includes('post')
                         ).length}
                       </span>
@@ -3282,7 +3622,7 @@ export default function BhwDashboard() {
                     </div>
                   </CardContent>
                 </Card>
-                </div>
+              </div>
 
               {/* ─── LIVE ANALYTICS ─────────────────────────────────────────── */}
               <div className="mt-4">
@@ -3541,6 +3881,88 @@ export default function BhwDashboard() {
           </div>
 
           <form onSubmit={handleCreateImmunization} className="p-5 space-y-4">
+            {/* Top Searchable Resident Database Blank */}
+            <div className="relative p-3.5 bg-gradient-to-r from-blue-50/90 via-sky-50/60 to-blue-50/90 border border-blue-200/90 rounded-2xl shadow-sm">
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                  <Search size={13} className="text-blue-600" />
+                  Search Resident in Database <span className="text-[11px] font-normal text-blue-700/80">(Auto-fill)</span>
+                </Label>
+                {isBhwCSearching ? (
+                  <span className="text-[10px] text-blue-600 font-semibold animate-pulse flex items-center gap-1">
+                    <Loader2 size={11} className="animate-spin" /> Searching database...
+                  </span>
+                ) : bhwCSearchResults.length > 0 ? (
+                  <span className="text-[10px] text-blue-700 font-bold bg-blue-100/80 border border-blue-300 px-2 py-0.5 rounded-full">
+                    {bhwCSearchResults.length} match{bhwCSearchResults.length > 1 ? 'es' : ''} found
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-400">Type child or guardian name</span>
+                )}
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 text-blue-400" size={15} />
+                <Input
+                  value={bhwCResidentSearch}
+                  onChange={e => handleSearchBhwImmunResident(e.target.value)}
+                  onFocus={() => {
+                    if (bhwCSearchResults.length > 0) setShowBhwCSuggestions(true);
+                  }}
+                  placeholder="Type name (matches database automatically, click to autofill)"
+                  className="h-9.5 pl-8.5 pr-8 text-xs rounded-xl border-blue-200 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm"
+                />
+                {bhwCResidentSearch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBhwCResidentSearch('');
+                      setBhwCSearchResults([]);
+                      setShowBhwCSuggestions(false);
+                    }}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs cursor-pointer p-0.5"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Suggestions Dropdown */}
+              {showBhwCSuggestions && bhwCSearchResults.length > 0 && (
+                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-blue-300 rounded-xl shadow-2xl max-h-52 overflow-y-auto divide-y divide-slate-100">
+                  <div className="p-2 bg-blue-50/90 text-[10px] font-bold text-blue-900 flex items-center justify-between px-3">
+                    <span>Found in Database ({bhwCSearchResults.length}) — Click to Auto-fill</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowBhwCSuggestions(false)}
+                      className="text-slate-400 hover:text-slate-700 text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {bhwCSearchResults.map((p: any) => (
+                    <button
+                      key={`bhw-immun-db-${p.id}`}
+                      type="button"
+                      onClick={() => selectBhwImmunResident(p)}
+                      className="w-full text-left p-2.5 hover:bg-blue-50/70 transition-colors flex items-center justify-between text-xs cursor-pointer group"
+                    >
+                      <div>
+                        <span className="font-bold text-slate-800 group-hover:text-blue-700 block">
+                          {p.name || `${p.first_name || ''} ${p.middle_name || ''} ${p.last_name || ''}`.trim()}
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">
+                          {p.gender || 'Child'} · {p.purok || 'Brgy. ' + bhwBarangay} · {p.phone || 'No phone'} · Age: {p.age || '—'}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-[9px] bg-blue-50 border-blue-300 text-blue-700 shrink-0 font-semibold group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        Auto-fill
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Child Name Fields (Split First / Middle / Last) with Census Autocomplete */}
             <div className="relative">
               <div className="flex items-center justify-between mb-2">

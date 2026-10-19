@@ -424,7 +424,36 @@ class DocumentController extends Controller
 
     public function getCategories()
     {
-        $categories = DocumentCategory::orderBy('name')->get();
+        try {
+            // Permanently purge Business Retirement Certificate
+            DocumentCategory::where('name', 'Business Retirement Certificate')
+                ->orWhereRaw('LOWER(name) = ?', ['business retirement certificate'])
+                ->delete();
+
+            // Guarantee Business Clearance is Active
+            $bc = DocumentCategory::where('name', 'Business Clearance')
+                ->orWhereRaw('LOWER(name) = ?', ['business clearance'])
+                ->first();
+
+            if ($bc) {
+                if ($bc->status !== 'Active') {
+                    $bc->status = 'Active';
+                    $bc->save();
+                }
+            } else {
+                DocumentCategory::create([
+                    'name' => 'Business Clearance',
+                    'department' => 'Barangay',
+                    'description' => 'Barangay commercial permit for sari-sari stores & businesses',
+                    'status' => 'Active',
+                ]);
+            }
+        } catch (\Throwable $e) {}
+
+        $categories = DocumentCategory::where('name', '!=', 'Business Retirement Certificate')
+            ->whereRaw('LOWER(name) != ?', ['business retirement certificate'])
+            ->orderBy('name')
+            ->get();
         return response()->json($categories);
     }
 
@@ -447,18 +476,34 @@ class DocumentController extends Controller
 
     public function updateCategory(Request $request, $name)
     {
-        $cat = DocumentCategory::where('name', $name)->first();
+        $decoded = urldecode($name);
+        $cat = DocumentCategory::where('name', $decoded)
+            ->orWhereRaw('LOWER(name) = ?', [strtolower($decoded)])
+            ->first();
         if (!$cat) {
             return response()->json(['error' => 'Category not found'], 404);
         }
 
-        $cat->update($request->only(['description', 'department', 'status']));
-        return response()->json(['success' => true, 'category' => $cat]);
+        if ($request->has('status')) {
+            $cat->status = $request->input('status');
+        }
+        if ($request->has('description')) {
+            $cat->description = $request->input('description');
+        }
+        if ($request->has('department')) {
+            $cat->department = $request->input('department');
+        }
+        $cat->save();
+
+        return response()->json(['success' => true, 'category' => $cat, 'message' => "Category '{$cat->name}' is now {$cat->status}."]);
     }
 
     public function deleteCategory($name)
     {
-        $cat = DocumentCategory::where('name', $name)->first();
+        $decoded = urldecode($name);
+        $cat = DocumentCategory::where('name', $decoded)
+            ->orWhereRaw('LOWER(name) = ?', [strtolower($decoded)])
+            ->first();
         if (!$cat) {
             return response()->json(['error' => 'Category not found'], 404);
         }
