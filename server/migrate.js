@@ -328,15 +328,16 @@ async function syncAllSchemas(connection) {
   await safeAddColumn(connection, 'maternal_records', 'next_visit_note', "TEXT NULL");
   await safeAddColumn(connection, 'maternal_records', 'sms_sent', "TINYINT(1) DEFAULT 0");
 
-  // 14. Ensure default demo accounts exist with working password hash
-  const defaultHash = '$2b$10$CEy3DN4YEEbrwh22Y8HfJ.BtJFfkk8iD3AuGlr2RuhuceDFwCsFfW'; // '123'
+  // 14. Ensure default demo accounts exist with working password hash ('123')
+  const defaultHash = '$2b$10$M7EW0TYM6.hHoow1piHpLeHo9osaUB95nLCiAvvuFvN7NSeETSNre'; // '123'
   const demoUsers = [
     { email: 'supermegaadmin@barangay.gov', name: 'Super Mega Admin', role: 'super_mega_admin', barangay: 'All (City-Wide)', phone: '09179998877' },
     { email: 'superadmin@barangay.gov', name: 'Super Admin Rodrigo Lim', role: 'superadmin', barangay: 'Pianing', phone: '09171112233' },
     { email: 'admin@barangay.gov', name: 'Barangay Admin Juan Dela Cruz', role: 'admin', barangay: 'Pianing', phone: '09171234567' },
     { email: 'nurse@barangay.gov', name: 'Nurse Ligaya Santos', role: 'nurse', barangay: 'Pianing', phone: '09201234567' },
     { email: 'bhw@barangay.gov', name: 'BHW Maria Santos', role: 'bhw', barangay: 'Pianing', phone: '09181234567' },
-    { email: 'kent@gmail.com', name: 'Kent Adrian Sabayday', role: 'resident', barangay: 'Baan Km 3', phone: '09123456789' }
+    { email: 'citizen@barangay.gov', name: 'Citizen Test Account', role: 'resident', barangay: 'Pianing', phone: '09171234567' },
+    { email: 'citizen.pianing@gmail.com', name: 'Citizen Pianing', role: 'resident', barangay: 'Pianing', phone: '09179998877' }
   ];
 
   for (const u of demoUsers) {
@@ -444,6 +445,32 @@ export async function runMigration() {
       await connection.query('SET FOREIGN_KEY_CHECKS=1;');
     } else {
       console.log(`ℹ️ Database '${dbName}' already contains ${existingTables.length} tables.`);
+    }
+
+    // 3.5 Census Data Check & Import (Barangay Pianing Official Census)
+    try {
+      const [censusRows] = await connection.query("SELECT COUNT(*) as count FROM residents WHERE is_census_only = 1");
+      const censusCount = censusRows[0]?.count || 0;
+      const forceCensus = process.env.FORCE_CENSUS_MIGRATION === 'true';
+
+      if (censusCount < 1000 || forceCensus) {
+        console.log(`📋 [Census Migration] Database contains ${censusCount} census inhabitants. Initiating census data migration from PUROK Excel data...`);
+        const censusSqlPath = path.resolve(__dirname, '../database/census_migration.sql');
+        if (fs.existsSync(censusSqlPath)) {
+          const censusSql = fs.readFileSync(censusSqlPath, 'utf8');
+          await connection.query('SET FOREIGN_KEY_CHECKS=0;');
+          await connection.query(censusSql);
+          await connection.query('SET FOREIGN_KEY_CHECKS=1;');
+          const [afterRows] = await connection.query("SELECT COUNT(*) as count FROM residents WHERE is_census_only = 1");
+          console.log(`✅ [Census Migration Success] Successfully imported ${afterRows[0]?.count} official census residents into Barangay Pianing database!`);
+        } else {
+          console.warn(`⚠️ [Census Migration Warning] '${censusSqlPath}' not found.`);
+        }
+      } else {
+        console.log(`✅ [Census Check] Barangay Pianing already has ${censusCount} official census residents in database.`);
+      }
+    } catch (censusErr) {
+      console.warn(`⚠️ [Census Migration Note]: ${censusErr.message}`);
     }
 
     // 4. ALWAYS run schema synchronization to ensure all columns, tables, and demo accounts are up-to-date!

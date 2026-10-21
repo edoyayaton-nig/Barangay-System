@@ -26,8 +26,12 @@ Thumbs.db
 scratch/
 Guna.UI-Framework-Lib/
 Mailjs/
-database/*.sql
 cert/
+database/full_dump.sql
+!database/census_migration.sql
+!database/schema.sql
+!database/seed.sql
+!database/clean_dump.sql
 public/uploads/*
 !public/uploads/.gitkeep
 server/uploads/*

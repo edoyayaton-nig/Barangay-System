@@ -61,13 +61,13 @@ function validatePassword(p: string) {
 }
 
 /* ─────────────────────────────────────────────────────────── */
-/*  Accent tokens                                               */
+/*  Accent tokens — Master Palette                               */
 /* ─────────────────────────────────────────────────────────── */
-const ACCENT_CYAN = '#00C6FF';
-const ACCENT_VIOLET = '#6458FF';
-const ACCENT_EMERALD = '#00B894';
-const ACCENT_AMBER = '#FFA502';
-const ACCENT_ROSE = '#FF6492';
+const ACCENT_CYAN = '#205781';    // Information / Civic Navy Tint
+const ACCENT_VIOLET = '#006B66';  // Community Teal (Primary Action)
+const ACCENT_EMERALD = '#1D7046'; // Success Green
+const ACCENT_AMBER = '#D8A443';   // Warm Gold
+const ACCENT_ROSE = '#B42318';    // Error / Danger Red
 
 /* ─────────────────────────────────────────────────────────── */
 /*  DB Tables monitored by System & Backup tab                  */
@@ -102,12 +102,12 @@ const BLANK_NEW_SA = {
 export default function SuperMegaAdminDashboard() {
   const navigate = useNavigate();
   const { theme, isDark } = useTheme();
-  const BG = isDark ? '#0F111E' : '#F8FAFC';
-  const CARD = isDark ? '#151824' : '#FFFFFF';
-  const CARD2 = isDark ? '#202538' : '#F1F5F9';
-  const BORDER = isDark ? '#2E3650' : '#E2E8F0';
-  const TEXT = isDark ? '#F8FAFC' : '#0F172A';
-  const MUTED = isDark ? '#8D99AE' : '#64748B';
+  const BG = isDark ? '#0B1622' : '#F5F8FA';
+  const CARD = isDark ? '#132232' : '#FFFFFF';
+  const CARD2 = isDark ? '#182C3F' : '#E9F4F2';
+  const BORDER = isDark ? '#223A50' : '#D5E2E8';
+  const TEXT = isDark ? '#F5F8FA' : '#1C2B36';
+  const MUTED = isDark ? '#94A7B8' : '#526374';
 
   const [user, setUser] = useState<any>(() => {
     try { return JSON.parse(localStorage.getItem('barangay_user') || 'null'); } catch { return null; }
@@ -787,7 +787,7 @@ export default function SuperMegaAdminDashboard() {
           </button>
           <div className="flex items-center gap-2.5">
             <div className="relative">
-              <div style={{ background: 'linear-gradient(135deg, #7C3AED, #06B6D4)', borderRadius: 10, padding: 6 }}>
+              <div style={{ background: 'linear-gradient(135deg, #173B5E, #006B66)', borderRadius: 10, padding: 6 }}>
                 <Crown size={16} color="white" />
               </div>
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse border-2" style={{ borderColor: CARD }} />
@@ -823,12 +823,12 @@ export default function SuperMegaAdminDashboard() {
                 borderRadius: 8,
                 padding: '4px 10px'
               }}
-              className="cursor-pointer hover:bg-violet-950/40 transition-colors text-left flex items-center gap-2"
+              className="cursor-pointer hover:bg-[#006B66]/20 transition-colors text-left flex items-center gap-2"
               title="Open Profile Settings"
             >
-              <UserCircle size={15} style={{ color: isDark ? '#C4B5FD' : '#6458FF' }} />
+              <UserCircle size={15} style={{ color: isDark ? '#55EFC4' : '#006B66' }} />
               <div>
-                <p style={{ color: isDark ? '#C4B5FD' : '#6458FF', fontSize: 11, fontWeight: 700 }}>{user?.name || 'Super Mega Admin'}</p>
+                <p style={{ color: isDark ? '#55EFC4' : '#006B66', fontSize: 11, fontWeight: 700 }}>{user?.name || 'Super Mega Admin'}</p>
                 <p style={{ color: MUTED, fontSize: 9, fontWeight: 600 }}>SYSTEM ROOT OPERATOR</p>
               </div>
             </button>
@@ -857,10 +857,10 @@ export default function SuperMegaAdminDashboard() {
               {sidebarItems.map(item => (
                 <button key={item.id} onClick={() => { setActiveTab(item.id as any); setMobileMenuOpen(false); }}
                   style={{
-                    background: activeTab === item.id ? 'linear-gradient(135deg, #6458FF 0%, #00C6FF 100%)' : 'transparent',
+                    background: activeTab === item.id ? 'linear-gradient(135deg, #173B5E 0%, #006B66 100%)' : 'transparent',
                     color: activeTab === item.id ? '#FFFFFF' : MUTED,
                     border: activeTab === item.id ? 'none' : '1px solid transparent',
-                    boxShadow: activeTab === item.id ? '0 6px 18px -2px rgba(100, 88, 255, 0.45)' : 'none',
+                    boxShadow: activeTab === item.id ? '0 6px 18px -2px rgba(23, 59, 94, 0.45)' : 'none',
                     borderRadius: 9999, padding: '10px 14px', marginBottom: 6,
                     display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 13,
                   }}
@@ -885,10 +885,10 @@ export default function SuperMegaAdminDashboard() {
           {sidebarItems.map(item => (
             <button key={item.id} onClick={() => setActiveTab(item.id as any)}
               style={{
-                background: activeTab === item.id ? 'linear-gradient(135deg, #6458FF 0%, #00C6FF 100%)' : 'transparent',
+                background: activeTab === item.id ? 'linear-gradient(135deg, #173B5E 0%, #006B66 100%)' : 'transparent',
                 color: activeTab === item.id ? '#FFFFFF' : MUTED,
                 border: activeTab === item.id ? 'none' : '1px solid transparent',
-                boxShadow: activeTab === item.id ? '0 6px 18px -2px rgba(100, 88, 255, 0.45)' : 'none',
+                boxShadow: activeTab === item.id ? '0 6px 18px -2px rgba(23, 59, 94, 0.45)' : 'none',
                 borderRadius: 9999, padding: '10px 12px', marginBottom: 4,
                 display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 12,
               }}

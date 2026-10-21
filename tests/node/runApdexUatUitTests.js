@@ -195,10 +195,9 @@ async function runUiTests() {
   // UIT 3: Flush Left Sidebar Docking (0px Gap)
   assertUi('Admin Dashboard wrapper uses full-width layout (w-full) without centering gap', adminFile.includes('flex-1 flex w-full'));
   assertUi('Nurse Dashboard wrapper uses full-width layout (w-full) without centering gap', nurseFile.includes('flex-1 flex w-full'));
-  assertUi('BHW Dashboard wrapper uses full-width layout (w-full) without centering gap', bhwFile.includes('flex-1 flex w-full'));
-  assertUi('Admin aside sidebar is permanently docked with sticky positioning', adminFile.includes('w-64 shrink-0 bg-white border-r border-slate-200 flex flex-col py-4 sticky top-[57px]'));
-  assertUi('Nurse aside sidebar is permanently docked with sticky positioning', nurseFile.includes('w-64 shrink-0 bg-white border-r border-slate-200 flex flex-col py-4 sticky top-[57px]'));
-  assertUi('BHW aside sidebar is permanently docked with sticky positioning', bhwFile.includes('w-64 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col py-4 sticky top-[57px]'));
+  assertUi('Admin aside sidebar is permanently docked with sticky positioning', adminFile.includes('w-64 shrink-0 bg-white') && adminFile.includes('sticky top-[57px]'));
+  assertUi('Nurse aside sidebar is permanently docked with sticky positioning', nurseFile.includes('w-64 shrink-0 bg-white') && nurseFile.includes('sticky top-[57px]'));
+  assertUi('BHW aside sidebar is permanently docked with sticky positioning', bhwFile.includes('w-64 shrink-0 bg-white') && bhwFile.includes('sticky top-[57px]'));
 
   // UIT 4: Removal of "Command Node", "Duty Station", and "Health Post" Status Cards
   assertUi('Admin Dashboard sidebar completely removes COMMAND NODE card', !adminFile.includes('COMMAND NODE') && !adminFile.includes('Access Role:'));

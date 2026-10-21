@@ -34,8 +34,9 @@ Route::delete('/categories/{name}', [DocumentController::class, 'deleteCategory'
 Route::get('/activity-logs', [SystemController::class, 'getActivityLogs']);
 Route::post('/activity-logs', [SystemController::class, 'createActivityLog']);
 
-// Database Connectivity Status
+// Database Connectivity Status & Census Migration
 Route::get('/db-status', [SystemController::class, 'dbStatus']);
+Route::post('/system/migrate-census', [SystemController::class, 'migrateCensusDatabase']);
 
 // Authentication & Identity Verification
 Route::post('/auth/login', [AuthController::class, 'login']);

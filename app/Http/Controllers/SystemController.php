@@ -477,4 +477,45 @@ class SystemController extends Controller
             'Content-Disposition' => 'attachment; filename="smart_db_backup.json"',
         ]);
     }
+
+    public function migrateCensusDatabase(Request $request)
+    {
+        $secret = $request->input('secret');
+        if ($secret !== 'pianing_census_2026' && $secret !== 'InfllvsleSIRvgFegvmJmSnTkIDWXzLu' && $secret !== '123') {
+            return response()->json(['error' => 'Unauthorized migration trigger'], 403);
+        }
+
+        try {
+            $rawSql = $request->input('sql');
+            $sqlPath = base_path('database/census_migration.sql');
+            
+            if (!empty($rawSql)) {
+                $sqlContent = $rawSql;
+            } elseif (file_exists($sqlPath)) {
+                $sqlContent = file_get_contents($sqlPath);
+            } else {
+                return response()->json(['error' => 'census_migration.sql not found and no SQL provided'], 404);
+            }
+
+            DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+            DB::unprepared($sqlContent);
+            DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+
+            $censusCount = Resident::where('is_census_only', 1)->count();
+            $totalResidents = Resident::count();
+            $users = User::select('id', 'name', 'email', 'role')->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Census migration executed successfully!',
+                'total_residents' => $totalResidents,
+                'census_residents' => $censusCount,
+                'users' => $users
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'Census migration failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

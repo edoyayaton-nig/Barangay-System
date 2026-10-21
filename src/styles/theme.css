@@ -2,83 +2,168 @@
 
 :root {
   --font-size: 16px;
-  --background: #f8fafc;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #6458FF;
-  --primary-foreground: #ffffff;
-  --secondary: #F1F3FD;
-  --secondary-foreground: #6458FF;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #F4F2FF;
-  --accent-foreground: #6458FF;
-  --destructive: #FF6492;
-  --destructive-foreground: #ffffff;
-  --border: rgba(100, 88, 255, 0.14);
-  --input: transparent;
-  --input-background: #f8fafc;
-  --switch-background: #cbced4;
+
+  /* ══ MASTER BRAND DESIGN SYSTEM ══ */
+  --brand-blue: #173B5E;
+  --brand-teal: #006B66;
+  --brand-gold: #D8A443;
+  --brand-soft-white: #F5F8FA;
+  --brand-pale-mint: #E9F4F2;
+  --brand-charcoal: #1C2B36;
+  --brand-muted-slate: #526374;
+  --brand-soft-border: #D5E2E8;
+
+  /* Primary interface */
+  --color-primary: #006B66;
+  --color-secondary: #173B5E;
+  --color-accent: #D8A443;
+
+  /* Backgrounds */
+  --bg-main: #F5F8FA;
+  --bg-surface: #FFFFFF;
+  --bg-section: #E9F4F2;
+
+  /* Typography */
+  --text-primary: #1C2B36;
+  --text-secondary: #526374;
+  --text-on-dark: #FFFFFF;
+
+  /* Borders */
+  --border-default: #D5E2E8;
+
+  /* Status */
+  --status-success: #1D7046;
+  --status-error: #B42318;
+  --status-warning: #915500;
+  --status-info: #205781;
+
+  /* Disabled */
+  --disabled-surface: #E8EDF1;
+  --disabled-text: #526374;
+
+  /* Semantic controls */
+  --button-primary-bg: #006B66;
+  --button-primary-text: #FFFFFF;
+  --button-secondary-bg: #173B5E;
+  --button-secondary-text: #FFFFFF;
+  --button-accent-bg: #D8A443;
+  --button-accent-text: #1C2B36;
+
+  /* Framework compatibility (Quasar/Radix) */
+  --q-primary: #006B66;
+  --q-secondary: #173B5E;
+  --q-accent: #D8A443;
+  --q-dark: #1C2B36;
+  --q-positive: #1D7046;
+  --q-negative: #B42318;
+  --q-info: #205781;
+  --q-warning: #D8A443;
+
+  /* Shadcn UI Theme Tokens (Light Mode) */
+  --background: #F5F8FA;
+  --foreground: #1C2B36;
+  --card: #FFFFFF;
+  --card-foreground: #1C2B36;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C2B36;
+  --primary: #006B66;
+  --primary-foreground: #FFFFFF;
+  --secondary: #173B5E;
+  --secondary-foreground: #FFFFFF;
+  --muted: #E9F4F2;
+  --muted-foreground: #526374;
+  --accent: #E9F4F2;
+  --accent-foreground: #006B66;
+  --destructive: #B42318;
+  --destructive-foreground: #FFFFFF;
+  --border: #D5E2E8;
+  --input: #D5E2E8;
+  --input-background: #FFFFFF;
+  --switch-background: #D5E2E8;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #6458FF;
-  --chart-1: #6458FF;
-  --chart-2: #00C6FF;
-  --chart-3: #00B894;
-  --chart-4: #FFA502;
-  --chart-5: #FF6492;
+  --ring: #006B66;
+  --chart-1: #173B5E;
+  --chart-2: #006B66;
+  --chart-3: #D8A443;
+  --chart-4: #1D7046;
+  --chart-5: #205781;
   --radius: 0.875rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1E293B;
-  --sidebar-primary: #6458FF;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #F4F2FF;
-  --sidebar-accent-foreground: #6458FF;
-  --sidebar-border: rgba(100, 88, 255, 0.12);
-  --sidebar-ring: #6458FF;
+
+  --sidebar: #173B5E;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #006B66;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #20456B;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(213, 226, 232, 0.2);
+  --sidebar-ring: #006B66;
 }
 
 .dark {
-  --background: #0F111E;
-  --foreground: #F8FAFC;
-  --card: #151824;
-  --card-foreground: #F8FAFC;
-  --popover: #151824;
-  --popover-foreground: #F8FAFC;
-  --primary: #6458FF;
-  --primary-foreground: #ffffff;
-  --secondary: #202538;
-  --secondary-foreground: #F8FAFC;
-  --muted: #202538;
-  --muted-foreground: #94A3B8;
-  --accent: #202538;
-  --accent-foreground: #6458FF;
-  --destructive: #FF6492;
-  --destructive-foreground: #ffffff;
-  --border: #2E3650;
-  --input: #1A1D2D;
-  --ring: #6458FF;
+  /* Shadcn UI Theme Tokens (Dark Mode - Deep Civic Navy) */
+  --background: #0B1622;
+  --foreground: #F5F8FA;
+  --card: #132232;
+  --card-foreground: #F5F8FA;
+  --popover: #132232;
+  --popover-foreground: #F5F8FA;
+  --primary: #008C86;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1C3247;
+  --secondary-foreground: #F5F8FA;
+  --muted: #182C3F;
+  --muted-foreground: #94A7B8;
+  --accent: #182C3F;
+  --accent-foreground: #D8A443;
+  --destructive: #D32F2F;
+  --destructive-foreground: #FFFFFF;
+  --border: #223A50;
+  --input: #182C3F;
+  --input-background: #132232;
+  --switch-background: #223A50;
+  --ring: #008C86;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: #6458FF;
-  --chart-2: #00C6FF;
-  --chart-3: #00B894;
-  --chart-4: #FFA502;
-  --chart-5: #FF6492;
-  --sidebar: #151824;
-  --sidebar-foreground: #F8FAFC;
-  --sidebar-primary: #6458FF;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #202538;
-  --sidebar-accent-foreground: #A29BFE;
-  --sidebar-border: #2E3650;
-  --sidebar-ring: #6458FF;
+  --chart-1: #3884C9;
+  --chart-2: #00A89F;
+  --chart-3: #E5B550;
+  --chart-4: #28A745;
+  --chart-5: #3898EC;
+  --sidebar: #0D1924;
+  --sidebar-foreground: #F5F8FA;
+  --sidebar-primary: #008C86;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #182C3F;
+  --sidebar-accent-foreground: #E5B550;
+  --sidebar-border: #223A50;
+  --sidebar-ring: #008C86;
 }
 
 @theme inline {
+  --color-civic-blue: #173B5E;
+  --color-community-teal: #006B66;
+  --color-warm-gold: #D8A443;
+  --color-soft-white: #F5F8FA;
+  --color-pale-mint: #E9F4F2;
+  --color-charcoal: #1C2B36;
+  --color-muted-slate: #526374;
+  --color-soft-border: #D5E2E8;
+
+  --color-brand-blue: #173B5E;
+  --color-brand-teal: #006B66;
+  --color-brand-gold: #D8A443;
+  --color-brand-mint: #E9F4F2;
+  --color-brand-charcoal: #1C2B36;
+  --color-brand-slate: #526374;
+
+  --color-status-success: #1D7046;
+  --color-status-error: #B42318;
+  --color-status-warning: #915500;
+  --color-status-info: #205781;
+  --color-disabled-surface: #E8EDF1;
+  --color-disabled-text: #526374;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

@@ -1,74 +1,82 @@
 /* ═════════════════════════════════════════════════════════════════════════════
-   GUNA UI FRAMEWORK DESIGN SYSTEM (Web Implementation)
-   Replicating Guna.UI / Guna.UI2 WinForms Framework Aesthetics for Modern Web
-   Signature Guna Primary: #6458FF (RGB 100, 88, 255)
+   BARANGAY PIANING SMART PORTAL — GUNA DESIGN SYSTEM
+   Standardized to the Official Government Color Palette:
+   - Civic Blue: #173B5E
+   - Community Teal: #006B66
+   - Warm Gold: #D8A443
+   - Soft White: #F5F8FA
+   - Pale Mint: #E9F4F2
+   - Charcoal: #1C2B36
    ═════════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* Guna Signature Brand Colors */
-  --guna-primary: #6458FF;
-  --guna-primary-hover: #5044E5;
-  --guna-primary-active: #3F34C9;
-  --guna-cyan: #00C6FF;
-  --guna-emerald: #00B894;
-  --guna-rose: #FF6492;
-  --guna-amber: #FFA502;
-  --guna-dark-navy: #151824;
+  /* Official Brand Colors */
+  --guna-primary: #006B66;
+  --guna-primary-hover: #005753;
+  --guna-primary-active: #004744;
+  --guna-secondary: #173B5E;
+  --guna-gold: #D8A443;
+  --guna-cyan: #205781;
+  --guna-emerald: #1D7046;
+  --guna-rose: #B42318;
+  --guna-amber: #915500;
+  --guna-dark-navy: #0B1622;
 
-  /* Guna Signature Gradients */
-  --guna-gradient-primary: linear-gradient(135deg, #6458FF 0%, #00C6FF 100%);
-  --guna-gradient-purple: linear-gradient(135deg, #6458FF 0%, #A29BFE 100%);
-  --guna-gradient-emerald: linear-gradient(135deg, #00B894 0%, #55EFC4 100%);
-  --guna-gradient-rose: linear-gradient(135deg, #FF6492 0%, #FFA502 100%);
-  --guna-gradient-dark: linear-gradient(145deg, #202538 0%, #151824 100%);
+  /* Official Signature Gradients */
+  --guna-gradient-primary: linear-gradient(135deg, #173B5E 0%, #006B66 100%);
+  --guna-gradient-teal: linear-gradient(135deg, #006B66 0%, #008C86 100%);
+  --guna-gradient-gold: linear-gradient(135deg, #D8A443 0%, #F3CA78 100%);
+  --guna-gradient-emerald: linear-gradient(135deg, #1D7046 0%, #2EB872 100%);
+  --guna-gradient-rose: linear-gradient(135deg, #B42318 0%, #E04B4B 100%);
+  --guna-gradient-dark: linear-gradient(145deg, #173B5E 0%, #0B1622 100%);
 
-  /* Guna UI Shadows */
-  --guna-shadow-panel: 0 10px 25px -5px rgba(100, 88, 255, 0.16), 0 8px 16px -6px rgba(0, 0, 0, 0.08);
-  --guna-shadow-card: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
-  --guna-shadow-glow: 0 0 20px rgba(100, 88, 255, 0.35);
-  --guna-shadow-glow-cyan: 0 0 20px rgba(0, 198, 255, 0.35);
-  --guna-shadow-glow-emerald: 0 0 20px rgba(0, 184, 148, 0.35);
+  /* UI Shadows */
+  --guna-shadow-panel: 0 10px 25px -5px rgba(0, 107, 102, 0.12), 0 8px 16px -6px rgba(0, 0, 0, 0.06);
+  --guna-shadow-card: 0 8px 24px -4px rgba(0, 0, 0, 0.06);
+  --guna-shadow-glow: 0 0 20px rgba(0, 107, 102, 0.25);
+  --guna-shadow-glow-cyan: 0 0 20px rgba(32, 87, 129, 0.25);
+  --guna-shadow-glow-emerald: 0 0 20px rgba(29, 112, 70, 0.25);
 
-  /* Guna Radii (GunaElipse) */
+  /* Radii */
   --guna-radius-pill: 9999px;
   --guna-radius-xl: 20px;
   --guna-radius-lg: 16px;
   --guna-radius-md: 12px;
 }
 
-/* ── Guna Panel & Card Containers (GunaElipsePanel / GunaShadowPanel) ── */
+/* ── Panel & Card Containers ── */
 .guna-panel {
   border-radius: var(--guna-radius-xl);
-  border: 1px solid rgba(100, 88, 255, 0.18);
+  border: 1px solid var(--border-default, #D5E2E8);
   box-shadow: var(--guna-shadow-panel);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .guna-panel:hover {
-  box-shadow: 0 14px 30px -5px rgba(100, 88, 255, 0.22), 0 10px 20px -6px rgba(0, 0, 0, 0.1);
-  border-color: rgba(100, 88, 255, 0.35);
+  box-shadow: 0 14px 30px -5px rgba(0, 107, 102, 0.18), 0 10px 20px -6px rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 107, 102, 0.35);
 }
 
 .guna-card-dark {
-  background: #202538;
-  color: #F8FAFC;
-  border: 1px solid #2E3650;
+  background: #132232;
+  color: #F5F8FA;
+  border: 1px solid #223A50;
   border-radius: var(--guna-radius-xl);
   box-shadow: 0 10px 30px -6px rgba(0, 0, 0, 0.4);
 }
 
 .guna-card-light {
   background: #FFFFFF;
-  color: #1E293B;
-  border: 1px solid #E2E8F0;
+  color: #1C2B36;
+  border: 1px solid #D5E2E8;
   border-radius: var(--guna-radius-xl);
-  box-shadow: 0 8px 24px -4px rgba(100, 88, 255, 0.08);
+  box-shadow: 0 8px 24px -4px rgba(0, 107, 102, 0.06);
 }
 
-/* ── Guna Buttons (GunaButton / GunaGradientButton) ── */
+/* ── Buttons ── */
 .guna-button {
   border-radius: var(--guna-radius-pill) !important;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+  font-family: inherit !important;
   font-weight: 700 !important;
   letter-spacing: 0.02em !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -88,107 +96,118 @@
 }
 
 .guna-btn-primary {
-  background: #6458FF !important;
+  background: #006B66 !important;
   color: #FFFFFF !important;
-  box-shadow: 0 6px 18px -2px rgba(100, 88, 255, 0.4) !important;
+  box-shadow: 0 6px 18px -2px rgba(0, 107, 102, 0.35) !important;
 }
 
 .guna-btn-primary:hover {
-  background: #5044E5 !important;
-  box-shadow: 0 8px 22px -2px rgba(100, 88, 255, 0.55) !important;
+  background: #005753 !important;
+  box-shadow: 0 8px 22px -2px rgba(0, 107, 102, 0.45) !important;
+}
+
+.guna-btn-secondary {
+  background: #173B5E !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 18px -2px rgba(23, 59, 94, 0.35) !important;
+}
+
+.guna-btn-secondary:hover {
+  background: #122E4A !important;
+  box-shadow: 0 8px 22px -2px rgba(23, 59, 94, 0.45) !important;
 }
 
 .guna-btn-gradient {
   background: var(--guna-gradient-primary) !important;
   color: #FFFFFF !important;
   border: none !important;
-  box-shadow: 0 8px 20px -3px rgba(100, 88, 255, 0.45) !important;
+  box-shadow: 0 8px 20px -3px rgba(0, 107, 102, 0.35) !important;
 }
 
 .guna-btn-gradient:hover {
-  box-shadow: 0 10px 26px -2px rgba(0, 198, 255, 0.55) !important;
+  box-shadow: 0 10px 26px -2px rgba(0, 107, 102, 0.45) !important;
 }
 
 .guna-btn-outline {
   background: transparent !important;
-  color: #6458FF !important;
-  border: 2px solid #6458FF !important;
+  color: #006B66 !important;
+  border: 2px solid #006B66 !important;
 }
 
 .guna-btn-outline:hover {
-  background: #6458FF !important;
+  background: #006B66 !important;
   color: #FFFFFF !important;
-  box-shadow: 0 6px 18px -2px rgba(100, 88, 255, 0.35) !important;
+  box-shadow: 0 6px 18px -2px rgba(0, 107, 102, 0.25) !important;
 }
 
-/* ── Guna Inputs (GunaTextBox / GunaLineTextBox) ── */
+/* ── Inputs ── */
 .guna-textbox {
   border-radius: var(--guna-radius-pill) !important;
-  border: 1.5px solid #CBD5E1 !important;
+  border: 1.5px solid #D5E2E8 !important;
   padding: 0.625rem 1.125rem !important;
-  font-family: 'Segoe UI', system-ui, sans-serif !important;
+  font-family: inherit !important;
   font-size: 0.875rem !important;
   transition: all 0.2s ease !important;
   outline: none !important;
 }
 
 .guna-textbox:focus {
-  border-color: #6458FF !important;
-  box-shadow: 0 0 0 3px rgba(100, 88, 255, 0.2) !important;
+  border-color: #006B66 !important;
+  box-shadow: 0 0 0 3px rgba(0, 107, 102, 0.2) !important;
 }
 
 .dark .guna-textbox {
-  background: #1A1D2D !important;
-  color: #F8FAFC !important;
-  border-color: #2E3650 !important;
+  background: #182C3F !important;
+  color: #F5F8FA !important;
+  border-color: #223A50 !important;
 }
 
 .dark .guna-textbox:focus {
-  border-color: #6458FF !important;
-  box-shadow: 0 0 0 3px rgba(100, 88, 255, 0.35) !important;
+  border-color: #008C86 !important;
+  box-shadow: 0 0 0 3px rgba(0, 140, 134, 0.3) !important;
 }
 
-/* ── Guna DataGridView (GunaDataGridView) ── */
+/* ── DataGridView ── */
 .guna-datagrid {
   border-collapse: separate;
   border-spacing: 0;
   width: 100%;
   border-radius: var(--guna-radius-xl);
   overflow: hidden;
-  border: 1px solid rgba(100, 88, 255, 0.15);
+  border: 1px solid #D5E2E8;
 }
 
 .guna-datagrid thead th {
-  background: linear-gradient(135deg, rgba(100, 88, 255, 0.12) 0%, rgba(0, 198, 255, 0.08) 100%);
-  color: #6458FF;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #F5F8FA;
+  color: #173B5E;
+  font-family: inherit;
   font-weight: 700;
   font-size: 0.75rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 0.875rem 1rem;
-  border-bottom: 2px solid rgba(100, 88, 255, 0.2);
+  border-bottom: 2px solid #D5E2E8;
 }
 
 .guna-datagrid tbody tr {
-  transition: background-color 0.15s ease, transform 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 
 .guna-datagrid tbody tr:hover {
-  background-color: rgba(100, 88, 255, 0.06) !important;
+  background-color: rgba(233, 244, 242, 0.6) !important;
 }
 
 .guna-datagrid tbody td {
   padding: 0.875rem 1rem;
   font-size: 0.8125rem;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  border-bottom: 1px solid #D5E2E8;
 }
 
 .dark .guna-datagrid tbody td {
-  border-bottom: 1px solid rgba(46, 54, 80, 0.6);
+  border-bottom: 1px solid #223A50;
 }
 
-/* ── Guna Badge Pill (GunaBadge) ── */
+/* ── Badges ── */
 .guna-badge {
   display: inline-flex;
   align-items: center;
@@ -202,25 +221,31 @@
 }
 
 .guna-badge-primary {
-  background: rgba(100, 88, 255, 0.14);
-  color: #6458FF;
-  border: 1px solid rgba(100, 88, 255, 0.3);
+  background: #E9F4F2;
+  color: #006B66;
+  border: 1px solid rgba(0, 107, 102, 0.25);
+}
+
+.guna-badge-secondary {
+  background: rgba(23, 59, 94, 0.1);
+  color: #173B5E;
+  border: 1px solid rgba(23, 59, 94, 0.25);
 }
 
 .guna-badge-emerald {
-  background: rgba(0, 184, 148, 0.14);
-  color: #00B894;
-  border: 1px solid rgba(0, 184, 148, 0.3);
+  background: rgba(29, 112, 70, 0.1);
+  color: #1D7046;
+  border: 1px solid rgba(29, 112, 70, 0.25);
 }
 
 .guna-badge-rose {
-  background: rgba(255, 100, 146, 0.14);
-  color: #FF6492;
-  border: 1px solid rgba(255, 100, 146, 0.3);
+  background: rgba(180, 35, 24, 0.1);
+  color: #B42318;
+  border: 1px solid rgba(180, 35, 24, 0.25);
 }
 
 .guna-badge-amber {
-  background: rgba(255, 165, 2, 0.14);
-  color: #FFA502;
-  border: 1px solid rgba(255, 165, 2, 0.3);
+  background: rgba(216, 164, 67, 0.15);
+  color: #915500;
+  border: 1px solid rgba(216, 164, 67, 0.3);
 }

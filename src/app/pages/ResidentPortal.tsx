@@ -302,24 +302,24 @@ export default function ResidentPortal() {
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-4 py-3 shadow-xs">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-indigo-200 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-[#D5E2E8] flex items-center justify-center">
               <img src="/assets/pianing-logo.png" alt={`Barangay ${residentBrgy}`} className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Barangay {residentBrgy}</h1>
-              <span className="text-xs text-indigo-600 font-semibold">Resident Portal Gateway</span>
+              <span className="text-xs text-[#006B66] dark:text-[#55EFC4] font-semibold">Resident Portal Gateway</span>
             </div>
           </div>
 
           {/* Quick Barangay Contact Pill in Navbar */}
-          <div className="hidden md:flex items-center gap-3 text-xs bg-indigo-50/70 border border-indigo-200/80 px-3 py-1.5 rounded-xl">
-            <a href={`tel:${getBarangayContact(residentBrgy).replace(/[^0-9+]/g, '')}`} className="flex items-center gap-1.5 text-indigo-800 hover:text-indigo-950 font-medium transition-colors cursor-pointer" title="Barangay Official Hotline">
-              <Phone size={13} className="text-indigo-600 shrink-0" />
+          <div className="hidden md:flex items-center gap-3 text-xs bg-[#E9F4F2] dark:bg-[#182C3F] border border-[#006B66]/20 px-3 py-1.5 rounded-xl">
+            <a href={`tel:${getBarangayContact(residentBrgy).replace(/[^0-9+]/g, '')}`} className="flex items-center gap-1.5 text-[#173B5E] dark:text-[#E9F4F2] hover:text-[#006B66] font-medium transition-colors cursor-pointer" title="Barangay Official Hotline">
+              <Phone size={13} className="text-[#006B66] shrink-0" />
               <span className="font-mono font-bold text-[11px]">{getBarangayContact(residentBrgy)}</span>
             </a>
-            <span className="text-indigo-300">|</span>
-            <a href={`mailto:${getBarangayEmail(residentBrgy)}`} className="flex items-center gap-1.5 text-indigo-800 hover:text-indigo-950 font-medium transition-colors cursor-pointer" title="Official Barangay Gmail">
-              <Mail size={13} className="text-indigo-600 shrink-0" />
+            <span className="text-slate-300">|</span>
+            <a href={`mailto:${getBarangayEmail(residentBrgy)}`} className="flex items-center gap-1.5 text-[#173B5E] dark:text-[#E9F4F2] hover:text-[#006B66] font-medium transition-colors cursor-pointer" title="Official Barangay Gmail">
+              <Mail size={13} className="text-[#006B66] shrink-0" />
               <span className="truncate max-w-[200px] text-[11px]">{getBarangayEmail(residentBrgy)}</span>
             </a>
           </div>
@@ -331,7 +331,7 @@ export default function ResidentPortal() {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsProfileModalOpen(true)}
-                className="flex items-center gap-1.5 text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400"
+                className="flex items-center gap-1.5 text-xs border-[#006B66]/40 text-[#006B66] hover:bg-[#006B66]/10 dark:text-[#55EFC4]"
               >
                 <Settings size={14} />
                 <span>Profile Settings</span>
@@ -342,7 +342,7 @@ export default function ResidentPortal() {
               variant="destructive"
               size="sm"
               onClick={() => { toast.info('Logged out'); navigate('/login'); }}
-              className="flex items-center gap-1.5 text-xs bg-red-600 hover:bg-red-700"
+              className="flex items-center gap-1.5 text-xs bg-[#B42318] hover:bg-[#912015]"
             >
               <LogOut size={14} />
               <span className="hidden sm:inline">Logout</span>
@@ -570,9 +570,9 @@ export default function ResidentPortal() {
         {/* Two Resident Portals */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Card 1: Barangay Portal */}
-          <Card className="border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-br from-white to-indigo-50/50 dark:from-[#1A1D2D] dark:to-[#151824] hover:shadow-lg transition-all duration-200 flex flex-col justify-between">
+          <Card className="border-[#D5E2E8] dark:border-[#223A50] bg-gradient-to-br from-white to-[#E9F4F2]/50 dark:from-[#132232] dark:to-[#182C3F] hover:shadow-lg transition-all duration-200 flex flex-col justify-between">
             <CardHeader>
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mb-2 shadow-md">
+              <div className="w-12 h-12 rounded-2xl bg-[#173B5E] text-white flex items-center justify-center mb-2 shadow-md">
                 <Building2 size={24} />
               </div>
               <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Barangay Portal</CardTitle>
@@ -582,15 +582,15 @@ export default function ResidentPortal() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-1.5 text-[11px]">
-                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300">Barangay Clearance</Badge>
-                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300">Residency Cert</Badge>
-                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300">Business Permit</Badge>
-                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300">Indigency Cert</Badge>
-                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300">Barangay ID</Badge>
+                <Badge variant="outline" className="bg-[#E9F4F2] dark:bg-[#182C3F] border-[#D5E2E8] dark:border-[#223A50] text-[#173B5E] dark:text-[#E9F4F2]">Barangay Clearance</Badge>
+                <Badge variant="outline" className="bg-[#E9F4F2] dark:bg-[#182C3F] border-[#D5E2E8] dark:border-[#223A50] text-[#173B5E] dark:text-[#E9F4F2]">Residency Cert</Badge>
+                <Badge variant="outline" className="bg-[#E9F4F2] dark:bg-[#182C3F] border-[#D5E2E8] dark:border-[#223A50] text-[#173B5E] dark:text-[#E9F4F2]">Business Permit</Badge>
+                <Badge variant="outline" className="bg-[#E9F4F2] dark:bg-[#182C3F] border-[#D5E2E8] dark:border-[#223A50] text-[#173B5E] dark:text-[#E9F4F2]">Indigency Cert</Badge>
+                <Badge variant="outline" className="bg-[#E9F4F2] dark:bg-[#182C3F] border-[#D5E2E8] dark:border-[#223A50] text-[#173B5E] dark:text-[#E9F4F2]">Barangay ID</Badge>
               </div>
               <Button
                 onClick={() => navigate('/resident/barangay')}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-10 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full bg-[#006B66] hover:bg-[#005753] text-white font-semibold text-xs h-10 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 Enter Barangay Portal
                 <ArrowRight size={15} />
@@ -599,9 +599,9 @@ export default function ResidentPortal() {
           </Card>
 
           {/* Card 2: Health Center Portal */}
-          <Card className="border-emerald-200 dark:border-emerald-900/60 bg-gradient-to-br from-white to-emerald-50/50 dark:from-[#1A1D2D] dark:to-[#151824] hover:shadow-lg transition-all duration-200 flex flex-col justify-between">
+          <Card className="border-[#D5E2E8] dark:border-[#223A50] bg-gradient-to-br from-white to-[#E9F4F2]/50 dark:from-[#132232] dark:to-[#182C3F] hover:shadow-lg transition-all duration-200 flex flex-col justify-between">
             <CardHeader>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center mb-2 shadow-md">
+              <div className="w-12 h-12 rounded-2xl bg-[#006B66] text-white flex items-center justify-center mb-2 shadow-md">
                 <Heart size={24} />
               </div>
               <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">Health Center Portal</CardTitle>
@@ -611,15 +611,15 @@ export default function ResidentPortal() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-1.5 text-[11px]">
-                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">Medical Cert</Badge>
-                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">Health Clearance</Badge>
-                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">Immunization Record</Badge>
-                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">Prenatal Record</Badge>
-                <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300">Postnatal Record</Badge>
+                <Badge variant="outline" className="bg-[#E9F4F2] dark:bg-[#182C3F] border-[#D5E2E8] dark:border-[#223A50] text-[#006B66] dark:text-[#55EFC4]">Medical Cert</Badge>
+                <Badge variant="outline" className="bg-[#E9F4F2] dark:bg-[#182C3F] border-[#D5E2E8] dark:border-[#223A50] text-[#006B66] dark:text-[#55EFC4]">Health Clearance</Badge>
+                <Badge variant="outline" className="bg-[#E9F4F2] dark:bg-[#182C3F] border-[#D5E2E8] dark:border-[#223A50] text-[#006B66] dark:text-[#55EFC4]">Immunization Record</Badge>
+                <Badge variant="outline" className="bg-[#E9F4F2] dark:bg-[#182C3F] border-[#D5E2E8] dark:border-[#223A50] text-[#006B66] dark:text-[#55EFC4]">Prenatal Record</Badge>
+                <Badge variant="outline" className="bg-[#E9F4F2] dark:bg-[#182C3F] border-[#D5E2E8] dark:border-[#223A50] text-[#006B66] dark:text-[#55EFC4]">Postnatal Record</Badge>
               </div>
               <Button
                 onClick={() => navigate('/resident/health')}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-10 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full bg-[#006B66] hover:bg-[#005753] text-white font-semibold text-xs h-10 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 Enter Health Center Portal
                 <ArrowRight size={15} />

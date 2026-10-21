@@ -553,7 +553,7 @@ export default function HealthCenterPortal() {
               <ArrowLeft size={13} className="text-slate-600 dark:text-slate-300" />
               <span className="font-semibold">Back</span>
             </button>
-            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-xs border border-emerald-100 bg-white shrink-0">
+            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-xs border border-[#D5E2E8] bg-white shrink-0">
               <img src="/assets/pianing-logo.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <div>
@@ -563,14 +563,14 @@ export default function HealthCenterPortal() {
           </div>
 
           {/* Quick Barangay Contact Pill in Navbar */}
-          <div className="hidden lg:flex items-center gap-3 text-xs bg-emerald-50/70 border border-emerald-200/80 px-3 py-1.5 rounded-xl">
-            <a href={`tel:${getBarangayContact(user?.barangay).replace(/[^0-9+]/g, '')}`} className="flex items-center gap-1.5 text-emerald-800 hover:text-emerald-950 font-medium transition-colors cursor-pointer" title="Health Center Hotline">
-              <Phone size={13} className="text-emerald-600 shrink-0" />
+          <div className="hidden lg:flex items-center gap-3 text-xs bg-[#E9F4F2] dark:bg-[#182C3F] border border-[#006B66]/20 px-3 py-1.5 rounded-xl">
+            <a href={`tel:${getBarangayContact(user?.barangay).replace(/[^0-9+]/g, '')}`} className="flex items-center gap-1.5 text-[#173B5E] dark:text-[#E9F4F2] hover:text-[#006B66] font-medium transition-colors cursor-pointer" title="Health Center Hotline">
+              <Phone size={13} className="text-[#006B66] shrink-0" />
               <span className="font-mono font-bold text-[11px]">{getBarangayContact(user?.barangay)}</span>
             </a>
-            <span className="text-emerald-300">|</span>
-            <a href={`mailto:${getBarangayEmail(user?.barangay)}`} className="flex items-center gap-1.5 text-emerald-800 hover:text-emerald-950 font-medium transition-colors cursor-pointer" title="Official Barangay Gmail">
-              <Mail size={13} className="text-emerald-600 shrink-0" />
+            <span className="text-slate-300">|</span>
+            <a href={`mailto:${getBarangayEmail(user?.barangay)}`} className="flex items-center gap-1.5 text-[#173B5E] dark:text-[#E9F4F2] hover:text-[#006B66] font-medium transition-colors cursor-pointer" title="Official Barangay Gmail">
+              <Mail size={13} className="text-[#006B66] shrink-0" />
               <span className="truncate max-w-[200px] text-[11px]">{getBarangayEmail(user?.barangay)}</span>
             </a>
           </div>
@@ -702,7 +702,7 @@ export default function HealthCenterPortal() {
             )}
             <button
               onClick={() => { toast.info('Logged out'); navigate('/login'); }}
-              className="flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-white bg-red-50 hover:bg-red-600 border border-red-200 hover:border-red-600 px-2.5 sm:px-3 h-8 rounded-xl transition-all cursor-pointer"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#B42318] hover:text-white bg-[#B42318]/10 hover:bg-[#B42318] border border-[#B42318]/20 hover:border-[#B42318] px-2.5 sm:px-3 h-8 rounded-xl transition-all cursor-pointer"
             >
               <LogOut size={13} />
               <span className="hidden sm:inline">Logout</span>
@@ -713,15 +713,15 @@ export default function HealthCenterPortal() {
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Official Barangay Helpdesk & Contact Banner */}
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-emerald-800/40 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-[#173B5E] via-[#0F2740] to-[#006B66] text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#006B66]/30 relative overflow-hidden">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="bg-[#006B66]/30 text-[#E9F4F2] border border-[#006B66]/40 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
                   Barangay {user?.barangay || 'Pianing'} Clinic Helpdesk
                 </span>
                 <span className="text-slate-300 text-[11px] flex items-center gap-1">
-                  <Clock size={12} className="text-emerald-400" /> Mon - Fri: 8:00 AM - 5:00 PM
+                  <Clock size={12} className="text-[#D8A443]" /> Mon - Fri: 8:00 AM - 5:00 PM
                 </span>
               </div>
               <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">

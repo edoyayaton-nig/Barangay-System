@@ -15,4 +15,8 @@ Guna.UI-Framework-Lib
 Mailjs
 scratch
 cert
-database/*.sql
+database/full_dump.sql
+!database/census_migration.sql
+!database/schema.sql
+!database/seed.sql
+!database/clean_dump.sql

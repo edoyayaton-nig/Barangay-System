@@ -121,7 +121,7 @@ export default function LoginPage() {
   const [regPhone, setRegPhone] = useState('');
   const [regPurok, setRegPurok] = useState('');
   const [regBarangay, setRegBarangay] = useState('Pianing');
-  const [regCity, setRegCity] = useState('');
+  const [regCity, setRegCity] = useState('Butuan City');
   const [regEmployment, setRegEmployment] = useState('Employed');
   const [regIdType, setRegIdType] = useState('');
   const [regIdPhoto, setRegIdPhoto] = useState<string | null>(null);
@@ -142,7 +142,7 @@ export default function LoginPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Dynamically resolved official barangays for selected city/municipality in Agusan del Norte
-  const cityBarangays = regCity ? getBarangaysForCity(regCity) : [];
+  const cityBarangays = getBarangaysForCity(regCity || 'Butuan City');
 
   const clearExistingFlow = () => {
     setExistingStep(1);
@@ -175,8 +175,8 @@ export default function LoginPage() {
     setRegPassword('');
     setRegPhone('');
     setRegPurok('');
-    setRegBarangay('');
-    setRegCity('');
+    setRegBarangay('Pianing');
+    setRegCity('Butuan City');
     setRegIdType('');
     setRegIdPhoto(null);
     setRegIdFileName('');
@@ -488,6 +488,11 @@ export default function LoginPage() {
       return;
     }
 
+    if (regConfirmPassword && regPassword !== regConfirmPassword) {
+      toast.error('Passwords do not match', { description: 'Please make sure your password and confirm password match exactly.' });
+      return;
+    }
+
     const cleanPhone = regPhone.replace(/\D/g, '');
     if (!cleanPhone.startsWith('09') || cleanPhone.length !== 11) {
       toast.error('Invalid Contact Number', { description: 'Philippine mobile number must be exactly 11 digits starting with 09 (e.g. 09171234567).' });
@@ -520,13 +525,16 @@ export default function LoginPage() {
       return;
     }
 
-    if (!regCity.trim()) {
+    const effectiveCity = (regCity || 'Butuan City').trim();
+    const effectiveBarangay = (regBarangay || 'Pianing').trim();
+
+    if (!effectiveCity) {
       toast.error('City / Municipality required', { description: 'Please select your City or Municipality in Agusan del Norte.' });
       return;
     }
 
-    if (!regBarangay.trim()) {
-      toast.error('Barangay required', { description: `Please select your Barangay in ${regCity || 'Agusan del Norte'}.` });
+    if (!effectiveBarangay) {
+      toast.error('Barangay required', { description: `Please select your Barangay in ${effectiveCity}.` });
       return;
     }
 
@@ -555,8 +563,8 @@ export default function LoginPage() {
     const formattedFirstName = toTitleCase(regFirstName);
     const formattedMiddleName = toTitleCase(regMiddleName);
     const formattedLastName = toTitleCase(regLastName);
-    const canonicalBarangay = normalizeBarangay(regBarangay);
-    const canonicalCity = (regCity || 'Butuan City').trim();
+    const canonicalBarangay = normalizeBarangay(effectiveBarangay);
+    const canonicalCity = effectiveCity;
     const cleanPurokNum = regPurok.replace(/purok\s*/i, '').trim();
     const formattedPurok = cleanPurokNum ? `Purok ${cleanPurokNum}` : (regPurok.trim() || 'Purok 1');
     const fullAddress = `${formattedPurok}, Barangay ${canonicalBarangay}, ${canonicalCity}`;
@@ -637,8 +645,8 @@ export default function LoginPage() {
     setRegEmail('');
     setRegPassword('');
     setRegPurok('');
-    setRegBarangay('');
-    setRegCity('');
+    setRegBarangay('Pianing');
+    setRegCity('Butuan City');
   }, []);
 
   return (
@@ -662,12 +670,12 @@ export default function LoginPage() {
 
       {/* Centered Main Login / Signup Card */}
       <main className="flex-1 flex items-center justify-center px-4 py-4 sm:py-6">
-        <div className={`w-full bg-white dark:bg-slate-900 border border-[#6458FF]/20 dark:border-slate-800 shadow-[0_12px_36px_-6px_rgba(100,88,255,0.18)] rounded-3xl p-6 sm:p-8 transition-all ${
+        <div className={`w-full bg-white dark:bg-slate-900 border border-[#D5E2E8] dark:border-[#223A50] shadow-[0_12px_36px_-6px_rgba(23,59,94,0.12)] rounded-3xl p-6 sm:p-8 transition-all ${
           activeTab === 'login' ? 'max-w-[420px]' : (residentMode === 'choose' ? 'max-w-2xl' : 'max-w-xl')
         }`}>
           {/* Card Header matching Screenshot with Logo */}
           <div className="text-center pb-4">
-            <div className="mx-auto w-12 h-12 rounded-full overflow-hidden bg-white shadow-md border-2 border-[#6458FF]/30 flex items-center justify-center mb-2.5">
+            <div className="mx-auto w-12 h-12 rounded-full overflow-hidden bg-white shadow-md border-2 border-[#173B5E]/30 flex items-center justify-center mb-2.5">
               <img src="/assets/pianing-logo.png" alt="Barangay Pianing Logo" className="w-full h-full object-contain" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Smart Barangay Portal</h2>
@@ -684,8 +692,8 @@ export default function LoginPage() {
                 onClick={() => handleTabChange('login')}
                 className={`px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'login'
-                    ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-md'
-                    : 'text-slate-500 hover:text-[#6458FF]'
+                    ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-md'
+                    : 'text-slate-500 hover:text-[#006B66]'
                 }`}
               >
                 Sign In
@@ -695,8 +703,8 @@ export default function LoginPage() {
                 onClick={() => handleTabChange('register')}
                 className={`px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'register'
-                    ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-md'
-                    : 'text-slate-500 hover:text-[#6458FF]'
+                    ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-md'
+                    : 'text-slate-500 hover:text-[#006B66]'
                 }`}
               >
                 Create Account
@@ -712,7 +720,7 @@ export default function LoginPage() {
 
               <div>
                 <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                  Email Address <span className="text-[#FF6492] font-bold">*</span>
+                  Email Address <span className="text-[#B42318] font-bold">*</span>
                 </label>
                 <input
                   type="email"
@@ -721,19 +729,19 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. name@email.com"
                   required
-                  className="w-full h-10 px-4 bg-slate-50/80 border border-slate-200 rounded-full text-xs text-slate-800 focus:bg-white focus:border-[#6458FF] focus:ring-2 focus:ring-[#6458FF]/20 outline-none transition-all shadow-inner"
+                  className="w-full h-10 px-4 bg-slate-50/80 border border-[#D5E2E8] rounded-full text-xs text-slate-800 focus:bg-white focus:border-[#006B66] focus:ring-2 focus:ring-[#006B66]/20 outline-none transition-all shadow-inner"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-[11px] font-bold text-slate-700 block">
-                    Password <span className="text-[#FF6492] font-bold">*</span>
+                    Password <span className="text-[#B42318] font-bold">*</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setIsForgotPasswordOpen(true)}
-                    className="text-[10.5px] font-bold text-[#6458FF] hover:text-[#5044E5] hover:underline cursor-pointer"
+                    className="text-[10.5px] font-bold text-[#006B66] hover:text-[#005753] hover:underline cursor-pointer"
                   >
                     Forgot Password?
                   </button>
@@ -746,12 +754,12 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full h-10 px-4 pr-10 bg-slate-50/80 border border-slate-200 rounded-full text-xs text-slate-800 focus:bg-white focus:border-[#6458FF] focus:ring-2 focus:ring-[#6458FF]/20 outline-none transition-all shadow-inner"
+                    className="w-full h-10 px-4 pr-10 bg-slate-50/80 border border-[#D5E2E8] rounded-full text-xs text-slate-800 focus:bg-white focus:border-[#006B66] focus:ring-2 focus:ring-[#006B66]/20 outline-none transition-all shadow-inner"
                   />
                   <button
                     type="button"
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute right-3.5 top-2.5 text-slate-400 hover:text-[#6458FF] cursor-pointer"
+                    className="absolute right-3.5 top-2.5 text-slate-400 hover:text-[#006B66] cursor-pointer"
                     tabIndex={-1}
                   >
                     {showLoginPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -762,7 +770,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-gradient-to-r from-[#6458FF] to-[#00C6FF] hover:opacity-95 text-white font-bold text-xs shadow-[0_6px_20px_-2px_rgba(100,88,255,0.45)] hover:shadow-[0_10px_28px_-2px_rgba(0,198,255,0.55)] transition-all rounded-full mt-3 cursor-pointer"
+                className="w-full h-11 bg-[#006B66] hover:bg-[#005753] text-white font-bold text-xs shadow-[0_6px_20px_-2px_rgba(0,107,102,0.35)] hover:shadow-[0_10px_28px_-2px_rgba(0,107,102,0.45)] transition-all rounded-full mt-3 cursor-pointer"
               >
                 {loading ? 'Authenticating...' : 'Sign In to Portal'}
                 <ArrowRight size={14} className="ml-1.5" />
@@ -775,12 +783,12 @@ export default function LoginPage() {
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {[
-                    { label: 'Nurse Portal', email: 'nurse@barangay.gov', icon: '🩺', color: 'hover:border-[#00B894] hover:bg-[#00B894]/10 hover:text-[#00B894]' },
-                    { label: 'BHW Health', email: 'bhw@barangay.gov', icon: '🌿', color: 'hover:border-[#00B894] hover:bg-[#00B894]/10 hover:text-[#00B894]' },
-                    { label: 'Barangay Admin', email: 'admin@barangay.gov', icon: '🏛️', color: 'hover:border-[#6458FF] hover:bg-[#6458FF]/10 hover:text-[#6458FF]' },
-                    { label: 'Super Admin', email: 'superadmin@barangay.gov', icon: '🛡️', color: 'hover:border-[#6458FF] hover:bg-[#6458FF]/10 hover:text-[#6458FF]' },
-                    { label: 'Super Mega', email: 'supermegaadmin@barangay.gov', icon: '⚡', color: 'hover:border-[#6458FF] hover:bg-[#6458FF]/10 hover:text-[#6458FF]' },
-                    { label: 'Citizen Portal', email: 'citizen.pianing@gmail.com', icon: '👤', color: 'hover:border-[#FFA502] hover:bg-[#FFA502]/10 hover:text-[#FFA502]' },
+                    { label: 'Nurse Portal', email: 'nurse@barangay.gov', icon: '🩺', color: 'hover:border-[#006B66] hover:bg-[#006B66]/10 hover:text-[#006B66]' },
+                    { label: 'BHW Health', email: 'bhw@barangay.gov', icon: '🌿', color: 'hover:border-[#006B66] hover:bg-[#006B66]/10 hover:text-[#006B66]' },
+                    { label: 'Barangay Admin', email: 'admin@barangay.gov', icon: '🏛️', color: 'hover:border-[#173B5E] hover:bg-[#173B5E]/10 hover:text-[#173B5E]' },
+                    { label: 'Super Admin', email: 'superadmin@barangay.gov', icon: '🛡️', color: 'hover:border-[#173B5E] hover:bg-[#173B5E]/10 hover:text-[#173B5E]' },
+                    { label: 'Super Mega', email: 'supermegaadmin@barangay.gov', icon: '⚡', color: 'hover:border-[#173B5E] hover:bg-[#173B5E]/10 hover:text-[#173B5E]' },
+                    { label: 'Citizen Portal', email: 'citizen.pianing@gmail.com', icon: '👤', color: 'hover:border-[#D8A443] hover:bg-[#D8A443]/20 hover:text-[#915500]' },
                   ].map(portal => (
                     <button
                       key={portal.email}
@@ -790,10 +798,10 @@ export default function LoginPage() {
                         setPassword('123');
                         toast.info(`Filled credentials for ${portal.label}`);
                       }}
-                      className={`px-2.5 py-2 text-[11px] font-bold text-slate-600 bg-white border border-slate-200/90 rounded-full flex items-center justify-center gap-1.5 transition-all shadow-xs hover:-translate-y-0.5 cursor-pointer ${portal.color}`}
+                      className={`px-2.5 py-2 text-[11px] font-bold text-slate-600 bg-white border border-[#D5E2E8] rounded-full flex items-center justify-center gap-1.5 transition-all shadow-xs hover:-translate-y-0.5 cursor-pointer ${portal.color}`}
                     >
                       <span>{portal.icon}</span>
-                      <span className="truncate">{portal.label}</span>
+                      <span>{portal.label}</span>
                     </button>
                   ))}
                 </div>
@@ -1094,9 +1102,9 @@ export default function LoginPage() {
                     <select
                       value={regBarangay || 'Pianing'}
                       onChange={(e) => setRegBarangay(e.target.value)}
-                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-blue-600 cursor-pointer"
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-[#D5E2E8] dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-[#006B66] cursor-pointer"
                     >
-                      {BUTUAN_BARANGAYS.map((b) => (
+                      {cityBarangays.map((b) => (
                         <option key={b} value={b}>
                           Barangay {b}
                         </option>
@@ -1106,14 +1114,28 @@ export default function LoginPage() {
 
                   <div>
                     <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                      City / Municipality
+                      City / Municipality <span className="text-red-500 font-bold">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={regCity || 'Butuan City'}
-                      readOnly
-                      className="w-full h-9 px-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-600 dark:text-slate-400 outline-none cursor-not-allowed"
-                    />
+                      onChange={(e) => {
+                        const newCity = e.target.value;
+                        setRegCity(newCity);
+                        const bgys = getBarangaysForCity(newCity);
+                        if (newCity === 'Butuan City') {
+                          setRegBarangay('Pianing');
+                        } else if (bgys.length > 0) {
+                          setRegBarangay(bgys[0]);
+                        }
+                      }}
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-[#D5E2E8] dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-[#006B66] cursor-pointer"
+                    >
+                      {AGUSAN_DEL_NORTE_LGUS.map((lgu) => (
+                        <option key={lgu.name} value={lgu.name}>
+                          {lgu.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

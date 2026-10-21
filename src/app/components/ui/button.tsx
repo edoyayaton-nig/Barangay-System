@@ -5,25 +5,27 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "./utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-[#6458FF]/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer select-none",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-[#006B66]/40 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer select-none",
   {
     variants: {
       variant: {
         default:
-          "bg-[#6458FF] text-white hover:bg-[#5044E5] shadow-[0_4px_14px_rgba(100,88,255,0.35)] hover:shadow-[0_6px_20px_rgba(100,88,255,0.45)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]",
+          "bg-[#006B66] text-white hover:bg-[#005753] shadow-[0_4px_14px_rgba(0,107,102,0.3)] hover:shadow-[0_6px_20px_rgba(0,107,102,0.4)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]",
         destructive:
-          "bg-[#FF6492] text-white hover:bg-[#E04B76] shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0",
+          "bg-[#B42318] text-white hover:bg-[#912015] shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0",
         outline:
-          "border-2 border-[#6458FF] text-[#6458FF] bg-transparent hover:bg-[#6458FF] hover:text-white shadow-xs hover:-translate-y-0.5 active:translate-y-0",
+          "border-2 border-[#006B66] text-[#006B66] bg-transparent hover:bg-[#006B66] hover:text-white shadow-xs hover:-translate-y-0.5 active:translate-y-0",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[#6458FF]/10 hover:text-[#6458FF] hover:-translate-y-0.5 active:translate-y-0",
+          "bg-[#173B5E] text-white hover:bg-[#0F2740] shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0",
         ghost:
-          "hover:bg-[#6458FF]/10 hover:text-[#6458FF]",
-        link: "text-[#6458FF] underline-offset-4 hover:underline",
-        guna: "bg-[#6458FF] text-white hover:bg-[#5044E5] shadow-[0_6px_20px_-2px_rgba(100,88,255,0.4)] hover:shadow-[0_8px_25px_-2px_rgba(100,88,255,0.55)] font-bold tracking-wide hover:-translate-y-0.5 active:translate-y-0",
-        gunaGradient: "bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white border-0 shadow-[0_6px_20px_-2px_rgba(100,88,255,0.45)] hover:shadow-[0_10px_28px_-2px_rgba(0,198,255,0.55)] font-bold tracking-wide hover:-translate-y-0.5 active:translate-y-0",
-        gunaEmerald: "bg-gradient-to-r from-[#00B894] to-[#55EFC4] text-white border-0 shadow-[0_6px_20px_-2px_rgba(0,184,148,0.4)] hover:shadow-[0_8px_25px_-2px_rgba(0,184,148,0.55)] font-bold hover:-translate-y-0.5 active:translate-y-0",
-        gunaRose: "bg-gradient-to-r from-[#FF6492] to-[#FFA502] text-white border-0 shadow-[0_6px_20px_-2px_rgba(255,100,146,0.4)] hover:shadow-[0_8px_25px_-2px_rgba(255,100,146,0.55)] font-bold hover:-translate-y-0.5 active:translate-y-0",
+          "hover:bg-[#006B66]/10 hover:text-[#006B66]",
+        link: "text-[#006B66] underline-offset-4 hover:underline",
+        accent:
+          "bg-[#D8A443] text-[#1C2B36] hover:bg-[#C29035] shadow-sm hover:shadow-md font-bold hover:-translate-y-0.5 active:translate-y-0",
+        guna: "bg-[#006B66] text-white hover:bg-[#005753] shadow-[0_6px_20px_-2px_rgba(0,107,102,0.35)] hover:shadow-[0_8px_25px_-2px_rgba(0,107,102,0.5)] font-bold tracking-wide hover:-translate-y-0.5 active:translate-y-0",
+        gunaGradient: "bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white border-0 shadow-[0_6px_20px_-2px_rgba(23,59,94,0.35)] hover:shadow-[0_10px_28px_-2px_rgba(0,107,102,0.45)] font-bold tracking-wide hover:-translate-y-0.5 active:translate-y-0",
+        gunaEmerald: "bg-gradient-to-r from-[#1D7046] to-[#006B66] text-white border-0 shadow-[0_6px_20px_-2px_rgba(29,112,70,0.35)] hover:shadow-[0_8px_25px_-2px_rgba(0,107,102,0.45)] font-bold hover:-translate-y-0.5 active:translate-y-0",
+        gunaRose: "bg-gradient-to-r from-[#B42318] to-[#D8A443] text-white border-0 shadow-[0_6px_20px_-2px_rgba(180,35,24,0.35)] hover:shadow-[0_8px_25px_-2px_rgba(216,164,67,0.45)] font-bold hover:-translate-y-0.5 active:translate-y-0",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

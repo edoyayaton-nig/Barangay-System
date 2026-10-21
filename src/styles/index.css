@@ -46,11 +46,40 @@ input:-webkit-autofill:active {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
-   UNIVERSAL HIGH-FIDELITY DARK MODE DESIGN SYSTEM
+   UNIVERSAL HIGH-FIDELITY CIVIC DESIGN SYSTEM
    Ensures 100% theme consistency across all accounts (Super Mega Admin, Super
    Admin, Admin, BHW, Nurse, Resident/Citizen) and all sub-modules/tabs.
    Eliminates rogue white containers, guarantees text contrast, polishes elevation.
+   Official Master Palette:
+   - Civic Blue: #173B5E
+   - Community Teal: #006B66
+   - Warm Gold: #D8A443
+   - Soft White: #F5F8FA
+   - Pale Mint: #E9F4F2
+   - Charcoal: #1C2B36
+   - Pure White: #FFFFFF
+   - Muted Slate: #526374
+   - Soft Border: #D5E2E8
    ═════════════════════════════════════════════════════════════════════════════ */
+
+/* Utility Classes for Master Tokens */
+.bg-civic-blue { background-color: #173B5E !important; }
+.text-civic-blue { color: #173B5E !important; }
+.border-civic-blue { border-color: #173B5E !important; }
+
+.bg-community-teal { background-color: #006B66 !important; }
+.text-community-teal { color: #006B66 !important; }
+.border-community-teal { border-color: #006B66 !important; }
+
+.bg-warm-gold { background-color: #D8A443 !important; }
+.text-warm-gold { color: #915500 !important; }
+.border-warm-gold { border-color: #D8A443 !important; }
+
+.bg-soft-white { background-color: #F5F8FA !important; }
+.bg-pale-mint { background-color: #E9F4F2 !important; }
+.text-charcoal { color: #1C2B36 !important; }
+.text-muted-slate { color: #526374 !important; }
+.border-soft-border { border-color: #D5E2E8 !important; }
 
 html.dark {
   color-scheme: dark;
@@ -62,43 +91,43 @@ html.dark {
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: #0F111E;
+  background: #0B1622;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #2E3650;
+  background: #223A50;
   border-radius: 9999px;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #3E4868;
+  background: #32506D;
 }
 
-/* 1. Global Containers & Elevated Surfaces */
+/* 1. Global Containers & Elevated Surfaces in Dark Mode */
 html.dark .bg-white:not([data-keep-white]):not(.keep-white) {
-  background-color: #151824 !important;
+  background-color: #132232 !important;
 }
 
 html.dark [class*="bg-white/"]:not([data-keep-white]):not(.keep-white) {
-  background-color: rgba(21, 24, 36, 0.95) !important;
+  background-color: rgba(19, 34, 50, 0.95) !important;
 }
 
 html.dark [class*="bg-slate-50"]:not([data-keep-slate]):not(.keep-slate),
 html.dark [class*="bg-gray-50"],
 html.dark [class*="bg-zinc-50"] {
-  background-color: #1A1D2D !important;
+  background-color: #182C3F !important;
 }
 
 html.dark [class*="bg-slate-100"]:not([data-keep-slate]):not(.keep-slate),
 html.dark [class*="bg-gray-100"],
 html.dark [class*="bg-zinc-100"] {
-  background-color: #202538 !important;
+  background-color: #182C3F !important;
 }
 
 html.dark [class*="bg-slate-200"],
 html.dark [class*="bg-gray-200"],
 html.dark [class*="bg-zinc-200"] {
-  background-color: #293046 !important;
+  background-color: #223A50 !important;
 }
 
 /* Universal suppression of light gradients in dark mode */
@@ -106,7 +135,7 @@ html.dark [class*="from-white"]:not([class*="dark:from-"]),
 html.dark [class*="from-slate-50"]:not([class*="dark:from-"]),
 html.dark [class*="from-gray-50"]:not([class*="dark:from-"]) {
   background-image: none !important;
-  background-color: #151824 !important;
+  background-color: #132232 !important;
 }
 
 /* 2. Primary & Secondary Text Colors */
@@ -114,14 +143,14 @@ html.dark .text-slate-900,
 html.dark .text-gray-900,
 html.dark .text-zinc-900,
 html.dark .text-neutral-900 {
-  color: #F8FAFC !important;
+  color: #F5F8FA !important;
 }
 
 html.dark .text-slate-800,
 html.dark .text-gray-800,
 html.dark .text-zinc-800,
 html.dark .text-neutral-800 {
-  color: #F1F5F9 !important;
+  color: #E9F4F2 !important;
 }
 
 html.dark .text-slate-700,
@@ -135,14 +164,14 @@ html.dark .text-slate-600,
 html.dark .text-gray-600,
 html.dark .text-zinc-600,
 html.dark .text-neutral-600 {
-  color: #94A3B8 !important;
+  color: #94A7B8 !important;
 }
 
 html.dark .text-slate-500,
 html.dark .text-gray-500,
 html.dark .text-zinc-500,
 html.dark .text-neutral-500 {
-  color: #94A3B8 !important;
+  color: #94A7B8 !important;
 }
 
 /* 3. Borders & Dividers */
@@ -153,64 +182,64 @@ html.dark .border-slate-200\/90,
 html.dark .border-gray-100,
 html.dark .border-gray-200,
 html.dark .border-zinc-200 {
-  border-color: #2E3650 !important;
+  border-color: #223A50 !important;
 }
 
 html.dark .border-slate-300,
 html.dark .border-gray-300 {
-  border-color: #3B4566 !important;
+  border-color: #32506D !important;
 }
 
 html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
 html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
 html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
 html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #2E3650 !important;
+  border-color: #223A50 !important;
 }
 
 /* 4. Soft Pastel Metric Cards & Badges */
 html.dark [class*="bg-blue-50"], html.dark [class*="bg-blue-100"] {
-  background-color: rgba(59, 130, 246, 0.16) !important;
-  border-color: rgba(59, 130, 246, 0.3) !important;
+  background-color: rgba(23, 59, 94, 0.25) !important;
+  border-color: rgba(23, 59, 94, 0.45) !important;
 }
 html.dark [class*="bg-indigo-50"], html.dark [class*="bg-indigo-100"] {
-  background-color: rgba(99, 102, 241, 0.16) !important;
-  border-color: rgba(99, 102, 241, 0.3) !important;
+  background-color: rgba(23, 59, 94, 0.25) !important;
+  border-color: rgba(0, 107, 102, 0.4) !important;
 }
 html.dark [class*="bg-violet-50"], html.dark [class*="bg-violet-100"] {
-  background-color: rgba(139, 92, 246, 0.16) !important;
-  border-color: rgba(139, 92, 246, 0.3) !important;
+  background-color: rgba(23, 59, 94, 0.25) !important;
+  border-color: rgba(0, 107, 102, 0.4) !important;
 }
 html.dark [class*="bg-emerald-50"], html.dark [class*="bg-emerald-100"],
 html.dark [class*="bg-green-50"], html.dark [class*="bg-green-100"] {
-  background-color: rgba(16, 185, 129, 0.16) !important;
-  border-color: rgba(16, 185, 129, 0.3) !important;
+  background-color: rgba(29, 112, 70, 0.2) !important;
+  border-color: rgba(29, 112, 70, 0.4) !important;
 }
 html.dark [class*="bg-teal-50"], html.dark [class*="bg-teal-100"] {
-  background-color: rgba(20, 184, 166, 0.16) !important;
-  border-color: rgba(20, 184, 166, 0.3) !important;
+  background-color: rgba(0, 107, 102, 0.2) !important;
+  border-color: rgba(0, 107, 102, 0.4) !important;
 }
 html.dark [class*="bg-amber-50"], html.dark [class*="bg-amber-100"],
 html.dark [class*="bg-yellow-50"], html.dark [class*="bg-yellow-100"] {
-  background-color: rgba(245, 158, 11, 0.16) !important;
-  border-color: rgba(245, 158, 11, 0.3) !important;
+  background-color: rgba(216, 164, 67, 0.2) !important;
+  border-color: rgba(216, 164, 67, 0.4) !important;
 }
 html.dark [class*="bg-rose-50"], html.dark [class*="bg-rose-100"],
 html.dark [class*="bg-red-50"], html.dark [class*="bg-red-100"] {
-  background-color: rgba(239, 68, 68, 0.16) !important;
-  border-color: rgba(239, 68, 68, 0.3) !important;
+  background-color: rgba(180, 35, 24, 0.2) !important;
+  border-color: rgba(180, 35, 24, 0.4) !important;
 }
 html.dark [class*="bg-purple-50"], html.dark [class*="bg-purple-100"] {
-  background-color: rgba(168, 85, 247, 0.16) !important;
-  border-color: rgba(168, 85, 247, 0.3) !important;
+  background-color: rgba(23, 59, 94, 0.25) !important;
+  border-color: rgba(23, 59, 94, 0.4) !important;
 }
 html.dark [class*="bg-sky-50"], html.dark [class*="bg-sky-100"] {
-  background-color: rgba(14, 165, 233, 0.16) !important;
-  border-color: rgba(14, 165, 233, 0.3) !important;
+  background-color: rgba(32, 87, 129, 0.2) !important;
+  border-color: rgba(32, 87, 129, 0.4) !important;
 }
 html.dark [class*="bg-pink-50"], html.dark [class*="bg-pink-100"] {
-  background-color: rgba(236, 72, 153, 0.16) !important;
-  border-color: rgba(236, 72, 153, 0.3) !important;
+  background-color: rgba(180, 35, 24, 0.16) !important;
+  border-color: rgba(180, 35, 24, 0.3) !important;
 }
 
 /* 5. Colored Text Readability Enhancements */
@@ -252,36 +281,36 @@ html.dark [class*="text-pink-700"], html.dark [class*="text-pink-800"], html.dar
 html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="color"]):not([type="file"]),
 html.dark select,
 html.dark textarea {
-  background-color: #1A1D2D !important;
-  color: #F8FAFC !important;
-  border-color: #2E3650 !important;
+  background-color: #182C3F !important;
+  color: #F5F8FA !important;
+  border-color: #223A50 !important;
 }
 
 html.dark input::placeholder,
 html.dark textarea::placeholder {
-  color: #64748B !important;
+  color: #647A8F !important;
 }
 
 html.dark .focus\:bg-white:focus {
-  background-color: #202538 !important;
+  background-color: #182C3F !important;
 }
 
 /* 7. Tables, DataGrids & List Rows */
 html.dark table {
-  background-color: #151824 !important;
+  background-color: #132232 !important;
 }
 
 html.dark thead,
 html.dark thead tr,
 html.dark thead th,
 html.dark th {
-  background-color: #1A1D2D !important;
-  color: #94A3B8 !important;
-  border-color: #2E3650 !important;
+  background-color: #182C3F !important;
+  color: #94A7B8 !important;
+  border-color: #223A50 !important;
 }
 
 html.dark tbody tr {
-  border-color: #2E3650 !important;
+  border-color: #223A50 !important;
 }
 
 html.dark tbody tr:hover,
@@ -290,51 +319,51 @@ html.dark .hover\:bg-slate-50\/80:hover,
 html.dark .hover\:bg-slate-100:hover,
 html.dark .hover\:bg-gray-50:hover,
 html.dark .hover\:bg-gray-100:hover {
-  background-color: #202538 !important;
+  background-color: #182C3F !important;
 }
 
 html.dark tbody td,
 html.dark td {
-  border-color: #2E3650 !important;
+  border-color: #223A50 !important;
 }
 
 /* 8. Cards & Structural Elements */
 html.dark [data-slot="card"],
 html.dark .card {
-  background-color: #151824 !important;
-  border-color: #2E3650 !important;
-  color: #F8FAFC !important;
+  background-color: #132232 !important;
+  border-color: #223A50 !important;
+  color: #F5F8FA !important;
 }
 
 html.dark [data-slot="card-title"] {
-  color: #F8FAFC !important;
+  color: #F5F8FA !important;
 }
 
 html.dark [data-slot="card-description"] {
-  color: #94A3B8 !important;
+  color: #94A7B8 !important;
 }
 
 /* 9. Light-Themed Buttons, Outlines & Pills */
 html.dark button.bg-white:not([data-keep-white]),
 html.dark a.bg-white:not([data-keep-white]) {
-  background-color: #1A1D2D !important;
-  color: #F1F5F9 !important;
-  border-color: #2E3650 !important;
+  background-color: #182C3F !important;
+  color: #F5F8FA !important;
+  border-color: #223A50 !important;
 }
 
 html.dark button.bg-white:hover:not([data-keep-white]),
 html.dark a.bg-white:hover:not([data-keep-white]) {
-  background-color: #202538 !important;
+  background-color: #223A50 !important;
 }
 
 html.dark button.bg-slate-900 {
-  background-color: #2E3650 !important;
-  border-color: #3B4566 !important;
-  color: #F8FAFC !important;
+  background-color: #173B5E !important;
+  border-color: #223A50 !important;
+  color: #F5F8FA !important;
 }
 
 html.dark button.bg-slate-900:hover {
-  background-color: #3B4566 !important;
+  background-color: #223A50 !important;
 }
 
 /* 10. Dialogs, Drawers, Sheets, Menus & Select Dropdowns */
@@ -344,9 +373,9 @@ html.dark [data-slot="popover-content"],
 html.dark [data-slot="dropdown-menu-content"],
 html.dark [data-slot="select-content"],
 html.dark [role="dialog"] {
-  background-color: #151824 !important;
-  border-color: #2E3650 !important;
-  color: #F8FAFC !important;
+  background-color: #132232 !important;
+  border-color: #223A50 !important;
+  color: #F5F8FA !important;
 }
 
 html.dark [data-slot="select-item"]:hover,
@@ -355,7 +384,7 @@ html.dark [data-slot="select-item"][data-highlighted],
 html.dark [data-slot="dropdown-menu-item"]:hover,
 html.dark [data-slot="dropdown-menu-item"]:focus,
 html.dark [data-slot="dropdown-menu-item"][data-highlighted] {
-  background-color: #202538 !important;
+  background-color: #182C3F !important;
   color: #FFFFFF !important;
 }
 

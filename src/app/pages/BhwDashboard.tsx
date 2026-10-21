@@ -1422,8 +1422,8 @@ export default function BhwDashboard() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-semibold shadow-2xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E9F4F2] dark:bg-[#006B66]/20 text-[#006B66] dark:text-[#55EFC4] border border-[#006B66]/30 text-xs font-semibold shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-[#1D7046] animate-pulse" />
                 BHW Station Active
               </span>
             </div>
@@ -1445,12 +1445,12 @@ export default function BhwDashboard() {
       >
         <div className="flex items-center justify-between px-4 pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-white border border-blue-200 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
               <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="text-xs font-bold text-slate-900 dark:text-white block">Barangay Pianing</span>
-              <span className="text-[10px] text-blue-600 font-semibold">BHW Health Portal</span>
+              <span className="text-[10px] text-[#006B66] dark:text-[#55EFC4] font-semibold">BHW Health Portal</span>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -1481,8 +1481,8 @@ export default function BhwDashboard() {
                   setMobileMenuOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${isActive
-                    ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-[#6458FF]/10 hover:text-[#6458FF] dark:hover:text-white'
+                    ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-[#006B66]/10 hover:text-[#006B66] dark:hover:text-white'
                   }`}
               >
                 <item.icon size={18} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
@@ -1524,8 +1524,8 @@ export default function BhwDashboard() {
                     }
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${isActive
-                      ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-[#6458FF]/10 hover:text-[#6458FF] dark:hover:text-white'
+                      ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-[#006B66]/10 hover:text-[#006B66] dark:hover:text-white'
                     }`}
                 >
                   <item.icon size={18} className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />

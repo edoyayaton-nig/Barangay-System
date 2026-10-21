@@ -733,24 +733,24 @@ export default function BarangayPortal() {
               <ArrowLeft size={13} className="text-slate-600 dark:text-slate-300" />
               <span className="font-semibold">Back</span>
             </Button>
-            <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-indigo-200 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-[#D5E2E8] flex items-center justify-center">
               <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Barangay {userBarangay}</h1>
-              <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">Resident Portal</span>
+              <span className="text-xs text-[#006B66] dark:text-[#55EFC4] font-semibold">Resident Portal</span>
             </div>
           </div>
 
           {/* Quick Barangay Contact Pill in Navbar */}
-          <div className="hidden lg:flex items-center gap-3 text-xs bg-indigo-50/70 border border-indigo-200/80 px-3 py-1.5 rounded-xl">
-            <a href={`tel:${getBarangayContact(userBarangay).replace(/[^0-9+]/g, '')}`} className="flex items-center gap-1.5 text-indigo-800 hover:text-indigo-950 font-medium transition-colors cursor-pointer" title="Barangay Official Hotline">
-              <Phone size={13} className="text-indigo-600 shrink-0" />
+          <div className="hidden lg:flex items-center gap-3 text-xs bg-[#E9F4F2] dark:bg-[#182C3F] border border-[#006B66]/20 px-3 py-1.5 rounded-xl">
+            <a href={`tel:${getBarangayContact(userBarangay).replace(/[^0-9+]/g, '')}`} className="flex items-center gap-1.5 text-[#173B5E] dark:text-[#E9F4F2] hover:text-[#006B66] font-medium transition-colors cursor-pointer" title="Barangay Official Hotline">
+              <Phone size={13} className="text-[#006B66] shrink-0" />
               <span className="font-mono font-bold text-[11px]">{getBarangayContact(userBarangay)}</span>
             </a>
-            <span className="text-indigo-300">|</span>
-            <a href={`mailto:${getBarangayEmail(userBarangay)}`} className="flex items-center gap-1.5 text-indigo-800 hover:text-indigo-950 font-medium transition-colors cursor-pointer" title="Official Barangay Gmail">
-              <Mail size={13} className="text-indigo-600 shrink-0" />
+            <span className="text-slate-300">|</span>
+            <a href={`mailto:${getBarangayEmail(userBarangay)}`} className="flex items-center gap-1.5 text-[#173B5E] dark:text-[#E9F4F2] hover:text-[#006B66] font-medium transition-colors cursor-pointer" title="Official Barangay Gmail">
+              <Mail size={13} className="text-[#006B66] shrink-0" />
               <span className="truncate max-w-[200px] text-[11px]">{getBarangayEmail(userBarangay)}</span>
             </a>
           </div>
@@ -765,26 +765,26 @@ export default function BarangayPortal() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="relative flex items-center gap-1.5 text-xs border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
+                    className="relative flex items-center gap-1.5 text-xs border-[#D5E2E8] text-slate-700 hover:bg-[#E9F4F2] cursor-pointer"
                     title="View Document Status & Verification Notifications"
                   >
                     <Bell
                       size={14}
-                      className={notifications.filter(n => !n.is_read).length > 0 ? 'text-indigo-600' : 'text-slate-500'}
+                      className={notifications.filter(n => !n.is_read).length > 0 ? 'text-[#006B66]' : 'text-slate-500'}
                     />
                     <span className="hidden sm:inline">Notifications</span>
                     {notifications.filter(n => !n.is_read).length > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-xs animate-pulse">
+                      <span className="absolute -top-1.5 -right-1.5 bg-[#B42318] text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-xs animate-pulse">
                         {notifications.filter(n => !n.is_read).length}
                       </span>
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-[90vw] sm:w-96 p-0 max-h-[80vh] overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-2">
+                <PopoverContent align="end" className="w-[90vw] sm:w-96 p-0 max-h-[80vh] overflow-hidden rounded-2xl shadow-xl bg-white dark:bg-[#132232] border border-[#D5E2E8] dark:border-[#223A50]">
+                  <div className="p-4 border-b border-slate-100 dark:border-[#223A50] flex items-start justify-between gap-2">
                     <div>
                       <h4 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-                        <Bell className="text-indigo-600" size={16} />
+                        <Bell className="text-[#006B66]" size={16} />
                         Notifications &amp; Status
                       </h4>
                       <p className="text-[11px] text-slate-500 mt-0.5">
@@ -793,7 +793,7 @@ export default function BarangayPortal() {
                     </div>
                     <button
                       onClick={markAllNotifsRead}
-                      className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold whitespace-nowrap hover:underline mt-0.5 cursor-pointer"
+                      className="text-[11px] text-[#006B66] hover:text-[#005753] font-semibold whitespace-nowrap hover:underline mt-0.5 cursor-pointer"
                       title="Mark all notifications as read"
                     >
                       ✓ Mark Read
@@ -887,7 +887,7 @@ export default function BarangayPortal() {
               variant="destructive"
               size="sm"
               onClick={() => { toast.info('Logged out'); navigate('/login'); }}
-              className="flex items-center gap-1.5 text-xs bg-red-600 hover:bg-red-700 h-8 px-2.5 sm:px-3 cursor-pointer"
+              className="flex items-center gap-1.5 text-xs bg-[#B42318] hover:bg-[#912015] h-8 px-2.5 sm:px-3 cursor-pointer"
             >
               <LogOut size={14} />
               <span className="hidden sm:inline">Logout</span>
@@ -898,15 +898,15 @@ export default function BarangayPortal() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
         {/* Official Barangay Helpdesk & Contact Banner */}
-        <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-indigo-800/40 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-[#173B5E] via-[#0F2740] to-[#006B66] text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#006B66]/30 relative overflow-hidden">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="bg-[#006B66]/30 text-[#E9F4F2] border border-[#006B66]/40 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
                   Barangay {userBarangay} Official Helpdesk
                 </span>
                 <span className="text-slate-300 text-[11px] flex items-center gap-1">
-                  <Clock size={12} className="text-indigo-400" /> Mon - Fri: 8:00 AM - 5:00 PM
+                  <Clock size={12} className="text-[#D8A443]" /> Mon - Fri: 8:00 AM - 5:00 PM
                 </span>
               </div>
               <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
@@ -1019,8 +1019,8 @@ export default function BarangayPortal() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Building2 size={22} className="text-indigo-600" />
-              <h2 className="text-2xl font-extrabold text-slate-900">Barangay Document Requests</h2>
+              <Building2 size={22} className="text-[#173B5E]" />
+              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Barangay Document Requests</h2>
             </div>
             <p className="text-xs text-slate-500">Request official barangay documents and track their processing status.</p>
           </div>
@@ -1029,7 +1029,7 @@ export default function BarangayPortal() {
             <DialogTrigger asChild>
               <Button
                 disabled={!isVerified}
-                className={`text-xs gap-1.5 shadow-sm ${!isVerified ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                className={`text-xs gap-1.5 shadow-sm ${!isVerified ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#006B66] hover:bg-[#005753] text-white'}`}
               >
                 {!isVerified ? <Lock size={14} /> : <PlusCircle size={15} />}
                 Request Barangay Document

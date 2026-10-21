@@ -19,7 +19,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
     return (
       <div className="relative w-full group">
         {icon && (
-          <div className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none z-10">
+          <div className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-[#006B66] transition-colors pointer-events-none z-10">
             {icon}
           </div>
         )}
@@ -37,8 +37,8 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             h-[42px]
             ${
               error
-                ? 'border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-100'
-                : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                ? 'border-[#B42318] focus:border-[#B42318] focus:ring-2 focus:ring-[#B42318]/20'
+                : 'border-[#D5E2E8] focus:border-[#006B66] focus:ring-2 focus:ring-[#006B66]/20'
             }
             ${className}`}
           {...props}
@@ -58,11 +58,11 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             peer-focus:!-top-2 peer-focus:!left-2.5 peer-focus:!text-[10px] peer-focus:!font-semibold peer-focus:!bg-white peer-focus:!px-1
             ${
               error
-                ? 'text-red-500 peer-focus:text-red-600'
-                : 'peer-focus:text-blue-600'
+                ? 'text-[#B42318] peer-focus:text-[#B42318]'
+                : 'peer-focus:text-[#006B66]'
             }`}
         >
-          {label} {required && <span className="text-red-500 font-bold ml-0.5">*</span>}
+          {label} {required && <span className="text-[#B42318] font-bold ml-0.5">*</span>}
         </label>
 
         {isPassword && (
@@ -77,7 +77,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           </button>
         )}
 
-        {error && <p className="mt-1 text-[10px] text-red-500 pl-1">{error}</p>}
+        {error && <p className="mt-1 text-[10px] text-[#B42318] pl-1">{error}</p>}
       </div>
     );
   }
@@ -106,8 +106,8 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
           className={`peer block w-full rounded-xl border bg-white text-xs text-slate-900 transition-all shadow-xs outline-none px-3 pt-2.5 pb-2
             ${
               error
-                ? 'border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-100'
-                : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                ? 'border-[#B42318] focus:border-[#B42318] focus:ring-2 focus:ring-[#B42318]/20'
+                : 'border-[#D5E2E8] focus:border-[#006B66] focus:ring-2 focus:ring-[#006B66]/20'
             }
             ${className}`}
           {...props}
@@ -126,14 +126,14 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
             peer-focus:!-top-2 peer-focus:!text-[10px] peer-focus:!font-semibold peer-focus:!bg-white peer-focus:!px-1
             ${
               error
-                ? 'text-red-500 peer-focus:text-red-600'
-                : 'peer-focus:text-blue-600'
+                ? 'text-[#B42318] peer-focus:text-[#B42318]'
+                : 'peer-focus:text-[#006B66]'
             }`}
         >
-          {label} {required && <span className="text-red-500 font-bold ml-0.5">*</span>}
+          {label} {required && <span className="text-[#B42318] font-bold ml-0.5">*</span>}
         </label>
 
-        {error && <p className="mt-1 text-[10px] text-red-500 pl-1">{error}</p>}
+        {error && <p className="mt-1 text-[10px] text-[#B42318] pl-1">{error}</p>}
       </div>
     );
   }
@@ -155,7 +155,7 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
     return (
       <div className="relative w-full group">
         {icon && (
-          <div className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none z-10">
+          <div className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-[#006B66] transition-colors pointer-events-none z-10">
             {icon}
           </div>
         )}
@@ -170,8 +170,8 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
             h-[42px] cursor-pointer
             ${
               error
-                ? 'border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-100'
-                : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-100'
+                ? 'border-[#B42318] focus:border-[#B42318] focus:ring-2 focus:ring-[#B42318]/20'
+                : 'border-[#D5E2E8] focus:border-[#006B66] focus:ring-2 focus:ring-[#006B66]/20'
             }
             ${className}`}
           {...props}
@@ -206,14 +206,14 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
             peer-focus:!-top-2 peer-focus:!left-2.5 peer-focus:!text-[10px] peer-focus:!font-semibold peer-focus:!bg-white peer-focus:!px-1
             ${
               error
-                ? 'text-red-500 peer-focus:text-red-600'
-                : 'peer-focus:text-blue-600'
+                ? 'text-[#B42318] peer-focus:text-[#B42318]'
+                : 'peer-focus:text-[#006B66]'
             }`}
         >
-          {label} {required && <span className="text-red-500 font-bold ml-0.5">*</span>}
+          {label} {required && <span className="text-[#B42318] font-bold ml-0.5">*</span>}
         </label>
 
-        {error && <p className="mt-1 text-[10px] text-red-500 pl-1">{error}</p>}
+        {error && <p className="mt-1 text-[10px] text-[#B42318] pl-1">{error}</p>}
       </div>
     );
   }

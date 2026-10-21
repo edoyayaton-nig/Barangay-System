@@ -3270,7 +3270,7 @@ export default function AdminDashboard() {
                 setNotifyCategory('general');
                 setIsManualNotifyOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#006B66] hover:bg-[#005753] rounded-lg shadow-xs transition-all cursor-pointer"
               title="Manually dispatch SMS, Email (EmailJS), and In-App notice to any resident"
             >
               <Send size={13} />
@@ -3284,7 +3284,7 @@ export default function AdminDashboard() {
                 className="flex items-center gap-2 p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer group"
                 title="Admin Profile Settings"
               >
-                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 group-hover:border-blue-400 overflow-hidden shrink-0">
+                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 group-hover:border-[#006B66] overflow-hidden shrink-0">
                   {user?.profile_photo ? (
                     <img src={user.profile_photo} alt={user?.name || 'Admin'} className="w-full h-full object-cover" />
                   ) : (
@@ -3293,7 +3293,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="hidden md:block text-left">
                   <span className="text-xs font-bold text-slate-900 dark:text-white block leading-tight">{user?.name || 'Barangay Admin'}</span>
-                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Administrator</span>
+                  <span className="text-[10px] text-[#006B66] dark:text-[#55EFC4] font-medium">Administrator</span>
                 </div>
                 <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 ml-1" />
               </button>
@@ -3356,8 +3356,8 @@ export default function AdminDashboard() {
                 }}
                 className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                   isActive
-                    ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
-                    : 'text-slate-600 hover:bg-[#6458FF]/10 hover:text-[#6458FF]'
+                    ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
+                    : 'text-slate-600 hover:bg-[#006B66]/10 hover:text-[#006B66]'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -3370,7 +3370,7 @@ export default function AdminDashboard() {
                 </div>
                 {(item as any).badge !== undefined && (
                   <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${
-                    isActive ? 'bg-white/25 text-white' : 'bg-[#FF6492] text-white'
+                    isActive ? 'bg-white/25 text-white' : 'bg-[#B42318] text-white'
                   }`}>
                     {(item as any).badge}
                   </span>
@@ -3423,8 +3423,8 @@ export default function AdminDashboard() {
                   }}
                   className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-[#6458FF]/10 hover:text-[#6458FF]'
+                      ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-[#006B66]/10 hover:text-[#006B66]'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -3437,7 +3437,7 @@ export default function AdminDashboard() {
                   </div>
                   {(item as any).badge !== undefined && (
                     <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${
-                      isActive ? 'bg-white/25 text-white' : 'bg-[#FF6492] text-white'
+                      isActive ? 'bg-white/25 text-white' : 'bg-[#B42318] text-white'
                     }`}>
                       {(item as any).badge}
                     </span>

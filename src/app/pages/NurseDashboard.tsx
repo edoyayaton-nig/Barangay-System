@@ -2022,7 +2022,7 @@ export default function NurseDashboard() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-sm font-bold text-slate-900 dark:text-white">Barangay {nurseBarangay} Health Center</h1>
-                  <Badge className="bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border-teal-200 dark:border-teal-700 text-[10px] font-bold px-1.5">Nurse Portal</Badge>
+                  <Badge className="bg-[#E9F4F2] dark:bg-[#006B66]/20 text-[#006B66] dark:text-[#55EFC4] border-[#006B66]/30 text-[10px] font-bold px-1.5">Nurse Portal</Badge>
                 </div>
                 <span className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:block">Primary Healthcare Clinical EHR &amp; Due Scheduler</span>
               </div>
@@ -2039,15 +2039,15 @@ export default function NurseDashboard() {
                 setNotifyCategory('health');
                 setIsManualNotifyOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 rounded-lg shadow-xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#006B66] hover:bg-[#005753] rounded-lg shadow-xs transition-all cursor-pointer"
               title="Manually dispatch SMS, Email (EmailJS), and In-App health notice to any patient"
             >
               <Send size={13} />
               <span className="hidden sm:inline">Send Health Notice</span>
             </button>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-700 text-xs font-semibold shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E9F4F2] dark:bg-[#006B66]/20 text-[#006B66] dark:text-[#55EFC4] border border-[#006B66]/30 text-xs font-semibold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-[#1D7046] animate-pulse" />
               Nurse Station Active
             </span>
           </div>
@@ -2105,8 +2105,8 @@ export default function NurseDashboard() {
                 }}
                 className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                   isActive
-                    ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
-                    : 'text-slate-600 hover:bg-[#6458FF]/10 hover:text-[#6458FF]'
+                    ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
+                    : 'text-slate-600 hover:bg-[#006B66]/10 hover:text-[#006B66]'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -2115,7 +2115,7 @@ export default function NurseDashboard() {
                 </div>
                 {(item as any).badge !== undefined && (
                   <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${
-                    isActive ? 'bg-white/25 text-white' : 'bg-[#FF6492] text-white'
+                    isActive ? 'bg-white/25 text-white' : 'bg-[#B42318] text-white'
                   }`}>
                     {(item as any).badge}
                   </span>
@@ -2159,8 +2159,8 @@ export default function NurseDashboard() {
                   }}
                   className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
                     isActive
-                      ? 'bg-gradient-to-r from-[#6458FF] to-[#00C6FF] text-white shadow-[0_4px_16px_rgba(100,88,255,0.4)]'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-[#6458FF]/10 hover:text-[#6458FF]'
+                      ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-[#006B66]/10 hover:text-[#006B66]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -2169,7 +2169,7 @@ export default function NurseDashboard() {
                   </div>
                   {(item as any).badge !== undefined && (
                     <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${
-                      isActive ? 'bg-white/25 text-white' : 'bg-[#FF6492] text-white'
+                      isActive ? 'bg-white/25 text-white' : 'bg-[#B42318] text-white'
                     }`}>
                       {(item as any).badge}
                     </span>
