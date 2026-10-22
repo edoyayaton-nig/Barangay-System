@@ -4,10 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\BarangaySetting;
+use App\Models\Broadcast;
+use App\Models\ClinicSchedule;
+use App\Models\ClinicalEncounter;
+use App\Models\DocumentCategory;
 use App\Models\DocumentRequest;
 use App\Models\FaqKnowledge;
 use App\Models\HealthAppointment;
 use App\Models\Immunization;
+use App\Models\Inventory;
 use App\Models\MaternalRecord;
 use App\Models\Message;
 use App\Models\Resident;
@@ -170,7 +175,25 @@ class SystemController extends Controller
 
     public function getActivityLogs(Request $request)
     {
-        $logs = ActivityLog::orderBy('timestamp', 'desc')->limit(100)->get();
+        $query = ActivityLog::query();
+        if ($request->filled('barangay') && !str_contains(strtolower($request->input('barangay')), 'all')) {
+            $query->whereRaw('LOWER(barangay) = ?', [strtolower($request->input('barangay'))]);
+        }
+        if ($request->filled('action_type') && !str_contains(strtolower($request->input('action_type')), 'all')) {
+            $query->whereRaw('LOWER(action_type) = ?', [strtolower($request->input('action_type'))]);
+        }
+        if ($request->filled('role') && !str_contains(strtolower($request->input('role')), 'all')) {
+            $query->whereRaw('LOWER(user_role) = ?', [strtolower($request->input('role'))]);
+        }
+        if ($request->filled('search')) {
+            $s = '%' . strtolower($request->input('search')) . '%';
+            $query->where(function($q) use ($s) {
+                $q->whereRaw('LOWER(user_name) LIKE ?', [$s])
+                  ->orWhereRaw('LOWER(action) LIKE ?', [$s])
+                  ->orWhereRaw('LOWER(details) LIKE ?', [$s]);
+            });
+        }
+        $logs = $query->orderBy('timestamp', 'desc')->limit(500)->get();
         return response()->json($logs);
     }
 
@@ -180,6 +203,9 @@ class SystemController extends Controller
             'user_name' => $request->input('user_name', 'System User'),
             'user_role' => $request->input('user_role', 'staff'),
             'action' => $request->input('action', 'Action performed'),
+            'action_type' => $request->input('action_type', 'General'),
+            'barangay' => $request->input('barangay', 'Pianing'),
+            'details' => $request->input('details', null),
             'timestamp' => now(),
         ]);
         return response()->json(['success' => true, 'log' => $log], 201);
@@ -406,27 +432,144 @@ class SystemController extends Controller
 
     public function getMaintenance()
     {
+        $active = Broadcast::where('is_active', 1)->orderBy('id', 'desc')->first();
+        if ($active) {
+            $type = 'down';
+            if ($active->severity === 'Emergency') $type = 'down';
+            elseif ($active->severity === 'Advisory') $type = 'maintenance';
+            else $type = 'advisory';
+
+            return response()->json([
+                'enabled' => true,
+                'type' => $type,
+                'title' => $active->title,
+                'message' => $active->message,
+                'estimated_uptime' => $active->estimated_uptime ?: 'Advisory active',
+                'updated_at' => $active->created_at ? (is_string($active->created_at) ? $active->created_at : $active->created_at->toIso8601String()) : now()->toIso8601String(),
+            ]);
+        }
+
         return response()->json([
             'enabled' => false,
+            'type' => 'down',
             'title' => 'System Operational',
             'message' => 'All systems fully online.',
+            'estimated_uptime' => '',
+            'updated_at' => now()->toIso8601String(),
         ]);
     }
 
     public function setMaintenance(Request $request)
     {
-        return response()->json([
-            'enabled' => (bool)$request->input('enabled', false),
-            'message' => 'Maintenance mode updated',
-        ]);
+        $enabled = (bool)$request->input('enabled', false);
+        $type = $request->input('type', 'down');
+        $title = $request->input('title', 'CRITICAL ALERT: System is Temporarily Down');
+        $msg = $request->input('message', 'The Barangay Information System is currently undergoing maintenance.');
+        $uptime = $request->input('estimated_uptime', 'Within 1 hour');
+
+        if ($enabled) {
+            Broadcast::query()->update(['is_active' => 0]);
+            $severity = 'Emergency';
+            if ($type === 'down') $severity = 'Emergency';
+            elseif ($type === 'maintenance') $severity = 'Advisory';
+            else $severity = 'Info';
+
+            $broadcast = Broadcast::create([
+                'title' => $title,
+                'message' => $msg,
+                'estimated_uptime' => $uptime,
+                'severity' => $severity,
+                'target_barangay' => 'All',
+                'target_audience' => 'All',
+                'created_by' => 'Super Mega Admin',
+                'is_active' => 1,
+            ]);
+
+            // Save broadcast notification so all accounts see it in their notifications feed
+            try {
+                UserNotification::create([
+                    'recipient_email' => 'all',
+                    'type' => 'System Broadcast',
+                    'title' => $title,
+                    'message' => $msg,
+                    'ref_code' => 'BROADCAST-' . $broadcast->id,
+                    'is_read' => 0,
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable $e) {}
+
+            ActivityLog::create([
+                'user_name' => 'Super Mega Admin',
+                'user_role' => 'super_mega_admin',
+                'action' => "Live Broadcast Activated: {$title}",
+                'action_type' => 'System',
+                'barangay' => 'All (City-Wide)',
+                'details' => $msg,
+                'timestamp' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'maintenance' => [
+                    'enabled' => true,
+                    'type' => $type,
+                    'title' => $title,
+                    'message' => $msg,
+                    'estimated_uptime' => $uptime,
+                    'updated_at' => now()->toIso8601String(),
+                ]
+            ]);
+        } else {
+            Broadcast::query()->update(['is_active' => 0]);
+            ActivityLog::create([
+                'user_name' => 'Super Mega Admin',
+                'user_role' => 'super_mega_admin',
+                'action' => 'Live Broadcast Deactivated — All Portals Returned to Normal',
+                'action_type' => 'System',
+                'barangay' => 'All (City-Wide)',
+                'details' => 'Broadcast turned off.',
+                'timestamp' => now(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'maintenance' => [
+                    'enabled' => false,
+                    'type' => $type,
+                    'title' => 'System Operational',
+                    'message' => 'All systems fully online.',
+                    'estimated_uptime' => '',
+                    'updated_at' => now()->toIso8601String(),
+                ]
+            ]);
+        }
     }
 
     public function getGateways()
     {
+        $dbConnected = true;
+        try {
+            DB::connection()->getPdo();
+        } catch (\Throwable $e) {
+            $dbConnected = false;
+        }
+
         return response()->json([
-            'sms' => ['status' => 'Online', 'provider' => 'iProgTech Gateway'],
-            'email' => ['status' => 'Online', 'provider' => 'Gmail SMTP / EmailJS'],
-            'database' => ['status' => 'Online', 'engine' => 'MariaDB 10.4'],
+            'database' => [
+                'status' => $dbConnected ? 'Connected' : 'Error',
+                'engine' => 'MySQL 8.0 / MariaDB',
+                'host' => '127.0.0.1:3306',
+                'name' => env('DB_DATABASE', 'smart_db'),
+            ],
+            'sms' => [
+                'status' => 'Operational',
+                'provider' => 'iProg SMS Gateway',
+                'endpoint' => 'https://sms.iprogtech.com/api/v1/sendsms',
+            ],
+            'email' => [
+                'status' => 'Active',
+                'provider' => 'Gmail SMTP / EmailJS',
+            ],
         ]);
     }
 
@@ -435,10 +578,18 @@ class SystemController extends Controller
         return response()->json([
             'users' => User::count(),
             'residents' => Resident::count(),
-            'document_requests' => DocumentRequest::count(),
-            'health_appointments' => HealthAppointment::count(),
+            'documents' => DocumentRequest::count(),
+            'activity_logs' => ActivityLog::count(),
+            'document_categories' => DocumentCategory::count(),
+            'appointments' => HealthAppointment::count(),
+            'clinic_schedules' => ClinicSchedule::count(),
             'maternal_records' => MaternalRecord::count(),
             'immunizations' => Immunization::count(),
+            'consultations' => ClinicalEncounter::count(),
+            'inventory' => Inventory::count(),
+            'notifications' => UserNotification::count(),
+            'messages' => Message::count(),
+            'census_households' => Resident::where('is_census_only', 1)->count(),
         ]);
     }
 

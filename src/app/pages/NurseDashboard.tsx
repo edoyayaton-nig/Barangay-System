@@ -23,6 +23,7 @@ import SmsDetailsModal from '../components/SmsDetailsModal';
 import BatchSmsReminderModal, { DuePatientItem } from '../components/BatchSmsReminderModal';
 import CensusEntryTab from '../components/CensusEntryTab';
 import GmailNotificationHub from '../components/GmailNotificationHub';
+import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import {
   notifyHealthDataChanged,
   subscribeHealthDataSync,
@@ -2192,6 +2193,7 @@ export default function NurseDashboard() {
 
         {/* Main Content View */}
         <main ref={mainContentRef} className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
+          <SystemNoticeBanner />
 
           {/* ═══ OVERVIEW ═══════════════════════════════════════════════════ */}
           {activeTab === 'overview' && (

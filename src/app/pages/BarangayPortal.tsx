@@ -47,6 +47,7 @@ import ProfileSettingsModal from '../components/ProfileSettingsModal';
 import TermsAndPrivacyModal from '../components/TermsAndPrivacyModal';
 import ResubmitIdModal from '../components/ResubmitIdModal';
 import SuperAdminNavigationDock from '../components/SuperAdminNavigationDock';
+import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import { getUpcomingOperatingDates, formatOperatingDaysSummary } from '../../utils/scheduleDateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -897,6 +898,7 @@ export default function BarangayPortal() {
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+        <SystemNoticeBanner />
         {/* Official Barangay Helpdesk & Contact Banner */}
         <div className="bg-gradient-to-r from-[#173B5E] via-[#0F2740] to-[#006B66] text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#006B66]/30 relative overflow-hidden">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

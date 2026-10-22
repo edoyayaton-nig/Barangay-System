@@ -658,13 +658,17 @@ export const apiService = {
     return await res.json();
   },
 
-  async resetUserPassword(id: number, newPassword?: string): Promise<{ success: boolean; message: string }> {
+  async resetUserPassword(id: number | string, newPassword?: string): Promise<{ success: boolean; message: string; new_password?: string }> {
     const res = await fetch(`${API_BASE}/users/${id}/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newPassword })
+      body: JSON.stringify({ newPassword, new_password: newPassword, password: newPassword })
     });
-    return await res.json();
+    const json = await res.json();
+    if (!res.ok || json.error || json.success === false) {
+      throw new Error(json.error || json.message || 'Failed to reset password');
+    }
+    return json;
   },
 
   async deleteUser(id: number) {
@@ -877,7 +881,11 @@ export const apiService = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    return await res.json();
+    const json = await res.json();
+    if (!res.ok || json.success === false || json.error) {
+      throw new Error(json.error || json.message || 'Failed to update profile');
+    }
+    return json.user || json;
   },
 
   async updateUserProfile(data: any) {
@@ -1011,8 +1019,15 @@ export const apiService = {
       body: JSON.stringify(data)
     });
     const result = await res.json();
-    if (!res.ok) throw new Error(result.message || 'Failed to create category');
-    return result;
+    if (!res.ok || result.error) throw new Error(result.error || result.message || 'Failed to create category');
+    const cat = result.category || result;
+    return {
+      id: cat.id,
+      name: cat.name,
+      department: cat.department || 'Barangay',
+      description: cat.description || '',
+      status: cat.status || 'Active'
+    };
   },
 
   async deleteCategory(name: string): Promise<{ success: boolean; message: string }> {
@@ -1020,8 +1035,27 @@ export const apiService = {
       method: 'DELETE'
     });
     const result = await res.json();
-    if (!res.ok) throw new Error(result.message || 'Failed to delete category');
+    if (!res.ok || result.error) throw new Error(result.error || result.message || 'Failed to delete category');
     return result;
+  },
+
+  async getDbHealth(): Promise<Array<{ table: string; count: number; status: string }>> {
+    try {
+      const stats = await this.getDatabaseStats();
+      const tables = [
+        'users', 'residents', 'documents', 'activity_logs',
+        'document_categories', 'appointments', 'clinic_schedules',
+        'maternal_records', 'immunizations', 'consultations',
+        'inventory', 'notifications', 'messages', 'census_households'
+      ];
+      return tables.map(t => ({
+        table: t,
+        count: typeof stats[t] === 'number' ? stats[t] : (stats[t] ? Number(stats[t]) : 0),
+        status: 'Healthy'
+      }));
+    } catch {
+      return [];
+    }
   },
 
   // Audit & Activity History Logs

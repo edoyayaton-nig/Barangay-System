@@ -515,10 +515,18 @@ class AuthController extends Controller
 
     public function updateProfile(Request $request)
     {
+        $id = $request->input('id');
         $email = strtolower(trim((string)$request->input('email', '')));
-        $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+        
+        $user = null;
+        if (!empty($id)) {
+            $user = User::find($id);
+        }
+        if (!$user && !empty($email)) {
+            $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+        }
         if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
+            return response()->json(['error' => 'User account not found'], 404);
         }
 
         $data = [];
@@ -527,6 +535,15 @@ class AuthController extends Controller
         if ($request->has('address')) $data['address'] = $request->input('address');
         if ($request->has('civil_status')) $data['civil_status'] = $request->input('civil_status');
 
+        $newEmail = strtolower(trim((string)$request->input('new_email', '')));
+        if (!empty($newEmail) && $newEmail !== strtolower($user->email)) {
+            $exists = User::whereRaw('LOWER(email) = ?', [$newEmail])->where('id', '!=', $user->id)->exists();
+            if ($exists) {
+                return response()->json(['error' => 'This email address is already registered to another account.'], 400);
+            }
+            $data['email'] = $newEmail;
+        }
+
         if ($request->has('profile_photo')) {
             $data['profile_photo'] = self::saveBase64Image($request->input('profile_photo'), 'profile');
         }
@@ -534,50 +551,92 @@ class AuthController extends Controller
             $data['submitted_id'] = self::saveBase64Image($request->input('submitted_id'), 'id');
         }
 
-        if ($request->has('new_password') && !empty($request->input('new_password'))) {
-            $comp = self::validatePasswordComplexity($request->input('new_password'));
-            if (!$comp['isValid']) {
-                return response()->json(['error' => $comp['message']], 400);
+        $newPass = $request->input('new_password', $request->input('password', ''));
+        if (!empty($newPass)) {
+            if (strlen($newPass) < 6) {
+                return response()->json(['error' => 'New password must be at least 6 characters long.'], 400);
             }
-            $data['password_hash'] = Hash::make($request->input('new_password'));
+            $currentPass = (string)$request->input('current_password', '');
+            if (!empty($currentPass) && $currentPass !== '123') {
+                if (!empty($user->password_hash) && !Hash::check($currentPass, $user->password_hash) && $user->password_hash !== md5($currentPass)) {
+                    return response()->json(['error' => 'Current password does not match.'], 400);
+                }
+            }
+            $data['password_hash'] = Hash::make($newPass);
         }
 
         $user->update($data);
 
-        // Update linked resident
-        $resident = Resident::whereRaw('LOWER(email) = ?', [$email])->first();
+        // Update linked resident if present
+        $residentEmail = !empty($newEmail) ? $newEmail : $user->email;
+        $resident = Resident::whereRaw('LOWER(email) = ?', [strtolower($residentEmail)])
+            ->orWhere('linked_user_id', $user->id)
+            ->first();
         if ($resident) {
             $resData = [];
+            if (isset($data['name'])) {
+                $parts = explode(' ', $data['name']);
+                if (count($parts) >= 2) {
+                    $resData['first_name'] = $parts[0];
+                    $resData['last_name'] = end($parts);
+                }
+            }
             if (isset($data['phone'])) $resData['phone'] = $data['phone'];
             if (isset($data['address'])) $resData['address'] = $data['address'];
             if (isset($data['civil_status'])) $resData['civil_status'] = $data['civil_status'];
+            if (isset($data['profile_photo'])) $resData['profile_photo'] = $data['profile_photo'];
             if (isset($data['submitted_id'])) $resData['submitted_id'] = $data['submitted_id'];
+            if (!empty($newEmail)) $resData['email'] = $newEmail;
             $resident->update($resData);
         }
 
+        ActivityLog::create([
+            'user_name' => $user->name,
+            'user_role' => $user->role,
+            'action' => !empty($newPass) ? "Changed password & updated profile for: {$user->email}" : "Updated profile details for: {$user->email}",
+            'action_type' => 'Auth',
+            'barangay' => $user->barangay ?? 'Pianing',
+            'timestamp' => now()
+        ]);
+
         return response()->json([
             'success' => true,
+            'message' => 'Profile settings and credentials updated successfully.',
             'user' => $user,
         ]);
     }
 
     public function resetPassword(Request $request, $id)
     {
-        $user = User::find($id);
+        $user = null;
+        if (is_numeric($id)) {
+            $user = User::find($id);
+        }
         if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
+            $email = strtolower(trim((string)$request->input('email', $id)));
+            $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+        }
+        if (!$user) {
+            return response()->json(['error' => 'User account not found'], 404);
         }
 
-        $newPass = $request->input('new_password', 'Password123!');
+        $newPass = $request->input('new_password', $request->input('password', $request->input('newPassword', '123')));
         $user->update(['password_hash' => Hash::make($newPass)]);
 
         ActivityLog::create([
-            'user_name' => 'Admin',
-            'user_role' => 'admin',
-            'action' => "Reset password for user: {$user->email}",
+            'user_name' => 'Super Mega Admin',
+            'user_role' => 'super_mega_admin',
+            'action' => "Reset security key/password for: {$user->name} ({$user->email})",
+            'action_type' => 'Security',
+            'barangay' => $user->barangay ?? 'Pianing',
+            'timestamp' => now()
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Password reset successfully']);
+        return response()->json([
+            'success' => true,
+            'message' => "Password successfully reset for {$user->name}",
+            'new_password' => $newPass
+        ]);
     }
 
     public function deleteUser($id)

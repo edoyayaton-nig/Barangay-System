@@ -316,19 +316,22 @@ export default function ProfileSettingsView({ user, onProfileUpdated, darkMode }
     setSaving(true);
     try {
       const payload: any = {
+        id: user?.id,
+        email: user?.email || email.trim().toLowerCase(),
         name: name.trim(),
-        email: email.trim().toLowerCase(),
         phone: phone.trim(),
         profile_photo: profilePhoto
       };
 
+      if (emailChanged) {
+        payload.new_email = email.trim().toLowerCase();
+        payload.current_password = currentPassword;
+      }
+
       if (newPassword) {
         payload.current_password = currentPassword;
         payload.new_password = newPassword;
-      }
-
-      if (emailChanged) {
-        payload.current_password = currentPassword;
+        payload.password = newPassword;
       }
 
       const updated = await apiService.updateUserProfile(payload);

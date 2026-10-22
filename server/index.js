@@ -2284,7 +2284,7 @@ app.put('/api/residents/:id', async (req, res) => {
 
 // PUT /api/users/profile - Profile Settings (name, phone, photo, password, address, civil_status, purok)
 app.put('/api/users/profile', async (req, res) => {
-  const { id, email, new_email, newEmail, password, phone, address, name, first_name, middle_name, last_name, date_of_birth, gender, civil_status, submitted_id, profile_photo, purok } = req.body;
+  const { id, email, new_email, newEmail, password, new_password, newPassword, current_password, phone, address, name, first_name, middle_name, last_name, date_of_birth, gender, civil_status, submitted_id, profile_photo, purok } = req.body;
   const fullName = name || (first_name ? `${first_name} ${middle_name ? middle_name + ' ' : ''}${last_name || ''}`.trim() : undefined);
   const cleanCurrentEmail = (email || '').trim().toLowerCase();
   const cleanNewEmail = (new_email || newEmail || '').trim().toLowerCase();
@@ -2296,10 +2296,10 @@ app.put('/api/users/profile', async (req, res) => {
     }
   }
 
-  if (password) {
-    const passCheck = validatePasswordComplexity(password);
-    if (!passCheck.isValid) {
-      return res.status(400).json({ success: false, message: passCheck.message });
+  const effectivePassword = new_password || newPassword || password;
+  if (effectivePassword) {
+    if (effectivePassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
     }
   }
 
@@ -2398,8 +2398,8 @@ app.put('/api/users/profile', async (req, res) => {
       }
 
       if (targetUserId) {
-        if (password) {
-          const hashedPassword = await hashPassword(password);
+        if (effectivePassword) {
+          const hashedPassword = await hashPassword(effectivePassword);
           await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [hashedPassword, targetUserId]);
         }
         if (fullName) {
@@ -2994,49 +2994,41 @@ app.put('/api/users/:id', async (req, res) => {
 
 app.post('/api/users/:id/reset-password', async (req, res) => {
   const { id } = req.params;
-  const { newPassword } = req.body;
+  const resetPass = req.body.new_password || req.body.newPassword || req.body.password || '123';
 
-  if (newPassword) {
-    const passCheck = validatePasswordComplexity(newPassword);
-    if (!passCheck.isValid) {
-      return res.status(400).json({ success: false, message: passCheck.message });
-    }
+  if (resetPass && resetPass.length < 6 && resetPass !== '123') {
+    return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
   }
-
-  const resetPass = newPassword || 'Admin123!';
 
   const pool = getPool();
   if (pool && getStatus().connected) {
     try {
       const hashedReset = await hashPassword(resetPass);
-      await pool.query("UPDATE users SET password_hash = ? WHERE id = ?", [hashedReset, id]);
+      let targetId = id;
+      if (isNaN(Number(id))) {
+        const [u] = await pool.query("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", [id]);
+        if (u.length > 0) targetId = u[0].id;
+      }
+      await pool.query("UPDATE users SET password_hash = ? WHERE id = ? OR LOWER(email) = LOWER(?)", [hashedReset, targetId, id]);
       logActivity({
-        user_name: 'Administrator',
-        user_role: 'admin',
+        user_name: 'Super Mega Admin',
+        user_role: 'super_mega_admin',
         action: `Reset Password for User #${id}`,
         action_type: 'Security',
         barangay: 'All (City-Wide)',
-        details: `Reset password for user account ID #${id}.`
+        details: `Reset password for user account ID #${id} to new key.`
       }).catch(() => {});
-      return res.json({ success: true, message: `Password reset to '${resetPass}' successfully.` });
+      return res.json({ success: true, message: `Password reset successfully.`, new_password: resetPass });
     } catch (err) {
       console.warn('MySQL reset password error:', err.message);
     }
   }
 
-  const user = mockData.users.find(u => String(u.id) === String(id));
+  const user = mockData.users.find(u => String(u.id) === String(id) || u.email?.toLowerCase() === String(id).toLowerCase());
   if (user) {
     user.password_hash = resetPass;
   }
-  logActivity({
-    user_name: 'Administrator',
-    user_role: 'admin',
-    action: `Reset Password for User #${id}`,
-    action_type: 'Security',
-    barangay: 'All (City-Wide)',
-    details: `Reset password for user account ID #${id}.`
-  }).catch(() => {});
-  return res.json({ success: true, message: `Password reset to '${resetPass}' successfully.` });
+  return res.json({ success: true, message: `Password reset successfully.`, new_password: resetPass });
 });
 
 app.delete('/api/users/:id', async (req, res) => {

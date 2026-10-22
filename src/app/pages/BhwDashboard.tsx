@@ -62,6 +62,7 @@ import BatchSmsReminderModal, { DuePatientItem } from '../components/BatchSmsRem
 import CensusEntryTab from '../components/CensusEntryTab';
 import ManualResidentNotifyModal from '../components/ManualResidentNotifyModal';
 import ThemeToggle from '../components/ThemeToggle';
+import SystemNoticeBanner from '../components/SystemNoticeBanner';
 import { dispatchResidentNotification } from '../../services/emailJsService';
 import {
   notifyHealthDataChanged,
@@ -1550,6 +1551,7 @@ export default function BhwDashboard() {
 
         {/* Main Content Area */}
         <main ref={mainContentRef} className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
+          <SystemNoticeBanner />
           {isVisitorMode && (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
               <div className="flex items-start gap-3">

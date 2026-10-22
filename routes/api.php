@@ -40,7 +40,9 @@ Route::post('/system/migrate-census', [SystemController::class, 'migrateCensusDa
 
 // Authentication & Identity Verification
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login']);
 Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/register', [AuthController::class, 'register']);
 Route::get('/auth/check-status', [AuthController::class, 'checkStatus']);
 
 // User Management & Profile

@@ -1,5 +1,6 @@
 import emailjs from '@emailjs/browser';
 import { notificationStore } from './notificationStore';
+import { apiService } from './api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EmailJS Service – Barangay Pianing Smart System
@@ -377,7 +378,7 @@ export async function dispatchResidentNotification(params: {
   let dispatchError: string | undefined = undefined;
   const cleanEmail = (params.residentEmail || '').toLowerCase().trim();
 
-  // 1. In-App Notification (Permanently retained in resident's Notification Center)
+  // 1. In-App Notification (Permanently retained in resident's Notification Center & MySQL DB)
   if (cleanEmail) {
     try {
       notificationStore.addNotification(cleanEmail, {
@@ -391,6 +392,22 @@ export async function dispatchResidentNotification(params: {
       inAppSuccess = true;
     } catch (inAppErr) {
       console.warn('⚠️ [NotificationStore] Failed to record in-app notification:', inAppErr);
+    }
+
+    try {
+      await apiService.sendNotification({
+        recipient_email: cleanEmail,
+        recipient_phone: params.phone,
+        recipient_name: params.residentName,
+        title: params.title,
+        message: params.message,
+        type: params.type || 'system',
+        ref_code: params.refCode,
+        barangay: params.barangay || 'Pianing'
+      }).catch(() => {});
+      inAppSuccess = true;
+    } catch (dbErr) {
+      console.warn('⚠️ [apiService] Failed to persist notification to MySQL DB:', dbErr);
     }
   }
 

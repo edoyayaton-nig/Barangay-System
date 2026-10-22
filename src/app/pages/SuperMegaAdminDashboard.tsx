@@ -169,12 +169,38 @@ export default function SuperMegaAdminDashboard() {
     } catch {}
   }, [activeTab]);
 
-  const handleResetSuperadminKey = (saEmail: string, barangayName: string) => {
+  const handleResetSuperadminKey = async (saEmail: string, barangayName: string) => {
     const tempKey = `BRGY-${Math.random().toString(36).substring(2, 8).toUpperCase()}-#2026`;
-    navigator.clipboard?.writeText(tempKey);
-    toast.success(`One-time emergency key created for ${barangayName} Superadmin (${saEmail}): ${tempKey}`, {
-      description: 'The key has been copied to your clipboard. Share securely with the client administrator.'
-    });
+    try {
+      const saUser = systemUsers.find(u => u.email?.toLowerCase() === saEmail.toLowerCase()) || systemUsers.find(u => u.role === 'superadmin');
+      const targetId = saUser?.id || saEmail;
+      await apiService.resetUserPassword(targetId, tempKey);
+      navigator.clipboard?.writeText(tempKey);
+      toast.success(`Access key reset in database for ${barangayName} Superadmin (${saEmail}): ${tempKey}`, {
+        description: 'New password saved to MySQL database and copied to clipboard. Share securely with the client administrator.'
+      });
+      // Refresh system users & logs
+      apiService.getUsers().then(users => setSystemUsers(users)).catch(() => {});
+      apiService.getActivityLogs().then(logs => setActivityLogs(logs)).catch(() => {});
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to reset access key in database');
+    }
+  };
+
+  const handleResetAnyUserKey = async (u: SystemUser) => {
+    const tempKey = `KEY-${Math.random().toString(36).substring(2, 8).toUpperCase()}-#2026`;
+    try {
+      await apiService.resetUserPassword(u.id, tempKey);
+      navigator.clipboard?.writeText(tempKey);
+      toast.success(`Access key reset in database for ${u.name} (${u.email}): ${tempKey}`, {
+        description: 'Password saved to MySQL database and copied to clipboard.'
+      });
+      // Refresh system users & logs
+      apiService.getUsers().then(users => setSystemUsers(users)).catch(() => {});
+      apiService.getActivityLogs().then(logs => setActivityLogs(logs)).catch(() => {});
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to reset user access key in database');
+    }
   };
 
   const handleToggleClientBarangayStatus = (clientId: string) => {
@@ -381,13 +407,24 @@ export default function SuperMegaAdminDashboard() {
   const loadDbHealth = async () => {
     setDbLoading(true);
     try {
-      const health = await (apiService as any).getDbHealth?.().catch(() => null);
-      if (health && Array.isArray(health)) {
+      const [health, gateways] = await Promise.all([
+        apiService.getDbHealth().catch(() => null),
+        apiService.getGatewaysHealth().catch(() => null)
+      ]);
+      if (health && Array.isArray(health) && health.length > 0) {
         setDbHealth(health);
       } else {
         setDbHealth(DB_TABLES.map(t => ({ table: t, count: 0, status: 'Healthy' })));
       }
-      setGatewayStatus({ db: 'Connected', sms: 'Operational', smtp: 'Active' });
+      if (gateways) {
+        setGatewayStatus({
+          db: gateways.database?.status || 'Connected',
+          sms: gateways.sms?.status || 'Operational',
+          smtp: gateways.email?.status || 'Active'
+        });
+      } else {
+        setGatewayStatus({ db: 'Connected', sms: 'Operational', smtp: 'Active' });
+      }
     } catch {
       setGatewayStatus({ db: 'Error', sms: 'Unknown', smtp: 'Unknown' });
     } finally {
@@ -497,8 +534,10 @@ export default function SuperMegaAdminDashboard() {
     const newStatus = currentStatus === 'Active' ? 'Inactive' : 'Active';
     try {
       await apiService.updateCategory(catName, newStatus);
-      setCategories(prev => prev.map(c => c.name === catName ? { ...c, status: newStatus } : c));
+      setCategories(prev => prev.map(c => c.name.toLowerCase() === catName.toLowerCase() ? { ...c, status: newStatus } : c));
       toast.success(`Category '${catName}' is now ${newStatus}`);
+      apiService.getCategories().then(cats => setCategories(cats)).catch(() => {});
+      apiService.getActivityLogs().then(logs => setActivityLogs(logs)).catch(() => {});
     } catch { toast.error('Failed to update category status'); }
   };
 
@@ -506,8 +545,10 @@ export default function SuperMegaAdminDashboard() {
     if (!window.confirm(`Delete category '${cat.name}'?`)) return;
     try {
       await apiService.deleteCategory(cat.name);
-      setCategories(prev => prev.filter(c => c.name !== cat.name));
-      toast.success(`Category '${cat.name}' deleted`);
+      setCategories(prev => prev.filter(c => c.name.toLowerCase() !== cat.name.toLowerCase()));
+      toast.success(`Category '${cat.name}' deleted from database`);
+      apiService.getCategories().then(cats => setCategories(cats)).catch(() => {});
+      apiService.getActivityLogs().then(logs => setActivityLogs(logs)).catch(() => {});
     } catch (err: any) { toast.error(err?.message || 'Failed to delete category'); }
   };
 
@@ -517,10 +558,15 @@ export default function SuperMegaAdminDashboard() {
     setCreatingCat(true);
     try {
       const created = await apiService.createCategory({ name: newCat.name.trim(), department: newCat.department, description: newCat.description.trim() || undefined });
-      setCategories(prev => [...prev, created]);
-      toast.success(`Category '${newCat.name}' created`);
+      setCategories(prev => {
+        const withoutOld = prev.filter(c => c.name.toLowerCase() !== created.name.toLowerCase());
+        return [...withoutOld, created];
+      });
+      toast.success(`Category '${newCat.name}' created and saved to database!`);
       setIsAddCatOpen(false);
       setNewCat({ name: '', department: 'Barangay', description: '' });
+      apiService.getCategories().then(cats => setCategories(cats)).catch(() => {});
+      apiService.getActivityLogs().then(logs => setActivityLogs(logs)).catch(() => {});
     } catch (err: any) { toast.error(err?.message || 'Failed to create category'); }
     finally { setCreatingCat(false); }
   };
@@ -921,6 +967,8 @@ export default function SuperMegaAdminDashboard() {
 
         {/* MAIN CONTENT */}
         <main ref={mainContentRef} className="flex-1 min-w-0 h-full overflow-y-auto p-4 sm:p-6 space-y-6">
+
+          <SystemNoticeBanner />
 
           {/* Welcome banner */}
           <div style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}18, ${ACCENT_CYAN}10)`, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 20px' }}
@@ -1766,13 +1814,27 @@ export default function SuperMegaAdminDashboard() {
                     Manage document categories, clearances, permits, and certificates across all barangay portals and resident request forms.
                   </p>
                 </div>
-                <button
-                  onClick={() => setIsAddCatOpen(true)}
-                  style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, #6366F1)`, color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 600 }}
-                  className="flex items-center gap-1.5 hover:opacity-90 transition-all cursor-pointer flex-shrink-0 shadow-sm"
-                >
-                  <PlusCircle size={14} /> Add New Category
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={() => {
+                      setSelectedNotifyResident(null);
+                      setNotifyCategory('general');
+                      setIsNotifyModalOpen(true);
+                    }}
+                    style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, border: 'none' }}
+                    className="flex items-center gap-1.5 shadow-sm hover:opacity-90 transition-opacity cursor-pointer flex-shrink-0"
+                    title="Send Notice to Resident"
+                  >
+                    <Send size={13} /> Send Notice to Resident
+                  </button>
+                  <button
+                    onClick={() => setIsAddCatOpen(true)}
+                    style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, #6366F1)`, color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 600 }}
+                    className="flex items-center gap-1.5 hover:opacity-90 transition-all cursor-pointer flex-shrink-0 shadow-sm"
+                  >
+                    <PlusCircle size={14} /> Add New Category
+                  </button>
+                </div>
               </div>
 
               {/* 4 Stat Tiles */}
@@ -1956,10 +2018,24 @@ export default function SuperMegaAdminDashboard() {
                   <h2 style={{ color: TEXT, fontWeight: 700, fontSize: 17 }}>System Settings & Infrastructure</h2>
                   <p style={{ color: MUTED, fontSize: 12 }}>Monitor database health, download backups, broadcast system notices, and control maintenance mode. Super Mega Admin exclusive.</p>
                 </div>
-                <button onClick={loadDbHealth} style={{ border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 600, background: 'transparent' }}
-                  className="flex items-center gap-1.5 hover:bg-white/5 transition-colors cursor-pointer">
-                  <RefreshCcw size={12} className={dbLoading ? 'animate-spin' : ''} /> Re-check
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button 
+                    onClick={() => {
+                      setSelectedNotifyResident(null);
+                      setNotifyCategory('general');
+                      setIsNotifyModalOpen(true);
+                    }}
+                    style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', borderRadius: 8, padding: '7px 14px', fontSize: 11, fontWeight: 700, border: 'none' }}
+                    className="flex items-center gap-1.5 shadow-md hover:opacity-90 transition-opacity cursor-pointer"
+                    title="Send Notice to Resident"
+                  >
+                    <Send size={12} /> Send Notice to Resident
+                  </button>
+                  <button onClick={loadDbHealth} style={{ border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 600, background: 'transparent' }}
+                    className="flex items-center gap-1.5 hover:bg-white/5 transition-colors cursor-pointer">
+                    <RefreshCcw size={12} className={dbLoading ? 'animate-spin' : ''} /> Re-check
+                  </button>
+                </div>
               </div>
 
               {/* Gateway Status */}
@@ -2901,15 +2977,24 @@ export default function SuperMegaAdminDashboard() {
                               </td>
                               <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                                 {u.role !== 'super_mega_admin' && (
-                                  <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                                  <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                                    <button
+                                      onClick={() => handleResetAnyUserKey(u)}
+                                      title="Reset account access key / password"
+                                      style={{ color: '#C4B5FD', border: `1px solid ${ACCENT_VIOLET}40`, borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 600, background: `${ACCENT_VIOLET}15` }}
+                                      className="hover:bg-violet-900/30 cursor-pointer transition-colors flex items-center gap-1"
+                                    >
+                                      <Key size={11} /> Reset Key
+                                    </button>
                                     <button onClick={() => handleToggleUserStatus(u)}
-                                      style={{ color: u.status === 'Active' ? ACCENT_AMBER : ACCENT_EMERALD, border: `1px solid ${u.status === 'Active' ? ACCENT_AMBER : ACCENT_EMERALD}40`, borderRadius: 6, padding: '2px 8px', fontSize: 10, fontWeight: 600, background: 'transparent' }}
+                                      style={{ color: u.status === 'Active' ? ACCENT_AMBER : ACCENT_EMERALD, border: `1px solid ${u.status === 'Active' ? ACCENT_AMBER : ACCENT_EMERALD}40`, borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 600, background: 'transparent' }}
                                       className="hover:bg-white/5 cursor-pointer transition-colors">
                                       {u.status === 'Active' ? 'Deactivate' : 'Activate'}
                                     </button>
                                     <button onClick={() => handleDeleteUser(u)}
                                       style={{ color: MUTED, borderRadius: 6, padding: '3px 5px', background: 'transparent', border: 'none' }}
-                                      className="hover:text-rose-400 cursor-pointer transition-colors">
+                                      className="hover:text-rose-400 cursor-pointer transition-colors"
+                                      title="Archive user account">
                                       <Trash2 size={13} />
                                     </button>
                                   </div>

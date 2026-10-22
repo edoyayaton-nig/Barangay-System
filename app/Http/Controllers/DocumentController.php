@@ -464,6 +464,11 @@ class DocumentController extends Controller
             return response()->json(['error' => 'Category name is required'], 400);
         }
 
+        $existing = DocumentCategory::whereRaw('LOWER(name) = ?', [strtolower($name)])->first();
+        if ($existing) {
+            return response()->json(['error' => "Category '{$name}' already exists."], 409);
+        }
+
         $cat = DocumentCategory::create([
             'name' => $name,
             'department' => $request->input('department', 'Barangay'),
@@ -471,14 +476,35 @@ class DocumentController extends Controller
             'status' => $request->input('status', 'Active'),
         ]);
 
-        return response()->json(['success' => true, 'category' => $cat], 201);
+        ActivityLog::create([
+            'user_name' => 'Super Mega Admin',
+            'user_role' => 'super_mega_admin',
+            'action' => "Created Document Category: {$name}",
+            'action_type' => 'Category',
+            'barangay' => 'All (City-Wide)',
+            'details' => "Department: {$cat->department}, Description: {$cat->description}",
+            'timestamp' => now()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'id' => $cat->id,
+            'name' => $cat->name,
+            'department' => $cat->department,
+            'description' => $cat->description,
+            'status' => $cat->status,
+            'category' => $cat
+        ], 201);
     }
 
     public function updateCategory(Request $request, $name)
     {
         $decoded = urldecode($name);
         $cat = DocumentCategory::where('name', $decoded)
+            ->orWhere('name', $name)
             ->orWhereRaw('LOWER(name) = ?', [strtolower($decoded)])
+            ->orWhereRaw('LOWER(name) = ?', [strtolower($name)])
+            ->orWhere('id', $name)
             ->first();
         if (!$cat) {
             return response()->json(['error' => 'Category not found'], 404);
@@ -495,20 +521,52 @@ class DocumentController extends Controller
         }
         $cat->save();
 
-        return response()->json(['success' => true, 'category' => $cat, 'message' => "Category '{$cat->name}' is now {$cat->status}."]);
+        ActivityLog::create([
+            'user_name' => 'Super Mega Admin',
+            'user_role' => 'super_mega_admin',
+            'action' => "Updated Category '{$cat->name}' to {$cat->status}",
+            'action_type' => 'Category',
+            'barangay' => 'All (City-Wide)',
+            'timestamp' => now()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'id' => $cat->id,
+            'name' => $cat->name,
+            'department' => $cat->department,
+            'description' => $cat->description,
+            'status' => $cat->status,
+            'category' => $cat,
+            'message' => "Category '{$cat->name}' is now {$cat->status}."
+        ]);
     }
 
     public function deleteCategory($name)
     {
         $decoded = urldecode($name);
         $cat = DocumentCategory::where('name', $decoded)
+            ->orWhere('name', $name)
             ->orWhereRaw('LOWER(name) = ?', [strtolower($decoded)])
+            ->orWhereRaw('LOWER(name) = ?', [strtolower($name)])
+            ->orWhere('id', $name)
             ->first();
         if (!$cat) {
             return response()->json(['error' => 'Category not found'], 404);
         }
 
+        $deletedName = $cat->name;
         $cat->delete();
-        return response()->json(['success' => true, 'message' => 'Category deleted']);
+
+        ActivityLog::create([
+            'user_name' => 'Super Mega Admin',
+            'user_role' => 'super_mega_admin',
+            'action' => "Deleted Category: {$deletedName}",
+            'action_type' => 'Category',
+            'barangay' => 'All (City-Wide)',
+            'timestamp' => now()
+        ]);
+
+        return response()->json(['success' => true, 'message' => "Category '{$deletedName}' deleted successfully"]);
     }
 }
