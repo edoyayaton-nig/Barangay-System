@@ -310,7 +310,8 @@ class AuthController extends Controller
                 'action' => "Existing Resident Account Claimed: {$fullName} ({$email}) connected census record #{$existingResident->id} with Government ID submitted",
             ]);
 
-            EmailService::sendRegistrationEmail($email, $fullName, $barangay);
+            // Single Transaction Policy: Do not send email or SMS on account creation. 
+            // Email/SMS is only dispatched once the account is Approved or Declined by Admin.
 
             $userData = $user->toArray();
             $userData['resident_id'] = $existingResident->id;
@@ -382,7 +383,8 @@ class AuthController extends Controller
             'action' => "New Resident Registration: {$fullName} ({$email}) with Government ID submitted",
         ]);
 
-        EmailService::sendRegistrationEmail($email, $fullName, $barangay);
+        // Single Transaction Policy: Do not send email or SMS on account creation. 
+        // Email/SMS is only dispatched once the account is Approved or Declined by Admin.
 
         $userData = $user->toArray();
         $userData['resident_id'] = $resident->id;

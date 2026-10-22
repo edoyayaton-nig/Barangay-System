@@ -700,7 +700,9 @@ export default function BarangayPortal() {
           statusBadge: 'Pending',
           badgeColor: 'blue',
           refCode: created.request_code,
-          barangay: user?.barangay || userBarangay || 'Pianing'
+          barangay: user?.barangay || userBarangay || 'Pianing',
+          sendEmail: false,
+          sendSms: false
         }).then(() => {
           setNotifications(notificationStore.getNotifications(user.email));
         }).catch(() => {});

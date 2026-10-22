@@ -650,6 +650,14 @@ class ResidentController extends Controller
             EmailService::sendVerificationNoticeEmail($email, $name, 'Rejected', $reason, $barangay);
         }
 
+        $phone = $resident?->phone ?: ($user?->phone ?: '');
+        if (!empty($phone)) {
+            SmsService::sendLiveSms(
+                $phone,
+                "Barangay {$barangay}: Hello {$name}, your resident application requires revision. Reason: {$reason}. Please log in to re-upload your ID."
+            );
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Resident applicant rejected.',

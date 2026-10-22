@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { saveSentReminderIds, notifyHealthDataChanged } from '../../services/healthSync';
-import { dispatchResidentNotification } from '../../services/emailJsService';
+import { dispatchResidentNotification, sendLiveSmsNotification } from '../../services/emailJsService';
 import { toast } from 'sonner';
 
 export interface DuePatientItem {
@@ -187,29 +187,20 @@ export default function BatchSmsReminderModal({
         const msg = generatePreview(p);
         
         try {
-          // 1. Post to backend notification pipeline (creates UserNotification + triggers SmsService::sendLiveSms)
+          // 1. Post to backend notification pipeline for in-app tracking
           await apiService.sendNotification({
             recipient_name: p.name,
             recipient_phone: p.phone,
-          //  recipient_email: p.email,
+            recipient_email: p.email,
             type: p.isOverdue ? 'Overdue Clinical Reminder' : 'Scheduled Clinical Reminder',
             message: msg,
             status: 'Sent'
           });
 
-          // 2. Multi-channel dispatch (In-App + EmailJS + direct SMS fallback)
-          dispatchResidentNotification({
-            residentEmail: p.email || '',
-            residentName: p.name,
-            phone: p.phone,
-            type: 'health',
-            title: p.category === 'maternal' ? `⏰ Prenatal Check-up Reminder: ${p.name}` : `💉 EPI Vaccination Reminder: ${p.name}`,
-            message: msg,
-            statusBadge: p.isOverdue ? 'Overdue' : 'Due Soon',
-            badgeColor: p.isOverdue ? 'amber' : 'blue',
-            refCode: String(p.id),
-            barangay: barangay
-          }).catch(() => {});
+          // 2. Dispatch Live SMS ONCE via priority multi-network gateway
+          if (p.phone) {
+            await sendLiveSmsNotification(p.phone, msg);
+          }
 
           successCount++;
           sentIds.push(p.id);

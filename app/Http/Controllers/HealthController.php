@@ -309,26 +309,10 @@ class HealthController extends Controller
                     'created_at' => now(),
                 ]);
             } catch (\Throwable $ne) {}
-
-            EmailService::sendAppointmentStatusEmail(
-                $email,
-                $residentName,
-                $serviceType,
-                $preferredDate,
-                $preferredTime,
-                'Pending (Booked)',
-                "Clinic Location: {$clinicLoc}",
-                $barangay
-            );
         }
 
-        // Send live SMS via iProg SMS Gateway
-        if (!empty($phone)) {
-            SmsService::sendLiveSms(
-                $phone,
-                "Barangay Health Center: Hello {$residentName}! Your appointment for {$serviceType} is BOOKED for {$preferredDate} ({$preferredTime}) at {$clinicLoc}. Ref: {$aptCode}."
-            );
-        }
+        // Single Transaction Policy: Do not send external Email or SMS on initial booking.
+        // External SMS/Email will be dispatched once when the healthcare service is COMPLETED.
 
         return response()->json([
             'success' => true,
@@ -375,16 +359,19 @@ class HealthController extends Controller
         }
 
         if (!empty($apt->resident_email)) {
-            EmailService::sendAppointmentStatusEmail(
-                $apt->resident_email,
-                $apt->resident_name,
-                $apt->service_type,
-                $scheduledDate,
-                $scheduledTime,
-                $newStatus,
-                "{$bhwNotes}. Location: {$clinicLoc}",
-                $apt->barangay
-            );
+            // Single Transaction Policy: Only send external Email if status is 'Completed' or 'Cancelled'
+            if (in_array($newStatus, ['Completed', 'Cancelled'])) {
+                EmailService::sendAppointmentStatusEmail(
+                    $apt->resident_email,
+                    $apt->resident_name,
+                    $apt->service_type,
+                    $scheduledDate,
+                    $scheduledTime,
+                    $newStatus,
+                    "{$bhwNotes}. Location: {$clinicLoc}",
+                    $apt->barangay
+                );
+            }
 
             try {
                 UserNotification::create([
@@ -400,15 +387,16 @@ class HealthController extends Controller
         }
 
         if (!empty($phone)) {
-            if ($newStatus === 'Approved') {
-                SmsService::sendLiveSms(
-                    $phone,
-                    "Barangay Health Center: Hello {$apt->resident_name}! Your appointment for {$apt->service_type} is CONFIRMED for {$scheduledDate} ({$scheduledTime}) at {$clinicLoc}. Please bring a valid ID. Ref: {$apt->appointment_code}."
-                );
-            } elseif ($newStatus === 'Completed') {
+            // Single Transaction Policy: Only send external SMS if status is 'Completed' or 'Cancelled'
+            if ($newStatus === 'Completed') {
                 SmsService::sendLiveSms(
                     $phone,
                     "Barangay Health Center: Hello {$apt->resident_name}! Your appointment for {$apt->service_type} on {$scheduledDate} has been marked as COMPLETED. Stay healthy!"
+                );
+            } elseif ($newStatus === 'Cancelled') {
+                SmsService::sendLiveSms(
+                    $phone,
+                    "Barangay Health Center: Hello {$apt->resident_name}, your appointment for {$apt->service_type} has been CANCELLED. Please visit the clinic if you need assistance."
                 );
             }
         }

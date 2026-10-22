@@ -745,10 +745,11 @@ export default function SuperMegaAdminDashboard() {
           message: `Mabuhay ${citizenName}! Your resident account for Barangay ${r.barangay || 'Pianing'} has been officially approved and verified by Super Administration. You can now access all services online.`,
           statusBadge: 'Verified',
           badgeColor: 'emerald',
-          barangay: r.barangay || 'Pianing'
-        }).then(res => {
-          if (res.sms) toast.info(`📱 Live SMS sent to ${r.phone}`);
-          if (res.email) toast.info(`📧 Verification email sent to ${r.email}`);
+          barangay: r.barangay || 'Pianing',
+          externalDispatchedByBackend: true
+        }).then(() => {
+          if (r.phone) toast.info(`📱 Live SMS sent to ${r.phone}`);
+          if (r.email) toast.info(`📧 Verification email sent to ${r.email}`);
         }).catch(() => {});
       }
 

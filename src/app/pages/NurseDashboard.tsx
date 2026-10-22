@@ -1542,7 +1542,8 @@ export default function NurseDashboard() {
         recipient_phone: composePhone,
         type: composeType,
         message: composeMessage,
-        status: 'Sent'
+        status: 'Sent',
+        send_sms: true
       });
       toast.success(`SMS alert dispatched to ${composeRecipient}!`);
       setIsSendSmsModalOpen(false);
@@ -1595,15 +1596,14 @@ export default function NurseDashboard() {
           statusBadge: 'Approved',
           badgeColor: 'emerald',
           refCode: apt.appointment_code,
-          barangay: apt.barangay || nurseBarangay || 'Pianing'
-        }).then(res => {
-          if (res.sms) toast.info(`📱 Live SMS sent to ${apt.resident_phone}`);
-          if (res.email) toast.info(`📧 Email confirmation sent to ${apt.resident_email}`);
+          barangay: apt.barangay || nurseBarangay || 'Pianing',
+          sendEmail: false,
+          sendSms: false
         }).catch(() => {});
       }
 
       toast.success('Appointment Confirmed & Scheduled!', {
-        description: `Auto-notification sent to ${selectedAppt.resident_name} for ${schedDate} at ${schedTime} at ${clinicLocation}.`
+        description: `In-portal notification queued for ${selectedAppt.resident_name}. SMS/Email will be dispatched upon appointment completion.`
       });
       setIsApptModalOpen(false);
       setSelectedAppt(null);

@@ -231,13 +231,9 @@ export default function ResidentProfileModal({
         recipient_name: `${resident.first_name} ${resident.last_name}`,
         recipient_phone: recipientPhone,
         type: smsType,
-        message: smsMessage
+        message: smsMessage,
+        send_sms: true
       });
-
-      // If backend didn't report success on direct SMS, ensure dispatch via client multi-network fallback
-      if (notifRes?.sms && notifRes.sms.success === false) {
-        await sendLiveSmsNotification(recipientPhone, smsMessage);
-      }
 
       toast.success(`SMS Notification sent to ${resident.first_name}!`, {
         description: `Phone: ${recipientPhone} • Real-time SMS dispatched successfully.`
@@ -277,10 +273,11 @@ export default function ResidentProfileModal({
           message: `Mabuhay ${citizenName}! Your Barangay ${resident.barangay || 'Pianing'} resident account has been officially approved and verified by the Barangay Administration. You can now access all services online.`,
           statusBadge: 'Verified',
           badgeColor: 'emerald',
-          barangay: resident.barangay || 'Pianing'
-        }).then(res => {
-          if (res.sms) toast.info(`📱 Live SMS sent to ${resident.phone}`);
-          if (res.email) toast.info(`📧 Verification email sent to ${resident.email}`);
+          barangay: resident.barangay || 'Pianing',
+          externalDispatchedByBackend: true
+        }).then(() => {
+          if (resident.phone) toast.info(`📱 Live SMS sent to ${resident.phone}`);
+          if (resident.email) toast.info(`📧 Verification email sent to ${resident.email}`);
         }).catch(() => { });
       }
 

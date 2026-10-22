@@ -320,8 +320,9 @@ class SystemController extends Controller
             } catch (\Throwable $e) {}
         }
 
-        $smsRes = ['success' => false];
-        if (!empty($phone) && !empty($msg)) {
+        $smsRes = ['success' => false, 'sent' => false, 'note' => 'SMS skipped: internal notification only'];
+        $shouldSendSms = $request->boolean('send_sms', false) || $request->boolean('dispatch_sms', false);
+        if ($shouldSendSms && !empty($phone) && !empty($msg)) {
             $smsRes = SmsService::sendLiveSms($phone, $msg, $recipientName, $type);
         }
 

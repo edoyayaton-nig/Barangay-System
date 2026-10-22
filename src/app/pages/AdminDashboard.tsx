@@ -1569,13 +1569,12 @@ export default function AdminDashboard() {
           statusBadge: nextStatus,
           badgeColor,
           refCode: targetDoc.request_code,
-          barangay: targetDoc.barangay || user?.barangay || 'Pianing'
-        }).then(res => {
-          if (res.sms) {
-            toast.info(`📱 Live SMS notification dispatched to ${resPhone}`);
-          }
-          if (res.email) {
-            toast.info(`📧 Status update emailed to ${resEmail}`);
+          barangay: targetDoc.barangay || user?.barangay || 'Pianing',
+          externalDispatchedByBackend: true
+        }).then(() => {
+          if (nextStatus === 'Ready for Pickup') {
+            if (resPhone) toast.info(`📱 Live SMS notification dispatched to ${resPhone}`);
+            if (resEmail) toast.info(`📧 Status update emailed to ${resEmail}`);
           }
         }).catch(() => {});
       }
@@ -1617,14 +1616,11 @@ export default function AdminDashboard() {
           message: `Mabuhay ${applicantName}! Your Barangay ${applicant.barangay || user?.barangay || 'Pianing'} resident account has been officially approved and verified by the Barangay Administration. You can now log in to the portal to request clearances, certificates, and access healthcare appointments.`,
           statusBadge: 'Verified',
           badgeColor: 'emerald',
-          barangay: applicant.barangay || user?.barangay || 'Pianing'
-        }).then(res => {
-          if (res.sms) {
-            toast.info(`📱 Live SMS verification sent to ${applicant.phone}`);
-          }
-          if (res.email) {
-            toast.info(`📧 Verification email dispatched to ${applicant.email}`);
-          }
+          barangay: applicant.barangay || user?.barangay || 'Pianing',
+          externalDispatchedByBackend: true
+        }).then(() => {
+          if (applicant.phone) toast.info(`📱 Live SMS verification sent to ${applicant.phone}`);
+          if (applicant.email) toast.info(`📧 Verification email dispatched to ${applicant.email}`);
         }).catch(() => {});
       }
 
@@ -1677,7 +1673,7 @@ export default function AdminDashboard() {
       // 1. Mark resident as rejected with specific cause saved in database
       await apiService.rejectResident(applicant.id, cause);
 
-      // 2. Dispatch automated in-app notification & EmailJS to resident's Gmail
+      // 2. Dispatch automated in-app notification to resident's portal
       if (applicant.email) {
         dispatchResidentNotification({
           residentEmail: applicant.email,
@@ -1687,28 +1683,13 @@ export default function AdminDashboard() {
           message: `Hello ${applicantName}, your account application for Barangay ${applicant.barangay || user?.barangay || 'Pianing'} requires revision. Discrepancy details: "${cause}". Please log in to your portal to re-upload a clear photo of your valid Government ID.`,
           statusBadge: 'Action Needed',
           badgeColor: 'red',
-          barangay: applicant.barangay || user?.barangay || 'Pianing'
-        }).then(res => {
-          if (res.email) {
-            toast.info(`📧 Correction notice emailed to ${applicant.email}`);
-          }
+          barangay: applicant.barangay || user?.barangay || 'Pianing',
+          externalDispatchedByBackend: true
         }).catch(() => {});
       }
 
-      // 3. If SMS checkbox was selected by admin
-      if (smsMarkAsRejected && phone && phone !== '09170000000') {
-        try {
-          await apiService.sendNotification({
-            recipient_name: applicantName,
-            recipient_phone: phone,
-            type: 'Barangay Announcement',
-            message: `Barangay Notice: Hello ${applicantName}, your account application was rejected. Cause: ${cause}. Please update your profile or re-upload your ID.`
-          });
-        } catch {}
-      }
-
       toast.warning(`Application rejected: ${applicantName} notified`, {
-        description: `Rejection cause has been sent to the resident's portal notification center and email.`
+        description: `Rejection notice has been sent to the resident's portal notification center, email, and mobile.`
       });
       setSmsApplicantModal(null);
       loadData();
@@ -1739,7 +1720,7 @@ export default function AdminDashboard() {
         description: `Reason: ${reason}`
       });
 
-      // Automated In-App & EmailJS Notification to Resident's Gmail
+      // Automated In-App Notification to Resident's Portal
       if (applicant && applicant.email) {
         const applicantName = applicant.name || `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() || 'Resident';
         dispatchResidentNotification({
@@ -1750,11 +1731,8 @@ export default function AdminDashboard() {
           message: `Hello ${applicantName}, your account application for Barangay ${applicant.barangay || user?.barangay || 'Pianing'} requires revision. Reason: "${reason}". Please log in to your portal to re-upload a clear copy of your valid Government ID.`,
           statusBadge: 'Action Needed',
           badgeColor: 'red',
-          barangay: applicant.barangay || user?.barangay || 'Pianing'
-        }).then(res => {
-          if (res.email) {
-            toast.info(`📧 Correction instructions emailed to ${applicant.email}`);
-          }
+          barangay: applicant.barangay || user?.barangay || 'Pianing',
+          externalDispatchedByBackend: true
         }).catch(() => {});
       }
 
@@ -1775,7 +1753,7 @@ export default function AdminDashboard() {
         await apiService.approveResident(res.id, user?.name);
         toast.success(`${res.first_name} ${res.last_name} has been VERIFIED.`);
 
-        // Dispatch Email notification on verification toggle
+        // Dispatch In-App notification on verification toggle
         if (res.email) {
           const resName = `${res.first_name || ''} ${res.last_name || ''}`.trim() || 'Resident';
           dispatchResidentNotification({
@@ -1786,11 +1764,11 @@ export default function AdminDashboard() {
             message: `Mabuhay ${resName}! Your Barangay ${res.barangay || user?.barangay || 'Antongalon'} resident account has been officially approved and verified by the Barangay Administration. You can now log in to the portal to request clearances, certificates, and access healthcare appointments.`,
             statusBadge: 'Verified',
             badgeColor: 'emerald',
-            barangay: res.barangay || user?.barangay || 'Antongalon'
-          }).then(notifyRes => {
-            if (notifyRes.email) {
-              toast.info(`📧 Verification email dispatched to ${res.email}`);
-            }
+            barangay: res.barangay || user?.barangay || 'Antongalon',
+            externalDispatchedByBackend: true
+          }).then(() => {
+            if (res.phone) toast.info(`📱 Live SMS sent to ${res.phone}`);
+            if (res.email) toast.info(`📧 Verification email dispatched to ${res.email}`);
           }).catch(() => {});
         }
       }
@@ -11655,12 +11633,13 @@ export default function AdminDashboard() {
                   message: `Mabuhay ${applicantName}! Your Barangay ${applicant.barangay || user?.barangay || 'Pianing'} resident account has been officially approved and verified by the Barangay Administration. You can now log in to the portal to request clearances, certificates, and access healthcare appointments.`,
                   statusBadge: 'Verified',
                   badgeColor: 'emerald',
-                  barangay: applicant.barangay || user?.barangay || 'Pianing'
-                }).then(res => {
-                  if (res.sms) {
+                  barangay: applicant.barangay || user?.barangay || 'Pianing',
+                  externalDispatchedByBackend: true
+                }).then(() => {
+                  if (applicant.phone) {
                     toast.info(`📱 Live SMS verification sent to ${applicant.phone}`);
                   }
-                  if (res.email) {
+                  if (applicant.email) {
                     toast.info(`📧 Verification email dispatched to ${applicant.email}`);
                   }
                 }).catch(() => {});

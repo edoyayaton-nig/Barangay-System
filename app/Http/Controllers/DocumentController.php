@@ -227,13 +227,8 @@ class DocumentController extends Controller
                 \Illuminate\Support\Facades\Log::warning("ActivityLog create warning: " . $ae->getMessage());
             }
 
-            if (!empty($email)) {
-                try {
-                    EmailService::sendDocumentStatusEmail($email, $residentName, $docType, $requestCode, 'Pending', null, $barangay);
-                } catch (\Throwable $ee) {
-                    \Illuminate\Support\Facades\Log::warning("EmailService warning: " . $ee->getMessage());
-                }
-            }
+            // Single Transaction Policy: Do not send email/SMS on initial document submission.
+            // External SMS & Email are only dispatched once the document is Ready for Pickup (or Rejected).
 
             return response()->json($doc, 201);
         } catch (\Throwable $e) {
@@ -284,21 +279,8 @@ class DocumentController extends Controller
                 $user = !empty($doc->email) ? User::whereRaw('LOWER(email) = ?', [strtolower($doc->email)])->first() : null;
                 $phone = $resident?->phone ?: ($user?->phone ?: '');
 
+                // In-app notification recorded for citizen tracking
                 if (!empty($doc->email)) {
-                    try {
-                        EmailService::sendDocumentStatusEmail(
-                            $doc->email,
-                            $doc->resident_name,
-                            $doc->document_type,
-                            $doc->request_code,
-                            $newStatus,
-                            $doc->remarks,
-                            $doc->barangay
-                        );
-                    } catch (\Throwable $ee) {
-                        \Illuminate\Support\Facades\Log::warning("EmailService status update warning: " . $ee->getMessage());
-                    }
-
                     try {
                         $notifTitle = $newStatus === 'Completed'
                             ? "✅ Document Claimed: {$doc->document_type}"
@@ -321,22 +303,43 @@ class DocumentController extends Controller
                     } catch (\Throwable $ne) {}
                 }
 
-                // Live SMS via iProg SMS Gateway for Completed and Ready for Pickup
-                if (!empty($phone)) {
-                    try {
-                        if ($newStatus === 'Completed') {
-                            SmsService::sendLiveSms(
-                                $phone,
-                                "Barangay {$doc->barangay}: Hello {$doc->resident_name}! Your {$doc->document_type} ({$doc->request_code}) has been marked as COMPLETED. Thank you for using our digital portal!"
+                // Single Transaction Policy: External SMS & Email are STRICTLY dispatched ONLY when Ready for Pickup (or Rejected)
+                // Intermediate states (Pending, Processing, Completed) do NOT consume SMS or Email API credits!
+                $isExternalEligible = in_array(strtolower($newStatus), ['ready for pickup', 'ready', 'rejected']);
+
+                if ($isExternalEligible) {
+                    if (!empty($doc->email)) {
+                        try {
+                            EmailService::sendDocumentStatusEmail(
+                                $doc->email,
+                                $doc->resident_name,
+                                $doc->document_type,
+                                $doc->request_code,
+                                $newStatus,
+                                $doc->remarks,
+                                $doc->barangay
                             );
-                        } elseif ($newStatus === 'Ready for Pickup') {
-                            SmsService::sendLiveSms(
-                                $phone,
-                                "Magandang araw {$doc->resident_name}! Your {$doc->document_type} ({$doc->request_code}) is now READY FOR PICKUP at Barangay {$doc->barangay} Hall. Please bring a valid ID."
-                            );
+                        } catch (\Throwable $ee) {
+                            \Illuminate\Support\Facades\Log::warning("EmailService status update warning: " . $ee->getMessage());
                         }
-                    } catch (\Throwable $se) {
-                        \Illuminate\Support\Facades\Log::warning("SmsService update warning: " . $se->getMessage());
+                    }
+
+                    if (!empty($phone)) {
+                        try {
+                            if ($newStatus === 'Ready for Pickup') {
+                                SmsService::sendLiveSms(
+                                    $phone,
+                                    "Magandang araw {$doc->resident_name}! Your {$doc->document_type} ({$doc->request_code}) is now READY FOR PICKUP at Barangay {$doc->barangay} Hall. Please bring a valid ID."
+                                );
+                            } elseif ($newStatus === 'Rejected') {
+                                SmsService::sendLiveSms(
+                                    $phone,
+                                    "Barangay {$doc->barangay}: Hello {$doc->resident_name}, your request for {$doc->document_type} ({$doc->request_code}) was declined. Remarks: " . ($doc->remarks ?: 'Please verify requirements.')
+                                );
+                            }
+                        } catch (\Throwable $se) {
+                            \Illuminate\Support\Facades\Log::warning("SmsService update warning: " . $se->getMessage());
+                        }
                     }
                 }
             }

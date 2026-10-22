@@ -420,15 +420,14 @@ export default function BhwDashboard() {
           statusBadge: 'Approved',
           badgeColor: 'emerald',
           refCode: apt.appointment_code,
-          barangay: apt.barangay || user?.barangay || 'Pianing'
-        }).then(res => {
-          if (res.sms) toast.info(`📱 Live SMS sent to ${apt.resident_phone}`);
-          if (res.email) toast.info(`📧 Email confirmation sent to ${apt.resident_email}`);
+          barangay: apt.barangay || user?.barangay || 'Pianing',
+          sendEmail: false,
+          sendSms: false
         }).catch(() => { });
       }
 
       toast.success('Appointment Approved & Confirmed!', {
-        description: `📲 Auto-SMS & Email sent to ${apt.resident_name} for ${scheduleDate} at ${scheduleTime} at ${clinicLocation}.`
+        description: `In-portal notification queued for ${apt.resident_name}. SMS/Email will be dispatched upon appointment completion.`
       });
 
       setIsScheduleModalOpen(false);
@@ -535,10 +534,11 @@ export default function BhwDashboard() {
             statusBadge: 'Ready for Pickup',
             badgeColor: 'emerald',
             refCode: targetDoc?.request_code || `DOC-${targetDoc?.id}`,
-            barangay: brgyName
-          }).then(res => {
-            if (res.sms) toast.info(`📱 Live SMS sent to ${resPhone}`);
-            if (res.email) toast.info(`📧 Email sent to ${resEmail}`);
+            barangay: brgyName,
+            externalDispatchedByBackend: true
+          }).then(() => {
+            if (resPhone) toast.info(`📱 Live SMS sent to ${resPhone}`);
+            if (resEmail) toast.info(`📧 Email sent to ${resEmail}`);
           }).catch(() => { });
         }
 
@@ -854,7 +854,8 @@ export default function BhwDashboard() {
         recipient_name: smsRecipientName,
         recipient_phone: smsPhone,
         type: smsType,
-        message: smsMessage || 'Reminder: Please visit the Barangay Health Center for scheduled checkup/vaccination.'
+        message: smsMessage || 'Reminder: Please visit the Barangay Health Center for scheduled checkup/vaccination.',
+        send_sms: true
       });
       setNotifications([sent, ...notifications]);
       toast.success(`SMS Notification dispatched to ${smsPhone}`);

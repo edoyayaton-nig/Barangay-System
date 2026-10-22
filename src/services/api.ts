@@ -424,6 +424,8 @@ export interface SmsNotification {
   id: number;
   recipient_name: string;
   recipient_phone: string;
+  recipient_email?: string;
+  send_sms?: boolean;
   type: string;
   message: string;
   status: 'Sent' | 'Failed' | 'Pending';

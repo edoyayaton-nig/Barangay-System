@@ -356,7 +356,11 @@ export async function sendLiveSmsNotification(
 
 /**
  * 5. Unified Resident Notification Dispatcher
- * Records persistent In-App notification, dispatches Email (via EmailJS/Mail), AND sends live SMS via iProg SMS Gateway
+ * Records persistent In-App notification, and strictly enforces the Single-Transaction Credit Conservation Policy:
+ * - Account: Only dispatches external Email/SMS ONCE upon official Verification (Approved) or Decline (Rejected).
+ * - Document: Only dispatches external Email/SMS ONCE when document is 'Ready for Pickup' (or Rejected).
+ * - Health (Nurse/BHW): Only dispatches external Email/SMS ONCE when the appointment/service is 'Completed' (or Cancelled).
+ * - Backend Deduplication: If externalDispatchedByBackend is true, skips client-side Email/SMS to prevent dual credit consumption.
  */
 export async function dispatchResidentNotification(params: {
   residentEmail: string;
@@ -371,14 +375,16 @@ export async function dispatchResidentNotification(params: {
   barangay?: string;
   sendEmail?: boolean;
   sendSms?: boolean;
+  externalDispatchedByBackend?: boolean;
 }): Promise<{ inApp: boolean; email: boolean; sms: boolean; error?: string }> {
   let inAppSuccess = false;
   let emailSuccess = false;
   let smsSuccess = false;
   let dispatchError: string | undefined = undefined;
   const cleanEmail = (params.residentEmail || '').toLowerCase().trim();
+  const rawStatus = (params.statusBadge || '').toLowerCase().trim();
 
-  // 1. In-App Notification (Permanently retained in resident's Notification Center & MySQL DB)
+  // 1. In-App Notification (Always recorded in resident's Notification Center & MySQL DB for audit tracking)
   if (cleanEmail) {
     try {
       notificationStore.addNotification(cleanEmail, {
@@ -395,6 +401,7 @@ export async function dispatchResidentNotification(params: {
     }
 
     try {
+      // NOTE: send_sms is omitted/false here so that backend does NOT trigger a second SMS!
       await apiService.sendNotification({
         recipient_email: cleanEmail,
         recipient_phone: params.phone,
@@ -411,8 +418,31 @@ export async function dispatchResidentNotification(params: {
     }
   }
 
-  // 2. Direct Gmail Delivery via EmailJS
-  if (params.sendEmail !== false && cleanEmail.includes('@')) {
+  // 2. Single-Transaction Credit Conservation Policy Gate
+  let isExternalEligible = true;
+
+  if (params.type === 'account') {
+    // Only send on official verification (Approved) or rejection (Declined/Action Needed). NEVER on registration/creation.
+    const validAccountStatuses = ['verified', 'approved', 'rejected', 'action needed', 'declined'];
+    isExternalEligible = validAccountStatuses.includes(rawStatus);
+  } else if (params.type === 'document') {
+    // Only send when Ready for Pickup (or Rejected). NEVER on Pending, Processing, or Completed.
+    const validDocStatuses = ['ready for pickup', 'ready', 'rejected', 'declined'];
+    isExternalEligible = validDocStatuses.includes(rawStatus);
+  } else if (params.type === 'health') {
+    // Only send when service/appointment is Completed (or Cancelled). NEVER on booking, triage, or scheduled.
+    const validHealthStatuses = ['completed', 'cancelled', 'overdue'];
+    isExternalEligible = validHealthStatuses.includes(rawStatus);
+  }
+
+  // If backend already dispatched the external SMS/Email or caller explicitly requested skip
+  if (params.externalDispatchedByBackend) {
+    isExternalEligible = false;
+  }
+
+  // 3. Direct Gmail Delivery via EmailJS
+  const shouldSendEmail = isExternalEligible && params.sendEmail !== false && cleanEmail.includes('@');
+  if (shouldSendEmail) {
     try {
       const emailResult = await sendEmailNotification({
         to_name: params.residentName || 'Resident',
@@ -432,8 +462,9 @@ export async function dispatchResidentNotification(params: {
     }
   }
 
-  // 3. Live SMS Delivery via iProg SMS Gateway (API Key: c54932a5cb3127cb6fecb3cfc20b14a9c399305b)
-  if (params.sendSms !== false && params.phone) {
+  // 4. Live SMS Delivery via iProg SMS Gateway
+  const shouldSendSms = isExternalEligible && params.sendSms !== false && Boolean(params.phone);
+  if (shouldSendSms && params.phone) {
     try {
       const smsMsg = `Barangay ${params.barangay || 'Pianing'}: ${params.message}`;
       const smsResult = await sendLiveSmsNotification(params.phone, smsMsg);
