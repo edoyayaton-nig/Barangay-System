@@ -1548,14 +1548,6 @@ export default function SuperMegaAdminDashboard() {
                   >
                     <Crown size={14} /> Deploy Barangay Superadmin
                   </button>
-                  <button
-                    onClick={loadData}
-                    disabled={loading}
-                    style={{ background: `${BORDER}60`, border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 600 }}
-                    className="flex items-center gap-1.5 cursor-pointer hover:bg-white/5 transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCcw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
-                  </button>
                 </div>
               </div>
 
@@ -1817,18 +1809,6 @@ export default function SuperMegaAdminDashboard() {
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
-                    onClick={() => {
-                      setSelectedNotifyResident(null);
-                      setNotifyCategory('general');
-                      setIsNotifyModalOpen(true);
-                    }}
-                    style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, border: 'none' }}
-                    className="flex items-center gap-1.5 shadow-sm hover:opacity-90 transition-opacity cursor-pointer flex-shrink-0"
-                    title="Send Notice to Resident"
-                  >
-                    <Send size={13} /> Send Notice to Resident
-                  </button>
-                  <button
                     onClick={() => setIsAddCatOpen(true)}
                     style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, #6366F1)`, color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 600 }}
                     className="flex items-center gap-1.5 hover:opacity-90 transition-all cursor-pointer flex-shrink-0 shadow-sm"
@@ -2020,18 +2000,6 @@ export default function SuperMegaAdminDashboard() {
                   <p style={{ color: MUTED, fontSize: 12 }}>Monitor database health, download backups, broadcast system notices, and control maintenance mode. Super Mega Admin exclusive.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <button 
-                    onClick={() => {
-                      setSelectedNotifyResident(null);
-                      setNotifyCategory('general');
-                      setIsNotifyModalOpen(true);
-                    }}
-                    style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}, ${ACCENT_CYAN})`, color: 'white', borderRadius: 8, padding: '7px 14px', fontSize: 11, fontWeight: 700, border: 'none' }}
-                    className="flex items-center gap-1.5 shadow-md hover:opacity-90 transition-opacity cursor-pointer"
-                    title="Send Notice to Resident"
-                  >
-                    <Send size={12} /> Send Notice to Resident
-                  </button>
                   <button onClick={loadDbHealth} style={{ border: `1px solid ${BORDER}`, color: MUTED, borderRadius: 8, padding: '6px 14px', fontSize: 11, fontWeight: 600, background: 'transparent' }}
                     className="flex items-center gap-1.5 hover:bg-white/5 transition-colors cursor-pointer">
                     <RefreshCcw size={12} className={dbLoading ? 'animate-spin' : ''} /> Re-check
