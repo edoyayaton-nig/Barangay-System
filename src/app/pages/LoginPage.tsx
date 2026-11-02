@@ -775,37 +775,6 @@ export default function LoginPage() {
                 {loading ? 'Authenticating...' : 'Sign In to Portal'}
                 <ArrowRight size={14} className="ml-1.5" />
               </Button>
-
-              {/* Quick One-Click Demo Role Accounts */}
-              <div className="pt-3 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 text-center">
-                  Quick Access Portals (Password: 123)
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {[
-                    { label: 'Nurse Portal', email: 'nurse@barangay.gov', icon: '🩺', color: 'hover:border-[#006B66] hover:bg-[#006B66]/10 hover:text-[#006B66]' },
-                    { label: 'BHW Health', email: 'bhw@barangay.gov', icon: '🌿', color: 'hover:border-[#006B66] hover:bg-[#006B66]/10 hover:text-[#006B66]' },
-                    { label: 'Barangay Admin', email: 'admin@barangay.gov', icon: '🏛️', color: 'hover:border-[#173B5E] hover:bg-[#173B5E]/10 hover:text-[#173B5E]' },
-                    { label: 'Super Admin', email: 'superadmin@barangay.gov', icon: '🛡️', color: 'hover:border-[#173B5E] hover:bg-[#173B5E]/10 hover:text-[#173B5E]' },
-                    { label: 'Super Mega', email: 'supermegaadmin@barangay.gov', icon: '⚡', color: 'hover:border-[#173B5E] hover:bg-[#173B5E]/10 hover:text-[#173B5E]' },
-                    { label: 'Citizen Portal', email: 'citizen.pianing@gmail.com', icon: '👤', color: 'hover:border-[#D8A443] hover:bg-[#D8A443]/20 hover:text-[#915500]' },
-                  ].map(portal => (
-                    <button
-                      key={portal.email}
-                      type="button"
-                      onClick={() => {
-                        setEmail(portal.email);
-                        setPassword('123');
-                        toast.info(`Filled credentials for ${portal.label}`);
-                      }}
-                      className={`px-2.5 py-2 text-[11px] font-bold text-slate-600 bg-white border border-[#D5E2E8] rounded-full flex items-center justify-center gap-1.5 transition-all shadow-xs hover:-translate-y-0.5 cursor-pointer ${portal.color}`}
-                    >
-                      <span>{portal.icon}</span>
-                      <span>{portal.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </form>
           )}
 
