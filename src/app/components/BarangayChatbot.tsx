@@ -29,7 +29,7 @@ function formatBotText(text: string) {
 const CLIENT_KNOWLEDGE_BASE = [
   {
     topic: 'Barangay Clearance',
-    keywords: ['clearance', 'barangay clearance', 'kuha clearance', 'police clearance', 'nbi clearance', 'clearance requirements', 'unsaon pagkuha og clearance', 'paano kumuha ng clearance', 'requirements clearance'],
+    keywords: ['clearance', 'barangay clearance', 'kuha clearance', 'police clearance', 'nbi clearance', 'clearance requirements', 'unsaon pagkuha og clearance', 'paano kumuha ng clearance', 'requirements clearance', 'cedula'],
     answer: `📄 *Barangay Clearance Requirements & Procedure:*\n\n✅ *Requirements:*\n• 1 Valid Government-Issued ID (PhilSys, Voter's ID, Driver's License, Postal ID, Passport)\n• Community Tax Certificate (Cedula) — available at Barangay Hall Cashier\n• Proof of Residency in Barangay Pianing (utility bill or lease)\n• Purpose of request (Employment, Bank, Travel, Postal ID, etc.)\n\n🕐 *Processing Time:* Same day (15–30 minutes)\n💰 *Official Fee:* Php 50.00\n📍 *Where:* Barangay Hall, Room 1 – Document Section\n\n💡 *Online Request:* Verified residents can request directly via the *Barangay Portal* in this system to avoid queueing!`
   },
   {
