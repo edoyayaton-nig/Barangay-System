@@ -1089,7 +1089,7 @@ export const apiService = {
     const res = await fetch(`${API_BASE}/chatbot`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question })
+      body: JSON.stringify({ question, query: question, message: question })
     });
     return await res.json();
   },
