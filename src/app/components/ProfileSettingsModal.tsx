@@ -217,7 +217,7 @@ export default function ProfileSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={open => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-lg bg-white dark:bg-slate-900 p-0 overflow-hidden shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800">
+      <DialogContent className="max-w-lg bg-white dark:bg-slate-900 p-0 overflow-hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 max-h-[90dvh] flex flex-col pb-[env(safe-area-inset-bottom)] sm:pb-0">
         <DialogDescription className="sr-only">Update your official resident account profile settings and contact details.</DialogDescription>
         {/* Clean, Soft & Eye-Friendly Header */}
         <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-6 text-slate-900 dark:text-white relative">
@@ -281,7 +281,7 @@ export default function ProfileSettingsModal({
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[calc(85vh-140px)] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 max-h-[calc(90dvh-140px)] overflow-y-auto">
           {activeTab === 'profile' ? (
             <div className="space-y-4">
               <div>
@@ -295,7 +295,7 @@ export default function ProfileSettingsModal({
                     onChange={e => setName(e.target.value)}
                     placeholder="e.g. Juan Dela Cruz"
                     required
-                    className="pl-9 h-10 text-xs bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
+                    className="pl-9 h-10 text-base sm:text-xs bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
                   />
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">Appears on official clearances, permits, and clinical EHR records.</p>
@@ -319,7 +319,7 @@ export default function ProfileSettingsModal({
                     onChange={e => setEmail(e.target.value)}
                     placeholder="e.g. resident@gmail.com"
                     required
-                    className="pl-9 h-10 text-xs bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
+                    className="pl-9 h-10 text-base sm:text-xs bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
                   />
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">Used for signing in and receiving document clearances, clinic reminders, and barangay advisories.</p>
@@ -502,7 +502,7 @@ export default function ProfileSettingsModal({
                     value={currentPassword}
                     onChange={e => setCurrentPassword(e.target.value)}
                     placeholder="Enter current password to verify"
-                    className="h-10 text-xs pr-9 bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
+                    className="h-10 text-base sm:text-xs pr-9 bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
                   />
                   <button
                     type="button"
@@ -514,7 +514,7 @@ export default function ProfileSettingsModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     New Password
@@ -525,7 +525,7 @@ export default function ProfileSettingsModal({
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
                       placeholder="Min. 6 chars"
-                      className="h-10 text-xs pr-9 bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
+                      className="h-10 text-base sm:text-xs pr-9 bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
                     />
                     <button
                       type="button"
@@ -545,7 +545,7 @@ export default function ProfileSettingsModal({
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Re-type new password"
-                    className="h-10 text-xs mt-1.5 bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
+                    className="h-10 text-base sm:text-xs mt-1.5 bg-slate-50 border-slate-200 focus:bg-white focus:border-indigo-500 rounded-xl"
                   />
                 </div>
               </div>

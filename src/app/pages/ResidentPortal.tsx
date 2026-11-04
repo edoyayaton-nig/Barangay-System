@@ -291,7 +291,7 @@ export default function ResidentPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans relative">
+    <div className="min-h-dvh w-full max-w-[100vw] overflow-x-hidden bg-slate-50 dark:bg-slate-950 flex flex-col font-sans relative">
       {/* System Notice Banner (System Down / Maintenance / Advisory) */}
       <SystemNoticeBanner />
 
@@ -299,20 +299,20 @@ export default function ResidentPortal() {
       <SuperAdminNavigationDock currentRole={user?.role} />
 
       {/* Top Navbar */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-4 py-3 shadow-xs">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-[#D5E2E8] flex items-center justify-center">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-3 sm:px-6 py-2 sm:py-2.5 shadow-xs transition-colors">
+        <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden bg-white shadow-xs border border-[#D5E2E8] flex items-center justify-center shrink-0">
               <img src="/assets/pianing-logo.png" alt={`Barangay ${residentBrgy}`} className="w-full h-full object-contain" />
             </div>
-            <div>
-              <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Barangay {residentBrgy}</h1>
-              <span className="text-xs text-[#006B66] dark:text-[#55EFC4] font-semibold">Resident Portal Gateway</span>
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">Barangay {residentBrgy}</h1>
+              <span className="text-[11px] sm:text-xs text-[#006B66] dark:text-[#55EFC4] font-semibold block truncate">Resident Portal Gateway</span>
             </div>
           </div>
 
-          {/* Quick Barangay Contact Pill in Navbar */}
-          <div className="hidden md:flex items-center gap-3 text-xs bg-[#E9F4F2] dark:bg-[#182C3F] border border-[#006B66]/20 px-3 py-1.5 rounded-xl">
+          {/* Quick Barangay Contact Pill in Navbar (desktop only) */}
+          <div className="hidden lg:flex items-center gap-3 text-xs bg-[#E9F4F2] dark:bg-[#182C3F] border border-[#006B66]/20 px-3 py-1.5 rounded-xl">
             <a href={`tel:${getBarangayContact(residentBrgy).replace(/[^0-9+]/g, '')}`} className="flex items-center gap-1.5 text-[#173B5E] dark:text-[#E9F4F2] hover:text-[#006B66] font-medium transition-colors cursor-pointer" title="Barangay Official Hotline">
               <Phone size={13} className="text-[#006B66] shrink-0" />
               <span className="font-mono font-bold text-[11px]">{getBarangayContact(residentBrgy)}</span>
@@ -324,17 +324,18 @@ export default function ResidentPortal() {
             </a>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <ThemeToggle variant="pill" />
             {user && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsProfileModalOpen(true)}
-                className="flex items-center gap-1.5 text-xs border-[#006B66]/40 text-[#006B66] hover:bg-[#006B66]/10 dark:text-[#55EFC4]"
+                className="flex items-center gap-1 sm:gap-1.5 text-xs border-[#006B66]/40 text-[#006B66] hover:bg-[#006B66]/10 dark:text-[#55EFC4] h-8 px-2 sm:px-3 cursor-pointer"
               >
                 <Settings size={14} />
-                <span>Profile Settings</span>
+                <span className="hidden md:inline">Profile Settings</span>
+                <span className="hidden sm:inline md:hidden">Profile</span>
               </Button>
             )}
 
@@ -342,7 +343,7 @@ export default function ResidentPortal() {
               variant="destructive"
               size="sm"
               onClick={() => { toast.info('Logged out'); navigate('/login'); }}
-              className="flex items-center gap-1.5 text-xs bg-[#B42318] hover:bg-[#912015]"
+              className="flex items-center gap-1 sm:gap-1.5 text-xs bg-[#B42318] hover:bg-[#912015] h-8 px-2.5 sm:px-3 cursor-pointer"
             >
               <LogOut size={14} />
               <span className="hidden sm:inline">Logout</span>
@@ -352,7 +353,7 @@ export default function ResidentPortal() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 space-y-5 sm:space-y-6 pb-24 sm:pb-12">
         {/* Personalized Welcome Banner for Authenticated Resident */}
         {user && user.role === 'resident' ? (
           <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-indigo-950 text-white rounded-2xl p-5 shadow-sm border border-teal-800/40 relative overflow-hidden">
@@ -652,20 +653,20 @@ export default function ResidentPortal() {
 
       {/* Clinic Appointment Booking Modal */}
       {isBookingOpen && selectedSchedule && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-violet-100 overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 text-white">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-md border border-violet-100 overflow-hidden max-h-[88dvh] flex flex-col pb-[env(safe-area-inset-bottom)] sm:pb-0 animate-in fade-in zoom-in-95">
+            <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-4 text-white shrink-0">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="font-bold text-sm flex items-center gap-2"><CalendarPlus size={16} /> Reserve a Slot</h2>
                   <p className="text-violet-200 text-[11px] mt-0.5">{selectedSchedule.title || selectedSchedule.service_type}</p>
                 </div>
-                <button onClick={() => setIsBookingOpen(false)} className="p-1 hover:bg-white/20 rounded-lg cursor-pointer transition-colors">
+                <button onClick={() => setIsBookingOpen(false)} className="p-1.5 hover:bg-white/20 rounded-lg cursor-pointer transition-colors" aria-label="Close modal">
                   <X size={18} />
                 </button>
               </div>
             </div>
-            <form onSubmit={handleBookAppointment} className="p-5 space-y-4">
+            <form onSubmit={handleBookAppointment} className="p-4 sm:p-5 space-y-3.5 overflow-y-auto">
               {!isVerified && (
                 <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
                   <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -721,7 +722,7 @@ export default function ResidentPortal() {
                   required
                   value={bookingDate}
                   onChange={e => setBookingDate(e.target.value)}
-                  className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none transition-all cursor-pointer"
+                  className="w-full h-10 sm:h-9 px-3 bg-white border border-slate-200 rounded-lg text-base sm:text-xs font-medium text-slate-800 focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none transition-all cursor-pointer"
                 >
                   {availableOperatingDates.map((d, i) => (
                     <option key={d.dateStr} value={d.dateStr}>
@@ -739,7 +740,7 @@ export default function ResidentPortal() {
                         key={d.dateStr}
                         type="button"
                         onClick={() => setBookingDate(d.dateStr)}
-                        className={`text-[11px] px-2 py-0.5 rounded-lg border transition-all cursor-pointer font-medium ${
+                        className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium ${
                           bookingDate === d.dateStr
                             ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -763,7 +764,7 @@ export default function ResidentPortal() {
                   onChange={e => setBookingNotes(e.target.value)}
                   rows={2}
                   placeholder="e.g. Monthly prenatal checkup, child immunization schedule..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none transition-all resize-none"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-base sm:text-xs text-slate-800 focus:border-violet-500 focus:ring-1 focus:ring-violet-200 outline-none transition-all resize-none"
                 />
               </div>
 
@@ -778,9 +779,9 @@ export default function ResidentPortal() {
                 </button>
               </p>
 
-              <div className="flex gap-2 pt-1">
-                <Button type="button" variant="outline" onClick={() => setIsBookingOpen(false)} className="flex-1 text-xs rounded-xl cursor-pointer">Cancel</Button>
-                <Button type="submit" disabled={isBookingLoading || !bookingDate || !isVerified} className={`flex-1 text-xs rounded-xl font-semibold gap-1.5 ${!isVerified ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700 text-white cursor-pointer'}`}>
+              <div className="flex gap-2 pt-1 pb-1">
+                <Button type="button" variant="outline" onClick={() => setIsBookingOpen(false)} className="flex-1 h-10 sm:h-9 text-xs rounded-xl cursor-pointer">Cancel</Button>
+                <Button type="submit" disabled={isBookingLoading || !bookingDate || !isVerified} className={`flex-1 h-10 sm:h-9 text-xs rounded-xl font-semibold gap-1.5 ${!isVerified ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700 text-white cursor-pointer shadow-xs'}`}>
                   {isBookingLoading ? 'Booking...' : !isVerified ? <><Lock size={14} /> Verification Required</> : <><CalendarPlus size={14} /> Confirm Reservation</>}
                 </Button>
               </div>

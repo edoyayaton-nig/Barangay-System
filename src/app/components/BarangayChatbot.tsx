@@ -195,7 +195,7 @@ export default function BarangayChatbot() {
     setIsOpen(openState);
     try {
       localStorage.setItem('barangay_chatbot_open', String(openState));
-    } catch {}
+    } catch { }
   };
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -323,7 +323,7 @@ export default function BarangayChatbot() {
       {/* Floating Chatbot Toggle Button */}
       <button
         onClick={() => { toggleOpen(!isOpen); setHasNewMessage(false); }}
-        className="fixed bottom-5 right-5 z-40 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-4 rounded-full shadow-2xl flex items-center gap-2.5 cursor-pointer transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-40 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-3.5 sm:p-4 rounded-full shadow-2xl flex items-center gap-2.5 cursor-pointer transition-all hover:scale-105 active:scale-95"
         aria-label="Open Barangay Assistant"
       >
         <Bot size={22} />
@@ -336,9 +336,7 @@ export default function BarangayChatbot() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-5 z-50 w-full max-w-sm sm:max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-          style={{ height: '520px' }}
-        >
+        <div className="fixed bottom-20 right-3 sm:bottom-24 sm:right-5 z-50 w-[calc(100vw-1.5rem)] sm:w-full max-w-sm sm:max-w-md h-[500px] max-h-[80dvh] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 flex justify-between items-center shrink-0">
             <div className="flex items-center gap-2.5">
@@ -393,11 +391,10 @@ export default function BarangayChatbot() {
                     {msg.topic}
                   </Badge>
                 )}
-                <div className={`p-3 rounded-2xl max-w-[88%] leading-relaxed text-[12px] ${
-                  msg.sender === 'user'
+                <div className={`p-3 rounded-2xl max-w-[88%] leading-relaxed text-[12px] ${msg.sender === 'user'
                     ? 'bg-blue-600 text-white rounded-tr-none shadow-sm'
                     : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-tl-none shadow-sm'
-                }`}>
+                  }`}>
                   {msg.sender === 'bot' ? formatBotText(msg.text) : msg.text}
                 </div>
                 <span className="text-[9px] text-slate-400 mt-0.5 px-1">
@@ -446,7 +443,7 @@ export default function BarangayChatbot() {
               value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="Ask about clearances, health, or hours..."
-              className="text-xs h-9 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+              className="text-base sm:text-xs h-9 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
               disabled={loading}
             />
             <Button

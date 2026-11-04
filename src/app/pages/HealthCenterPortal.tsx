@@ -539,27 +539,27 @@ export default function HealthCenterPortal() {
   }, [nextUpcomingVisit]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans transition-colors">
+    <div className="min-h-dvh w-full max-w-[100vw] overflow-x-hidden bg-slate-50 dark:bg-slate-950 flex flex-col font-sans transition-colors">
       <SuperAdminNavigationDock currentRole={user?.role} />
 
       {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs transition-colors">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => navigate('/resident')}
-              className="flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 px-2.5 h-8 rounded-xl cursor-pointer transition-colors shadow-xs"
+              className="flex items-center gap-1 text-xs text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 px-2 sm:px-2.5 h-8 rounded-xl cursor-pointer transition-colors shadow-xs shrink-0"
               title="Back to Portals"
             >
               <ArrowLeft size={13} className="text-slate-600 dark:text-slate-300" />
-              <span className="font-semibold">Back</span>
+              <span className="font-semibold hidden xs:inline sm:inline">Back</span>
             </button>
-            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-xs border border-[#D5E2E8] bg-white shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden shadow-xs border border-[#D5E2E8] bg-white shrink-0">
               <img src="/assets/pianing-logo.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider leading-none">Barangay {user?.barangay || 'Pianing'}</p>
-              <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Health Center Portal</h1>
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold uppercase tracking-wider leading-none truncate">Barangay {user?.barangay || 'Pianing'}</p>
+              <h1 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">Health Center Portal</h1>
             </div>
           </div>
 
@@ -712,7 +712,7 @@ export default function HealthCenterPortal() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6 pb-24 sm:pb-12">
         <SystemNoticeBanner />
         {/* Official Barangay Helpdesk & Contact Banner */}
         <div className="bg-gradient-to-r from-[#173B5E] via-[#0F2740] to-[#006B66] text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#006B66]/30 relative overflow-hidden">
@@ -1531,7 +1531,7 @@ export default function HealthCenterPortal() {
 
       {/* ─── Print Official Patient Health Record Modal ─── */}
       <Dialog open={isRecordSummaryOpen} onOpenChange={setIsRecordSummaryOpen}>
-        <DialogContent className="bg-white max-w-2xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className="bg-white max-w-2xl max-h-[90dvh] overflow-y-auto rounded-t-3xl sm:rounded-2xl p-4 sm:p-6 pb-[env(safe-area-inset-bottom)] sm:pb-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-slate-900 font-bold text-sm">
               <FileText className="text-emerald-600" size={17} /> Barangay {user?.barangay || 'Pianing'} — Official Patient Health Record
@@ -1673,7 +1673,7 @@ export default function HealthCenterPortal() {
 
       {/* ─── Make an Appointment / Reserve Slot Modal ─── */}
       <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
-        <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6">
+        <DialogContent className="bg-white max-w-lg max-h-[90dvh] overflow-y-auto rounded-t-3xl sm:rounded-2xl p-4 sm:p-6 pb-[env(safe-area-inset-bottom)] sm:pb-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-slate-900 font-bold text-base">
               <CalendarPlus className="text-emerald-600" size={20} />
@@ -1684,7 +1684,7 @@ export default function HealthCenterPortal() {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleBookAppointment} className="p-5 space-y-4">
+          <form onSubmit={handleBookAppointment} className="p-2 sm:p-4 space-y-4">
             {!isVerified && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2.5 text-xs text-amber-900">
                 <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
@@ -1706,7 +1706,7 @@ export default function HealthCenterPortal() {
                     const found = clinicSchedules.find(s => String(s.id) === e.target.value);
                     if (found) setSelectedSchedule(found);
                   }}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                  className="w-full text-base sm:text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 >
                   {clinicSchedules.map(sched => (
                     <option key={sched.id} value={sched.id}>
@@ -1791,7 +1791,7 @@ export default function HealthCenterPortal() {
                 required
                 value={bookingDate}
                 onChange={(e) => setBookingDate(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
+                className="w-full text-base sm:text-xs p-2.5 rounded-xl border border-slate-200 bg-white font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden cursor-pointer"
               >
                 {availableOperatingDates.map((d, i) => (
                   <option key={d.dateStr} value={d.dateStr}>
@@ -1836,7 +1836,7 @@ export default function HealthCenterPortal() {
                 value={bookingNotes}
                 onChange={(e) => setBookingNotes(e.target.value)}
                 placeholder="Briefly state your concern, symptoms, or medication refill requests..."
-                className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden resize-none"
+                className="w-full text-base sm:text-xs p-2.5 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-hidden resize-none"
               />
             </div>
 
@@ -1890,7 +1890,7 @@ export default function HealthCenterPortal() {
 
       {/* Cancel Appointment Confirmation Modal */}
       <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 space-y-4">
+        <DialogContent className="sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-4 sm:p-6 space-y-4 max-h-[90dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)] sm:pb-6">
           <DialogHeader>
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
@@ -1931,7 +1931,7 @@ export default function HealthCenterPortal() {
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
                   placeholder="e.g. Schedule conflict, work matter, patient feeling better, or rescheduling to another date."
-                  className="w-full mt-1.5 p-3 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-rose-500 outline-none resize-none"
+                  className="w-full mt-1.5 p-3 rounded-xl border border-slate-200 text-base sm:text-xs focus:ring-2 focus:ring-rose-500 outline-none resize-none"
                   rows={3}
                 />
               </div>

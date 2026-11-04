@@ -491,13 +491,13 @@ export default function AdminDashboard() {
     const charsLower = 'abcdefghjkmnpqrstuvwxyz';
     const charsNums = '23456789';
     const charsSpecial = '!@#$%^&*';
-    
+
     let pass = '';
     pass += charsUpper.charAt(Math.floor(Math.random() * charsUpper.length));
     pass += charsLower.charAt(Math.floor(Math.random() * charsLower.length));
     pass += charsNums.charAt(Math.floor(Math.random() * charsNums.length));
     pass += charsSpecial.charAt(Math.floor(Math.random() * charsSpecial.length));
-    
+
     const all = charsUpper + charsLower + charsNums + charsSpecial;
     for (let i = 0; i < 6; i++) {
       pass += all.charAt(Math.floor(Math.random() * all.length));
@@ -542,7 +542,7 @@ export default function AdminDashboard() {
     const digits = '23456789';
     const symbols = '!@#$%&*';
     const all = upper + lower + digits + symbols;
-    
+
     const getRandomChar = (charset: string) => {
       const array = new Uint32Array(1);
       crypto.getRandomValues(array);
@@ -822,7 +822,7 @@ export default function AdminDashboard() {
       setUser(updatedUser);
       try {
         localStorage.setItem('barangay_user', JSON.stringify(updatedUser));
-      } catch {}
+      } catch { }
     }
   };
 
@@ -914,10 +914,10 @@ export default function AdminDashboard() {
 
       // Only the platform-level super_mega_admin can see all 86 barangays overview and system diagnostics
       if (isSuperMegaAdmin) {
-        apiService.getBarangaysOverview().then(data => setBarangaysOverview(data || [])).catch(() => {});
-        apiService.getDatabaseStats().then(data => setDbStats(data?.tables || [])).catch(() => {});
-        apiService.getGatewaysHealth().then(data => setGatewayHealth(data || null)).catch(() => {});
-        apiService.getMaintenanceMode().then(data => setMaintenanceMode(data || { enabled: false, message: '' })).catch(() => {});
+        apiService.getBarangaysOverview().then(data => setBarangaysOverview(data || [])).catch(() => { });
+        apiService.getDatabaseStats().then(data => setDbStats(data?.tables || [])).catch(() => { });
+        apiService.getGatewaysHealth().then(data => setGatewayHealth(data || null)).catch(() => { });
+        apiService.getMaintenanceMode().then(data => setMaintenanceMode(data || { enabled: false, message: '' })).catch(() => { });
       }
     } catch (err) {
       if (showLoading) {
@@ -1002,7 +1002,7 @@ export default function AdminDashboard() {
       return;
     }
     const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-    
+
     // Filter displayed logs — strictly scoped to userBarangay & role restrictions
     const displayedLogs = activityLogs.filter(log => {
       if (!isSuperMegaAdmin && ['Category', 'User', 'Security', 'System', 'Auth', 'Registration'].includes(log.action_type || '')) {
@@ -1152,7 +1152,7 @@ export default function AdminDashboard() {
           navigate('/login');
           return;
         }
-      } catch (e) {}
+      } catch (e) { }
     } else {
       toast.error('Authentication Required', {
         description: 'Please sign in with your administrative account.'
@@ -1177,7 +1177,7 @@ export default function AdminDashboard() {
           loadData(false);
         }
       };
-    } catch {}
+    } catch { }
 
     // Debounced window focus sync (silent, max once every 10s)
     let lastFocusSync = 0;
@@ -1206,13 +1206,13 @@ export default function AdminDashboard() {
       const activeBarangayParam = isSuperMegaAdmin ? undefined : (userBarangay || undefined);
       apiService.getCensusStats(activeBarangayParam, selectedCensusPurok).then(data => {
         if (data) setCensusStats(data);
-      }).catch(() => {});
+      }).catch(() => { });
       apiService.getHouseholds(activeBarangayParam, selectedCensusPurok).then(data => {
         if (data) setCensusHouseholds(data);
-      }).catch(() => {});
+      }).catch(() => { });
       apiService.getResidents(activeBarangayParam, selectedCensusPurok).then(data => {
         if (data) setResidents(data);
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [selectedCensusPurok, activeTab, isSuperMegaAdmin, userBarangay]);
 
@@ -1412,7 +1412,7 @@ export default function AdminDashboard() {
         const cleanPurok = (newDocPurok || '1').replace(/purok\s*/i, '').trim();
 
         const listToCheck = allCensusRegistry.length > 0 ? allCensusRegistry : residents;
-        const existingInDb = listToCheck.find(r => 
+        const existingInDb = listToCheck.find(r =>
           `${r.first_name} ${r.last_name}`.toLowerCase().trim() === newDocName.trim().toLowerCase()
         );
 
@@ -1520,7 +1520,7 @@ export default function AdminDashboard() {
       await apiService.updateDocumentStatus(id, nextStatus, user?.name || 'Admin Juan');
       setDocuments(documents.map(d => d.id === id ? { ...d, status: nextStatus as any, processed_at: new Date().toLocaleTimeString(), processed_by: user?.name || 'Admin Juan' } : d));
       loadData(false);
-      
+
       if (nextStatus === 'Completed') {
         toast.success(`Document Completed & Archived`, {
           description: `Archived for ${resName}`
@@ -1576,7 +1576,7 @@ export default function AdminDashboard() {
             if (resPhone) toast.info(`📱 Live SMS notification dispatched to ${resPhone}`);
             if (resEmail) toast.info(`📧 Status update emailed to ${resEmail}`);
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       loadData();
@@ -1602,7 +1602,7 @@ export default function AdminDashboard() {
       toast.success('Resident application approved! Account is now Verified.');
 
       // Refresh Purok Population Density after approval mutation
-      apiService.getPopulationStats(isSuperMegaAdmin ? undefined : userBarangay).then(p => { if (p) setPopulationStats(p); }).catch(() => {});
+      apiService.getPopulationStats(isSuperMegaAdmin ? undefined : userBarangay).then(p => { if (p) setPopulationStats(p); }).catch(() => { });
 
       // Automated In-App, Email, and SMS Notification to Resident on Verification
       if (applicant && (applicant.email || applicant.phone)) {
@@ -1621,7 +1621,7 @@ export default function AdminDashboard() {
         }).then(() => {
           if (applicant.phone) toast.info(`📱 Live SMS verification sent to ${applicant.phone}`);
           if (applicant.email) toast.info(`📧 Verification email dispatched to ${applicant.email}`);
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       loadData();
@@ -1685,7 +1685,7 @@ export default function AdminDashboard() {
           badgeColor: 'red',
           barangay: applicant.barangay || user?.barangay || 'Pianing',
           externalDispatchedByBackend: true
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       toast.warning(`Application rejected: ${applicantName} notified`, {
@@ -1733,7 +1733,7 @@ export default function AdminDashboard() {
           badgeColor: 'red',
           barangay: applicant.barangay || user?.barangay || 'Pianing',
           externalDispatchedByBackend: true
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       loadData();
@@ -1769,7 +1769,7 @@ export default function AdminDashboard() {
           }).then(() => {
             if (res.phone) toast.info(`📱 Live SMS sent to ${res.phone}`);
             if (res.email) toast.info(`📧 Verification email dispatched to ${res.email}`);
-          }).catch(() => {});
+          }).catch(() => { });
         }
       }
       loadData();
@@ -1856,15 +1856,15 @@ export default function AdminDashboard() {
       setResidents(freshResidents);
       setStats(prev => ({ ...prev, totalResidents: freshResidents.length }));
       // Refresh Purok Population Density after new resident registration
-      apiService.getPopulationStats(isSuperMegaAdmin ? undefined : userBarangay).then(p => { if (p) setPopulationStats(p); }).catch(() => {});
-      apiService.getCensusStats(adminBarangay, 'all').then(data => { if (data) setCensusStats(data); }).catch(() => {});
-      apiService.getHouseholds(adminBarangay, 'all').then(data => { if (data) setCensusHouseholds(data); }).catch(() => {});
+      apiService.getPopulationStats(isSuperMegaAdmin ? undefined : userBarangay).then(p => { if (p) setPopulationStats(p); }).catch(() => { });
+      apiService.getCensusStats(adminBarangay, 'all').then(data => { if (data) setCensusStats(data); }).catch(() => { });
+      apiService.getHouseholds(adminBarangay, 'all').then(data => { if (data) setCensusHouseholds(data); }).catch(() => { });
       toast.success('Resident registered in Population Census successfully');
       try {
         const ch = new BroadcastChannel('barangay_health_sync');
         ch.postMessage({ type: 'HEALTH_DATA_SYNC', timestamp: Date.now() });
         ch.close();
-      } catch {}
+      } catch { }
       setIsAddResidentOpen(false);
       resetAddResidentForm();
     } catch (err) {
@@ -1892,12 +1892,12 @@ export default function AdminDashboard() {
   const resetAddResidentForm = (targetPurok?: string) => {
     const p = targetPurok || (selectedCensusPurok === 'all' ? '1' : selectedCensusPurok);
     const cleanP = p.replace(/purok\s*/i, '').trim() || '1';
-    const existingInP = censusHouseholds.filter(h => 
-      (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP || 
+    const existingInP = censusHouseholds.filter(h =>
+      (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP ||
       (h.household_number || '').includes(`HH-P${cleanP}`)
     );
     const autoHh = `HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`;
-    
+
     setAddResidentMode('new_household');
     setNewResPurok(cleanP);
     setNewResHouseholdNum(autoHh);
@@ -1927,7 +1927,7 @@ export default function AdminDashboard() {
       const headName = (h.head_name || '').toLowerCase();
       const purokStr = (h.purok || '').toLowerCase();
       const combined = `${hNum} ${fName} ${headName} ${purokStr}`;
-      
+
       const matchText = hNum.includes(q) ||
         fName.includes(q) ||
         headName.includes(q) ||
@@ -2164,8 +2164,8 @@ export default function AdminDashboard() {
               setAllCensusRegistry(freshResidents);
               setStats(prev => ({ ...prev, totalResidents: freshResidents.length }));
             }
-            apiService.getCensusStats(assignedBarangay, 'all').then(d => { if (d) setCensusStats(d); }).catch(() => {});
-            apiService.getHouseholds(assignedBarangay, 'all').then(d => { if (d) setCensusHouseholds(d); }).catch(() => {});
+            apiService.getCensusStats(assignedBarangay, 'all').then(d => { if (d) setCensusStats(d); }).catch(() => { });
+            apiService.getHouseholds(assignedBarangay, 'all').then(d => { if (d) setCensusHouseholds(d); }).catch(() => { });
           } catch (censusCreateErr) {
             console.warn('Auto-create resident in census registry notice:', censusCreateErr);
           }
@@ -2563,8 +2563,8 @@ export default function AdminDashboard() {
 
   const handleOpenUserProfile = (u: SystemUser) => {
     let userDetails: any = { ...u };
-    const matchingRes = residents.find(r => 
-      (u.id && r.id === u.id) || 
+    const matchingRes = residents.find(r =>
+      (u.id && r.id === u.id) ||
       (r.email && u.email && r.email.toLowerCase().trim() === u.email.toLowerCase().trim())
     );
     if (matchingRes) {
@@ -2631,10 +2631,10 @@ export default function AdminDashboard() {
           const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
           await apiService.updateUser(selectedStaffInfo.id, { profile_photo: optimizedDataUrl });
-          
+
           setSelectedStaffInfo((prev: any) => prev ? { ...prev, profile_photo: optimizedDataUrl } : null);
           setUsers(prev => prev.map(u => u.id === selectedStaffInfo.id ? { ...u, profile_photo: optimizedDataUrl } : u));
-          
+
           if (user && user.id === selectedStaffInfo.id) {
             const updatedSelf = { ...user, profile_photo: optimizedDataUrl };
             setUser(updatedSelf);
@@ -2658,7 +2658,7 @@ export default function AdminDashboard() {
       await apiService.updateUser(selectedStaffInfo.id, { profile_photo: null });
       setSelectedStaffInfo((prev: any) => prev ? { ...prev, profile_photo: null } : null);
       setUsers(prev => prev.map(u => u.id === selectedStaffInfo.id ? { ...u, profile_photo: null } : u));
-      
+
       if (user && user.id === selectedStaffInfo.id) {
         const updatedSelf = { ...user, profile_photo: null };
         setUser(updatedSelf);
@@ -2763,13 +2763,13 @@ export default function AdminDashboard() {
         phone: cleanEditPhone,
         status: editUserStatus
       } : u));
-      
+
       if (editUserPassword.trim() && editingUser.role === 'superadmin') {
         toast.success(`Superadmin Password Changed! New Password: ${editUserPassword.trim()}`, { duration: 10000 });
       } else {
         toast.success('User details updated successfully');
       }
-      
+
       setIsEditUserOpen(false);
       setEditingUser(null);
       setEditUserCurrentPassword('');
@@ -2796,7 +2796,7 @@ export default function AdminDashboard() {
       toast.error('Passwords do not match. Please re-enter and confirm.');
       return;
     }
-    
+
     const passCheck = validatePasswordComplexity(newPassVal);
     if (!passCheck.isValid) {
       toast.error('Password does not meet security requirements', {
@@ -2804,7 +2804,7 @@ export default function AdminDashboard() {
       });
       return;
     }
-    
+
     try {
       const res = await apiService.resetUserPassword(resetPassUser.id, newPassVal);
       if (resetPassUser.role === 'superadmin') {
@@ -2950,8 +2950,8 @@ export default function AdminDashboard() {
     }
 
     // 2. Match with resident registry
-    const res = residents.find(r => 
-      (doc.resident_id && r.id === doc.resident_id) || 
+    const res = residents.find(r =>
+      (doc.resident_id && r.id === doc.resident_id) ||
       ((doc as any).email && r.email && r.email.toLowerCase() === (doc as any).email.toLowerCase()) ||
       (`${r.first_name} ${r.last_name}`.toLowerCase().trim() === (doc.resident_name || '').toLowerCase().trim())
     );
@@ -2981,8 +2981,8 @@ export default function AdminDashboard() {
   const activeDocuments = barangayDocs.filter(doc => doc.status === 'Pending' || doc.status === 'Processing' || doc.status === 'Ready for Pickup');
   const filteredDocuments = activeDocuments.filter(doc => {
     const matchesSearch = doc.resident_name.toLowerCase().includes(docSearch.toLowerCase()) ||
-                          doc.request_code.toLowerCase().includes(docSearch.toLowerCase()) ||
-                          doc.document_type.toLowerCase().includes(docSearch.toLowerCase());
+      doc.request_code.toLowerCase().includes(docSearch.toLowerCase()) ||
+      doc.document_type.toLowerCase().includes(docSearch.toLowerCase());
     const matchesType = docTypeFilter === 'all' || doc.document_type.toLowerCase().includes(docTypeFilter.toLowerCase());
     const matchesStatus = docStatusFilter === 'all' || doc.status.toLowerCase() === docStatusFilter.toLowerCase();
     return matchesSearch && matchesType && matchesStatus;
@@ -2998,14 +2998,14 @@ export default function AdminDashboard() {
   const archivedDocuments = barangayDocs.filter(doc => doc.status === 'Completed');
   const filteredArchivedDocs = archivedDocuments.filter(doc => {
     const matchesSearch = doc.resident_name.toLowerCase().includes(archiveDocSearch.toLowerCase()) ||
-                          doc.request_code.toLowerCase().includes(archiveDocSearch.toLowerCase()) ||
-                          doc.document_type.toLowerCase().includes(archiveDocSearch.toLowerCase());
+      doc.request_code.toLowerCase().includes(archiveDocSearch.toLowerCase()) ||
+      doc.document_type.toLowerCase().includes(archiveDocSearch.toLowerCase());
     const matchesType = archiveDocTypeFilter === 'all' || doc.document_type === archiveDocTypeFilter;
     return matchesSearch && matchesType;
   });
 
   // Resident Records — registered & verified citizens (excludes pending applicants and census-only inhabitants)
-  const verifiedResidents = residents.filter(res => 
+  const verifiedResidents = residents.filter(res =>
     !res.is_census_only &&
     (res.verification_status === 'Verified' || (res as any).status === 'Verified' || (!res.verification_status && (res as any).status !== 'Pending')) &&
     res.verification_status !== 'Pending' && res.verification_status !== 'Pending_Review' && (res as any).status !== 'Pending'
@@ -3020,7 +3020,7 @@ export default function AdminDashboard() {
 
   // Census Inhabitants Roster — all verified inhabitants belonging to barangay (both registered citizens and census additions)
   const allBarangayInhabitants = residents
-    .filter(res => 
+    .filter(res =>
       (res.verification_status === 'Verified' || (res as any).status === 'Verified' || (!res.verification_status && (res as any).status !== 'Pending')) &&
       res.verification_status !== 'Pending' && res.verification_status !== 'Pending_Review' && (res as any).status !== 'Pending'
     )
@@ -3289,9 +3289,8 @@ export default function AdminDashboard() {
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white dark:bg-slate-900 shadow-2xl flex flex-col py-4 border-r border-slate-200 dark:border-slate-800 lg:hidden transform transition-transform duration-300 ease-in-out ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-white dark:bg-slate-900 shadow-2xl flex flex-col py-4 border-r border-slate-200 dark:border-slate-800 lg:hidden transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="flex items-center justify-between px-4 pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -3332,11 +3331,10 @@ export default function AdminDashboard() {
                     setActiveTab(item.id);
                   }
                 }}
-                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
-                  isActive
+                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${isActive
                     ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
                     : 'text-slate-600 hover:bg-[#006B66]/10 hover:text-[#006B66]'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {item.icon ? (
@@ -3347,9 +3345,8 @@ export default function AdminDashboard() {
                   <span className="truncate">{item.label}</span>
                 </div>
                 {(item as any).badge !== undefined && (
-                  <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${
-                    isActive ? 'bg-white/25 text-white' : 'bg-[#B42318] text-white'
-                  }`}>
+                  <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${isActive ? 'bg-white/25 text-white' : 'bg-[#B42318] text-white'
+                    }`}>
                     {(item as any).badge}
                   </span>
                 )}
@@ -3399,11 +3396,10 @@ export default function AdminDashboard() {
                       setActiveTab(item.id);
                     }
                   }}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${
-                    isActive
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${isActive
                       ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-[#006B66]/10 hover:text-[#006B66]'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     {item.icon ? (
@@ -3414,9 +3410,8 @@ export default function AdminDashboard() {
                     <span className="truncate">{item.label}</span>
                   </div>
                   {(item as any).badge !== undefined && (
-                    <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${
-                      isActive ? 'bg-white/25 text-white' : 'bg-[#B42318] text-white'
-                    }`}>
+                    <span className={`ml-auto min-w-[20px] h-5 px-1.5 text-[10px] font-bold rounded-full flex items-center justify-center shrink-0 shadow-xs ${isActive ? 'bg-white/25 text-white' : 'bg-[#B42318] text-white'
+                      }`}>
                       {(item as any).badge}
                     </span>
                   )}
@@ -3755,11 +3750,10 @@ export default function AdminDashboard() {
                           {monthlyIssuanceStats.bars.map((bar, i) => (
                             <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
                               <div
-                                className={`w-full max-w-[14px] rounded-t-sm transition-all cursor-pointer shadow-2xs ${
-                                  bar.val > 0
+                                className={`w-full max-w-[14px] rounded-t-sm transition-all cursor-pointer shadow-2xs ${bar.val > 0
                                     ? 'bg-slate-800 group-hover:bg-blue-600'
                                     : 'bg-slate-200/60 group-hover:bg-slate-300'
-                                }`}
+                                  }`}
                                 style={{ height: `${Math.max(bar.val > 0 ? 8 : 3, (bar.val / monthlyIssuanceStats.maxScale) * 100)}%` }}
                                 title={`${bar.month}: ${bar.val} requests processed`}
                               />
@@ -3814,14 +3808,14 @@ export default function AdminDashboard() {
                             ) : (
                               activityLogs.slice(0, 7).map((log, idx) => {
                                 const role = (log.user_role || '').toLowerCase();
-                                const badgeColor = 
+                                const badgeColor =
                                   role === 'superadmin' ? 'bg-purple-100 text-purple-800 border-purple-200' :
-                                  role === 'admin' ? 'bg-indigo-100 text-indigo-800 border-indigo-200' :
-                                  role === 'staff' ? 'bg-sky-100 text-sky-800 border-sky-200' :
-                                  role === 'bhw' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-                                  'bg-slate-100 text-slate-700 border-slate-200';
-                                
-                                const timeStr = log.timestamp 
+                                    role === 'admin' ? 'bg-indigo-100 text-indigo-800 border-indigo-200' :
+                                      role === 'staff' ? 'bg-sky-100 text-sky-800 border-sky-200' :
+                                        role === 'bhw' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                                          'bg-slate-100 text-slate-700 border-slate-200';
+
+                                const timeStr = log.timestamp
                                   ? new Date(log.timestamp).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' })
                                   : 'Just now';
 
@@ -4084,9 +4078,9 @@ export default function AdminDashboard() {
                         {((populationStats?.purok_distribution && populationStats.purok_distribution.length > 0)
                           ? populationStats.purok_distribution
                           : [1, 2, 3, 4, 5, 6].map(p => ({
-                              purok: `Purok ${p}`,
-                              count: residents.filter(r => (r.purok || '').toString().includes(String(p))).length
-                            }))
+                            purok: `Purok ${p}`,
+                            count: residents.filter(r => (r.purok || '').toString().includes(String(p))).length
+                          }))
                         ).map((pItem, pIdx) => {
                           const totalPop = populationStats?.total_population || residents.length || 0;
                           const pct = totalPop > 0 ? Math.round((pItem.count / totalPop) * 100) : 0;
@@ -4216,22 +4210,20 @@ export default function AdminDashboard() {
                   <button
                     type="button"
                     onClick={() => setApprovalCensusFilter('all')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      approvalCensusFilter === 'all'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${approvalCensusFilter === 'all'
                         ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/70'
                         : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     All ({basePendingResidents.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setApprovalCensusFilter('has_record')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                      approvalCensusFilter === 'has_record'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${approvalCensusFilter === 'has_record'
                         ? 'bg-emerald-600 text-white shadow-2xs'
                         : 'text-emerald-700 hover:text-emerald-900'
-                    }`}
+                      }`}
                   >
                     <CheckCircle2 size={12} />
                     Has Record ({pendingHasRecordCount})
@@ -4239,11 +4231,10 @@ export default function AdminDashboard() {
                   <button
                     type="button"
                     onClick={() => setApprovalCensusFilter('no_record')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                      approvalCensusFilter === 'no_record'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${approvalCensusFilter === 'no_record'
                         ? 'bg-amber-600 text-white shadow-2xs'
                         : 'text-amber-700 hover:text-amber-900'
-                    }`}
+                      }`}
                   >
                     <AlertTriangle size={12} />
                     No Record ({pendingNoRecordCount})
@@ -4539,16 +4530,14 @@ export default function AdminDashboard() {
                       <button
                         key={tab.id}
                         onClick={() => setDocTypeFilter(tab.id)}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                          docTypeFilter === tab.id
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${docTypeFilter === tab.id
                             ? 'bg-white text-blue-700 shadow-xs font-bold'
                             : 'text-slate-600 hover:text-slate-900'
-                        }`}
+                          }`}
                       >
                         <span>{tab.label}</span>
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                          docTypeFilter === tab.id ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700'
-                        }`}>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${docTypeFilter === tab.id ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700'
+                          }`}>
                           {tab.count}
                         </span>
                       </button>
@@ -4565,11 +4554,10 @@ export default function AdminDashboard() {
                       <button
                         key={s.id}
                         onClick={() => setDocStatusFilter(s.id)}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                          docStatusFilter === s.id
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${docStatusFilter === s.id
                             ? 'bg-white shadow-xs font-bold ' + (s.id === 'Pending' ? 'text-amber-700' : s.id === 'Processing' ? 'text-indigo-700' : s.id === 'Ready for Pickup' ? 'text-blue-700' : 'text-slate-700')
                             : 'text-slate-500 hover:text-slate-900'
-                        }`}
+                          }`}
                       >
                         {s.label}
                       </button>
@@ -4645,13 +4633,13 @@ export default function AdminDashboard() {
                           filteredDocuments.map((doc, idx) => {
                             const formattedDate = doc.requested_at
                               ? (() => {
-                                  try {
-                                    const d = new Date(doc.requested_at);
-                                    return isNaN(d.getTime()) ? doc.requested_at : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                                  } catch {
-                                    return doc.requested_at;
-                                  }
-                                })()
+                                try {
+                                  const d = new Date(doc.requested_at);
+                                  return isNaN(d.getTime()) ? doc.requested_at : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                } catch {
+                                  return doc.requested_at;
+                                }
+                              })()
                               : 'Today';
 
                             return (
@@ -4696,16 +4684,15 @@ export default function AdminDashboard() {
                                 <TableCell>
                                   <Badge className={
                                     doc.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 font-semibold' :
-                                    doc.status === 'Ready for Pickup' ? 'bg-blue-50 text-blue-700 border border-blue-300 font-semibold flex items-center gap-1 w-fit' :
-                                    doc.status === 'Processing' ? 'bg-indigo-50 text-indigo-700 border border-indigo-300 font-semibold flex items-center gap-1 w-fit' :
-                                    'bg-amber-50 text-amber-700 border border-amber-300 font-semibold flex items-center gap-1 w-fit'
+                                      doc.status === 'Ready for Pickup' ? 'bg-blue-50 text-blue-700 border border-blue-300 font-semibold flex items-center gap-1 w-fit' :
+                                        doc.status === 'Processing' ? 'bg-indigo-50 text-indigo-700 border border-indigo-300 font-semibold flex items-center gap-1 w-fit' :
+                                          'bg-amber-50 text-amber-700 border border-amber-300 font-semibold flex items-center gap-1 w-fit'
                                   }>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${
-                                      doc.status === 'Completed' ? 'bg-emerald-500' :
-                                      doc.status === 'Ready for Pickup' ? 'bg-blue-500 animate-pulse' :
-                                      doc.status === 'Processing' ? 'bg-indigo-500 animate-pulse' :
-                                      'bg-amber-500 animate-pulse'
-                                    }`} />
+                                    <span className={`w-1.5 h-1.5 rounded-full ${doc.status === 'Completed' ? 'bg-emerald-500' :
+                                        doc.status === 'Ready for Pickup' ? 'bg-blue-500 animate-pulse' :
+                                          doc.status === 'Processing' ? 'bg-indigo-500 animate-pulse' :
+                                            'bg-amber-500 animate-pulse'
+                                      }`} />
                                     {doc.status}
                                   </Badge>
                                 </TableCell>
@@ -4776,11 +4763,10 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setSettingsSubTab('archive')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    settingsSubTab === 'archive'
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${settingsSubTab === 'archive'
                       ? 'bg-white dark:bg-slate-800 text-indigo-700 shadow-sm border border-slate-200 dark:border-slate-700'
                       : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
-                  }`}
+                    }`}
                 >
                   <Archive size={14} />
                   Archive & Records
@@ -4788,11 +4774,10 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setSettingsSubTab('notifications')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    settingsSubTab === 'notifications'
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${settingsSubTab === 'notifications'
                       ? 'bg-white dark:bg-slate-800 text-indigo-700 shadow-sm border border-slate-200 dark:border-slate-700'
                       : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
-                  }`}
+                    }`}
                 >
                   <Bell size={14} />
                   Notification Settings
@@ -4801,536 +4786,528 @@ export default function AdminDashboard() {
 
               {/* ── ARCHIVE SUB-TAB ── */}
               {settingsSubTab === 'archive' && (
-            <div className="space-y-6">
-              {/* Archive Sub-header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Archive className="text-emerald-600" size={20} />
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Completed Records Archive</h3>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Central archive for all approved/completed clearance documents, residency certificates, and verified resident accounts.
-                  </p>
-                </div>
-                <Button
-                  onClick={() => {
-                    downloadOfficialPdf({
-                      title: 'Completed Documents Archive',
-                      subtitle: `Barangay ${user?.barangay || 'Pianing'} — Archived & Completed Records`,
-                      filename: `Barangay_Archived_Documents_${new Date().toISOString().slice(0, 10)}`,
-                      preparedBy: user?.name || 'Admin',
-                      preparedByTitle: 'Barangay Administrator',
-                      tables: [{
-                        title: 'Completed Document Records',
-                        headers: ['Code', 'Resident', 'Document Type', 'Purpose', 'Status', 'Completed At'],
-                        rows: archivedDocuments.map(d => [d.request_code || '-', d.resident_name || '-', d.document_type || '-', d.purpose || '-', d.status || '-', d.processed_at || d.requested_at || '-'])
-                      }]
-                    });
-                    toast.success('Archived documents PDF downloaded');
-                  }}
-                  variant="outline" size="sm" className="text-xs gap-1.5 border-slate-300"
-                >
-                  <Download size={14} /> Download Archive (PDF)
-                </Button>
-              </div>
-
-              {/* Data Migration Callout Banner - Clean White Card */}
-              <div className="bg-white rounded-2xl p-4 text-slate-800 shadow-xs flex items-start gap-3 border border-slate-200">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-                  <Database size={20} />
-                </div>
-                <div className="text-xs space-y-1">
-                  <h4 className="font-bold text-slate-900 flex items-center gap-2">
-                    📥 Automated Archive Workflow Active
-                  </h4>
-                  <p className="text-slate-500 leading-relaxed">
-                    When you click <strong>Approve / Complete</strong> on a pending document request, the item is removed from the active <strong>Document Processing</strong> tab and moved here to <strong>Settings &amp; Data Archive</strong> for permanent record storage and printing.
-                  </p>
-                </div>
-              </div>
-
-              {/* Interactive Clickable Archive Stats Banner with Dynamic Tab Switching */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setArchiveCategory('docs')}
-                  className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${
-                    archiveCategory === 'docs'
-                      ? 'bg-emerald-100/90 border-2 border-emerald-500 shadow-md ring-2 ring-emerald-500/30'
-                      : 'bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 hover:border-emerald-300 hover:shadow-xs hover:-translate-y-0.5'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 group-hover:bg-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 transition-colors">
-                      <CheckCircle size={20} />
-                    </div>
+                <div className="space-y-6">
+                  {/* Archive Sub-header */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                      <p className="text-[11px] font-semibold text-emerald-700">Completed Documents</p>
-                      <h3 className="text-xl font-bold text-emerald-900">{archivedDocuments.length}</h3>
+                      <div className="flex items-center gap-2">
+                        <Archive className="text-emerald-600" size={20} />
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">Completed Records Archive</h3>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Central archive for all approved/completed clearance documents, residency certificates, and verified resident accounts.
+                      </p>
                     </div>
+                    <Button
+                      onClick={() => {
+                        downloadOfficialPdf({
+                          title: 'Completed Documents Archive',
+                          subtitle: `Barangay ${user?.barangay || 'Pianing'} — Archived & Completed Records`,
+                          filename: `Barangay_Archived_Documents_${new Date().toISOString().slice(0, 10)}`,
+                          preparedBy: user?.name || 'Admin',
+                          preparedByTitle: 'Barangay Administrator',
+                          tables: [{
+                            title: 'Completed Document Records',
+                            headers: ['Code', 'Resident', 'Document Type', 'Purpose', 'Status', 'Completed At'],
+                            rows: archivedDocuments.map(d => [d.request_code || '-', d.resident_name || '-', d.document_type || '-', d.purpose || '-', d.status || '-', d.processed_at || d.requested_at || '-'])
+                          }]
+                        });
+                        toast.success('Archived documents PDF downloaded');
+                      }}
+                      variant="outline" size="sm" className="text-xs gap-1.5 border-slate-300"
+                    >
+                      <Download size={14} /> Download Archive (PDF)
+                    </Button>
                   </div>
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${
-                    archiveCategory === 'docs'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-emerald-700 bg-emerald-200/60 group-hover:bg-emerald-600 group-hover:text-white'
-                  }`}>
-                    {archiveCategory === 'docs' ? 'Active ✓' : 'View Only →'}
-                  </span>
-                </button>
 
-                <button
-                  type="button"
-                  onClick={() => setArchiveCategory('residents')}
-                  className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${
-                    archiveCategory === 'residents'
-                      ? 'bg-blue-100/90 border-2 border-blue-500 shadow-md ring-2 ring-blue-500/30'
-                      : 'bg-blue-50 hover:bg-blue-100/80 border border-blue-200 hover:border-blue-300 hover:shadow-xs hover:-translate-y-0.5'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-100 group-hover:bg-blue-200 text-blue-600 flex items-center justify-center shrink-0 transition-colors">
-                      <UserCheck size={20} />
+                  {/* Data Migration Callout Banner - Clean White Card */}
+                  <div className="bg-white rounded-2xl p-4 text-slate-800 shadow-xs flex items-start gap-3 border border-slate-200">
+                    <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <Database size={20} />
                     </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-blue-700">Verified Residents</p>
-                      <h3 className="text-xl font-bold text-blue-900">
-                        {residents.filter(r => (r as any).verification_status === 'Verified').length}
-                      </h3>
+                    <div className="text-xs space-y-1">
+                      <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                        📥 Automated Archive Workflow Active
+                      </h4>
+                      <p className="text-slate-500 leading-relaxed">
+                        When you click <strong>Approve / Complete</strong> on a pending document request, the item is removed from the active <strong>Document Processing</strong> tab and moved here to <strong>Settings &amp; Data Archive</strong> for permanent record storage and printing.
+                      </p>
                     </div>
                   </div>
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${
-                    archiveCategory === 'residents'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-blue-700 bg-blue-200/60 group-hover:bg-blue-600 group-hover:text-white'
-                  }`}>
-                    {archiveCategory === 'residents' ? 'Active ✓' : 'View Only →'}
-                  </span>
-                </button>
 
-                <button
-                  type="button"
-                  onClick={() => setArchiveCategory('accounts')}
-                  className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${
-                    archiveCategory === 'accounts'
-                      ? 'bg-rose-100/90 border-2 border-rose-500 shadow-md ring-2 ring-rose-500/30'
-                      : 'bg-rose-50 hover:bg-rose-100/80 border border-rose-200 hover:border-rose-300 hover:shadow-xs hover:-translate-y-0.5'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-rose-100 group-hover:bg-rose-200 text-rose-600 flex items-center justify-center shrink-0 transition-colors">
-                      <Archive size={20} />
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-rose-700">Archived Accounts</p>
-                      <h3 className="text-xl font-bold text-rose-900">
-                        {users.filter(u => isUserForAdmin(u) && u.status === 'Archived').length}
-                      </h3>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${
-                    archiveCategory === 'accounts'
-                      ? 'bg-rose-600 text-white shadow-xs'
-                      : 'text-rose-700 bg-rose-200/60 group-hover:bg-rose-600 group-hover:text-white'
-                  }`}>
-                    {archiveCategory === 'accounts' ? 'Active ✓' : 'View Only →'}
-                  </span>
-                </button>
+                  {/* Interactive Clickable Archive Stats Banner with Dynamic Tab Switching */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setArchiveCategory('docs')}
+                      className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${archiveCategory === 'docs'
+                          ? 'bg-emerald-100/90 border-2 border-emerald-500 shadow-md ring-2 ring-emerald-500/30'
+                          : 'bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 hover:border-emerald-300 hover:shadow-xs hover:-translate-y-0.5'
+                        }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 group-hover:bg-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 transition-colors">
+                          <CheckCircle size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold text-emerald-700">Completed Documents</p>
+                          <h3 className="text-xl font-bold text-emerald-900">{archivedDocuments.length}</h3>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${archiveCategory === 'docs'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-emerald-700 bg-emerald-200/60 group-hover:bg-emerald-600 group-hover:text-white'
+                        }`}>
+                        {archiveCategory === 'docs' ? 'Active ✓' : 'View Only →'}
+                      </span>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => setArchiveCategory('all')}
-                  className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${
-                    archiveCategory === 'all'
-                      ? 'bg-slate-100 border-2 border-slate-700 shadow-md ring-2 ring-slate-700/30'
-                      : 'bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-slate-300 hover:shadow-xs hover:-translate-y-0.5'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 transition-colors">
-                      <FolderOpen size={20} />
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-slate-600">Total Archive Entries</p>
-                      <h3 className="text-xl font-bold text-slate-900">
-                        {archivedDocuments.length + residents.length + users.filter(u => isUserForAdmin(u) && u.status === 'Archived').length}
-                      </h3>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${
-                    archiveCategory === 'all'
-                      ? 'bg-slate-800 text-white shadow-xs'
-                      : 'text-slate-700 bg-slate-200/60 group-hover:bg-slate-700 group-hover:text-white'
-                  }`}>
-                    {archiveCategory === 'all' ? 'All Active ✓' : 'View All →'}
-                  </span>
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => setArchiveCategory('residents')}
+                      className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${archiveCategory === 'residents'
+                          ? 'bg-blue-100/90 border-2 border-blue-500 shadow-md ring-2 ring-blue-500/30'
+                          : 'bg-blue-50 hover:bg-blue-100/80 border border-blue-200 hover:border-blue-300 hover:shadow-xs hover:-translate-y-0.5'
+                        }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 group-hover:bg-blue-200 text-blue-600 flex items-center justify-center shrink-0 transition-colors">
+                          <UserCheck size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold text-blue-700">Verified Residents</p>
+                          <h3 className="text-xl font-bold text-blue-900">
+                            {residents.filter(r => (r as any).verification_status === 'Verified').length}
+                          </h3>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${archiveCategory === 'residents'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-blue-700 bg-blue-200/60 group-hover:bg-blue-600 group-hover:text-white'
+                        }`}>
+                        {archiveCategory === 'residents' ? 'Active ✓' : 'View Only →'}
+                      </span>
+                    </button>
 
-              {/* Archived Documents Section */}
-              {(archiveCategory === 'docs' || archiveCategory === 'all') && (
-              <Card id="completed-docs-section" className="border-slate-200 bg-white shadow-xs scroll-mt-6">
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <div>
-                    <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <FileText className="text-emerald-600" size={18} />
-                      Completed Document Requests
-                    </CardTitle>
-                    <CardDescription className="text-xs mt-1">All approved clearances, certificates, and permits</CardDescription>
-                  </div>
-                  <Badge className="bg-emerald-600 text-white text-xs">{archivedDocuments.length} Completed</Badge>
-                </CardHeader>
-                {/* Archive Doc Filters */}
-                <div className="px-6 pb-3 flex flex-col sm:flex-row gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-                    <Input
-                      placeholder="Search archived documents by resident or request code..."
-                      value={archiveDocSearch}
-                      onChange={e => setArchiveDocSearch(e.target.value)}
-                      className="pl-8 h-8 text-xs"
-                    />
-                  </div>
-                  <Select value={archiveDocTypeFilter} onValueChange={setArchiveDocTypeFilter}>
-                    <SelectTrigger className="w-52 h-8 text-xs"><SelectValue placeholder="Filter by type" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Document Types</SelectItem>
-                      <SelectItem value="Barangay Clearance">Barangay Clearance</SelectItem>
-                      <SelectItem value="Certificate of Residency">Certificate of Residency</SelectItem>
-                      <SelectItem value="Business Permit">Business Permit</SelectItem>
-                      <SelectItem value="Barangay ID">Barangay ID</SelectItem>
-                      <SelectItem value="Certificate of Indigency">Certificate of Indigency</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-emerald-50/50">
-                        <TableHead className="text-xs">Request Code</TableHead>
-                        <TableHead className="text-xs">Resident Name</TableHead>
-                        <TableHead className="text-xs">Document Type</TableHead>
-                        <TableHead className="text-xs">Purpose</TableHead>
-                        <TableHead className="text-xs">Processed At</TableHead>
-                        <TableHead className="text-xs">Processed By</TableHead>
-                        <TableHead className="text-xs text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredArchivedDocs.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center text-xs py-10 text-slate-400">
-                            <Archive size={30} className="mx-auto mb-2 opacity-30" />
-                            No completed documents found.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredArchivedDocs.map((doc, idx) => (
-                          <TableRow key={`archived-doc-${doc.id}-${idx}`} className="text-xs hover:bg-emerald-50/30">
-                            <TableCell>
-                              <button
-                                onClick={() => openDocInfo(doc)}
-                                className="font-mono font-bold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
-                              >
-                                {doc.request_code}<Eye size={11} className="opacity-60" />
-                              </button>
-                            </TableCell>
-                            <TableCell className="font-semibold text-slate-900">
-                              <button onClick={() => openResidentProfile(doc.resident_id || 1)} className="hover:underline text-indigo-700 cursor-pointer">
-                                {doc.resident_name}
-                              </button>
-                            </TableCell>
-                            <TableCell>{doc.document_type}</TableCell>
-                            <TableCell className="text-slate-500 max-w-[130px] truncate">{doc.purpose || '-'}</TableCell>
-                            <TableCell className="text-slate-400 text-[11px]">
-                              {doc.processed_at ? new Date(doc.processed_at).toLocaleDateString() : 'Today'}
-                            </TableCell>
-                            <TableCell className="text-slate-500">{doc.processed_by || 'Admin'}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-1.5">
-                                <Button size="sm" variant="outline" onClick={() => openDocInfo(doc)} className="h-7 text-[11px] gap-1 cursor-pointer">
-                                  <Eye size={12} /> View
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => openPrintModal(doc)} className="h-7 text-[11px] gap-1 text-indigo-700 border-indigo-200 hover:bg-indigo-50 cursor-pointer">
-                                  <Printer size={12} /> Print
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-              )}
+                    <button
+                      type="button"
+                      onClick={() => setArchiveCategory('accounts')}
+                      className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${archiveCategory === 'accounts'
+                          ? 'bg-rose-100/90 border-2 border-rose-500 shadow-md ring-2 ring-rose-500/30'
+                          : 'bg-rose-50 hover:bg-rose-100/80 border border-rose-200 hover:border-rose-300 hover:shadow-xs hover:-translate-y-0.5'
+                        }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-rose-100 group-hover:bg-rose-200 text-rose-600 flex items-center justify-center shrink-0 transition-colors">
+                          <Archive size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold text-rose-700">Archived Accounts</p>
+                          <h3 className="text-xl font-bold text-rose-900">
+                            {users.filter(u => isUserForAdmin(u) && u.status === 'Archived').length}
+                          </h3>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${archiveCategory === 'accounts'
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'text-rose-700 bg-rose-200/60 group-hover:bg-rose-600 group-hover:text-white'
+                        }`}>
+                        {archiveCategory === 'accounts' ? 'Active ✓' : 'View Only →'}
+                      </span>
+                    </button>
 
-              {/* Verified & Processed Residents Archive */}
-              {(archiveCategory === 'residents' || archiveCategory === 'all') && (
-              <Card id="verified-residents-section" className="border-slate-200 bg-white shadow-xs scroll-mt-6">
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <div>
-                    <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <UserCheck className="text-blue-600" size={18} />
-                      Verified &amp; Processed Resident Accounts
-                    </CardTitle>
-                    <CardDescription className="text-xs mt-0.5">Full list of resident profiles reviewed and approved by the Barangay Administrator</CardDescription>
+                    <button
+                      type="button"
+                      onClick={() => setArchiveCategory('all')}
+                      className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${archiveCategory === 'all'
+                          ? 'bg-slate-100 border-2 border-slate-700 shadow-md ring-2 ring-slate-700/30'
+                          : 'bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-slate-300 hover:shadow-xs hover:-translate-y-0.5'
+                        }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 transition-colors">
+                          <FolderOpen size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold text-slate-600">Total Archive Entries</p>
+                          <h3 className="text-xl font-bold text-slate-900">
+                            {archivedDocuments.length + residents.length + users.filter(u => isUserForAdmin(u) && u.status === 'Archived').length}
+                          </h3>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${archiveCategory === 'all'
+                          ? 'bg-slate-800 text-white shadow-xs'
+                          : 'text-slate-700 bg-slate-200/60 group-hover:bg-slate-700 group-hover:text-white'
+                        }`}>
+                        {archiveCategory === 'all' ? 'All Active ✓' : 'View All →'}
+                      </span>
+                    </button>
                   </div>
-                  <Badge className="bg-blue-600 text-white text-xs">
-                    {residents.filter(r => (r as any).verification_status === 'Verified').length} Verified
-                  </Badge>
-                </CardHeader>
-                {/* Search & Filter */}
-                <div className="px-6 pb-3 flex flex-col sm:flex-row gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-                    <Input
-                      placeholder="Search verified residents by name, phone, or address..."
-                      value={archiveResidentSearch}
-                      onChange={e => setArchiveResidentSearch(e.target.value)}
-                      className="pl-8 h-8 text-xs"
-                    />
-                  </div>
-                  <Select value={archiveResidentStatusFilter} onValueChange={setArchiveResidentStatusFilter}>
-                    <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="Verification Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="Verified">Verified Only</SelectItem>
-                      <SelectItem value="Rejected">Rejected</SelectItem>
-                      <SelectItem value="Pending_Review">Pending Review</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-blue-50/50">
-                        <TableHead className="text-xs">Full Name</TableHead>
-                        <TableHead className="text-xs">Contact</TableHead>
-                        <TableHead className="text-xs">Address</TableHead>
-                        <TableHead className="text-xs">Barangay</TableHead>
-                        <TableHead className="text-xs">Verification</TableHead>
-                        <TableHead className="text-xs text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {residents
-                        .filter(res => {
-                          const matchesStatus = archiveResidentStatusFilter === 'all' || (res as any).verification_status === archiveResidentStatusFilter;
-                          if (!matchesStatus) return false;
-                          if (archiveResidentSearch.trim()) {
-                            const q = archiveResidentSearch.toLowerCase();
-                            const matchName = `${res.first_name} ${res.last_name}`.toLowerCase().includes(q);
-                            const matchPhone = ((res as any).phone || '').toLowerCase().includes(q);
-                            const matchAddr = (res.address || '').toLowerCase().includes(q);
-                            return matchName || matchPhone || matchAddr;
-                          }
-                          return true;
-                        })
-                        .length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center text-xs py-8 text-slate-400">
-                            No resident records match your search.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        residents
-                          .filter(res => {
-                            const matchesStatus = archiveResidentStatusFilter === 'all' || (res as any).verification_status === archiveResidentStatusFilter;
-                            if (!matchesStatus) return false;
-                            if (archiveResidentSearch.trim()) {
-                              const q = archiveResidentSearch.toLowerCase();
-                              const matchName = `${res.first_name} ${res.last_name}`.toLowerCase().includes(q);
-                              const matchPhone = ((res as any).phone || '').toLowerCase().includes(q);
-                              const matchAddr = (res.address || '').toLowerCase().includes(q);
-                              return matchName || matchPhone || matchAddr;
-                            }
-                            return true;
-                          })
-                          .map((res, idx) => (
-                            <TableRow key={`res-ov-${res.id}-${idx}`} className="text-xs hover:bg-blue-50/20">
-                              <TableCell className="font-semibold text-slate-900">
-                                <button onClick={() => openResidentProfile(res.id)} className="hover:underline text-indigo-700 cursor-pointer">
-                                  {res.first_name} {res.last_name}
-                                </button>
-                              </TableCell>
-                              <TableCell className="text-slate-600">{(res as any).phone || '—'}</TableCell>
-                              <TableCell className="text-slate-500 max-w-[140px] truncate">{res.address}</TableCell>
-                              <TableCell>
-                                <span className="font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-                                  {res.barangay || 'Pianing'}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={
-                                  (res as any).verification_status === 'Verified'
-                                    ? 'bg-emerald-600 text-white'
-                                    : (res as any).verification_status === 'Rejected'
-                                    ? 'bg-red-100 text-red-700 border-red-300'
-                                    : 'bg-amber-100 text-amber-800 border-amber-300'
-                                }>
-                                  {(res as any).verification_status || 'Verified'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <Button size="sm" variant="outline" onClick={() => openResidentProfile(res.id)} className="h-7 text-[11px] gap-1 cursor-pointer">
-                                    <Eye size={12} /> Profile
-                                  </Button>
-                                  {isSuperAdmin && (
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => handlePermanentDeleteResident(res)}
-                                      className="h-7 px-2.5 bg-rose-600 hover:bg-rose-700 text-white cursor-pointer text-[11px] font-bold gap-1 shadow-xs"
-                                      title="Permanently purge resident record"
+
+                  {/* Archived Documents Section */}
+                  {(archiveCategory === 'docs' || archiveCategory === 'all') && (
+                    <Card id="completed-docs-section" className="border-slate-200 bg-white shadow-xs scroll-mt-6">
+                      <CardHeader className="flex flex-row items-center justify-between pb-3">
+                        <div>
+                          <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <FileText className="text-emerald-600" size={18} />
+                            Completed Document Requests
+                          </CardTitle>
+                          <CardDescription className="text-xs mt-1">All approved clearances, certificates, and permits</CardDescription>
+                        </div>
+                        <Badge className="bg-emerald-600 text-white text-xs">{archivedDocuments.length} Completed</Badge>
+                      </CardHeader>
+                      {/* Archive Doc Filters */}
+                      <div className="px-6 pb-3 flex flex-col sm:flex-row gap-2">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                          <Input
+                            placeholder="Search archived documents by resident or request code..."
+                            value={archiveDocSearch}
+                            onChange={e => setArchiveDocSearch(e.target.value)}
+                            className="pl-8 h-8 text-xs"
+                          />
+                        </div>
+                        <Select value={archiveDocTypeFilter} onValueChange={setArchiveDocTypeFilter}>
+                          <SelectTrigger className="w-52 h-8 text-xs"><SelectValue placeholder="Filter by type" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Document Types</SelectItem>
+                            <SelectItem value="Barangay Clearance">Barangay Clearance</SelectItem>
+                            <SelectItem value="Certificate of Residency">Certificate of Residency</SelectItem>
+                            <SelectItem value="Business Permit">Business Permit</SelectItem>
+                            <SelectItem value="Barangay ID">Barangay ID</SelectItem>
+                            <SelectItem value="Certificate of Indigency">Certificate of Indigency</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-emerald-50/50">
+                              <TableHead className="text-xs">Request Code</TableHead>
+                              <TableHead className="text-xs">Resident Name</TableHead>
+                              <TableHead className="text-xs">Document Type</TableHead>
+                              <TableHead className="text-xs">Purpose</TableHead>
+                              <TableHead className="text-xs">Processed At</TableHead>
+                              <TableHead className="text-xs">Processed By</TableHead>
+                              <TableHead className="text-xs text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredArchivedDocs.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={7} className="text-center text-xs py-10 text-slate-400">
+                                  <Archive size={30} className="mx-auto mb-2 opacity-30" />
+                                  No completed documents found.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredArchivedDocs.map((doc, idx) => (
+                                <TableRow key={`archived-doc-${doc.id}-${idx}`} className="text-xs hover:bg-emerald-50/30">
+                                  <TableCell>
+                                    <button
+                                      onClick={() => openDocInfo(doc)}
+                                      className="font-mono font-bold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
                                     >
-                                      <Trash2 size={12} /> Delete
-                                    </Button>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-              )}
+                                      {doc.request_code}<Eye size={11} className="opacity-60" />
+                                    </button>
+                                  </TableCell>
+                                  <TableCell className="font-semibold text-slate-900">
+                                    <button onClick={() => openResidentProfile(doc.resident_id || 1)} className="hover:underline text-indigo-700 cursor-pointer">
+                                      {doc.resident_name}
+                                    </button>
+                                  </TableCell>
+                                  <TableCell>{doc.document_type}</TableCell>
+                                  <TableCell className="text-slate-500 max-w-[130px] truncate">{doc.purpose || '-'}</TableCell>
+                                  <TableCell className="text-slate-400 text-[11px]">
+                                    {doc.processed_at ? new Date(doc.processed_at).toLocaleDateString() : 'Today'}
+                                  </TableCell>
+                                  <TableCell className="text-slate-500">{doc.processed_by || 'Admin'}</TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-1.5">
+                                      <Button size="sm" variant="outline" onClick={() => openDocInfo(doc)} className="h-7 text-[11px] gap-1 cursor-pointer">
+                                        <Eye size={12} /> View
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => openPrintModal(doc)} className="h-7 text-[11px] gap-1 text-indigo-700 border-indigo-200 hover:bg-indigo-50 cursor-pointer">
+                                        <Printer size={12} /> Print
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
 
-              {/* Archived User Accounts Section */}
-              {(archiveCategory === 'accounts' || archiveCategory === 'all') && (
-              <Card id="archived-accounts-section" className="border-slate-200 bg-white shadow-xs scroll-mt-6">
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <div>
-                    <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <Archive className="text-rose-600" size={18} />
-                      Archived User &amp; Resident Accounts
-                    </CardTitle>
-                    <CardDescription className="text-xs mt-0.5">
-                      Soft-deleted user accounts. Login access is disabled, but all historical medical and document records remain preserved.
-                    </CardDescription>
-                  </div>
-                  <Badge className="bg-rose-600 text-white text-xs">
-                    {users.filter(u => isUserForAdmin(u) && u.status === 'Archived').length} Archived
-                  </Badge>
-                </CardHeader>
-                {/* Search */}
-                <div className="px-6 pb-3">
-                  <div className="relative max-w-md">
-                    <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
-                    <Input
-                      placeholder="Search archived accounts by name or email..."
-                      value={archiveUserSearch}
-                      onChange={e => setArchiveUserSearch(e.target.value)}
-                      className="pl-8 h-8 text-xs"
-                    />
-                  </div>
-                </div>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-rose-50/50">
-                        <TableHead className="text-xs">User ID</TableHead>
-                        <TableHead className="text-xs">Full Name</TableHead>
-                        <TableHead className="text-xs">Email Address</TableHead>
-                        <TableHead className="text-xs">Account Role</TableHead>
-                        <TableHead className="text-xs">Barangay</TableHead>
-                        <TableHead className="text-xs">Contact</TableHead>
-                        <TableHead className="text-xs">Account Status</TableHead>
-                        <TableHead className="text-xs text-right">Restore Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users
-                        .filter(u => {
-                          if (!isUserForAdmin(u)) return false;
-                          if (u.status !== 'Archived') return false;
-                          if (archiveUserSearch.trim()) {
-                            const q = archiveUserSearch.toLowerCase();
-                            const matchName = (u.name || '').toLowerCase().includes(q);
-                            const matchEmail = (u.email || '').toLowerCase().includes(q);
-                            const matchPhone = (u.phone || '').toLowerCase().includes(q);
-                            return matchName || matchEmail || matchPhone;
-                          }
-                          return true;
-                        })
-                        .length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center text-xs py-10 text-slate-400">
-                            <Archive size={28} className="mx-auto mb-2 opacity-30 text-rose-500" />
-                            No archived user accounts found. Active accounts that are archived will appear here.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        users
-                          .filter(u => {
-                            if (!isUserForAdmin(u)) return false;
-                            if (u.status !== 'Archived') return false;
-                            if (archiveUserSearch.trim()) {
-                              const q = archiveUserSearch.toLowerCase();
-                              const matchName = (u.name || '').toLowerCase().includes(q);
-                              const matchEmail = (u.email || '').toLowerCase().includes(q);
-                              const matchPhone = (u.phone || '').toLowerCase().includes(q);
-                              return matchName || matchEmail || matchPhone;
-                            }
-                            return true;
-                          })
-                          .map((u, idx) => (
-                            <TableRow key={`arch-user-${u.id}-${idx}`} className="text-xs hover:bg-rose-50/30 bg-rose-50/10">
-                              <TableCell className="font-mono text-slate-400 font-semibold">#{u.id}</TableCell>
-                              <TableCell className="font-bold text-slate-800">{u.name}</TableCell>
-                              <TableCell className="font-mono text-slate-600">{u.email}</TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="border-rose-300 text-rose-700 bg-rose-50 font-semibold text-[10px]">
-                                  {u.role.toUpperCase()}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <span className="font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-                                  {u.barangay || 'Pianing'}
-                                </span>
-                              </TableCell>
-                              <TableCell className="font-mono text-slate-600">{u.phone || '—'}</TableCell>
-                              <TableCell>
-                                <Badge className="bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold">
-                                  Archived
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleArchiveUser(u)}
-                                    className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer text-[11px] font-bold gap-1 shadow-xs"
-                                    title="Restore user account to Active"
-                                  >
-                                    <RotateCcw size={12} />
-                                    Restore
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => handlePermanentDeleteUser(u)}
-                                    className="h-7 px-2.5 bg-rose-600 hover:bg-rose-700 text-white cursor-pointer text-[11px] font-bold gap-1 shadow-xs"
-                                    title="Permanently delete user account"
-                                  >
-                                    <Trash2 size={12} />
-                                    Delete
-                                  </Button>
-                                </div>
-                              </TableCell>
+                  {/* Verified & Processed Residents Archive */}
+                  {(archiveCategory === 'residents' || archiveCategory === 'all') && (
+                    <Card id="verified-residents-section" className="border-slate-200 bg-white shadow-xs scroll-mt-6">
+                      <CardHeader className="flex flex-row items-center justify-between pb-3">
+                        <div>
+                          <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <UserCheck className="text-blue-600" size={18} />
+                            Verified &amp; Processed Resident Accounts
+                          </CardTitle>
+                          <CardDescription className="text-xs mt-0.5">Full list of resident profiles reviewed and approved by the Barangay Administrator</CardDescription>
+                        </div>
+                        <Badge className="bg-blue-600 text-white text-xs">
+                          {residents.filter(r => (r as any).verification_status === 'Verified').length} Verified
+                        </Badge>
+                      </CardHeader>
+                      {/* Search & Filter */}
+                      <div className="px-6 pb-3 flex flex-col sm:flex-row gap-2">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                          <Input
+                            placeholder="Search verified residents by name, phone, or address..."
+                            value={archiveResidentSearch}
+                            onChange={e => setArchiveResidentSearch(e.target.value)}
+                            className="pl-8 h-8 text-xs"
+                          />
+                        </div>
+                        <Select value={archiveResidentStatusFilter} onValueChange={setArchiveResidentStatusFilter}>
+                          <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="Verification Status" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="Verified">Verified Only</SelectItem>
+                            <SelectItem value="Rejected">Rejected</SelectItem>
+                            <SelectItem value="Pending_Review">Pending Review</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-blue-50/50">
+                              <TableHead className="text-xs">Full Name</TableHead>
+                              <TableHead className="text-xs">Contact</TableHead>
+                              <TableHead className="text-xs">Address</TableHead>
+                              <TableHead className="text-xs">Barangay</TableHead>
+                              <TableHead className="text-xs">Verification</TableHead>
+                              <TableHead className="text-xs text-right">Actions</TableHead>
                             </TableRow>
-                          ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                          </TableHeader>
+                          <TableBody>
+                            {residents
+                              .filter(res => {
+                                const matchesStatus = archiveResidentStatusFilter === 'all' || (res as any).verification_status === archiveResidentStatusFilter;
+                                if (!matchesStatus) return false;
+                                if (archiveResidentSearch.trim()) {
+                                  const q = archiveResidentSearch.toLowerCase();
+                                  const matchName = `${res.first_name} ${res.last_name}`.toLowerCase().includes(q);
+                                  const matchPhone = ((res as any).phone || '').toLowerCase().includes(q);
+                                  const matchAddr = (res.address || '').toLowerCase().includes(q);
+                                  return matchName || matchPhone || matchAddr;
+                                }
+                                return true;
+                              })
+                              .length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center text-xs py-8 text-slate-400">
+                                  No resident records match your search.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              residents
+                                .filter(res => {
+                                  const matchesStatus = archiveResidentStatusFilter === 'all' || (res as any).verification_status === archiveResidentStatusFilter;
+                                  if (!matchesStatus) return false;
+                                  if (archiveResidentSearch.trim()) {
+                                    const q = archiveResidentSearch.toLowerCase();
+                                    const matchName = `${res.first_name} ${res.last_name}`.toLowerCase().includes(q);
+                                    const matchPhone = ((res as any).phone || '').toLowerCase().includes(q);
+                                    const matchAddr = (res.address || '').toLowerCase().includes(q);
+                                    return matchName || matchPhone || matchAddr;
+                                  }
+                                  return true;
+                                })
+                                .map((res, idx) => (
+                                  <TableRow key={`res-ov-${res.id}-${idx}`} className="text-xs hover:bg-blue-50/20">
+                                    <TableCell className="font-semibold text-slate-900">
+                                      <button onClick={() => openResidentProfile(res.id)} className="hover:underline text-indigo-700 cursor-pointer">
+                                        {res.first_name} {res.last_name}
+                                      </button>
+                                    </TableCell>
+                                    <TableCell className="text-slate-600">{(res as any).phone || '—'}</TableCell>
+                                    <TableCell className="text-slate-500 max-w-[140px] truncate">{res.address}</TableCell>
+                                    <TableCell>
+                                      <span className="font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                        {res.barangay || 'Pianing'}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge className={
+                                        (res as any).verification_status === 'Verified'
+                                          ? 'bg-emerald-600 text-white'
+                                          : (res as any).verification_status === 'Rejected'
+                                            ? 'bg-red-100 text-red-700 border-red-300'
+                                            : 'bg-amber-100 text-amber-800 border-amber-300'
+                                      }>
+                                        {(res as any).verification_status || 'Verified'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-1.5">
+                                        <Button size="sm" variant="outline" onClick={() => openResidentProfile(res.id)} className="h-7 text-[11px] gap-1 cursor-pointer">
+                                          <Eye size={12} /> Profile
+                                        </Button>
+                                        {isSuperAdmin && (
+                                          <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            onClick={() => handlePermanentDeleteResident(res)}
+                                            className="h-7 px-2.5 bg-rose-600 hover:bg-rose-700 text-white cursor-pointer text-[11px] font-bold gap-1 shadow-xs"
+                                            title="Permanently purge resident record"
+                                          >
+                                            <Trash2 size={12} /> Delete
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Archived User Accounts Section */}
+                  {(archiveCategory === 'accounts' || archiveCategory === 'all') && (
+                    <Card id="archived-accounts-section" className="border-slate-200 bg-white shadow-xs scroll-mt-6">
+                      <CardHeader className="flex flex-row items-center justify-between pb-3">
+                        <div>
+                          <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <Archive className="text-rose-600" size={18} />
+                            Archived User &amp; Resident Accounts
+                          </CardTitle>
+                          <CardDescription className="text-xs mt-0.5">
+                            Soft-deleted user accounts. Login access is disabled, but all historical medical and document records remain preserved.
+                          </CardDescription>
+                        </div>
+                        <Badge className="bg-rose-600 text-white text-xs">
+                          {users.filter(u => isUserForAdmin(u) && u.status === 'Archived').length} Archived
+                        </Badge>
+                      </CardHeader>
+                      {/* Search */}
+                      <div className="px-6 pb-3">
+                        <div className="relative max-w-md">
+                          <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                          <Input
+                            placeholder="Search archived accounts by name or email..."
+                            value={archiveUserSearch}
+                            onChange={e => setArchiveUserSearch(e.target.value)}
+                            className="pl-8 h-8 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-rose-50/50">
+                              <TableHead className="text-xs">User ID</TableHead>
+                              <TableHead className="text-xs">Full Name</TableHead>
+                              <TableHead className="text-xs">Email Address</TableHead>
+                              <TableHead className="text-xs">Account Role</TableHead>
+                              <TableHead className="text-xs">Barangay</TableHead>
+                              <TableHead className="text-xs">Contact</TableHead>
+                              <TableHead className="text-xs">Account Status</TableHead>
+                              <TableHead className="text-xs text-right">Restore Action</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {users
+                              .filter(u => {
+                                if (!isUserForAdmin(u)) return false;
+                                if (u.status !== 'Archived') return false;
+                                if (archiveUserSearch.trim()) {
+                                  const q = archiveUserSearch.toLowerCase();
+                                  const matchName = (u.name || '').toLowerCase().includes(q);
+                                  const matchEmail = (u.email || '').toLowerCase().includes(q);
+                                  const matchPhone = (u.phone || '').toLowerCase().includes(q);
+                                  return matchName || matchEmail || matchPhone;
+                                }
+                                return true;
+                              })
+                              .length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={8} className="text-center text-xs py-10 text-slate-400">
+                                  <Archive size={28} className="mx-auto mb-2 opacity-30 text-rose-500" />
+                                  No archived user accounts found. Active accounts that are archived will appear here.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              users
+                                .filter(u => {
+                                  if (!isUserForAdmin(u)) return false;
+                                  if (u.status !== 'Archived') return false;
+                                  if (archiveUserSearch.trim()) {
+                                    const q = archiveUserSearch.toLowerCase();
+                                    const matchName = (u.name || '').toLowerCase().includes(q);
+                                    const matchEmail = (u.email || '').toLowerCase().includes(q);
+                                    const matchPhone = (u.phone || '').toLowerCase().includes(q);
+                                    return matchName || matchEmail || matchPhone;
+                                  }
+                                  return true;
+                                })
+                                .map((u, idx) => (
+                                  <TableRow key={`arch-user-${u.id}-${idx}`} className="text-xs hover:bg-rose-50/30 bg-rose-50/10">
+                                    <TableCell className="font-mono text-slate-400 font-semibold">#{u.id}</TableCell>
+                                    <TableCell className="font-bold text-slate-800">{u.name}</TableCell>
+                                    <TableCell className="font-mono text-slate-600">{u.email}</TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline" className="border-rose-300 text-rose-700 bg-rose-50 font-semibold text-[10px]">
+                                        {u.role.toUpperCase()}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                        {u.barangay || 'Pianing'}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="font-mono text-slate-600">{u.phone || '—'}</TableCell>
+                                    <TableCell>
+                                      <Badge className="bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold">
+                                        Archived
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-1.5">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleArchiveUser(u)}
+                                          className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer text-[11px] font-bold gap-1 shadow-xs"
+                                          title="Restore user account to Active"
+                                        >
+                                          <RotateCcw size={12} />
+                                          Restore
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => handlePermanentDeleteUser(u)}
+                                          className="h-7 px-2.5 bg-rose-600 hover:bg-rose-700 text-white cursor-pointer text-[11px] font-bold gap-1 shadow-xs"
+                                          title="Permanently delete user account"
+                                        >
+                                          <Trash2 size={12} />
+                                          Delete
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               )}
-            </div>
-          )}
 
               {/* ── NOTIFICATION SETTINGS SUB-TAB ── */}
               {/* PERMANENT DELETE USER CONFIRMATION DIALOG */}
@@ -5448,18 +5425,16 @@ export default function AdminDashboard() {
                     <button
                       type="button"
                       onClick={() => setCensusViewMode('households')}
-                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                        censusViewMode === 'households' ? 'bg-white text-blue-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${censusViewMode === 'households' ? 'bg-white text-blue-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                        }`}
                     >
                       Households
                     </button>
                     <button
                       type="button"
                       onClick={() => setCensusViewMode('table')}
-                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
-                        censusViewMode === 'table' ? 'bg-white text-blue-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${censusViewMode === 'table' ? 'bg-white text-blue-700 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                        }`}
                     >
                       All Inhabitants Table
                     </button>
@@ -5605,11 +5580,10 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   onClick={() => setSelectedCensusPurok('all')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
-                    selectedCensusPurok === 'all'
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${selectedCensusPurok === 'all'
                       ? 'bg-white text-blue-600 shadow-xs border border-slate-200/60'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                    }`}
                 >
                   <span>All Puroks</span>
                   <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${selectedCensusPurok === 'all' ? 'bg-blue-50 text-blue-700 font-bold' : 'bg-slate-200/80 text-slate-600'}`}>
@@ -5625,11 +5599,10 @@ export default function AdminDashboard() {
                       key={`purok-btn-${p}`}
                       type="button"
                       onClick={() => setSelectedCensusPurok(String(p))}
-                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
                           ? 'bg-white text-blue-600 shadow-xs border border-slate-200/60'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                      }`}
+                        }`}
                     >
                       <span>Purok {p}</span>
                       <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${isSelected ? 'bg-blue-50 text-blue-700 font-bold' : 'bg-slate-200/80 text-slate-600'}`}>
@@ -5792,13 +5765,12 @@ export default function AdminDashboard() {
                                         {m.date_of_birth ? new Date(m.date_of_birth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                                       </TableCell>
                                       <TableCell className="py-2">
-                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
-                                          m.employment_status === 'Employed' || m.employment_status === 'Self-Employed'
+                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${m.employment_status === 'Employed' || m.employment_status === 'Self-Employed'
                                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                             : m.employment_status === 'Unemployed'
-                                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                            : 'bg-slate-100 text-slate-700 border-slate-200'
-                                        }`}>
+                                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                              : 'bg-slate-100 text-slate-700 border-slate-200'
+                                          }`}>
                                           {m.employment_status || 'Employed'}
                                         </span>
                                       </TableCell>
@@ -5890,13 +5862,12 @@ export default function AdminDashboard() {
                                 </TableCell>
                                 <TableCell className="text-slate-700 font-semibold">Purok {res.purok || '1'}</TableCell>
                                 <TableCell>
-                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
-                                    res.employment_status === 'Employed' || res.employment_status === 'Self-Employed'
+                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${res.employment_status === 'Employed' || res.employment_status === 'Self-Employed'
                                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                       : res.employment_status === 'Unemployed'
-                                      ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                      : 'bg-slate-100 text-slate-700 border-slate-200'
-                                  }`}>
+                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                                    }`}>
                                     {res.employment_status || 'Employed'}
                                   </span>
                                 </TableCell>
@@ -6073,11 +6044,10 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl flex-wrap w-full lg:w-auto">
                   <button
                     onClick={() => setUserCategoryTab('all')}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                      userCategoryTab === 'all'
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${userCategoryTab === 'all'
                         ? 'bg-white text-indigo-700 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     <Users size={14} />
                     All Personnel
@@ -6087,11 +6057,10 @@ export default function AdminDashboard() {
                   </button>
                   <button
                     onClick={() => setUserCategoryTab('officials')}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                      userCategoryTab === 'officials'
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${userCategoryTab === 'officials'
                         ? 'bg-white text-indigo-700 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     <Building2 size={14} />
                     Officials &amp; Admins
@@ -6101,11 +6070,10 @@ export default function AdminDashboard() {
                   </button>
                   <button
                     onClick={() => setUserCategoryTab('health' as any)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                      (userCategoryTab as any) === 'health'
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${(userCategoryTab as any) === 'health'
                         ? 'bg-white text-teal-700 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     <Heart size={14} />
                     Health (BHW/Nurse)
@@ -6115,11 +6083,10 @@ export default function AdminDashboard() {
                   </button>
                   <button
                     onClick={() => setUserCategoryTab('staff' as any)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                      (userCategoryTab as any) === 'staff'
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${(userCategoryTab as any) === 'staff'
                         ? 'bg-white text-blue-700 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     <UserCheck size={14} />
                     Staff &amp; Clerks
@@ -6129,11 +6096,10 @@ export default function AdminDashboard() {
                   </button>
                   <button
                     onClick={() => setUserCategoryTab('archived')}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                      userCategoryTab === 'archived'
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${userCategoryTab === 'archived'
                         ? 'bg-white text-rose-700 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     <Archive size={14} />
                     Archived
@@ -6438,8 +6404,8 @@ export default function AdminDashboard() {
                                         {userSearchText.trim()
                                           ? `No records matching "${userSearchText}". Try checking for spelling errors or clearing your search.`
                                           : userCategoryTab === 'archived'
-                                          ? "There are no archived accounts. Deleted or deactivated personnel will be listed here."
-                                          : "No user accounts registered under this category yet."}
+                                            ? "There are no archived accounts. Deleted or deactivated personnel will be listed here."
+                                            : "No user accounts registered under this category yet."}
                                       </p>
                                     </div>
                                     {userSearchText.trim() && (
@@ -6465,14 +6431,13 @@ export default function AdminDashboard() {
                                 <div className="flex items-center gap-2.5">
                                   <div
                                     onClick={() => handleOpenUserProfile(u)}
-                                    className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-xs border overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-400 hover:scale-105 transition-all ${
-                                      u.role === 'superadmin' ? 'bg-violet-100 text-violet-700 border-violet-200' :
-                                      u.role === 'admin' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
-                                      u.role === 'nurse' ? 'bg-teal-100 text-teal-700 border-teal-200' :
-                                      u.role === 'bhw' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                      u.role === 'staff' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                      'bg-slate-100 text-slate-700 border-slate-200'
-                                    }`}
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-xs border overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-400 hover:scale-105 transition-all ${u.role === 'superadmin' ? 'bg-violet-100 text-violet-700 border-violet-200' :
+                                        u.role === 'admin' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                                          u.role === 'nurse' ? 'bg-teal-100 text-teal-700 border-teal-200' :
+                                            u.role === 'bhw' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                              u.role === 'staff' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                'bg-slate-100 text-slate-700 border-slate-200'
+                                      }`}
                                     title="Click to view full user profile & dossier"
                                   >
                                     {u.profile_photo ? (
@@ -6510,11 +6475,11 @@ export default function AdminDashboard() {
                               <TableCell>
                                 <Badge variant="outline" className={
                                   u.role === 'superadmin' ? 'border-violet-300 text-violet-700 bg-violet-50 font-bold text-[10px]' :
-                                  u.role === 'admin' ? 'border-indigo-300 text-indigo-700 bg-indigo-50 font-bold text-[10px]' :
-                                  u.role === 'nurse' ? 'border-teal-300 text-teal-700 bg-teal-50 font-bold text-[10px]' :
-                                  u.role === 'bhw' ? 'border-emerald-300 text-emerald-700 bg-emerald-50 font-bold text-[10px]' :
-                                  u.role === 'staff' ? 'border-blue-300 text-blue-700 bg-blue-50 font-bold text-[10px]' :
-                                  'border-slate-300 text-slate-700 bg-slate-50 font-semibold text-[10px]'
+                                    u.role === 'admin' ? 'border-indigo-300 text-indigo-700 bg-indigo-50 font-bold text-[10px]' :
+                                      u.role === 'nurse' ? 'border-teal-300 text-teal-700 bg-teal-50 font-bold text-[10px]' :
+                                        u.role === 'bhw' ? 'border-emerald-300 text-emerald-700 bg-emerald-50 font-bold text-[10px]' :
+                                          u.role === 'staff' ? 'border-blue-300 text-blue-700 bg-blue-50 font-bold text-[10px]' :
+                                            'border-slate-300 text-slate-700 bg-slate-50 font-semibold text-[10px]'
                                 }>
                                   {u.role === 'superadmin' ? 'SUPER ADMIN' : u.role === 'admin' ? 'BARANGAY ADMIN' : u.role === 'nurse' ? 'HEALTH NURSE' : u.role === 'bhw' ? 'BHW WORKER' : u.role === 'staff' ? 'STAFF / CLERK' : 'RESIDENT'}
                                 </Badge>
@@ -6531,9 +6496,9 @@ export default function AdminDashboard() {
                               <TableCell>
                                 <Badge className={
                                   (u as any).verification_status === 'Verified' ? 'bg-emerald-600 text-white text-[10px] font-bold' :
-                                  (u as any).verification_status === 'Rejected' ? 'bg-red-100 text-red-700 border border-red-300 text-[10px]' :
-                                  (u as any).verification_status === 'Pending_Review' || (u as any).verification_status === 'Unverified' ? 'bg-amber-100 text-amber-800 border border-amber-300 text-[10px]' :
-                                  'bg-emerald-600 text-white text-[10px] font-bold'
+                                    (u as any).verification_status === 'Rejected' ? 'bg-red-100 text-red-700 border border-red-300 text-[10px]' :
+                                      (u as any).verification_status === 'Pending_Review' || (u as any).verification_status === 'Unverified' ? 'bg-amber-100 text-amber-800 border border-amber-300 text-[10px]' :
+                                        'bg-emerald-600 text-white text-[10px] font-bold'
                                 }>
                                   {(u as any).verification_status === 'Pending_Review' || (u as any).verification_status === 'Unverified' ? 'Pending' : (u as any).verification_status || 'Verified'}
                                 </Badge>
@@ -6548,19 +6513,17 @@ export default function AdminDashboard() {
                               <TableCell>
                                 <button
                                   onClick={() => (isSuperAdmin || user?.role === 'admin') && handleToggleUserStatus(u)}
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-all ${
-                                    u.status === 'Active'
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-all ${u.status === 'Active'
                                       ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
                                       : u.status === 'Archived'
-                                      ? 'bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200'
-                                      : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
-                                  }`}
+                                        ? 'bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200'
+                                        : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                                    }`}
                                   title="Click to toggle Active / Inactive status"
                                 >
-                                  <span className={`w-2 h-2 rounded-full ${
-                                    u.status === 'Active' ? 'bg-emerald-500 animate-pulse' :
-                                    u.status === 'Archived' ? 'bg-violet-500' : 'bg-amber-500'
-                                  }`} />
+                                  <span className={`w-2 h-2 rounded-full ${u.status === 'Active' ? 'bg-emerald-500 animate-pulse' :
+                                      u.status === 'Archived' ? 'bg-violet-500' : 'bg-amber-500'
+                                    }`} />
                                   {u.status || 'Active'}
                                 </button>
                               </TableCell>
@@ -7266,459 +7229,459 @@ export default function AdminDashboard() {
             const targetDocs = isSuperMegaAdmin ? documents : barangayDocs;
 
             return (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                    {isSuperMegaAdmin ? 'City-Wide System & Administrative Reports' : `Barangay ${userBarangay || 'Pianing'} Administrative Reports`}
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    {isSuperMegaAdmin
-                      ? 'Consolidated city-wide analytics, resident registry, and database export center across all Butuan City barangays.'
-                      : `Official Barangay ${userBarangay || 'Pianing'}, Butuan City analytics, population registry, and report export center.`}
-                  </p>
-                </div>
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                      {isSuperMegaAdmin ? 'City-Wide System & Administrative Reports' : `Barangay ${userBarangay || 'Pianing'} Administrative Reports`}
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      {isSuperMegaAdmin
+                        ? 'Consolidated city-wide analytics, resident registry, and database export center across all Butuan City barangays.'
+                        : `Official Barangay ${userBarangay || 'Pianing'}, Butuan City analytics, population registry, and report export center.`}
+                    </p>
+                  </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    onClick={() => {
-                      downloadOfficialPdf({
-                        title: isSuperMegaAdmin ? 'City-Wide Clearance Requests Log' : `Barangay ${userBarangay || 'Pianing'} Clearance Requests Log`,
-                        subtitle: `All clearance & certificate requests — Generated ${new Date().toLocaleDateString()}`,
-                        filename: `Barangay_${(userBarangay || 'Pianing').replace(/\s+/g, '_')}_Clearance_Requests_${new Date().toISOString().slice(0, 10)}`,
-                        barangay: userBarangay || 'Pianing',
-                        preparedBy: user?.name || 'Administrator',
-                        preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : user?.role === 'staff' ? 'Barangay Staff' : 'Barangay Administrator',
-                        stats: [
-                          { label: 'Total Requests', value: targetDocs.length },
-                          { label: 'Completed', value: targetDocs.filter(d => d.status === 'Completed').length },
-                          { label: 'Pending', value: targetDocs.filter(d => d.status === 'Pending').length }
-                        ],
-                        tables: [{
-                          title: 'Document Clearance Requests',
-                          headers: ['Code', 'Resident', 'Document Type', 'Purpose', 'Status', 'Date'],
-                          rows: targetDocs.map(d => [d.request_code || '', d.resident_name || '', d.document_type || '', d.purpose || '', d.status || '', d.requested_at || 'Recent'])
-                        }]
-                      });
-                      toast.success('Clearance log PDF downloaded');
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs gap-1.5 border-slate-300"
-                  >
-                    <Download size={13} /> Download Clearances (PDF)
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      onClick={() => {
+                        downloadOfficialPdf({
+                          title: isSuperMegaAdmin ? 'City-Wide Clearance Requests Log' : `Barangay ${userBarangay || 'Pianing'} Clearance Requests Log`,
+                          subtitle: `All clearance & certificate requests — Generated ${new Date().toLocaleDateString()}`,
+                          filename: `Barangay_${(userBarangay || 'Pianing').replace(/\s+/g, '_')}_Clearance_Requests_${new Date().toISOString().slice(0, 10)}`,
+                          barangay: userBarangay || 'Pianing',
+                          preparedBy: user?.name || 'Administrator',
+                          preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : user?.role === 'staff' ? 'Barangay Staff' : 'Barangay Administrator',
+                          stats: [
+                            { label: 'Total Requests', value: targetDocs.length },
+                            { label: 'Completed', value: targetDocs.filter(d => d.status === 'Completed').length },
+                            { label: 'Pending', value: targetDocs.filter(d => d.status === 'Pending').length }
+                          ],
+                          tables: [{
+                            title: 'Document Clearance Requests',
+                            headers: ['Code', 'Resident', 'Document Type', 'Purpose', 'Status', 'Date'],
+                            rows: targetDocs.map(d => [d.request_code || '', d.resident_name || '', d.document_type || '', d.purpose || '', d.status || '', d.requested_at || 'Recent'])
+                          }]
+                        });
+                        toast.success('Clearance log PDF downloaded');
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5 border-slate-300"
+                    >
+                      <Download size={13} /> Download Clearances (PDF)
+                    </Button>
 
-                  <Button
-                    onClick={() => {
-                      downloadOfficialPdf({
-                        title: isSuperMegaAdmin ? 'City-Wide Resident Demographic Registry' : `Barangay ${userBarangay || 'Pianing'} Resident Demographic Registry`,
-                        subtitle: `${isSuperMegaAdmin ? 'All Butuan City Barangays' : `Barangay ${userBarangay || 'Pianing'}`} resident census — Generated ${new Date().toLocaleDateString()}`,
-                        filename: `Barangay_${(userBarangay || 'Pianing').replace(/\s+/g, '_')}_Resident_Demographics_${new Date().toISOString().slice(0, 10)}`,
-                        barangay: userBarangay || 'Pianing',
-                        preparedBy: user?.name || 'Administrator',
-                        preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : user?.role === 'staff' ? 'Barangay Staff' : 'Barangay Administrator',
-                        stats: [
-                          { label: 'Total Residents', value: targetResidents.length }
-                        ],
-                        tables: [{
-                          title: 'Resident Demographics',
-                          headers: ['ID', 'First Name', 'Last Name', 'Gender', 'Address', 'Phone', 'Email'],
-                          colWidths: [5, 12, 15, 8, 25, 15, 20],
-                          rows: targetResidents.map(r => [r.id, r.first_name, r.last_name, r.gender, r.address, r.phone || 'N/A', r.email || 'N/A'])
-                        }]
-                      });
-                      toast.success('Resident registry PDF downloaded');
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs gap-1.5 border-slate-300"
-                  >
-                    <Download size={13} /> Download Residents (PDF)
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      printOfficialReport({
-                        title: isSuperMegaAdmin ? 'City-Wide System & Administrative Report' : `Barangay ${userBarangay || 'Pianing'} Administrative Report`,
-                        subtitle: `Barangay ${userBarangay || 'Pianing'}, Butuan City, Agusan del Norte • Administrative Operations & Registry`,
-                        department: 'Office of the Barangay Captain • Administrative Division',
-                        preparedBy: user?.name || 'Admin Juan Dela Cruz',
-                        preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : user?.role === 'staff' ? 'Barangay Staff / Clerk' : 'Barangay Administrator',
-                        stats: [
-                          { label: 'Total Residents', value: targetResidents.length, color: '#2563eb' },
-                          { label: 'Clearance Requests', value: targetDocs.length, color: '#4f46e5' },
-                          { label: 'Completed Clearances', value: targetDocs.filter(d => d.status === 'Completed').length, color: '#059669' },
-                          { label: 'Pending Approvals', value: myPendingResidents.length, color: '#d97706' }
-                        ],
-                        tables: [
-                          {
-                            title: 'Recent Document Clearances & Certification Issuances',
-                            headers: ['Control Code', 'Resident Applicant', 'Document Type', 'Status', 'Date'],
-                            rows: targetDocs.slice(0, 10).map(d => [
-                              d.request_code,
-                              d.resident_name,
-                              d.document_type,
-                              d.status,
-                              d.requested_at || 'Recent'
-                            ])
-                          },
-                          {
-                            title: 'Barangay Resident Demographic Sample',
-                            headers: ['Resident ID', 'Full Name', 'Gender', 'Purok / Address', 'Contact'],
-                            rows: targetResidents.slice(0, 10).map(r => [
-                              `#${r.id}`,
-                              `${r.first_name} ${r.last_name}`,
-                              r.gender,
-                              r.address,
-                              r.phone || 'N/A'
-                            ])
-                          }
-                        ]
-                      });
-                    }}
-                    size="sm"
-                    className="h-8 text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs font-semibold"
-                  >
-                    <Printer size={13} /> Print Official System Report
-                  </Button>
-                </div>
-              </div>
-
-              {/* ═══ LIVE ROLE-BASED ANALYTICS (SUPER ADMIN & BARANGAY ADMIN) ═══ */}
-              <div className="space-y-5">
-                {/* Header Banner */}
-                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 border border-indigo-900/40 shadow-sm">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
-                        <BarChart className="text-indigo-400" size={22} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base font-bold text-white">
-                            {isSuperMegaAdmin ? 'City-Wide Municipal Analytics & Master Oversight' : `Barangay ${userBarangay || 'Pianing'} Administrative Intelligence`}
-                          </h3>
-                          <span className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                            {isSuperMegaAdmin ? 'Super Mega Administrator Scope' : isSuperAdmin ? 'Barangay Captain Scope' : 'Barangay Administrator Scope'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-indigo-200/80 mt-0.5">
-                          {isSuperMegaAdmin
-                            ? 'Consolidated operational metrics across all 86 Butuan City barangays, municipal clearance throughput, staff distribution, and audit activity.'
-                            : `Real-time demographic indicators, clearance issuance pipeline, resident verification velocity, and civil census registry for Barangay ${userBarangay || 'Pianing'}.`}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-[11px] font-mono text-indigo-300 bg-indigo-950/80 px-2.5 py-1 rounded-lg border border-indigo-800/40">
-                      Live Synchronized
-                    </span>
+                    <Button
+                      onClick={() => {
+                        downloadOfficialPdf({
+                          title: isSuperMegaAdmin ? 'City-Wide Resident Demographic Registry' : `Barangay ${userBarangay || 'Pianing'} Resident Demographic Registry`,
+                          subtitle: `${isSuperMegaAdmin ? 'All Butuan City Barangays' : `Barangay ${userBarangay || 'Pianing'}`} resident census — Generated ${new Date().toLocaleDateString()}`,
+                          filename: `Barangay_${(userBarangay || 'Pianing').replace(/\s+/g, '_')}_Resident_Demographics_${new Date().toISOString().slice(0, 10)}`,
+                          barangay: userBarangay || 'Pianing',
+                          preparedBy: user?.name || 'Administrator',
+                          preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : user?.role === 'staff' ? 'Barangay Staff' : 'Barangay Administrator',
+                          stats: [
+                            { label: 'Total Residents', value: targetResidents.length }
+                          ],
+                          tables: [{
+                            title: 'Resident Demographics',
+                            headers: ['ID', 'First Name', 'Last Name', 'Gender', 'Address', 'Phone', 'Email'],
+                            colWidths: [5, 12, 15, 8, 25, 15, 20],
+                            rows: targetResidents.map(r => [r.id, r.first_name, r.last_name, r.gender, r.address, r.phone || 'N/A', r.email || 'N/A'])
+                          }]
+                        });
+                        toast.success('Resident registry PDF downloaded');
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5 border-slate-300"
+                    >
+                      <Download size={13} /> Download Residents (PDF)
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        printOfficialReport({
+                          title: isSuperMegaAdmin ? 'City-Wide System & Administrative Report' : `Barangay ${userBarangay || 'Pianing'} Administrative Report`,
+                          subtitle: `Barangay ${userBarangay || 'Pianing'}, Butuan City, Agusan del Norte • Administrative Operations & Registry`,
+                          department: 'Office of the Barangay Captain • Administrative Division',
+                          preparedBy: user?.name || 'Admin Juan Dela Cruz',
+                          preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : user?.role === 'staff' ? 'Barangay Staff / Clerk' : 'Barangay Administrator',
+                          stats: [
+                            { label: 'Total Residents', value: targetResidents.length, color: '#2563eb' },
+                            { label: 'Clearance Requests', value: targetDocs.length, color: '#4f46e5' },
+                            { label: 'Completed Clearances', value: targetDocs.filter(d => d.status === 'Completed').length, color: '#059669' },
+                            { label: 'Pending Approvals', value: myPendingResidents.length, color: '#d97706' }
+                          ],
+                          tables: [
+                            {
+                              title: 'Recent Document Clearances & Certification Issuances',
+                              headers: ['Control Code', 'Resident Applicant', 'Document Type', 'Status', 'Date'],
+                              rows: targetDocs.slice(0, 10).map(d => [
+                                d.request_code,
+                                d.resident_name,
+                                d.document_type,
+                                d.status,
+                                d.requested_at || 'Recent'
+                              ])
+                            },
+                            {
+                              title: 'Barangay Resident Demographic Sample',
+                              headers: ['Resident ID', 'Full Name', 'Gender', 'Purok / Address', 'Contact'],
+                              rows: targetResidents.slice(0, 10).map(r => [
+                                `#${r.id}`,
+                                `${r.first_name} ${r.last_name}`,
+                                r.gender,
+                                r.address,
+                                r.phone || 'N/A'
+                              ])
+                            }
+                          ]
+                        });
+                      }}
+                      size="sm"
+                      className="h-8 text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs font-semibold"
+                    >
+                      <Printer size={13} /> Print Official System Report
+                    </Button>
                   </div>
                 </div>
 
-                {/* KPI Matrix Row */}
-                {(() => {
-                  const targetResidents = isSuperAdmin
-                    ? residents
-                    : residents.filter(r => (r.barangay || '').toLowerCase().includes((userBarangay || '').toLowerCase()));
-                  const targetDocs = isSuperAdmin
-                    ? documents
-                    : documents.filter(d => (d.barangay || '').toLowerCase().includes((userBarangay || '').toLowerCase()));
-
-                  const totalPop = targetResidents.length;
-                  const maleCount = targetResidents.filter(r => r.gender === 'Male').length;
-                  const femaleCount = targetResidents.filter(r => r.gender === 'Female').length;
-                  const seniorCount = targetResidents.filter(r => {
-                    if (!r.date_of_birth) return false;
-                    const age = Math.floor((Date.now() - new Date(r.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-                    return age >= 60;
-                  }).length;
-                  const minorCount = targetResidents.filter(r => {
-                    if (!r.date_of_birth) return false;
-                    const age = Math.floor((Date.now() - new Date(r.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-                    return age < 18;
-                  }).length;
-
-                  const totalClearances = targetDocs.length;
-                  const completedClearances = targetDocs.filter(d => d.status === 'Completed').length;
-                  const pendingClearances = targetDocs.filter(d => d.status === 'Pending').length;
-                  const inProgressClearances = targetDocs.filter(d => d.status === 'Processing' || d.status === 'Ready for Pickup').length;
-                  const completionRate = totalClearances > 0 ? Math.round((completedClearances / totalClearances) * 100) : 100;
-
-                  const verifiedResidents = targetResidents.filter(r => r.verification_status === 'Verified').length;
-                  const pendingVerifications = targetResidents.filter(r => r.verification_status === 'Pending' || !r.verification_status).length;
-                  const verificationRate = totalPop > 0 ? Math.round((verifiedResidents / totalPop) * 100) : 0;
-
-                  // Real staff directory personnel (strictly excludes ordinary resident accounts)
-                  const staffRoleList = ['admin', 'superadmin', 'super_mega_admin', 'staff', 'nurse', 'bhw'];
-                  const allStaffUsers = users.filter(u => staffRoleList.includes((u.role || '').toLowerCase()));
-                  const targetStaff = isSuperAdmin
-                    ? (userBarangay ? allStaffUsers.filter(u => !u.barangay || u.barangay.toLowerCase().includes(userBarangay.toLowerCase()) || u.role === 'superadmin' || u.role === 'super_mega_admin') : allStaffUsers)
-                    : allStaffUsers.filter(u => (u.barangay || '').toLowerCase().includes((userBarangay || '').toLowerCase()));
-                  const activeStaffCount = targetStaff.length;
-                  const adminUsers = targetStaff.filter(u => u.role === 'admin' || u.role === 'superadmin' || u.role === 'super_mega_admin').length;
-                  const clinicalStaff = targetStaff.filter(u => u.role === 'nurse' || u.role === 'bhw').length;
-                  const clerkStaff = targetStaff.filter(u => u.role === 'staff').length;
-
-                  // Real live audit events breakdown
-                  const realAuditCount = activityLogs.length;
-                  const auditDocsCount = activityLogs.filter(l => l.action_type === 'Document').length;
-                  const auditHealthCount = activityLogs.filter(l => l.action_type === 'Health').length;
-                  const auditResCount = activityLogs.filter(l => l.action_type === 'Resident').length;
-                  const auditSecCount = activityLogs.filter(l => ['Security', 'System', 'Auth'].includes(l.action_type || '')).length;
-
-                  return (
-                    <>
-                      {/* Top Metric Cards */}
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-semibold text-slate-600">
-                              {isSuperAdmin && !userBarangay ? 'Total City Population' : `Barangay ${userBarangay || 'Pianing'} Population`}
-                            </span>
-                            <Users size={16} className="text-blue-600" />
-                          </div>
-                          <p className="text-3xl font-extrabold text-slate-900">{totalPop}</p>
-                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
-                            <span>M: <strong className="text-blue-700">{maleCount}</strong></span>
-                            <span>•</span>
-                            <span>F: <strong className="text-pink-700">{femaleCount}</strong></span>
-                            <span>•</span>
-                            <span>Seniors: <strong className="text-amber-700">{seniorCount}</strong></span>
-                          </div>
+                {/* ═══ LIVE ROLE-BASED ANALYTICS (SUPER ADMIN & BARANGAY ADMIN) ═══ */}
+                <div className="space-y-5">
+                  {/* Header Banner */}
+                  <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 border border-indigo-900/40 shadow-sm">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
+                          <BarChart className="text-indigo-400" size={22} />
                         </div>
-
-                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-semibold text-slate-600">Clearances Issued</span>
-                            <FileText size={16} className="text-emerald-600" />
-                          </div>
-                          <p className="text-3xl font-extrabold text-slate-900">{completedClearances}</p>
-                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
-                            <span className="text-emerald-700 font-bold">{completionRate}% fulfillment</span>
-                            <span>•</span>
-                            <span>{pendingClearances} pending</span>
-                          </div>
-                        </div>
-
-                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-semibold text-slate-600">
-                              {isSuperAdmin ? 'Staff Directory' : 'Citizen Verification'}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base font-bold text-white">
+                              {isSuperMegaAdmin ? 'City-Wide Municipal Analytics & Master Oversight' : `Barangay ${userBarangay || 'Pianing'} Administrative Intelligence`}
+                            </h3>
+                            <span className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                              {isSuperMegaAdmin ? 'Super Mega Administrator Scope' : isSuperAdmin ? 'Barangay Captain Scope' : 'Barangay Administrator Scope'}
                             </span>
-                            {isSuperAdmin ? <UserCheck size={16} className="text-purple-600" /> : <ShieldCheck size={16} className="text-indigo-600" />}
                           </div>
-                          <p className="text-3xl font-extrabold text-slate-900">
-                            {isSuperAdmin ? activeStaffCount : `${verificationRate}%`}
+                          <p className="text-xs text-indigo-200/80 mt-0.5">
+                            {isSuperMegaAdmin
+                              ? 'Consolidated operational metrics across all 86 Butuan City barangays, municipal clearance throughput, staff distribution, and audit activity.'
+                              : `Real-time demographic indicators, clearance issuance pipeline, resident verification velocity, and civil census registry for Barangay ${userBarangay || 'Pianing'}.`}
                           </p>
-                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
-                            {isSuperAdmin ? (
-                              <span>{adminUsers} Admins • {clinicalStaff} Health • {clerkStaff} Clerks</span>
-                            ) : (
-                              <span>{verifiedResidents} Verified • {pendingVerifications} Pending</span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-semibold text-slate-600">
-                              {isSuperMegaAdmin ? 'Security Audit Events' : (isSuperAdmin ? 'Operational Audit Trail' : 'Civil Households')}
-                            </span>
-                            <Activity size={16} className="text-amber-600" />
-                          </div>
-                          <p className="text-3xl font-extrabold text-slate-900">
-                            {isSuperMegaAdmin ? auditSecCount : (isSuperAdmin ? realAuditCount : (censusStats?.total_households ?? censusHouseholds.length))}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
-                            {isSuperMegaAdmin ? (
-                              <span>{auditSecCount} Security &amp; Auth logged</span>
-                            ) : isSuperAdmin ? (
-                              <span>{auditDocsCount} Docs • {auditHealthCount} Health • {auditResCount} Residents</span>
-                            ) : (
-                              <span>{censusStats?.total_families ?? censusHouseholds.length} Families registered</span>
-                            )}
-                          </div>
                         </div>
                       </div>
+                      <span className="text-[11px] font-mono text-indigo-300 bg-indigo-950/80 px-2.5 py-1 rounded-lg border border-indigo-800/40">
+                        Live Synchronized
+                      </span>
+                    </div>
+                  </div>
 
-                      {/* Visual Breakdown Grid */}
-                      {(() => {
-                        const clearanceTypes = [
-                          { label: 'Barangay Clearance', key: 'barangay clearance', color: '#3B82F6' },
-                          { label: 'Certificate of Indigency', key: 'indigency', color: '#10B981' },
-                          { label: 'Certificate of Residency', key: 'residency', color: '#6366F1' },
-                          { label: 'Business Clearance / Permit', key: 'business', color: '#F59E0B' },
-                          { label: 'First Time Jobseeker Assistance', key: 'jobseeker', color: '#8B5CF6' },
-                        ];
+                  {/* KPI Matrix Row */}
+                  {(() => {
+                    const targetResidents = isSuperAdmin
+                      ? residents
+                      : residents.filter(r => (r.barangay || '').toLowerCase().includes((userBarangay || '').toLowerCase()));
+                    const targetDocs = isSuperAdmin
+                      ? documents
+                      : documents.filter(d => (d.barangay || '').toLowerCase().includes((userBarangay || '').toLowerCase()));
 
-                        const clearanceChartData = clearanceTypes.map(item => {
-                          const count = targetDocs.filter(d => (d.document_type || '').toLowerCase().includes(item.key)).length;
-                          return {
-                            name: item.label,
-                            value: count,
-                            color: item.color,
-                          };
-                        });
-                        const hasClearanceData = clearanceChartData.some(d => d.value > 0);
+                    const totalPop = targetResidents.length;
+                    const maleCount = targetResidents.filter(r => r.gender === 'Male').length;
+                    const femaleCount = targetResidents.filter(r => r.gender === 'Female').length;
+                    const seniorCount = targetResidents.filter(r => {
+                      if (!r.date_of_birth) return false;
+                      const age = Math.floor((Date.now() - new Date(r.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                      return age >= 60;
+                    }).length;
+                    const minorCount = targetResidents.filter(r => {
+                      if (!r.date_of_birth) return false;
+                      const age = Math.floor((Date.now() - new Date(r.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+                      return age < 18;
+                    }).length;
 
-                        const purokChartData = ['1', '2', '3', '4', '5', '6', '7', '8'].map(pNum => {
-                          const count = targetResidents.filter(r => (r.purok || '').replace(/purok\s*/i, '').trim() === pNum).length;
-                          const pct = targetResidents.length > 0 ? Math.round((count / targetResidents.length) * 100) : 0;
-                          return {
-                            purok: `Purok ${pNum}`,
-                            shortPurok: `P${pNum}`,
-                            count,
-                            pct,
-                          };
-                        });
+                    const totalClearances = targetDocs.length;
+                    const completedClearances = targetDocs.filter(d => d.status === 'Completed').length;
+                    const pendingClearances = targetDocs.filter(d => d.status === 'Pending').length;
+                    const inProgressClearances = targetDocs.filter(d => d.status === 'Processing' || d.status === 'Ready for Pickup').length;
+                    const completionRate = totalClearances > 0 ? Math.round((completedClearances / totalClearances) * 100) : 100;
 
-                        const municipalChartData = (() => {
-                          const countsMap: Record<string, number> = {};
-                          residents.forEach(r => {
-                            const b = (r.barangay || 'Pianing').replace(/^Barangay\s+/i, '').trim();
-                            if (b) {
-                              countsMap[b] = (countsMap[b] || 0) + 1;
-                            }
+                    const verifiedResidents = targetResidents.filter(r => r.verification_status === 'Verified').length;
+                    const pendingVerifications = targetResidents.filter(r => r.verification_status === 'Pending' || !r.verification_status).length;
+                    const verificationRate = totalPop > 0 ? Math.round((verifiedResidents / totalPop) * 100) : 0;
+
+                    // Real staff directory personnel (strictly excludes ordinary resident accounts)
+                    const staffRoleList = ['admin', 'superadmin', 'super_mega_admin', 'staff', 'nurse', 'bhw'];
+                    const allStaffUsers = users.filter(u => staffRoleList.includes((u.role || '').toLowerCase()));
+                    const targetStaff = isSuperAdmin
+                      ? (userBarangay ? allStaffUsers.filter(u => !u.barangay || u.barangay.toLowerCase().includes(userBarangay.toLowerCase()) || u.role === 'superadmin' || u.role === 'super_mega_admin') : allStaffUsers)
+                      : allStaffUsers.filter(u => (u.barangay || '').toLowerCase().includes((userBarangay || '').toLowerCase()));
+                    const activeStaffCount = targetStaff.length;
+                    const adminUsers = targetStaff.filter(u => u.role === 'admin' || u.role === 'superadmin' || u.role === 'super_mega_admin').length;
+                    const clinicalStaff = targetStaff.filter(u => u.role === 'nurse' || u.role === 'bhw').length;
+                    const clerkStaff = targetStaff.filter(u => u.role === 'staff').length;
+
+                    // Real live audit events breakdown
+                    const realAuditCount = activityLogs.length;
+                    const auditDocsCount = activityLogs.filter(l => l.action_type === 'Document').length;
+                    const auditHealthCount = activityLogs.filter(l => l.action_type === 'Health').length;
+                    const auditResCount = activityLogs.filter(l => l.action_type === 'Resident').length;
+                    const auditSecCount = activityLogs.filter(l => ['Security', 'System', 'Auth'].includes(l.action_type || '')).length;
+
+                    return (
+                      <>
+                        {/* Top Metric Cards */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-slate-600">
+                                {isSuperAdmin && !userBarangay ? 'Total City Population' : `Barangay ${userBarangay || 'Pianing'} Population`}
+                              </span>
+                              <Users size={16} className="text-blue-600" />
+                            </div>
+                            <p className="text-3xl font-extrabold text-slate-900">{totalPop}</p>
+                            <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                              <span>M: <strong className="text-blue-700">{maleCount}</strong></span>
+                              <span>•</span>
+                              <span>F: <strong className="text-pink-700">{femaleCount}</strong></span>
+                              <span>•</span>
+                              <span>Seniors: <strong className="text-amber-700">{seniorCount}</strong></span>
+                            </div>
+                          </div>
+
+                          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-slate-600">Clearances Issued</span>
+                              <FileText size={16} className="text-emerald-600" />
+                            </div>
+                            <p className="text-3xl font-extrabold text-slate-900">{completedClearances}</p>
+                            <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                              <span className="text-emerald-700 font-bold">{completionRate}% fulfillment</span>
+                              <span>•</span>
+                              <span>{pendingClearances} pending</span>
+                            </div>
+                          </div>
+
+                          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-slate-600">
+                                {isSuperAdmin ? 'Staff Directory' : 'Citizen Verification'}
+                              </span>
+                              {isSuperAdmin ? <UserCheck size={16} className="text-purple-600" /> : <ShieldCheck size={16} className="text-indigo-600" />}
+                            </div>
+                            <p className="text-3xl font-extrabold text-slate-900">
+                              {isSuperAdmin ? activeStaffCount : `${verificationRate}%`}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                              {isSuperAdmin ? (
+                                <span>{adminUsers} Admins • {clinicalStaff} Health • {clerkStaff} Clerks</span>
+                              ) : (
+                                <span>{verifiedResidents} Verified • {pendingVerifications} Pending</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-slate-600">
+                                {isSuperMegaAdmin ? 'Security Audit Events' : (isSuperAdmin ? 'Operational Audit Trail' : 'Civil Households')}
+                              </span>
+                              <Activity size={16} className="text-amber-600" />
+                            </div>
+                            <p className="text-3xl font-extrabold text-slate-900">
+                              {isSuperMegaAdmin ? auditSecCount : (isSuperAdmin ? realAuditCount : (censusStats?.total_households ?? censusHouseholds.length))}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                              {isSuperMegaAdmin ? (
+                                <span>{auditSecCount} Security &amp; Auth logged</span>
+                              ) : isSuperAdmin ? (
+                                <span>{auditDocsCount} Docs • {auditHealthCount} Health • {auditResCount} Residents</span>
+                              ) : (
+                                <span>{censusStats?.total_families ?? censusHouseholds.length} Families registered</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Visual Breakdown Grid */}
+                        {(() => {
+                          const clearanceTypes = [
+                            { label: 'Barangay Clearance', key: 'barangay clearance', color: '#3B82F6' },
+                            { label: 'Certificate of Indigency', key: 'indigency', color: '#10B981' },
+                            { label: 'Certificate of Residency', key: 'residency', color: '#6366F1' },
+                            { label: 'Business Clearance / Permit', key: 'business', color: '#F59E0B' },
+                            { label: 'First Time Jobseeker Assistance', key: 'jobseeker', color: '#8B5CF6' },
+                          ];
+
+                          const clearanceChartData = clearanceTypes.map(item => {
+                            const count = targetDocs.filter(d => (d.document_type || '').toLowerCase().includes(item.key)).length;
+                            return {
+                              name: item.label,
+                              value: count,
+                              color: item.color,
+                            };
                           });
+                          const hasClearanceData = clearanceChartData.some(d => d.value > 0);
 
-                          // Ensure known client and key Butuan barangays exist
-                          ['Pianing', 'Libertad', 'Ampayon', 'Doongan', 'Villa Kananga', 'Baan Riverside'].forEach(b => {
-                            if (countsMap[b] === undefined) countsMap[b] = 0;
-                          });
-
-                          const totalR = residents.length;
-                          const colors = ['#4F46E5', '#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777', '#0891B2', '#475569'];
-
-                          return Object.entries(countsMap)
-                            .map(([name, count]) => ({
-                              name,
+                          const purokChartData = ['1', '2', '3', '4', '5', '6', '7', '8'].map(pNum => {
+                            const count = targetResidents.filter(r => (r.purok || '').replace(/purok\s*/i, '').trim() === pNum).length;
+                            const pct = targetResidents.length > 0 ? Math.round((count / targetResidents.length) * 100) : 0;
+                            return {
+                              purok: `Purok ${pNum}`,
+                              shortPurok: `P${pNum}`,
                               count,
-                              pct: totalR > 0 ? Math.round((count / totalR) * 100) : 0,
-                              color: '#4F46E5'
-                            }))
-                            .sort((a, b) => b.count - a.count)
-                            .slice(0, 8)
-                            .map((item, idx) => ({
-                              ...item,
-                              color: colors[idx % colors.length]
-                            }));
-                        })();
+                              pct,
+                            };
+                          });
 
-                        return (
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {/* Left: Document Clearances Breakdown — Donut Chart */}
-                            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-                              <div>
-                                <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
-                                  <span className="flex items-center gap-2">
-                                    <FileText size={16} className="text-indigo-600" />
-                                    Clearance Requests by Document Type
-                                  </span>
-                                  <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
-                                    {totalClearances} Total
-                                  </span>
-                                </h4>
+                          const municipalChartData = (() => {
+                            const countsMap: Record<string, number> = {};
+                            residents.forEach(r => {
+                              const b = (r.barangay || 'Pianing').replace(/^Barangay\s+/i, '').trim();
+                              if (b) {
+                                countsMap[b] = (countsMap[b] || 0) + 1;
+                              }
+                            });
 
-                                {!hasClearanceData ? (
-                                  <div className="flex flex-col items-center justify-center py-10 text-slate-400 text-center">
-                                    <FileText size={32} className="mb-2 opacity-40" />
-                                    <p className="text-xs">No clearance requests recorded yet</p>
-                                  </div>
-                                ) : (
-                                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center my-2">
-                                    {/* Donut Chart with Center Total */}
-                                    <div className="sm:col-span-5 relative flex items-center justify-center" style={{ height: 180 }}>
-                                      <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                          <RechartsTooltip
-                                            content={({ active, payload }) => {
-                                              if (active && payload && payload.length) {
-                                                const data = payload[0].payload;
-                                                const pct = totalClearances > 0 ? ((data.value / totalClearances) * 100).toFixed(1) : '0.0';
-                                                return (
-                                                  <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-lg text-xs">
-                                                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                                                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: data.color }} />
-                                                      {data.name}
+                            // Ensure known client and key Butuan barangays exist
+                            ['Pianing', 'Libertad', 'Ampayon', 'Doongan', 'Villa Kananga', 'Baan Riverside'].forEach(b => {
+                              if (countsMap[b] === undefined) countsMap[b] = 0;
+                            });
+
+                            const totalR = residents.length;
+                            const colors = ['#4F46E5', '#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777', '#0891B2', '#475569'];
+
+                            return Object.entries(countsMap)
+                              .map(([name, count]) => ({
+                                name,
+                                count,
+                                pct: totalR > 0 ? Math.round((count / totalR) * 100) : 0,
+                                color: '#4F46E5'
+                              }))
+                              .sort((a, b) => b.count - a.count)
+                              .slice(0, 8)
+                              .map((item, idx) => ({
+                                ...item,
+                                color: colors[idx % colors.length]
+                              }));
+                          })();
+
+                          return (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              {/* Left: Document Clearances Breakdown — Donut Chart */}
+                              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                                <div>
+                                  <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
+                                    <span className="flex items-center gap-2">
+                                      <FileText size={16} className="text-indigo-600" />
+                                      Clearance Requests by Document Type
+                                    </span>
+                                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                                      {totalClearances} Total
+                                    </span>
+                                  </h4>
+
+                                  {!hasClearanceData ? (
+                                    <div className="flex flex-col items-center justify-center py-10 text-slate-400 text-center">
+                                      <FileText size={32} className="mb-2 opacity-40" />
+                                      <p className="text-xs">No clearance requests recorded yet</p>
+                                    </div>
+                                  ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center my-2">
+                                      {/* Donut Chart with Center Total */}
+                                      <div className="sm:col-span-5 relative flex items-center justify-center" style={{ height: 180 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                          <PieChart>
+                                            <RechartsTooltip
+                                              content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                  const data = payload[0].payload;
+                                                  const pct = totalClearances > 0 ? ((data.value / totalClearances) * 100).toFixed(1) : '0.0';
+                                                  return (
+                                                    <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-lg text-xs">
+                                                      <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: data.color }} />
+                                                        {data.name}
+                                                      </div>
+                                                      <div className="text-slate-500 mt-1">
+                                                        <span className="font-extrabold text-slate-900">{data.value}</span> requests ({pct}%)
+                                                      </div>
                                                     </div>
-                                                    <div className="text-slate-500 mt-1">
-                                                      <span className="font-extrabold text-slate-900">{data.value}</span> requests ({pct}%)
-                                                    </div>
-                                                  </div>
-                                                );
-                                              }
-                                              return null;
-                                            }}
-                                          />
-                                          <Pie
-                                            data={clearanceChartData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={46}
-                                            outerRadius={72}
-                                            paddingAngle={3}
-                                            dataKey="value"
-                                            stroke="#ffffff"
-                                            strokeWidth={2}
-                                          >
-                                            {clearanceChartData.map((entry) => (
-                                              <Cell key={`clearance-cell-${entry.name}`} fill={entry.color} />
-                                            ))}
-                                          </Pie>
-                                        </PieChart>
-                                      </ResponsiveContainer>
-                                      {/* Donut Hole Center Badge */}
-                                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                        <span className="text-xl font-black text-slate-900 leading-none">{totalClearances}</span>
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Total</span>
+                                                  );
+                                                }
+                                                return null;
+                                              }}
+                                            />
+                                            <Pie
+                                              data={clearanceChartData}
+                                              cx="50%"
+                                              cy="50%"
+                                              innerRadius={46}
+                                              outerRadius={72}
+                                              paddingAngle={3}
+                                              dataKey="value"
+                                              stroke="#ffffff"
+                                              strokeWidth={2}
+                                            >
+                                              {clearanceChartData.map((entry) => (
+                                                <Cell key={`clearance-cell-${entry.name}`} fill={entry.color} />
+                                              ))}
+                                            </Pie>
+                                          </PieChart>
+                                        </ResponsiveContainer>
+                                        {/* Donut Hole Center Badge */}
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                          <span className="text-xl font-black text-slate-900 leading-none">{totalClearances}</span>
+                                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Total</span>
+                                        </div>
+                                      </div>
+
+                                      {/* Color-coded Breakdown List */}
+                                      <div className="sm:col-span-7 space-y-1.5">
+                                        {clearanceChartData.map(item => {
+                                          const pct = totalClearances > 0 ? Math.round((item.value / totalClearances) * 100) : 0;
+                                          return (
+                                            <div key={item.name} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg hover:bg-slate-50 transition-colors">
+                                              <div className="flex items-center gap-2 min-w-0">
+                                                <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: item.color }} />
+                                                <span className="text-slate-700 font-medium truncate">{item.name}</span>
+                                              </div>
+                                              <div className="flex items-center gap-2 shrink-0">
+                                                <span className="font-bold text-slate-900">{item.value}</span>
+                                                <span className="text-slate-400 text-[11px] min-w-[34px] text-right">({pct}%)</span>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
                                       </div>
                                     </div>
+                                  )}
+                                </div>
 
-                                    {/* Color-coded Breakdown List */}
-                                    <div className="sm:col-span-7 space-y-1.5">
-                                      {clearanceChartData.map(item => {
-                                        const pct = totalClearances > 0 ? Math.round((item.value / totalClearances) * 100) : 0;
-                                        return (
-                                          <div key={item.name} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg hover:bg-slate-50 transition-colors">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                              <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: item.color }} />
-                                              <span className="text-slate-700 font-medium truncate">{item.name}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                              <span className="font-bold text-slate-900">{item.value}</span>
-                                              <span className="text-slate-400 text-[11px] min-w-[34px] text-right">({pct}%)</span>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
+                                {/* Status Pipeline Pills */}
+                                <div className="grid grid-cols-4 gap-2 pt-3 mt-3 border-t border-slate-100 text-center">
+                                  <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                                    <span className="text-[10px] text-emerald-700 font-bold block uppercase">Completed</span>
+                                    <span className="text-sm font-extrabold text-emerald-800">{completedClearances}</span>
                                   </div>
-                                )}
-                              </div>
-
-                              {/* Status Pipeline Pills */}
-                              <div className="grid grid-cols-4 gap-2 pt-3 mt-3 border-t border-slate-100 text-center">
-                                <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-200">
-                                  <span className="text-[10px] text-emerald-700 font-bold block uppercase">Completed</span>
-                                  <span className="text-sm font-extrabold text-emerald-800">{completedClearances}</span>
-                                </div>
-                                <div className="p-2 bg-blue-50 rounded-xl border border-blue-200">
-                                  <span className="text-[10px] text-blue-700 font-bold block uppercase">In Progress</span>
-                                  <span className="text-sm font-extrabold text-blue-800">{inProgressClearances}</span>
-                                </div>
-                                <div className="p-2 bg-amber-50 rounded-xl border border-amber-200">
-                                  <span className="text-[10px] text-amber-700 font-bold block uppercase">Pending</span>
-                                  <span className="text-sm font-extrabold text-amber-800">{pendingClearances}</span>
-                                </div>
-                                <div className="p-2 bg-slate-50 rounded-xl border border-slate-200">
-                                  <span className="text-[10px] text-slate-600 font-bold block uppercase">Avg Turnaround</span>
-                                  <span className="text-sm font-extrabold text-slate-800">15 min</span>
+                                  <div className="p-2 bg-blue-50 rounded-xl border border-blue-200">
+                                    <span className="text-[10px] text-blue-700 font-bold block uppercase">In Progress</span>
+                                    <span className="text-sm font-extrabold text-blue-800">{inProgressClearances}</span>
+                                  </div>
+                                  <div className="p-2 bg-amber-50 rounded-xl border border-amber-200">
+                                    <span className="text-[10px] text-amber-700 font-bold block uppercase">Pending</span>
+                                    <span className="text-sm font-extrabold text-amber-800">{pendingClearances}</span>
+                                  </div>
+                                  <div className="p-2 bg-slate-50 rounded-xl border border-slate-200">
+                                    <span className="text-[10px] text-slate-600 font-bold block uppercase">Avg Turnaround</span>
+                                    <span className="text-sm font-extrabold text-slate-800">15 min</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
 
-                            {/* Right: Role-Specific Distribution — Standard Bar Chart */}
-                            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                              {/* Right: Role-Specific Distribution — Standard Bar Chart */}
+                              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
                                 <div>
                                   <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
                                     <span className="flex items-center gap-2">
@@ -7790,179 +7753,179 @@ export default function AdminDashboard() {
                                   </div>
                                 </div>
                               </div>
-                          </div>
-                        );
-                      })()}
-                    </>
-                  );
-                })()}
+                            </div>
+                          );
+                        })()}
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Data Export Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="border-indigo-200 bg-indigo-50/50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                        <FolderOpen size={16} className="text-indigo-600" />
+                        Resident Registry Dataset
+                      </CardTitle>
+                      <CardDescription className="text-[11px] text-indigo-700">Demographic census & resident records</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <p className="text-xs text-slate-600 mb-3">Total registered residents: <strong>{residents.length}</strong> in database.</p>
+                      <Button
+                        onClick={() => {
+                          downloadOfficialPdf({
+                            title: 'Resident Census Report',
+                            subtitle: `Full demographic census — ${new Date().toLocaleDateString()}`,
+                            filename: `Resident_Census_Report_${new Date().toISOString().slice(0, 10)}`,
+                            preparedBy: user?.name || 'Administrator',
+                            preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : 'Barangay Administrator',
+                            stats: [{ label: 'Total Residents', value: residents.length }],
+                            tables: [{
+                              title: 'Full Resident Census',
+                              headers: ['ID', 'Full Name', 'Gender', 'Address', 'Phone'],
+                              rows: residents.map(r => [r.id, `${r.first_name} ${r.last_name}`, r.gender, r.address, r.phone || 'N/A'])
+                            }]
+                          });
+                          toast.success('Resident census PDF downloaded');
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs h-7 text-indigo-700 border-indigo-300 hover:bg-indigo-100"
+                      >
+                        <Download size={12} className="mr-1" /> Download Full Census (PDF)
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-emerald-200 bg-emerald-50/50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                        <FileText size={16} className="text-emerald-600" />
+                        Document Clearances Log
+                      </CardTitle>
+                      <CardDescription className="text-[11px] text-emerald-700">Clearances, permits & certificate requests</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <p className="text-xs text-slate-600 mb-3">Total processed requests: <strong>{documents.length}</strong> documents.</p>
+                      <Button
+                        onClick={() => {
+                          downloadOfficialPdf({
+                            title: 'Document Clearances Master List',
+                            subtitle: `All clearance & certificate issuances — ${new Date().toLocaleDateString()}`,
+                            filename: `Document_Clearances_Master_${new Date().toISOString().slice(0, 10)}`,
+                            preparedBy: user?.name || 'Administrator',
+                            preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : 'Barangay Administrator',
+                            stats: [
+                              { label: 'Total', value: documents.length },
+                              { label: 'Completed', value: documents.filter(d => d.status === 'Completed').length }
+                            ],
+                            tables: [{
+                              title: 'Clearance Requests Master',
+                              headers: ['Code', 'Applicant', 'Document Type', 'Purpose', 'Status', 'Processed By'],
+                              rows: documents.map(d => [d.request_code || '', d.resident_name || '', d.document_type || '', d.purpose || '', d.status || '', d.processed_by || 'Pending'])
+                            }]
+                          });
+                          toast.success('Clearances master PDF downloaded');
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs h-7 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+                      >
+                        <Download size={12} className="mr-1" /> Download Clearances (PDF)
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-blue-200 bg-blue-50/50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                        <Users size={16} className="text-blue-600" />
+                        System User Accounts
+                      </CardTitle>
+                      <CardDescription className="text-[11px] text-blue-700">Administrator, BHW & staff account list</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <p className="text-xs text-slate-600 mb-3">Active authorized accounts: <strong>{users.length}</strong> users.</p>
+                      <Button
+                        onClick={() => {
+                          downloadOfficialPdf({
+                            title: 'System User Accounts Directory',
+                            subtitle: `All authorized staff, BHW & admin accounts — ${new Date().toLocaleDateString()}`,
+                            filename: `System_User_Accounts_${new Date().toISOString().slice(0, 10)}`,
+                            preparedBy: user?.name || 'Administrator',
+                            preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : 'Barangay Administrator',
+                            stats: [
+                              { label: 'Total Accounts', value: users.length },
+                              { label: 'Active', value: users.filter(u => u.status === 'Active').length }
+                            ],
+                            tables: [{
+                              title: 'System User Accounts',
+                              headers: ['ID', 'Full Name', 'Email', 'Role', 'Barangay', 'Status', 'Last Login'],
+                              rows: users.map(u => [u.id, u.name, u.email, u.role.toUpperCase(), u.barangay || 'Pianing', u.status, (u as any).last_login ? new Date((u as any).last_login).toLocaleDateString() : 'Never'])
+                            }]
+                          });
+                          toast.success('User accounts PDF downloaded');
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs h-7 text-blue-700 border-blue-300 hover:bg-blue-100"
+                      >
+                        <Download size={12} className="mr-1" /> Download User Accounts (PDF)
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="border-slate-200 bg-white">
+                    <CardHeader>
+                      <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <FolderOpen className="text-indigo-600" size={18} />
+                        Database Records Distribution
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-xs">
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span>Total Resident Demographics</span>
+                        <span className="font-bold font-mono text-indigo-600">{residents.length}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span>Total Document Clearance Requests</span>
+                        <span className="font-bold font-mono text-indigo-600">{documents.length}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span>Completed Clearances</span>
+                        <span className="font-bold font-mono text-emerald-600">{documents.filter(d => d.status === 'Completed').length}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span>System User Accounts</span>
+                        <span className="font-bold font-mono text-blue-600">{users.length}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-slate-200 bg-white">
+                    <CardHeader>
+                      <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <Activity className="text-emerald-600" size={18} />
+                        Health & Administrative Status Summary
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                        <h4 className="font-bold text-xs text-emerald-900">Service Performance</h4>
+                        <p className="text-[11px] text-emerald-700 mt-1">Average document processing turn-around time: 15 minutes.</p>
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                        <h4 className="font-bold text-xs text-blue-900">Barangay Pianing Database Driver Health</h4>
+                        <p className="text-[11px] text-blue-700 mt-1">Active MySQL2 connection pool with automatic error recovery.</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
-
-              {/* Data Export Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="border-indigo-200 bg-indigo-50/50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                      <FolderOpen size={16} className="text-indigo-600" />
-                      Resident Registry Dataset
-                    </CardTitle>
-                    <CardDescription className="text-[11px] text-indigo-700">Demographic census & resident records</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="text-xs text-slate-600 mb-3">Total registered residents: <strong>{residents.length}</strong> in database.</p>
-                    <Button
-                      onClick={() => {
-                        downloadOfficialPdf({
-                          title: 'Resident Census Report',
-                          subtitle: `Full demographic census — ${new Date().toLocaleDateString()}`,
-                          filename: `Resident_Census_Report_${new Date().toISOString().slice(0, 10)}`,
-                          preparedBy: user?.name || 'Administrator',
-                          preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : 'Barangay Administrator',
-                          stats: [{ label: 'Total Residents', value: residents.length }],
-                          tables: [{
-                            title: 'Full Resident Census',
-                            headers: ['ID', 'Full Name', 'Gender', 'Address', 'Phone'],
-                            rows: residents.map(r => [r.id, `${r.first_name} ${r.last_name}`, r.gender, r.address, r.phone || 'N/A'])
-                          }]
-                        });
-                        toast.success('Resident census PDF downloaded');
-                      }}
-                      size="sm"
-                      variant="outline"
-                      className="w-full text-xs h-7 text-indigo-700 border-indigo-300 hover:bg-indigo-100"
-                    >
-                      <Download size={12} className="mr-1" /> Download Full Census (PDF)
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-emerald-200 bg-emerald-50/50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                      <FileText size={16} className="text-emerald-600" />
-                      Document Clearances Log
-                    </CardTitle>
-                    <CardDescription className="text-[11px] text-emerald-700">Clearances, permits & certificate requests</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="text-xs text-slate-600 mb-3">Total processed requests: <strong>{documents.length}</strong> documents.</p>
-                    <Button
-                      onClick={() => {
-                        downloadOfficialPdf({
-                          title: 'Document Clearances Master List',
-                          subtitle: `All clearance & certificate issuances — ${new Date().toLocaleDateString()}`,
-                          filename: `Document_Clearances_Master_${new Date().toISOString().slice(0, 10)}`,
-                          preparedBy: user?.name || 'Administrator',
-                          preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : 'Barangay Administrator',
-                          stats: [
-                            { label: 'Total', value: documents.length },
-                            { label: 'Completed', value: documents.filter(d => d.status === 'Completed').length }
-                          ],
-                          tables: [{
-                            title: 'Clearance Requests Master',
-                            headers: ['Code', 'Applicant', 'Document Type', 'Purpose', 'Status', 'Processed By'],
-                            rows: documents.map(d => [d.request_code || '', d.resident_name || '', d.document_type || '', d.purpose || '', d.status || '', d.processed_by || 'Pending'])
-                          }]
-                        });
-                        toast.success('Clearances master PDF downloaded');
-                      }}
-                      size="sm"
-                      variant="outline"
-                      className="w-full text-xs h-7 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
-                    >
-                      <Download size={12} className="mr-1" /> Download Clearances (PDF)
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-blue-200 bg-blue-50/50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                      <Users size={16} className="text-blue-600" />
-                      System User Accounts
-                    </CardTitle>
-                    <CardDescription className="text-[11px] text-blue-700">Administrator, BHW & staff account list</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="text-xs text-slate-600 mb-3">Active authorized accounts: <strong>{users.length}</strong> users.</p>
-                    <Button
-                      onClick={() => {
-                        downloadOfficialPdf({
-                          title: 'System User Accounts Directory',
-                          subtitle: `All authorized staff, BHW & admin accounts — ${new Date().toLocaleDateString()}`,
-                          filename: `System_User_Accounts_${new Date().toISOString().slice(0, 10)}`,
-                          preparedBy: user?.name || 'Administrator',
-                          preparedByTitle: user?.role === 'superadmin' ? 'Super Administrator' : 'Barangay Administrator',
-                          stats: [
-                            { label: 'Total Accounts', value: users.length },
-                            { label: 'Active', value: users.filter(u => u.status === 'Active').length }
-                          ],
-                          tables: [{
-                            title: 'System User Accounts',
-                            headers: ['ID', 'Full Name', 'Email', 'Role', 'Barangay', 'Status', 'Last Login'],
-                            rows: users.map(u => [u.id, u.name, u.email, u.role.toUpperCase(), u.barangay || 'Pianing', u.status, (u as any).last_login ? new Date((u as any).last_login).toLocaleDateString() : 'Never'])
-                          }]
-                        });
-                        toast.success('User accounts PDF downloaded');
-                      }}
-                      size="sm"
-                      variant="outline"
-                      className="w-full text-xs h-7 text-blue-700 border-blue-300 hover:bg-blue-100"
-                    >
-                      <Download size={12} className="mr-1" /> Download User Accounts (PDF)
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="border-slate-200 bg-white">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <FolderOpen className="text-indigo-600" size={18} />
-                      Database Records Distribution
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-xs">
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span>Total Resident Demographics</span>
-                      <span className="font-bold font-mono text-indigo-600">{residents.length}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span>Total Document Clearance Requests</span>
-                      <span className="font-bold font-mono text-indigo-600">{documents.length}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span>Completed Clearances</span>
-                      <span className="font-bold font-mono text-emerald-600">{documents.filter(d => d.status === 'Completed').length}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span>System User Accounts</span>
-                      <span className="font-bold font-mono text-blue-600">{users.length}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-slate-200 bg-white">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      <Activity className="text-emerald-600" size={18} />
-                      Health & Administrative Status Summary
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-                      <h4 className="font-bold text-xs text-emerald-900">Service Performance</h4>
-                      <p className="text-[11px] text-emerald-700 mt-1">Average document processing turn-around time: 15 minutes.</p>
-                    </div>
-                    <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-                      <h4 className="font-bold text-xs text-blue-900">Barangay Pianing Database Driver Health</h4>
-                      <p className="text-[11px] text-blue-700 mt-1">Active MySQL2 connection pool with automatic error recovery.</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
             );
           })()}
 
@@ -8076,31 +8039,28 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl flex-wrap">
                     <button
                       onClick={() => setCategoryStatusFilter('all')}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                        categoryStatusFilter === 'all'
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${categoryStatusFilter === 'all'
                           ? 'bg-white text-purple-700 shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                        }`}
                     >
                       All Statuses ({totalCount})
                     </button>
                     <button
                       onClick={() => setCategoryStatusFilter('Active')}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                        categoryStatusFilter === 'Active'
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${categoryStatusFilter === 'Active'
                           ? 'bg-white text-emerald-700 shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                        }`}
                     >
                       Active Only ({activeCount})
                     </button>
                     <button
                       onClick={() => setCategoryStatusFilter('Inactive')}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                        categoryStatusFilter === 'Inactive'
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${categoryStatusFilter === 'Inactive'
                           ? 'bg-white text-rose-700 shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                        }`}
                     >
                       Deactivated Only ({inactiveCount})
                     </button>
@@ -8215,9 +8175,8 @@ export default function AdminDashboard() {
                             return (
                               <TableRow key={`cat-${cat.id || idx}-${cat.name}`} className="text-xs hover:bg-slate-50/80">
                                 <TableCell className="font-semibold text-slate-900 flex items-center gap-2 py-3">
-                                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                                    isActive ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-500'
-                                  }`}>
+                                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-purple-100 text-purple-700' : 'bg-slate-200 text-slate-500'
+                                    }`}>
                                     <FileText size={14} />
                                   </div>
                                   <div>
@@ -8226,11 +8185,10 @@ export default function AdminDashboard() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="outline" className={`text-[10px] font-semibold ${
-                                    cat.department === 'Health Center'
+                                  <Badge variant="outline" className={`text-[10px] font-semibold ${cat.department === 'Health Center'
                                       ? 'bg-teal-50 text-teal-700 border-teal-300'
                                       : 'bg-indigo-50 text-indigo-700 border-indigo-300'
-                                  }`}>
+                                    }`}>
                                     {cat.department || 'Barangay'}
                                   </Badge>
                                 </TableCell>
@@ -8238,11 +8196,10 @@ export default function AdminDashboard() {
                                   {cat.description || 'Standard public service & document issuance.'}
                                 </TableCell>
                                 <TableCell className="text-center">
-                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                                    isActive
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${isActive
                                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                       : 'bg-rose-100 text-rose-800 border border-rose-300'
-                                  }`}>
+                                    }`}>
                                     <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
                                     {isActive ? 'Active' : 'Deactivated'}
                                   </span>
@@ -8373,11 +8330,10 @@ export default function AdminDashboard() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${
-                      isSuperAdmin 
-                        ? 'bg-purple-100 text-purple-800 border-purple-300' 
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${isSuperAdmin
+                        ? 'bg-purple-100 text-purple-800 border-purple-300'
                         : 'bg-indigo-100 text-indigo-800 border-indigo-300'
-                    }`}>
+                      }`}>
                       {isSuperAdmin ? 'SUPER ADMIN & ADMIN AUDIT' : 'BARANGAY AUDIT TRAIL'}
                     </span>
                     <span className="text-xs text-slate-500 font-mono">Live Activity Stream</span>
@@ -8614,7 +8570,7 @@ export default function AdminDashboard() {
                   </Badge>
                 </CardHeader>
                 <CardContent className="p-0">
-                     <div className="overflow-x-auto">
+                  <div className="overflow-x-auto">
                     <Table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                       <colgroup>
                         <col style={{ width: '180px' }} />
@@ -8670,37 +8626,36 @@ export default function AdminDashboard() {
                             const actionType = log.action_type || 'General';
 
                             // Role badge styling
-                            const roleBadgeColor = 
+                            const roleBadgeColor =
                               role === 'superadmin' ? 'bg-purple-100 text-purple-800 border-purple-300' :
-                              role === 'admin' ? 'bg-indigo-100 text-indigo-800 border-indigo-300' :
-                              role === 'staff' ? 'bg-sky-100 text-sky-800 border-sky-300' :
-                              role === 'bhw' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                              'bg-slate-100 text-slate-800 border-slate-300';
+                                role === 'admin' ? 'bg-indigo-100 text-indigo-800 border-indigo-300' :
+                                  role === 'staff' ? 'bg-sky-100 text-sky-800 border-sky-300' :
+                                    role === 'bhw' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                      'bg-slate-100 text-slate-800 border-slate-300';
 
                             // Action badge styling
                             const actionBadgeColor =
                               actionType === 'Document' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                              actionType === 'Resident' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                              actionType === 'Staff' ? 'bg-sky-50 text-sky-700 border-sky-200' :
-                              actionType === 'Category' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                              actionType === 'User' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                              actionType === 'Health' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                              actionType === 'Security' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                              actionType === 'System' ? 'bg-slate-50 text-slate-700 border-slate-200' :
-                              'bg-slate-100 text-slate-700 border-slate-200';
+                                actionType === 'Resident' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                  actionType === 'Staff' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                                    actionType === 'Category' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                      actionType === 'User' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                        actionType === 'Health' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                                          actionType === 'Security' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                            actionType === 'System' ? 'bg-slate-50 text-slate-700 border-slate-200' :
+                                              'bg-slate-100 text-slate-700 border-slate-200';
 
                             return (
                               <TableRow key={`log-${log.id || idx}`} className="text-xs hover:bg-slate-50/80 transition-colors">
                                 {/* Actor */}
                                 <TableCell className="py-3 px-3">
                                   <div className="flex items-center gap-2.5">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                                      role === 'superadmin' ? 'bg-purple-100 text-purple-700' :
-                                      role === 'admin' ? 'bg-indigo-100 text-indigo-700' :
-                                      role === 'bhw' ? 'bg-emerald-100 text-emerald-700' :
-                                      role === 'staff' ? 'bg-sky-100 text-sky-700' :
-                                      'bg-slate-200 text-slate-700'
-                                    }`}>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${role === 'superadmin' ? 'bg-purple-100 text-purple-700' :
+                                        role === 'admin' ? 'bg-indigo-100 text-indigo-700' :
+                                          role === 'bhw' ? 'bg-emerald-100 text-emerald-700' :
+                                            role === 'staff' ? 'bg-sky-100 text-sky-700' :
+                                              'bg-slate-200 text-slate-700'
+                                      }`}>
                                       {log.user_name ? log.user_name.charAt(0).toUpperCase() : 'U'}
                                     </div>
                                     <div className="overflow-hidden">
@@ -9029,11 +8984,10 @@ export default function AdminDashboard() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${
-                                  item.status === 'Active'
+                                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${item.status === 'Active'
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                                     : 'bg-slate-100 text-slate-600 border-slate-200'
-                                }`}>
+                                  }`}>
                                   {item.status === 'Active' ? 'Staffed' : 'Unstaffed'}
                                 </span>
                               </TableCell>
@@ -9147,11 +9101,10 @@ export default function AdminDashboard() {
                         <Sliders size={16} className="text-amber-600" />
                         <span>Maintenance Mode</span>
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        maintenanceMode.enabled
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${maintenanceMode.enabled
                           ? 'bg-amber-100 text-amber-800 border border-amber-300'
                           : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      }`}>
+                        }`}>
                         {maintenanceMode.enabled ? 'MAINTENANCE ACTIVE' : 'SYSTEM LIVE'}
                       </span>
                     </CardTitle>
@@ -9181,11 +9134,10 @@ export default function AdminDashboard() {
                           toast.error('Failed to toggle maintenance mode');
                         }
                       }}
-                      className={`w-full text-xs font-semibold h-8 cursor-pointer ${
-                        maintenanceMode.enabled
+                      className={`w-full text-xs font-semibold h-8 cursor-pointer ${maintenanceMode.enabled
                           ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                           : 'bg-amber-600 hover:bg-amber-700 text-white'
-                      }`}
+                        }`}
                     >
                       {maintenanceMode.enabled ? 'Deactivate Maintenance (Resume Live)' : 'Activate Maintenance Mode'}
                     </Button>
@@ -9399,8 +9351,8 @@ export default function AdminDashboard() {
                     onClick={() => {
                       setAddResidentMode('new_household');
                       const cleanP = (newResPurok || '1').replace(/purok\s*/i, '').trim();
-                      const existingInP = censusHouseholds.filter(h => 
-                        (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP || 
+                      const existingInP = censusHouseholds.filter(h =>
+                        (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP ||
                         (h.household_number || '').includes(`HH-P${cleanP}`)
                       );
                       setNewResHouseholdNum(`HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`);
@@ -9441,8 +9393,8 @@ export default function AdminDashboard() {
                       setNewResPurok(val);
                       const cleanP = val.replace(/purok\s*/i, '').trim();
                       if (addResidentMode === 'new_household') {
-                        const existingInP = censusHouseholds.filter(h => 
-                          (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP || 
+                        const existingInP = censusHouseholds.filter(h =>
+                          (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP ||
                           (h.household_number || '').includes(`HH-P${cleanP}`)
                         );
                         setNewResHouseholdNum(`HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`);
@@ -9495,7 +9447,7 @@ export default function AdminDashboard() {
                           </span>
                         )}
                       </div>
-                      
+
                       <div className="relative">
                         <div className="relative">
                           <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
@@ -9539,9 +9491,8 @@ export default function AdminDashboard() {
                                     setHouseholdSearchQuery(`${h.household_number} - ${h.family_name} Family`);
                                     setIsHouseholdDropdownOpen(false);
                                   }}
-                                  className={`w-full text-left p-2.5 hover:bg-blue-50 transition-colors flex items-center justify-between cursor-pointer ${
-                                    newResHouseholdNum === h.household_number ? 'bg-blue-50 font-semibold' : ''
-                                  }`}
+                                  className={`w-full text-left p-2.5 hover:bg-blue-50 transition-colors flex items-center justify-between cursor-pointer ${newResHouseholdNum === h.household_number ? 'bg-blue-50 font-semibold' : ''
+                                    }`}
                                 >
                                   <div>
                                     <div className="flex items-center gap-1.5">
@@ -10396,11 +10347,11 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-2.5">
                     <div className={`p-2 rounded-xl border ${roleCfg.bgAccent}`}>
                       {selectedStaffInfo.role === 'superadmin' ? <Shield size={18} /> :
-                       selectedStaffInfo.role === 'admin' ? <Building2 size={18} /> :
-                       selectedStaffInfo.role === 'nurse' ? <Heart size={18} /> :
-                       selectedStaffInfo.role === 'bhw' ? <Activity size={18} /> :
-                       selectedStaffInfo.role === 'resident' ? <UserCircle size={18} /> :
-                       <FileText size={18} />}
+                        selectedStaffInfo.role === 'admin' ? <Building2 size={18} /> :
+                          selectedStaffInfo.role === 'nurse' ? <Heart size={18} /> :
+                            selectedStaffInfo.role === 'bhw' ? <Activity size={18} /> :
+                              selectedStaffInfo.role === 'resident' ? <UserCircle size={18} /> :
+                                <FileText size={18} />}
                     </div>
                     <div>
                       <DialogTitle className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -10415,10 +10366,10 @@ export default function AdminDashboard() {
                   </div>
                   <Badge variant="outline" className={`text-xs font-semibold px-2.5 py-0.5 border ${roleCfg.badge}`}>
                     {selectedStaffInfo.role === 'superadmin' ? 'SUPER ADMIN' :
-                     selectedStaffInfo.role === 'admin' ? 'BARANGAY ADMIN' :
-                     selectedStaffInfo.role === 'nurse' ? 'HEALTH NURSE' :
-                     selectedStaffInfo.role === 'bhw' ? 'BHW WORKER' :
-                     selectedStaffInfo.role === 'staff' ? 'STAFF / CLERK' : 'RESIDENT'}
+                      selectedStaffInfo.role === 'admin' ? 'BARANGAY ADMIN' :
+                        selectedStaffInfo.role === 'nurse' ? 'HEALTH NURSE' :
+                          selectedStaffInfo.role === 'bhw' ? 'BHW WORKER' :
+                            selectedStaffInfo.role === 'staff' ? 'STAFF / CLERK' : 'RESIDENT'}
                   </Badge>
                 </div>
 
@@ -10464,20 +10415,19 @@ export default function AdminDashboard() {
                               selectedStaffInfo.status === 'Active'
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold'
                                 : selectedStaffInfo.status === 'Archived'
-                                ? 'bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 font-bold'
-                                : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold'
+                                  ? 'bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 font-bold'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold'
                             }>
-                              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                                selectedStaffInfo.status === 'Active' ? 'bg-emerald-500 animate-pulse' :
-                                selectedStaffInfo.status === 'Archived' ? 'bg-violet-500' : 'bg-amber-500'
-                              }`} />
+                              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${selectedStaffInfo.status === 'Active' ? 'bg-emerald-500 animate-pulse' :
+                                  selectedStaffInfo.status === 'Archived' ? 'bg-violet-500' : 'bg-amber-500'
+                                }`} />
                               {selectedStaffInfo.status || 'Active'}
                             </Badge>
                             {selectedStaffInfo.role === 'resident' && (
                               <Badge variant="outline" className={
                                 selectedStaffInfo.verification_status === 'Verified' ? 'border-emerald-300 text-emerald-700 bg-emerald-50 font-semibold' :
-                                selectedStaffInfo.verification_status === 'Rejected' ? 'border-rose-300 text-rose-700 bg-rose-50 font-semibold' :
-                                'border-amber-300 text-amber-800 bg-amber-50 font-semibold'
+                                  selectedStaffInfo.verification_status === 'Rejected' ? 'border-rose-300 text-rose-700 bg-rose-50 font-semibold' :
+                                    'border-amber-300 text-amber-800 bg-amber-50 font-semibold'
                               }>
                                 {selectedStaffInfo.verification_status || 'Verified'}
                               </Badge>
@@ -10664,12 +10614,12 @@ export default function AdminDashboard() {
                             <span className="font-medium text-slate-800 text-xs block mt-0.5">
                               {selectedStaffInfo.date_of_birth
                                 ? `${new Date(selectedStaffInfo.date_of_birth).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}${(() => {
-                                    const d = new Date(selectedStaffInfo.date_of_birth);
-                                    if (isNaN(d.getTime())) return '';
-                                    const diff = Date.now() - d.getTime();
-                                    const age = Math.abs(new Date(diff).getUTCFullYear() - 1970);
-                                    return ` (${age} yrs old)`;
-                                  })()}`
+                                  const d = new Date(selectedStaffInfo.date_of_birth);
+                                  if (isNaN(d.getTime())) return '';
+                                  const diff = Date.now() - d.getTime();
+                                  const age = Math.abs(new Date(diff).getUTCFullYear() - 1970);
+                                  return ` (${age} yrs old)`;
+                                })()}`
                                 : 'Not specified'}
                             </span>
                           </div>
@@ -10895,11 +10845,10 @@ export default function AdminDashboard() {
                             status: target.status === 'Active' ? 'Inactive' : 'Active'
                           });
                         }}
-                        className={`h-8 text-xs font-semibold rounded-xl cursor-pointer gap-1.5 ${
-                          selectedStaffInfo.status === 'Active'
+                        className={`h-8 text-xs font-semibold rounded-xl cursor-pointer gap-1.5 ${selectedStaffInfo.status === 'Active'
                             ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
                             : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
-                        }`}
+                          }`}
                       >
                         {selectedStaffInfo.status === 'Active' ? (
                           <>
@@ -11001,11 +10950,10 @@ export default function AdminDashboard() {
                       key={opt.key}
                       type="button"
                       onClick={() => handleNoticeReasonChange(opt.key, smsApplicantModal)}
-                      className={`p-2 rounded-lg border text-left text-xs font-semibold transition-all cursor-pointer ${
-                        smsNoticeReason === opt.key
+                      className={`p-2 rounded-lg border text-left text-xs font-semibold transition-all cursor-pointer ${smsNoticeReason === opt.key
                           ? 'border-red-600 bg-red-50 text-red-700 dark:bg-red-950 dark:border-red-500'
                           : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 dark:bg-slate-800 dark:border-slate-700'
-                      }`}
+                        }`}
                     >
                       {opt.label}
                     </button>
@@ -11568,16 +11516,16 @@ export default function AdminDashboard() {
                   newDocType === 'Good Moral Clearance'
                     ? 'e.g. Employment application / PRC Board Examination'
                     : newDocType === 'Certificate of Employment'
-                    ? 'e.g. Proof of employment / Loan / Bank Requirement'
-                    : (newDocType === 'Certificate of Land Occupancy' || newDocType === 'Actual Occupancy')
-                    ? 'e.g. Proof of land occupancy / Utility Connection'
-                    : (newDocType === 'Business Clearance' || newDocType === 'Business Permit')
-                    ? 'e.g. Business permit application / Renewal / Mayor\'s Permit'
-                    : newDocType === 'Certificate of Indigency'
-                    ? 'e.g. Medical Assistance / Scholarship / Burial / Legal Aid'
-                    : newDocType === 'Certificate of Residency'
-                    ? 'e.g. Postal ID / School Requirement / Police Clearance'
-                    : 'e.g. Bank Account / Loan / School Requirement / Employment'
+                      ? 'e.g. Proof of employment / Loan / Bank Requirement'
+                      : (newDocType === 'Certificate of Land Occupancy' || newDocType === 'Actual Occupancy')
+                        ? 'e.g. Proof of land occupancy / Utility Connection'
+                        : (newDocType === 'Business Clearance' || newDocType === 'Business Permit')
+                          ? 'e.g. Business permit application / Renewal / Mayor\'s Permit'
+                          : newDocType === 'Certificate of Indigency'
+                            ? 'e.g. Medical Assistance / Scholarship / Burial / Legal Aid'
+                            : newDocType === 'Certificate of Residency'
+                              ? 'e.g. Postal ID / School Requirement / Police Clearance'
+                              : 'e.g. Bank Account / Loan / School Requirement / Employment'
                 }
                 required
                 className="h-8 text-xs"
@@ -11642,7 +11590,7 @@ export default function AdminDashboard() {
                   if (applicant.email) {
                     toast.info(`📧 Verification email dispatched to ${applicant.email}`);
                   }
-                }).catch(() => {});
+                }).catch(() => { });
               }
               setIsApplicantReviewOpen(false);
               setSelectedApplicantForReview(null);

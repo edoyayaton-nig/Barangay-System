@@ -31,7 +31,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           value={value}
           placeholder=" "
           required={required}
-          className={`peer block w-full rounded-xl border bg-white text-xs text-slate-900 transition-all shadow-xs outline-none
+          className={`peer block w-full rounded-xl border bg-white text-base sm:text-xs text-slate-900 transition-all shadow-xs outline-none
             ${icon ? 'pl-9 pr-3' : 'px-3'}
             ${isPassword ? 'pr-9' : ''}
             h-[42px]
@@ -103,7 +103,7 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
           placeholder=" "
           required={required}
           rows={rows}
-          className={`peer block w-full rounded-xl border bg-white text-xs text-slate-900 transition-all shadow-xs outline-none px-3 pt-2.5 pb-2
+          className={`peer block w-full rounded-xl border bg-white text-base sm:text-xs text-slate-900 transition-all shadow-xs outline-none px-3 pt-2.5 pb-2
             ${
               error
                 ? 'border-[#B42318] focus:border-[#B42318] focus:ring-2 focus:ring-[#B42318]/20'
@@ -165,7 +165,7 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
           id={selectId}
           value={value}
           required={required}
-          className={`peer block w-full rounded-xl border bg-white text-xs text-slate-900 transition-all shadow-xs outline-none appearance-none
+          className={`peer block w-full rounded-xl border bg-white text-base sm:text-xs text-slate-900 transition-all shadow-xs outline-none appearance-none
             ${icon ? 'pl-9 pr-8' : 'px-3 pr-8'}
             h-[42px] cursor-pointer
             ${

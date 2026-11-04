@@ -718,14 +718,14 @@ export default function BarangayPortal() {
     s === 'Completed' ? 'bg-emerald-600' : s === 'Processing' ? 'bg-blue-500' : s === 'Rejected' ? 'bg-red-500' : 'bg-amber-500';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-dvh w-full max-w-[100vw] overflow-x-hidden bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
       {/* Super Admin Unified Ecosystem Switcher */}
       <SuperAdminNavigationDock currentRole={user?.role} />
 
       {/* Navbar */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-4 py-3 shadow-sm transition-colors">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-3 sm:px-6 py-2 sm:py-2.5 shadow-sm transition-colors">
+        <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Button
               variant="outline"
               size="sm"
@@ -899,7 +899,7 @@ export default function BarangayPortal() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 space-y-5 sm:space-y-6 pb-24 sm:pb-12">
         <SystemNoticeBanner />
         {/* Official Barangay Helpdesk & Contact Banner */}
         <div className="bg-gradient-to-r from-[#173B5E] via-[#0F2740] to-[#006B66] text-white rounded-2xl p-4 sm:p-5 shadow-sm border border-[#006B66]/30 relative overflow-hidden">
@@ -1039,7 +1039,7 @@ export default function BarangayPortal() {
                 Request Barangay Document
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-white dark:bg-slate-900 max-w-lg w-full max-h-[88dvh] overflow-y-auto rounded-t-3xl sm:rounded-2xl p-4 sm:p-6 pb-[env(safe-area-inset-bottom)] sm:pb-6">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Building2 size={18} className="text-indigo-600" />
@@ -1429,85 +1429,161 @@ export default function BarangayPortal() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="text-xs">Request Code</TableHead>
-                  <TableHead className="text-xs">Document Type</TableHead>
-                  <TableHead className="text-xs">Purpose</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
-                  <TableHead className="text-xs">Date Submitted</TableHead>
-                  <TableHead className="text-xs text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {documents.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-xs py-10 text-slate-400">
-                      <Building2 className="mx-auto mb-2 text-slate-300" size={28} />
-                      No barangay document requests yet. Click <strong>"Request Barangay Document"</strong> above.
-                    </TableCell>
+            {/* Desktop Table View (>= 768px, hidden md:block) */}
+            <div className="hidden md:block w-full overflow-x-auto">
+              <Table className="w-full text-left border-collapse min-w-[700px]">
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="text-xs">Request Code</TableHead>
+                    <TableHead className="text-xs">Document Type</TableHead>
+                    <TableHead className="text-xs">Purpose</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs">Date Submitted</TableHead>
+                    <TableHead className="text-xs text-right">Action</TableHead>
                   </TableRow>
-                ) : (
-                  documents.map((doc, idx) => (
-                    <TableRow key={`doc-${doc.id}-${doc.document_type}-${idx}`} className="text-xs">
-                      <TableCell className="font-mono font-semibold text-indigo-600">{doc.request_code}</TableCell>
-                      <TableCell className="font-semibold text-slate-900">
-                        <div>{doc.document_type}</div>
-                        {doc.purok_certificate_photo ? (
-                          <button
-                            type="button"
-                            onClick={() => setViewingPurokPhoto(doc.purok_certificate_photo || null)}
-                            className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded cursor-pointer transition-colors"
-                            title="Click to view submitted Certificate of Purok President"
-                          >
-                            <FileCheck size={11} className="text-emerald-600" />
-                            Purok Cert Attached
-                            <Eye size={10} className="ml-0.5 text-emerald-600" />
-                          </button>
-                        ) : (
-                          <span className="inline-block mt-1 text-[10px] text-slate-400">
-                            Standard Request
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-slate-500">{doc.purpose || '—'}</TableCell>
-                      <TableCell>
-                        <Badge className={
-                          doc.status === 'Completed' ? 'bg-emerald-600 text-white' :
-                          doc.status === 'Ready for Pickup' ? 'bg-indigo-600 text-white' :
-                          doc.status === 'Processing' ? 'bg-amber-500 text-white' :
-                          doc.status === 'Rejected' ? 'bg-red-500 text-white' :
-                          'bg-orange-500 text-white'
-                        }>
-                          {doc.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-slate-400 text-[11px]">{doc.requested_at || 'Today'}</TableCell>
-                      <TableCell className="text-right">
-                        {doc.status === 'Ready for Pickup' ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-md shadow-xs animate-pulse">
-                            <CheckCircle2 size={12} className="text-indigo-600" /> Ready for Pickup at Hall
-                          </span>
-                        ) : doc.status === 'Completed' ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
-                            <CheckCircle2 size={12} /> Claimed / Completed
-                          </span>
-                        ) : doc.status === 'Processing' ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
-                            <Clock size={12} /> In Preparation
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md">
-                            <Clock size={12} /> Queued
-                          </span>
-                        )}
+                </TableHeader>
+                <TableBody>
+                  {documents.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-xs py-10 text-slate-400">
+                        <Building2 className="mx-auto mb-2 text-slate-300" size={28} />
+                        No barangay document requests yet. Click <strong>"Request Barangay Document"</strong> above.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    documents.map((doc, idx) => (
+                      <TableRow key={`doc-${doc.id}-${doc.document_type}-${idx}`} className="text-xs">
+                        <TableCell className="font-mono font-semibold text-indigo-600">{doc.request_code}</TableCell>
+                        <TableCell className="font-semibold text-slate-900">
+                          <div>{doc.document_type}</div>
+                          {doc.purok_certificate_photo ? (
+                            <button
+                              type="button"
+                              onClick={() => setViewingPurokPhoto(doc.purok_certificate_photo || null)}
+                              className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                              title="Click to view submitted Certificate of Purok President"
+                            >
+                              <FileCheck size={11} className="text-emerald-600" />
+                              Purok Cert Attached
+                              <Eye size={10} className="ml-0.5 text-emerald-600" />
+                            </button>
+                          ) : (
+                            <span className="inline-block mt-1 text-[10px] text-slate-400">
+                              Standard Request
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-slate-500">{doc.purpose || '—'}</TableCell>
+                        <TableCell>
+                          <Badge className={
+                            doc.status === 'Completed' ? 'bg-emerald-600 text-white' :
+                            doc.status === 'Ready for Pickup' ? 'bg-indigo-600 text-white' :
+                            doc.status === 'Processing' ? 'bg-amber-500 text-white' :
+                            doc.status === 'Rejected' ? 'bg-red-500 text-white' :
+                            'bg-orange-500 text-white'
+                          }>
+                            {doc.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-slate-400 text-[11px]">{doc.requested_at || 'Today'}</TableCell>
+                        <TableCell className="text-right">
+                          {doc.status === 'Ready for Pickup' ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-md shadow-xs animate-pulse">
+                              <CheckCircle2 size={12} className="text-indigo-600" /> Ready for Pickup at Hall
+                            </span>
+                          ) : doc.status === 'Completed' ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+                              <CheckCircle2 size={12} /> Claimed / Completed
+                            </span>
+                          ) : doc.status === 'Processing' ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
+                              <Clock size={12} /> In Preparation
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md">
+                              <Clock size={12} /> Queued
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Touch-Friendly Card Stack (< 768px, md:hidden) */}
+            <div className="flex flex-col gap-2.5 p-3.5 md:hidden">
+              {documents.length === 0 ? (
+                <div className="text-center text-xs py-8 text-slate-400">
+                  <Building2 className="mx-auto mb-2 text-slate-300" size={28} />
+                  No barangay document requests yet. Click <strong>"Request Barangay Document"</strong> above.
+                </div>
+              ) : (
+                documents.map((doc, idx) => (
+                  <div key={`mob-res-doc-${doc.id}-${doc.document_type}-${idx}`} className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-xs flex flex-col gap-2">
+                    {/* Top Row: Request Code + Status Badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono font-bold text-xs text-indigo-600">
+                        {doc.request_code}
+                      </span>
+                      <Badge className={
+                        doc.status === 'Completed' ? 'bg-emerald-600 text-white text-[10px]' :
+                        doc.status === 'Ready for Pickup' ? 'bg-indigo-600 text-white text-[10px]' :
+                        doc.status === 'Processing' ? 'bg-amber-500 text-white text-[10px]' :
+                        doc.status === 'Rejected' ? 'bg-red-500 text-white text-[10px]' :
+                        'bg-orange-500 text-white text-[10px]'
+                      }>
+                        {doc.status}
+                      </Badge>
+                    </div>
+
+                    {/* Middle Row: Document Type and Purpose */}
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 leading-snug">{doc.document_type}</h4>
+                      {doc.purpose && <p className="text-[11px] text-slate-500 mt-0.5">{doc.purpose}</p>}
+                    </div>
+
+                    {/* Attachment indicator if present */}
+                    {doc.purok_certificate_photo && (
+                      <button
+                        type="button"
+                        onClick={() => setViewingPurokPhoto(doc.purok_certificate_photo || null)}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded cursor-pointer w-fit"
+                      >
+                        <FileCheck size={11} className="text-emerald-600" />
+                        Purok Cert Attached
+                        <Eye size={10} className="ml-0.5 text-emerald-600" />
+                      </button>
+                    )}
+
+                    {/* Bottom Row: Date & Lifecycle Action */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px]">
+                      <span className="font-mono text-slate-400 text-[10px]">
+                        {doc.requested_at || 'Today'}
+                      </span>
+                      {doc.status === 'Ready for Pickup' ? (
+                        <span className="font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md text-[10px] animate-pulse">
+                          Ready for Pickup at Hall
+                        </span>
+                      ) : doc.status === 'Completed' ? (
+                        <span className="font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-[10px]">
+                          Claimed / Completed
+                        </span>
+                      ) : doc.status === 'Processing' ? (
+                        <span className="font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md text-[10px]">
+                          In Preparation
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md text-[10px]">
+                          Queued
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </CardContent>
         </Card>
 
