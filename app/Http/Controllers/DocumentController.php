@@ -101,27 +101,22 @@ class DocumentController extends Controller
             $email = strtolower(trim((string)$request->input('resident_email', $request->input('email', ''))));
             $residentId = $request->input('resident_id');
 
-            if (empty($residentId) || $residentId == 1) {
-                $matchedResident = null;
-                if (!empty($email)) {
-                    $matchedResident = Resident::whereRaw('LOWER(email) = ?', [$email])->first();
-                }
-                if (!$matchedResident && !empty($residentName) && strtolower($residentName) !== 'resident') {
-                    $matchedResident = Resident::whereRaw('LOWER(CONCAT(first_name, " ", last_name)) = ?', [strtolower($residentName)])->first();
-                }
-                if ($matchedResident) {
-                    $residentId = $matchedResident->id;
-                }
+            $matchedResident = null;
+            if (!empty($email)) {
+                $matchedResident = Resident::whereRaw('LOWER(email) = ?', [$email])->first();
+            }
+            if (!$matchedResident && !empty($residentName) && strtolower($residentName) !== 'resident') {
+                $matchedResident = Resident::whereRaw('LOWER(CONCAT(first_name, " ", last_name)) = ?', [strtolower($residentName)])->first();
             }
 
-            // Verify resident_id actually exists in database to prevent foreign key errors
             $validResidentId = null;
-            if (!empty($residentId)) {
+            if ($matchedResident) {
+                $validResidentId = $matchedResident->id;
+            } elseif (!empty($residentId)) {
                 $exists = DB::table('residents')->where('id', $residentId)->exists();
-                if ($exists) {
-                    $validResidentId = $residentId;
-                }
+                $validResidentId = $exists ? $residentId : null;
             }
+
             if (!$validResidentId) {
                 $anyResident = DB::table('residents')->first();
                 $validResidentId = $anyResident ? $anyResident->id : null;
@@ -136,24 +131,21 @@ class DocumentController extends Controller
                 $photoPath = AuthController::saveBase64Image($purokCertPhoto, 'purok_cert');
             }
 
-            // Process Extra Fields
+            // Process Extra Fields (Never bloat extra_fields with raw base64 data URLs)
             $extraFields = $request->input('extra_fields');
+            $extraArr = [];
             if (is_array($extraFields)) {
-                if ($photoPath) {
-                    $extraFields['purok_certificate_photo'] = $photoPath;
-                }
-                $extraFields = json_encode($extraFields);
+                $extraArr = $extraFields;
             } elseif (is_string($extraFields)) {
                 $decoded = json_decode($extraFields, true);
                 if (is_array($decoded)) {
-                    if ($photoPath) {
-                        $decoded['purok_certificate_photo'] = $photoPath;
-                    }
-                    $extraFields = json_encode($decoded);
+                    $extraArr = $decoded;
                 }
-            } elseif ($photoPath) {
-                $extraFields = json_encode(['purok_certificate_photo' => $photoPath]);
             }
+            if ($photoPath && !str_starts_with($photoPath, 'data:image/')) {
+                $extraArr['purok_certificate_photo'] = $photoPath;
+            }
+            $extraFields = !empty($extraArr) ? json_encode($extraArr) : null;
 
             // On-the-fly table schema heal if missing columns
             try {

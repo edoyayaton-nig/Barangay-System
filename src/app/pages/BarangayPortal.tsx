@@ -709,8 +709,8 @@ export default function BarangayPortal() {
       }
       toast.success('Request submitted!', { description: `Request Code: ${created.request_code}` });
       handleDialogOpenChange(false);
-    } catch {
-      toast.error('Submission failed. Please try again.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Submission failed. Please try again.');
     }
   };
 

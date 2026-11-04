@@ -286,6 +286,13 @@ class HealthController extends Controller
             'preferred_time' => $preferredTime,
             'status' => 'Pending',
             'resident_notes' => $request->input('resident_notes'),
+            'booking_sms_sent' => 0,
+            'approval_sms_sent' => 0,
+            'completion_sms_sent' => 0,
+            'cancellation_sms_sent' => 0,
+            'three_day_alert_sent' => 0,
+            'one_day_alert_sent' => 0,
+            'sms_sent' => 0,
         ]);
 
         ActivityLog::create([
@@ -311,8 +318,16 @@ class HealthController extends Controller
             } catch (\Throwable $ne) {}
         }
 
-        // Single Transaction Policy: Do not send external Email or SMS on initial booking.
-        // External SMS/Email will be dispatched once when the healthcare service is COMPLETED.
+        // Send EXACTLY ONE booking SMS notification (guarded by booking_sms_sent)
+        if (!empty($phone) && empty($apt->booking_sms_sent)) {
+            try {
+                $bookingMsg = "Barangay {$barangay} Health Center: Hello {$residentName}! Your appointment request for {$serviceType} on {$preferredDate} ({$preferredTime}) has been received. Reference: {$aptCode}.";
+                SmsService::sendLiveSms($phone, $bookingMsg, $residentName, 'Appointment Booking');
+                $apt->update(['booking_sms_sent' => 1, 'sms_sent' => 1]);
+            } catch (\Throwable $se) {
+                \Illuminate\Support\Facades\Log::warning("Appointment booking SMS notice: " . $se->getMessage());
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -387,17 +402,36 @@ class HealthController extends Controller
         }
 
         if (!empty($phone)) {
-            // Single Transaction Policy: Only send external SMS if status is 'Completed' or 'Cancelled'
-            if ($newStatus === 'Completed') {
-                SmsService::sendLiveSms(
-                    $phone,
-                    "Barangay Health Center: Hello {$apt->resident_name}! Your appointment for {$apt->service_type} on {$scheduledDate} has been marked as COMPLETED. Stay healthy!"
-                );
-            } elseif ($newStatus === 'Cancelled') {
-                SmsService::sendLiveSms(
-                    $phone,
-                    "Barangay Health Center: Hello {$apt->resident_name}, your appointment for {$apt->service_type} has been CANCELLED. Please visit the clinic if you need assistance."
-                );
+            if ($newStatus === 'Approved' && empty($apt->approval_sms_sent)) {
+                try {
+                    SmsService::sendLiveSms(
+                        $phone,
+                        "Barangay Health Center: Hello {$apt->resident_name}! Your appointment for {$apt->service_type} on {$scheduledDate} ({$scheduledTime}) has been APPROVED. Location: {$clinicLoc}. Ref: {$apt->appointment_code}.",
+                        $apt->resident_name,
+                        'Appointment Approval'
+                    );
+                    $apt->update(['approval_sms_sent' => 1]);
+                } catch (\Throwable $se) {}
+            } elseif ($newStatus === 'Completed' && empty($apt->completion_sms_sent)) {
+                try {
+                    SmsService::sendLiveSms(
+                        $phone,
+                        "Barangay Health Center: Hello {$apt->resident_name}! Your appointment for {$apt->service_type} on {$scheduledDate} has been marked as COMPLETED. Stay healthy!",
+                        $apt->resident_name,
+                        'Appointment Completion'
+                    );
+                    $apt->update(['completion_sms_sent' => 1]);
+                } catch (\Throwable $se) {}
+            } elseif ($newStatus === 'Cancelled' && empty($apt->cancellation_sms_sent)) {
+                try {
+                    SmsService::sendLiveSms(
+                        $phone,
+                        "Barangay Health Center: Hello {$apt->resident_name}, your appointment for {$apt->service_type} has been CANCELLED. Please visit the clinic if you need assistance.",
+                        $apt->resident_name,
+                        'Appointment Cancellation'
+                    );
+                    $apt->update(['cancellation_sms_sent' => 1]);
+                } catch (\Throwable $se) {}
             }
         }
 
@@ -644,6 +678,21 @@ class HealthController extends Controller
 
     public function runReminders(Request $request = null)
     {
+        // Server-side cooldown: Limit automated background checks to once every 30 minutes
+        $cacheKey = 'last_health_reminders_timestamp';
+        $lastRun = \Illuminate\Support\Facades\Cache::get($cacheKey);
+        if ($lastRun && (time() - $lastRun) < 1800) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Reminders cooldown active (checked within 30 minutes)',
+                'three_day_sms_count' => 0,
+                'one_day_sms_count' => 0,
+                'emails_sent' => 0,
+                'throttled' => true
+            ]);
+        }
+        \Illuminate\Support\Facades\Cache::put($cacheKey, time(), 3600);
+
         $threeDaysAhead = date('Y-m-d', strtotime('+3 days'));
         $tomorrow = date('Y-m-d', strtotime('+1 day'));
 
@@ -651,9 +700,12 @@ class HealthController extends Controller
         $sent1DayCount = 0;
         $emailsSent = 0;
 
-        // 1. 3-DAY ADVANCE REMINDERS (Strictly required: Inform resident 3 days before booking with precise location)
+        // 1. 3-DAY ADVANCE REMINDERS (Only for Approved or Confirmed appointments where three_day_alert_sent != 1)
         $threeDayAppointments = HealthAppointment::where('scheduled_date', $threeDaysAhead)
-            ->whereIn('status', ['Approved', 'Confirmed', 'Pending'])
+            ->whereIn('status', ['Approved', 'Confirmed'])
+            ->where(function($q) {
+                $q->whereNull('three_day_alert_sent')->orWhere('three_day_alert_sent', 0);
+            })
             ->get();
 
         foreach ($threeDayAppointments as $apt) {
@@ -693,19 +745,28 @@ class HealthController extends Controller
                 $emailsSent++;
             }
 
-            // SMS Notification via iProg SMS Gateway
+            // SMS Notification via iProg SMS Gateway (Guarded by single-send flag)
             if (!empty($phone)) {
-                SmsService::sendLiveSms(
-                    $phone,
-                    "3-Day Reminder: Hello {$apt->resident_name}! You have an upcoming appointment for {$apt->service_type} on {$apt->scheduled_date} ({$apt->scheduled_time}) at {$clinicLoc}. Ref: {$apt->appointment_code}. Please arrive 10 mins early."
-                );
-                $sent3DayCount++;
+                try {
+                    SmsService::sendLiveSms(
+                        $phone,
+                        "3-Day Reminder: Hello {$apt->resident_name}! You have an upcoming appointment for {$apt->service_type} on {$apt->scheduled_date} ({$apt->scheduled_time}) at {$clinicLoc}. Ref: {$apt->appointment_code}. Please arrive 10 mins early.",
+                        $apt->resident_name,
+                        '3-Day Appointment Reminder'
+                    );
+                    $sent3DayCount++;
+                } catch (\Throwable $se) {}
             }
+
+            $apt->update(['three_day_alert_sent' => 1]);
         }
 
-        // 2. 1-DAY ADVANCE REMINDERS
+        // 2. 1-DAY ADVANCE REMINDERS (Only for Approved or Confirmed appointments where one_day_alert_sent != 1)
         $tomorrowAppointments = HealthAppointment::where('scheduled_date', $tomorrow)
             ->whereIn('status', ['Approved', 'Confirmed'])
+            ->where(function($q) {
+                $q->whereNull('one_day_alert_sent')->orWhere('one_day_alert_sent', 0);
+            })
             ->get();
 
         foreach ($tomorrowAppointments as $apt) {
@@ -717,12 +778,18 @@ class HealthController extends Controller
             }
 
             if (!empty($phone)) {
-                SmsService::sendLiveSms(
-                    $phone,
-                    "Tomorrow Reminder: Hello {$apt->resident_name}! Your appointment for {$apt->service_type} is scheduled for tomorrow at {$apt->scheduled_time} at {$clinicLoc}. Ref: {$apt->appointment_code}."
-                );
-                $sent1DayCount++;
+                try {
+                    SmsService::sendLiveSms(
+                        $phone,
+                        "Tomorrow Reminder: Hello {$apt->resident_name}! Your appointment for {$apt->service_type} is scheduled for tomorrow at {$apt->scheduled_time} at {$clinicLoc}. Ref: {$apt->appointment_code}.",
+                        $apt->resident_name,
+                        '1-Day Appointment Reminder'
+                    );
+                    $sent1DayCount++;
+                } catch (\Throwable $se) {}
             }
+
+            $apt->update(['one_day_alert_sent' => 1]);
         }
 
         // 3. PRENATAL & MATERNAL REGISTRY REMINDERS (Advance notice before next scheduled visit)

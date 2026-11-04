@@ -72,6 +72,30 @@ class SmsService
             return ['success' => false, 'error' => 'No API token configured'];
         }
 
+        // ── Smart Deduplication & Loop Prevention Shield ────────────────────────
+        // Prevents rapid loops from exhausting SMS gateway credits
+        try {
+            $duplicate = \Illuminate\Support\Facades\DB::table('sms_notifications')
+                ->where('recipient_phone', $phone)
+                ->where('message', $message)
+                ->where('status', 'Sent')
+                ->where('sent_at', '>=', now()->subHours(12))
+                ->first();
+
+            if ($duplicate) {
+                Log::warning("🛑 [iProg SMS Loop Prevention] Duplicate SMS to {$phone} suppressed (already sent within 12 hours). Message: {$message}");
+                return [
+                    'success' => true,
+                    'deduplicated' => true,
+                    'message' => 'Duplicate SMS suppressed to preserve credits.',
+                    'messageId' => 'iSms-Deduplicated-' . $duplicate->id,
+                    'status' => 200,
+                ];
+            }
+        } catch (\Throwable $dedupErr) {
+            // Non-blocking in case table is temporarily unavailable
+        }
+
         $isSmartTnt = self::isSmartOrTntNetwork($phone);
         Log::info("📡 [iProg SMS] Dispatching to {$phone} (Smart/TNT: " . ($isSmartTnt ? 'YES' : 'NO') . ")...");
 

@@ -47,6 +47,8 @@ async function syncAllSchemas(connection) {
 
   await safeAddColumn(connection, 'document_requests', 'purok_certificate_photo', 'LONGTEXT NULL');
   await safeAddColumn(connection, 'document_requests', 'extra_fields', 'LONGTEXT NULL');
+  await safeExecute(connection, "ALTER TABLE `document_requests` MODIFY COLUMN `purok_certificate_photo` LONGTEXT NULL");
+  await safeExecute(connection, "ALTER TABLE `document_requests` MODIFY COLUMN `extra_fields` LONGTEXT NULL");
   await safeAddColumn(connection, 'document_requests', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
   await safeAddColumn(connection, 'document_requests', 'email', "VARCHAR(100) DEFAULT ''");
   await safeAddColumn(connection, 'document_requests', 'processed_by', "VARCHAR(100) NULL");
@@ -181,10 +183,25 @@ async function syncAllSchemas(connection) {
       bhw_notes TEXT NULL,
       resident_notes TEXT NULL,
       attending_bhw VARCHAR(100) DEFAULT '',
+      booking_sms_sent TINYINT(1) DEFAULT 0,
+      approval_sms_sent TINYINT(1) DEFAULT 0,
+      completion_sms_sent TINYINT(1) DEFAULT 0,
+      cancellation_sms_sent TINYINT(1) DEFAULT 0,
+      three_day_alert_sent TINYINT(1) DEFAULT 0,
+      one_day_alert_sent TINYINT(1) DEFAULT 0,
+      sms_sent TINYINT(1) DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  await safeAddColumn(connection, 'health_appointments', 'booking_sms_sent', 'TINYINT(1) DEFAULT 0');
+  await safeAddColumn(connection, 'health_appointments', 'approval_sms_sent', 'TINYINT(1) DEFAULT 0');
+  await safeAddColumn(connection, 'health_appointments', 'completion_sms_sent', 'TINYINT(1) DEFAULT 0');
+  await safeAddColumn(connection, 'health_appointments', 'cancellation_sms_sent', 'TINYINT(1) DEFAULT 0');
+  await safeAddColumn(connection, 'health_appointments', 'three_day_alert_sent', 'TINYINT(1) DEFAULT 0');
+  await safeAddColumn(connection, 'health_appointments', 'one_day_alert_sent', 'TINYINT(1) DEFAULT 0');
+  await safeAddColumn(connection, 'health_appointments', 'sms_sent', 'TINYINT(1) DEFAULT 0');
+  await safeExecute(connection, "ALTER TABLE \`sms_notifications\` MODIFY COLUMN \`type\` VARCHAR(100) NOT NULL");
 
   // 7. Clinic Schedules
   await safeExecute(connection, `

@@ -370,12 +370,7 @@ export default function BhwDashboard() {
         setInventory(invData);
       }
 
-      // Automatically trigger 3-day advance SMS appointment reminders via iProg SMS Gateway
-      apiService.runAppointmentReminders().then(remRes => {
-        if (remRes?.three_day_sms_count && remRes.three_day_sms_count > 0) {
-          console.log(`⏰ [BHW Auto-Reminders] Dispatched ${remRes.three_day_sms_count} 3-day appointment SMS reminders.`);
-        }
-      }).catch(() => { });
+
     } catch (err) {
       if (showLoading) toast.error('Failed to load health monitoring data');
     } finally {
@@ -555,6 +550,20 @@ export default function BhwDashboard() {
       toast.error('Failed to update status');
     }
   };
+
+  // Run appointment reminders at most once per calendar day
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const lastRun = localStorage.getItem('last_bhw_reminder_date');
+    if (lastRun !== todayStr) {
+      localStorage.setItem('last_bhw_reminder_date', todayStr);
+      apiService.runAppointmentReminders().then(remRes => {
+        if (remRes?.three_day_sms_count && remRes.three_day_sms_count > 0) {
+          console.log(`⏰ [BHW Auto-Reminders] Dispatched ${remRes.three_day_sms_count} 3-day appointment SMS reminders.`);
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     // Load user session

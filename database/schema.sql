@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS `sms_notifications` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `recipient_name` VARCHAR(100) NOT NULL,
   `recipient_phone` VARCHAR(20) NOT NULL,
-  `type` ENUM('Immunization Reminder', 'Document Ready', 'Barangay Announcement', 'Maternal Checkup Alert') NOT NULL,
+  `type` VARCHAR(100) NOT NULL,
   `message` TEXT NOT NULL,
   `status` ENUM('Sent', 'Failed', 'Pending') DEFAULT 'Sent',
   `sent_at` DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -242,6 +242,13 @@ CREATE TABLE IF NOT EXISTS `health_appointments` (
   `bhw_notes` TEXT NULL,
   `resident_notes` TEXT NULL,
   `attending_bhw` VARCHAR(100) DEFAULT '',
+  `booking_sms_sent` TINYINT(1) DEFAULT 0,
+  `approval_sms_sent` TINYINT(1) DEFAULT 0,
+  `completion_sms_sent` TINYINT(1) DEFAULT 0,
+  `cancellation_sms_sent` TINYINT(1) DEFAULT 0,
+  `three_day_alert_sent` TINYINT(1) DEFAULT 0,
+  `one_day_alert_sent` TINYINT(1) DEFAULT 0,
+  `sms_sent` TINYINT(1) DEFAULT 0,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

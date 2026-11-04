@@ -767,18 +767,27 @@ export default function NurseDashboard() {
         setWeeklySchedules([]);
       }
 
-      // Automatically trigger 3-day advance SMS appointment reminders via iProg SMS Gateway
-      apiService.runAppointmentReminders().then(remRes => {
-        if (remRes?.three_day_sms_count && remRes.three_day_sms_count > 0) {
-          console.log(`⏰ [Nurse Auto-Reminders] Dispatched ${remRes.three_day_sms_count} 3-day appointment SMS reminders.`);
-        }
-      }).catch(() => {});
+
     } catch { 
       if (showLoading) toast.error('Failed to refresh records'); 
     } finally { 
       if (showLoading) setLoading(false); 
     }
   };
+
+  // Run appointment reminders at most once per calendar day
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const lastRun = localStorage.getItem('last_nurse_reminder_date');
+    if (lastRun !== todayStr) {
+      localStorage.setItem('last_nurse_reminder_date', todayStr);
+      apiService.runAppointmentReminders().then(remRes => {
+        if (remRes?.three_day_sms_count && remRes.three_day_sms_count > 0) {
+          console.log(`⏰ [Nurse Auto-Reminders] Dispatched ${remRes.three_day_sms_count} 3-day appointment SMS reminders.`);
+        }
+      }).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => { 
     loadData(); 

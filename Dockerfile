@@ -38,9 +38,14 @@ COPY --from=frontend-builder /app/public ./public
 RUN composer install --no-dev --optimize-autoloader --no-interaction \
     && npm install --omit=dev
 
-# Ensure storage, cache, and database directories exist and have write permissions
-RUN mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs bootstrap/cache \
-    && chmod -R 777 storage bootstrap/cache database
+# Configure PHP production limits for image uploads and request size
+RUN echo "upload_max_filesize = 50M" > /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "post_max_size = 50M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/uploads.ini
+
+# Ensure storage, cache, uploads, and database directories exist and have write permissions
+RUN mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs bootstrap/cache public/uploads server/uploads \
+    && chmod -R 777 storage bootstrap/cache database public/uploads server/uploads
 
 # Expose default port
 EXPOSE 5000
