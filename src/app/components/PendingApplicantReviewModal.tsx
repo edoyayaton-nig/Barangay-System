@@ -109,13 +109,11 @@ export default function PendingApplicantReviewModal({
   // Similarity Search State
   const [similarityData, setSimilarityData] = useState<CensusSimilarityResult | null>(null);
   const [isLoadingSimilarity, setIsLoadingSimilarity] = useState(false);
-  const [selectedCandidateIndex, setSelectedCandidateIndex] = useState<number>(0);
   const [useOfficialCensusAddress, setUseOfficialCensusAddress] = useState<boolean>(true);
 
   useEffect(() => {
     if (!isOpen || !applicant) {
       setSimilarityData(null);
-      setSelectedCandidateIndex(0);
       setShowResubmitPanel(false);
       setImageError(false);
       return;
@@ -217,7 +215,7 @@ export default function PendingApplicantReviewModal({
   const age = calculateAge(applicant.date_of_birth);
 
   // Active Census Match Candidate
-  const activeCandidate = similarityData?.candidates?.[selectedCandidateIndex] || (similarityData?.closest_census_record ? {
+  const activeCandidate = similarityData?.candidates?.[0] || (similarityData?.closest_census_record ? {
     resident: similarityData.closest_census_record,
     score: similarityData.similarity_score || 0,
     name_similarity: 100,
@@ -477,24 +475,6 @@ export default function PendingApplicantReviewModal({
                   </span>
                 )}
               </div>
-
-              {/* Candidate Switcher Dropdown (If multiple candidates exist) */}
-              {similarityData?.candidates && similarityData.candidates.length > 1 && (
-                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl border border-blue-200 dark:border-blue-800/60 text-xs">
-                  <span className="text-[10.5px] font-semibold text-slate-500 whitespace-nowrap">Matching Candidates ({similarityData.candidates.length}):</span>
-                  <select
-                    value={selectedCandidateIndex}
-                    onChange={(e) => setSelectedCandidateIndex(Number(e.target.value))}
-                    className="flex-1 bg-transparent text-xs font-bold text-blue-900 dark:text-blue-200 outline-none cursor-pointer"
-                  >
-                    {similarityData.candidates.map((cand, idx) => (
-                      <option key={cand.resident.id} value={idx}>
-                        #{idx + 1}: {cand.resident.first_name} {cand.resident.last_name} ({cand.score}% match - Purok {cand.resident.purok || '1'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               {/* Matched Census Record Content */}
               {matchedResident ? (
