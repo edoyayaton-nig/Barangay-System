@@ -328,6 +328,7 @@ class AuthController extends Controller
         $lastName = trim((string)$request->input('last_name', ''));
         $fullName = trim("{$firstName} {$lastName}");
         $barangay = self::normalizeBarangayName($request->input('barangay'));
+        $city = trim((string)$request->input('city', 'Butuan City')) ?: 'Butuan City';
         $phone = trim((string)$request->input('phone', '09171234567'));
         $address = trim((string)$request->input('address', ''));
         $purok = trim((string)$request->input('purok', '1'));
@@ -351,7 +352,7 @@ class AuthController extends Controller
             'phone' => $phone,
             'address' => $address,
             'barangay' => $barangay,
-            'city' => 'Butuan City',
+            'city' => $city,
             'submitted_id' => $idPath,
             'id_type' => 'Government ID',
         ]);
@@ -366,7 +367,7 @@ class AuthController extends Controller
             'address' => $address,
             'purok' => $purok,
             'barangay' => $barangay,
-            'city' => 'Butuan City',
+            'city' => $city,
             'phone' => $phone,
             'email' => $email,
             'employment_status' => $employmentStatus,

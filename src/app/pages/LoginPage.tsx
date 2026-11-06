@@ -28,8 +28,12 @@ import {
   BadgeCheck,
   RefreshCw,
   AlertTriangle,
-  FileText
+  FileText,
+  Compass,
+  Crosshair,
+  Loader2
 } from 'lucide-react';
+import { geocodeAddress, geocodeCurrentPosition, GeocodeResult } from '../../services/geocoding';
 import { apiService, CensusResidentSearchResult } from '../../services/api';
 import { validatePasswordComplexity } from '../../utils/passwordValidation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../components/ui/card';
@@ -120,8 +124,12 @@ export default function LoginPage() {
   const [regPassword, setRegPassword] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPurok, setRegPurok] = useState('');
-  const [regBarangay, setRegBarangay] = useState('Pianing');
-  const [regCity, setRegCity] = useState('Butuan City');
+  const [regBarangay, setRegBarangay] = useState('');
+  const [regCity, setRegCity] = useState('');
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodedInfo, setGeocodedInfo] = useState<{ formattedAddress: string; lat: number; lng: number } | null>(null);
+  const [geocodeSuggestions, setGeocodeSuggestions] = useState<GeocodeResult[]>([]);
+  const [showGeocodeSuggestions, setShowGeocodeSuggestions] = useState(false);
   const [regEmployment, setRegEmployment] = useState('Employed');
   const [regIdType, setRegIdType] = useState('');
   const [regIdPhoto, setRegIdPhoto] = useState<string | null>(null);
@@ -175,8 +183,11 @@ export default function LoginPage() {
     setRegPassword('');
     setRegPhone('');
     setRegPurok('');
-    setRegBarangay('Pianing');
-    setRegCity('Butuan City');
+    setRegBarangay('');
+    setRegCity('');
+    setGeocodedInfo(null);
+    setGeocodeSuggestions([]);
+    setShowGeocodeSuggestions(false);
     setRegIdType('');
     setRegIdPhoto(null);
     setRegIdFileName('');
@@ -185,6 +196,102 @@ export default function LoginPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
     clearExistingFlow();
     setResidentMode('choose');
+  };
+
+  // Distance Matrix Geocoding Handlers
+  const handleGeocodeAddress = async (manualQuery?: string) => {
+    const parts = [regPurok, regBarangay, regCity].map((s) => s.trim()).filter(Boolean);
+    const query = (manualQuery || parts.join(', ')).trim();
+    if (!query) {
+      toast.error('Address required', { description: 'Please enter a purok, street, barangay, or city to geocode.' });
+      return;
+    }
+
+    setIsGeocoding(true);
+    setShowGeocodeSuggestions(false);
+    try {
+      const results = await geocodeAddress(query);
+      if (results.length === 0) {
+        toast.warning('No coordinates found', {
+          description: 'Could not resolve exact coordinates via Distance Matrix. You can still enter your address manually.'
+        });
+      } else {
+        const top = results[0];
+        setGeocodedInfo({
+          formattedAddress: top.formatted_address,
+          lat: top.location.lat,
+          lng: top.location.lng,
+        });
+
+        if (top.barangay && !regBarangay) {
+          setRegBarangay(top.barangay);
+        }
+        if (top.city && !regCity) {
+          setRegCity(top.city);
+        }
+
+        if (results.length > 1) {
+          setGeocodeSuggestions(results);
+          setShowGeocodeSuggestions(true);
+        }
+
+        toast.success('Address Geocoded!', {
+          description: `Location verified via Distance Matrix: ${top.formatted_address}`
+        });
+      }
+    } catch (err: any) {
+      toast.error('Geocoding error', {
+        description: err.message || 'Failed to connect to Distance Matrix API.'
+      });
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  const handleUseCurrentLocation = async () => {
+    setIsGeocoding(true);
+    setShowGeocodeSuggestions(false);
+    try {
+      const result = await geocodeCurrentPosition();
+      setGeocodedInfo({
+        formattedAddress: result.formatted_address,
+        lat: result.location.lat,
+        lng: result.location.lng,
+      });
+
+      if (result.purokOrStreet && !regPurok) {
+        setRegPurok(result.purokOrStreet);
+      }
+      if (result.barangay) {
+        setRegBarangay(result.barangay);
+      }
+      if (result.city) {
+        setRegCity(result.city);
+      }
+
+      toast.success('GPS Location Located!', {
+        description: `Verified via Distance Matrix: ${result.formatted_address}`
+      });
+    } catch (err: any) {
+      toast.error('Location error', {
+        description: err.message || 'Unable to retrieve GPS coordinates.'
+      });
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion: GeocodeResult) => {
+    setGeocodedInfo({
+      formattedAddress: suggestion.formatted_address,
+      lat: suggestion.location.lat,
+      lng: suggestion.location.lng,
+    });
+    if (suggestion.barangay) setRegBarangay(suggestion.barangay);
+    if (suggestion.city) setRegCity(suggestion.city);
+    if (suggestion.purokOrStreet && !regPurok) setRegPurok(suggestion.purokOrStreet);
+    setShowGeocodeSuggestions(false);
+    toast.success('Selected address applied!');
   };
 
   const handleTabChange = (val: 'login' | 'register') => {
@@ -525,16 +632,16 @@ export default function LoginPage() {
       return;
     }
 
-    const effectiveCity = (regCity || 'Butuan City').trim();
-    const effectiveBarangay = (regBarangay || 'Pianing').trim();
+    const effectiveCity = regCity.trim();
+    const effectiveBarangay = regBarangay.trim();
 
     if (!effectiveCity) {
-      toast.error('City / Municipality required', { description: 'Please select your City or Municipality in Agusan del Norte.' });
+      toast.error('City / Municipality required', { description: 'Please enter or geocode your City or Municipality.' });
       return;
     }
 
     if (!effectiveBarangay) {
-      toast.error('Barangay required', { description: `Please select your Barangay in ${effectiveCity}.` });
+      toast.error('Barangay required', { description: 'Please enter or geocode your Barangay.' });
       return;
     }
 
@@ -645,8 +752,11 @@ export default function LoginPage() {
     setRegEmail('');
     setRegPassword('');
     setRegPurok('');
-    setRegBarangay('Pianing');
-    setRegCity('Butuan City');
+    setRegBarangay('');
+    setRegCity('');
+    setGeocodedInfo(null);
+    setGeocodeSuggestions([]);
+    setShowGeocodeSuggestions(false);
   }, []);
 
   return (
@@ -1044,10 +1154,83 @@ export default function LoginPage() {
 
               {/* SECTION 2: Census Address & Demographics */}
               <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/70 space-y-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block flex items-center gap-1.5">
-                  <MapPin size={13} className="text-blue-600" />
-                  2. Census Address &amp; Demographics
-                </span>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <MapPin size={13} className="text-blue-600" />
+                    2. Census Address &amp; Demographics
+                  </span>
+                  
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleGeocodeAddress()}
+                      disabled={isGeocoding}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                      title="Geocode address using Distance Matrix"
+                    >
+                      {isGeocoding ? <Loader2 size={12} className="animate-spin text-blue-600" /> : <Compass size={12} className="text-blue-600" />}
+                      Geocode Address
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUseCurrentLocation}
+                      disabled={isGeocoding}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                      title="Auto-detect current GPS location & reverse geocode"
+                    >
+                      <Crosshair size={12} className="text-emerald-600" />
+                      Use GPS
+                    </button>
+                  </div>
+                </div>
+
+                {/* Geocoded status badge */}
+                {geocodedInfo && (
+                  <div className="p-2.5 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <div className="truncate">
+                        <span className="font-bold text-emerald-900 dark:text-emerald-200 mr-1.5">Geocoded (Distance Matrix):</span>
+                        <span className="text-emerald-800 dark:text-emerald-300 text-[11px]">{geocodedInfo.formattedAddress}</span>
+                        <span className="ml-2 font-mono text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded">
+                          {geocodedInfo.lat.toFixed(4)}, {geocodedInfo.lng.toFixed(4)}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setGeocodedInfo(null)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded cursor-pointer shrink-0"
+                      title="Clear geocoded badge"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Suggestions dropdown if multiple results returned */}
+                {showGeocodeSuggestions && geocodeSuggestions.length > 1 && (
+                  <div className="p-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 rounded-xl space-y-1.5 text-xs">
+                    <span className="text-[10.5px] font-bold text-blue-900 dark:text-blue-200 block">
+                      Multiple locations found. Choose your address:
+                    </span>
+                    <div className="space-y-1 max-h-36 overflow-y-auto">
+                      {geocodeSuggestions.map((sug, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSelectSuggestion(sug)}
+                          className="w-full text-left px-2.5 py-1.5 bg-white dark:bg-slate-900 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg border border-slate-200 dark:border-slate-700 text-xs transition-colors cursor-pointer flex items-center justify-between"
+                        >
+                          <span className="truncate text-slate-800 dark:text-slate-200">{sug.formatted_address}</span>
+                          <span className="text-[10px] text-slate-400 font-mono ml-2 shrink-0">
+                            {sug.location.lat.toFixed(3)}, {sug.location.lng.toFixed(3)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
@@ -1058,6 +1241,12 @@ export default function LoginPage() {
                       type="text"
                       value={regPurok}
                       onChange={(e) => setRegPurok(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleGeocodeAddress();
+                        }
+                      }}
                       placeholder="e.g. Purok 1 or Mahogany St"
                       required
                       className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
@@ -1066,45 +1255,46 @@ export default function LoginPage() {
 
                   <div>
                     <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                      Barangay Jurisdiction
+                      Barangay Jurisdiction <span className="text-red-500 font-bold">*</span>
                     </label>
-                    <select
-                      value={regBarangay || 'Pianing'}
+                    <input
+                      type="text"
+                      list="reg-barangays-list"
+                      value={regBarangay}
                       onChange={(e) => setRegBarangay(e.target.value)}
-                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-[#D5E2E8] dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-[#006B66] cursor-pointer"
-                    >
+                      placeholder="e.g. Pianing or type barangay"
+                      required
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-[#D5E2E8] dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
+                    />
+                    <datalist id="reg-barangays-list">
                       {cityBarangays.map((b) => (
                         <option key={b} value={b}>
                           Barangay {b}
                         </option>
                       ))}
-                    </select>
+                    </datalist>
                   </div>
 
                   <div>
                     <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                       City / Municipality <span className="text-red-500 font-bold">*</span>
                     </label>
-                    <select
-                      value={regCity || 'Butuan City'}
-                      onChange={(e) => {
-                        const newCity = e.target.value;
-                        setRegCity(newCity);
-                        const bgys = getBarangaysForCity(newCity);
-                        if (newCity === 'Butuan City') {
-                          setRegBarangay('Pianing');
-                        } else if (bgys.length > 0) {
-                          setRegBarangay(bgys[0]);
-                        }
-                      }}
-                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-[#D5E2E8] dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-[#006B66] cursor-pointer"
-                    >
+                    <input
+                      type="text"
+                      list="reg-cities-list"
+                      value={regCity}
+                      onChange={(e) => setRegCity(e.target.value)}
+                      placeholder="e.g. Butuan City"
+                      required
+                      className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-[#D5E2E8] dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
+                    />
+                    <datalist id="reg-cities-list">
                       {AGUSAN_DEL_NORTE_LGUS.map((lgu) => (
                         <option key={lgu.name} value={lgu.name}>
                           {lgu.name}
                         </option>
                       ))}
-                    </select>
+                    </datalist>
                   </div>
                 </div>
 
@@ -1428,7 +1618,7 @@ export default function LoginPage() {
 
                   {/* PROMINENT MESSAGE REQUIRED BY USER */}
                   <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug">
-                    Proceed to your Barangay Hall to register to Barangay {regBarangay || existingBarangay || 'Pianing'}!
+                    Proceed to your Barangay Hall to register to Barangay {regBarangay || existingBarangay || 'your Barangay'}!
                   </h3>
 
                   <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
@@ -1443,7 +1633,7 @@ export default function LoginPage() {
                     <div>
                       <strong className="text-slate-900 dark:text-white font-bold block">Office Location:</strong>
                       <span className="text-slate-600 dark:text-slate-300 text-[11.5px]">
-                        Barangay {regBarangay || existingBarangay || 'Pianing'} Hall, Government Center, Butuan City
+                        Barangay {regBarangay || existingBarangay || 'Local'} Hall, Government Center{regCity ? `, ${regCity}` : ', Butuan City'}
                       </span>
                     </div>
                   </div>
@@ -1644,7 +1834,7 @@ export default function LoginPage() {
                   </h3>
 
                   <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
-                    Your census profile, credentials, and Government ID have been forwarded to the <strong>Barangay {regBarangay || 'Pianing'} Administration</strong> verification queue. The admin will verify your record against the database.
+                    Your census profile, credentials, and Government ID have been forwarded to the <strong>Barangay {regBarangay || 'Local'} Administration</strong> verification queue. The admin will verify your record against the database.
                   </p>
                 </div>
 
