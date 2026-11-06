@@ -30,12 +30,12 @@ const CLIENT_KNOWLEDGE_BASE = [
   {
     topic: 'Barangay Clearance',
     keywords: ['clearance', 'barangay clearance', 'kuha clearance', 'police clearance', 'nbi clearance', 'clearance requirements', 'unsaon pagkuha og clearance', 'paano kumuha ng clearance', 'requirements clearance', 'cedula'],
-    answer: `📄 *Barangay Clearance Requirements & Procedure:*\n\n✅ *Requirements:*\n• 1 Valid Government-Issued ID (PhilSys, Voter's ID, Driver's License, Postal ID, Passport)\n• Community Tax Certificate (Cedula) — available at Barangay Hall Cashier\n• Proof of Residency in Barangay Pianing (utility bill or lease)\n• Purpose of request (Employment, Bank, Travel, Postal ID, etc.)\n\n🕐 *Processing Time:* Same day (15–30 minutes)\n💰 *Official Fee:* Php 50.00\n📍 *Where:* Barangay Hall, Room 1 – Document Section\n\n💡 *Online Request:* Verified residents can request directly via the *Barangay Portal* in this system to avoid queueing!`
+    answer: `📄 *Barangay Clearance Requirements & Procedure:*\n\n✅ *Requirements:*\n• 1 Valid Government-Issued ID (PhilSys, Voter's ID, Driver's License, Postal ID, Passport)\n• Community Tax Certificate (Cedula) — available at Barangay Hall Cashier\n• Proof of Residency in the Barangay (utility bill or lease)\n• Purpose of request (Employment, Bank, Travel, Postal ID, etc.)\n\n🕐 *Processing Time:* Same day (15–30 minutes)\n💰 *Official Fee:* Php 50.00\n📍 *Where:* Barangay Hall, Room 1 – Document Section\n\n💡 *Online Request:* Verified residents can request directly via the *Barangay Portal* in this system to avoid queueing!`
   },
   {
     topic: 'Certificate of Residency',
     keywords: ['residency', 'certificate of residency', 'proof of residency', 'proof of residence', 'patunay ng paninirahan', 'residente'],
-    answer: `🏠 *Certificate of Residency Requirements:*\n\n✅ *Requirements:*\n• Valid Government ID showing your Barangay Pianing address\n• Recent Utility Bill (ANECO electricity or water bill) within the last 3 months\n• Proof of living in Barangay Pianing for at least 6 months\n• 1 pc 2x2 or 1x1 ID photo (if requested for file record)\n\n🕐 *Processing Time:* Same day (15–30 minutes)\n💰 *Official Fee:* Php 50.00\n📍 *Where:* Barangay Hall – Records Section\n\n💡 You can submit this request online directly through your *Resident Portal*!`
+    answer: `🏠 *Certificate of Residency Requirements:*\n\n✅ *Requirements:*\n• Valid Government ID showing your local Barangay address\n• Recent Utility Bill (electricity or water bill) within the last 3 months\n• Proof of living in the Barangay for at least 6 months\n• 1 pc 2x2 or 1x1 ID photo (if requested for file record)\n\n🕐 *Processing Time:* Same day (15–30 minutes)\n💰 *Official Fee:* Php 50.00\n📍 *Where:* Barangay Hall – Records Section\n\n💡 You can submit this request online directly through your *Resident Portal*!`
   },
   {
     topic: 'Certificate of Indigency',
@@ -50,7 +50,7 @@ const CLIENT_KNOWLEDGE_BASE = [
   {
     topic: 'Barangay ID',
     keywords: ['barangay id', 'id card', 'valid id', 'identification', 'kuha id', 'barangay identification'],
-    answer: `🪪 *Barangay ID Requirements:*\n\n✅ *Requirements:*\n• Proof of residency in Barangay Pianing for at least 6 months\n• 2 pcs recent 2x2 ID photos with white background\n• Valid supporting ID or Birth Certificate (PSA)\n• Accomplished Barangay ID Application Form\n\n🕐 *Processing Time:* 1–3 business days\n💰 *Official Fee:* Php 50.00\n📍 *Where:* Barangay Hall – IT & ID Issuance Desk`
+    answer: `🪪 *Barangay ID Requirements:*\n\n✅ *Requirements:*\n• Proof of residency in the Barangay for at least 6 months\n• 2 pcs recent 2x2 ID photos with white background\n• Valid supporting ID or Birth Certificate (PSA)\n• Accomplished Barangay ID Application Form\n\n🕐 *Processing Time:* 1–3 business days\n💰 *Official Fee:* Php 50.00\n📍 *Where:* Barangay Hall – IT & ID Issuance Desk`
   },
   {
     topic: 'First Time Jobseeker Certificate',
@@ -65,22 +65,22 @@ const CLIENT_KNOWLEDGE_BASE = [
   {
     topic: 'Fees & Payment Guide',
     keywords: ['fee', 'fees', 'magkano', 'pila', 'bayad', 'cost', 'price', 'payment', 'cashier', 'how much', 'what are the fees'],
-    answer: `💰 *Barangay Pianing Official Schedule of Fees:*\n\n• *Barangay Clearance:* Php 50.00\n• *Certificate of Residency:* Php 50.00\n• *Barangay ID Card:* Php 50.00\n• *Business Permit / Clearance:* Php 200.00 – Php 500.00\n• *Land Occupancy / Activity Permit:* Php 100.00\n• *Certificate of Indigency:* **FREE / Walang Bayad**\n• *First Time Jobseeker Certificate:* **FREE (RA 11261)**\n• *All Health Center Services:* **100% FREE**\n\n💳 *Payment Method:* Cash at the Barangay Hall Cashier upon document release, or confirmed online.`
+    answer: `💰 *Official Barangay Schedule of Fees:*\n\n• *Barangay Clearance:* Php 50.00\n• *Certificate of Residency:* Php 50.00\n• *Barangay ID Card:* Php 50.00\n• *Business Permit / Clearance:* Php 200.00 – Php 500.00\n• *Land Occupancy / Activity Permit:* Php 100.00\n• *Certificate of Indigency:* **FREE / Walang Bayad**\n• *First Time Jobseeker Certificate:* **FREE (RA 11261)**\n• *All Health Center Services:* **100% FREE**\n\n💳 *Payment Method:* Cash at the Barangay Hall Cashier upon document release, or confirmed online.`
   },
   {
     topic: 'EPI Child Immunization Schedule',
     keywords: ['vaccine', 'vaccines', 'vaccination', 'immunization', 'bakuna', 'turok', 'schedule sa bakuna', 'free vaccine', 'infant', 'baby', 'child', 'bcg', 'polio', 'mmr', 'hepatitis', 'pentavalent', 'dpt', 'pcv', 'free vaccine schedule'],
-    answer: `💉 *Free Infant & Child Immunization Schedule (EPI):*\n\n📅 *Clinic Schedule:* Every **Wednesday & Friday**, 8:00 AM – 12:00 PM\n📍 *Location:* Barangay Pianing Health Center\n\n🛡️ *Available Free DOH Vaccines:*\n• *BCG & Hepatitis B:* Given at birth / early infancy\n• *Pentavalent (DPT-HepB-Hib):* 6, 10, and 14 weeks\n• *OPV / IPV (Oral & Injected Polio):* 6, 10, 14 weeks & 9 months\n• *PCV (Pneumococcal Conjugate):* 6, 10, and 14 weeks\n• *MMR (Measles, Mumps, Rubella):* 9 months and 12 months\n\n📋 *Please bring:* Baby Book / Mother-Child Health Record.\n\n💡 *SMS Alert:* Registered parents receive automated SMS reminders before upcoming vaccine schedules!`
+    answer: `💉 *Free Infant & Child Immunization Schedule (EPI):*\n\n📅 *Clinic Schedule:* Every **Wednesday & Friday**, 8:00 AM – 12:00 PM\n📍 *Location:* Barangay Health Center\n\n🛡️ *Available Free DOH Vaccines:*\n• *BCG & Hepatitis B:* Given at birth / early infancy\n• *Pentavalent (DPT-HepB-Hib):* 6, 10, and 14 weeks\n• *OPV / IPV (Oral & Injected Polio):* 6, 10, 14 weeks & 9 months\n• *PCV (Pneumococcal Conjugate):* 6, 10, and 14 weeks\n• *MMR (Measles, Mumps, Rubella):* 9 months and 12 months\n\n📋 *Please bring:* Baby Book / Mother-Child Health Record.\n\n💡 *SMS Alert:* Registered parents receive automated SMS reminders before upcoming vaccine schedules!`
   },
   {
     topic: 'Maternal & Prenatal Health Care',
     keywords: ['prenatal', 'pregnant', 'pregnancy', 'maternal', 'buntis', 'pa-checkup', 'ultrasound', 'postnatal', 'ob-gyn', 'midwife', 'nurse', 'prenatal care services', 'prenatal care'],
-    answer: `🤰 *Maternal & Prenatal Care Services (FREE):*\n\n🏥 *Services Available:*\n• Routine Prenatal & Postnatal Checkups with Nurse & Rural Health Midwife\n• Blood Pressure, Maternal Weight, and Fundic Height monitoring\n• Free Iron + Folic Acid and Calcium Supplements\n• Tetanus-Diphtheria (Td) immunization for mothers\n• High-Risk Pregnancy Screening and referral to Butuan Medical Center\n\n📅 *Schedule:* Monday to Friday, 8:00 AM – 5:00 PM\n📍 *Location:* Barangay Pianing Health Station – Maternal Room\n\n📋 *Please bring:* Mother-Baby Handbook and previous laboratory results.`
+    answer: `🤰 *Maternal & Prenatal Care Services (FREE):*\n\n🏥 *Services Available:*\n• Routine Prenatal & Postnatal Checkups with Nurse & Rural Health Midwife\n• Blood Pressure, Maternal Weight, and Fundic Height monitoring\n• Free Iron + Folic Acid and Calcium Supplements\n• Tetanus-Diphtheria (Td) immunization for mothers\n• High-Risk Pregnancy Screening and referral to Butuan Medical Center\n\n📅 *Schedule:* Monday to Friday, 8:00 AM – 5:00 PM\n📍 *Location:* Barangay Health Station – Maternal Room\n\n📋 *Please bring:* Mother-Baby Handbook and previous laboratory results.`
   },
   {
     topic: 'Health Center Services & Hours',
     keywords: ['health center', 'clinic', 'consultation', 'doctor', 'nurse', 'bhw', 'checkup', 'oras sa clinic', 'health station', 'general consultation', 'health services'],
-    answer: `🏥 *Barangay Pianing Health Center Services & Hours:*\n\n🕐 *Operating Hours:* Monday – Friday: **8:00 AM – 5:00 PM**\n❌ Closed on Saturdays, Sundays, and Official Public Holidays\n\n🩺 *Available Free Services:*\n• General Medical Consultations & Triage\n• Vital Signs (BP, Blood Glucose, Temperature, Pulse)\n• Free Essential Maintenance Medicines & Vitamins (subject to stock)\n• Pediatric Deworming and Nutritional Guidance\n• Medical Certificates & Health Clearances\n\n📍 *Location:* Barangay Hall Compound, Health Center Annex Building\n📞 *Hotline:* (085) 341-2345 / 0919-876-5432`
+    answer: `🏥 *Barangay Health Center Services & Hours:*\n\n🕐 *Operating Hours:* Monday – Friday: **8:00 AM – 5:00 PM**\n❌ Closed on Saturdays, Sundays, and Official Public Holidays\n\n🩺 *Available Free Services:*\n• General Medical Consultations & Triage\n• Vital Signs (BP, Blood Glucose, Temperature, Pulse)\n• Free Essential Maintenance Medicines & Vitamins (subject to stock)\n• Pediatric Deworming and Nutritional Guidance\n• Medical Certificates & Health Clearances\n\n📍 *Location:* Barangay Hall Compound, Health Center Annex Building\n📞 *Hotline:* (085) 341-2345 / 0919-876-5432`
   },
   {
     topic: 'Free Medicines & Pharmacy',
@@ -95,22 +95,22 @@ const CLIENT_KNOWLEDGE_BASE = [
   {
     topic: 'Resident Account Registration',
     keywords: ['register', 'sign up', 'create account', 'unsaon pag register', 'paano mag register', 'census record', 'new account', 'existing resident', 'how to register', 'how to register an account'],
-    answer: `📝 *How to Register a Resident Account:*\n\n1. Open the *Login Page* and select the **Create Account** tab.\n2. Choose your registration path:\n   • **Existing Census Resident (Fast-Track):** If you are already listed in the official Barangay Pianing census, search your Full Name and Purok to auto-fill and activate your account immediately!\n   • **New Resident:** If you recently moved to Barangay Pianing, fill out the form and upload a clear photo of your valid Government ID.\n3. Submit your registration!\n\n⏳ *Verification:* The Barangay Secretary will review and activate your account within 24 hours. You'll receive an SMS/Email alert upon approval!`
+    answer: `📝 *How to Register a Resident Account:*\n\n1. Open the *Login Page* and select the **Create Account** tab.\n2. Choose your registration path:\n   • **Existing Census Resident (Fast-Track):** If you are already listed in the official Barangay census, search your Full Name and Purok to auto-fill and activate your account immediately!\n   • **New Resident:** If you recently moved to the Barangay, fill out the form and upload a clear photo of your valid Government ID.\n3. Submit your registration!\n\n⏳ *Verification:* The Barangay Secretary will review and activate your account within 24 hours. You'll receive an SMS/Email alert upon approval!`
   },
   {
     topic: 'Account Verification Guide',
     keywords: ['verify', 'verification', 'pending review', 'rejected', 'unverified', 'na-reject', 'account locked', 'locked', 'approval'],
-    answer: `🛡️ *Account Verification & Status Guide:*\n\n• *Why is my account Pending?* Accounts are reviewed within 24 to 48 hours to confirm genuine residency in Barangay Pianing.\n• *Why can't I request documents yet?* Unverified accounts are locked from requesting documents online to prevent identity fraud.\n• *What if my registration was Rejected?* View the reason in your portal. Click *\"Resubmit Application\"* to upload a clearer ID photo or correct any details.\n\n🏢 Need urgent approval? Visit the Barangay Hall Front Desk with your physical valid ID for instant activation!`
+    answer: `🛡️ *Account Verification & Status Guide:*\n\n• *Why is my account Pending?* Accounts are reviewed within 24 to 48 hours to confirm genuine residency in the Barangay.\n• *Why can't I request documents yet?* Unverified accounts are locked from requesting documents online to prevent identity fraud.\n• *What if my registration was Rejected?* View the reason in your portal. Click *\"Resubmit Application\"* to upload a clearer ID photo or correct any details.\n\n🏢 Need urgent approval? Visit the Barangay Hall Front Desk with your physical valid ID for instant activation!`
   },
   {
     topic: 'Office Hours & Schedule',
     keywords: ['hours', 'office hours', 'open', 'schedule', 'oras', 'abli', 'what time', 'operating hours', 'adlaw', 'what time open', 'office hours?'],
-    answer: `🕐 *Barangay Pianing Official Operating Hours:*\n\n🏛️ *Barangay Hall Administrative Offices:*\n• Monday – Friday: **8:00 AM – 5:00 PM** (Continuous frontline service)\n• Saturday: **8:00 AM – 12:00 PM** (Frontline assistance desk)\n• Sunday & Public Holidays: **Closed**\n\n🏥 *Barangay Health Center:*\n• Monday – Friday: **8:00 AM – 5:00 PM**\n• Child Immunization: Wednesdays & Fridays (8:00 AM – 12:00 PM)\n\n🚨 *Barangay Tanod & Emergency Assistance:* **24/7 Active**`
+    answer: `🕐 *Barangay Official Operating Hours:*\n\n🏛️ *Barangay Hall Administrative Offices:*\n• Monday – Friday: **8:00 AM – 5:00 PM** (Continuous frontline service)\n• Saturday: **8:00 AM – 12:00 PM** (Frontline assistance desk)\n• Sunday & Public Holidays: **Closed**\n\n🏥 *Barangay Health Center:*\n• Monday – Friday: **8:00 AM – 5:00 PM**\n• Child Immunization: Wednesdays & Fridays (8:00 AM – 12:00 PM)\n\n🚨 *Barangay Tanod & Emergency Assistance:* **24/7 Active**`
   },
   {
     topic: 'Contact & Location Information',
     keywords: ['contact', 'phone', 'hotline', 'address', 'location', 'where', 'asa dapit', 'email', 'emergency', 'number', 'telepono', 'contact info'],
-    answer: `📞 *Barangay Pianing Official Directory:*\n\n🏛️ *Physical Address:*\nBarangay Hall, Barangay Pianing, Butuan City, Agusan del Norte, Caraga Region XIII, 8600 Philippines\n\n☎️ *Official Hotlines:*\n• Barangay Hall Front Desk: **0917-890-1234** / (085) 341-2345\n• Health Center Desk: **0919-876-5432**\n• Barangay Emergency & Tanod Desk: **0917-111-2233** (24/7)\n• Official Email: **barangay.pianing.butuan@gmail.com**\n\n🚨 *Butuan City Emergency Numbers:*\n• Butuan CDRRMO Rescue: (085) 342-5555 / 911\n• Butuan City Police Station: (085) 815-1234\n• Butuan City Medical Center (BCMC): (085) 341-1111`
+    answer: `📞 *Barangay Official Directory:*\n\n🏛️ *Physical Address:*\nBarangay Hall, Butuan City, Agusan del Norte, Caraga Region XIII, 8600 Philippines\n\n☎️ *Official Hotlines:*\n• Barangay Hall Front Desk: **0917-890-1234** / (085) 341-2345\n• Health Center Desk: **0919-876-5432**\n• Barangay Emergency & Tanod Desk: **0917-111-2233** (24/7)\n• Official Email: **barangay.helpdesk.butuan@gmail.com**\n\n🚨 *Butuan City Emergency Numbers:*\n• Butuan CDRRMO Rescue: (085) 342-5555 / 911\n• Butuan City Police Station: (085) 815-1234\n• Butuan City Medical Center (BCMC): (085) 341-1111`
   },
   {
     topic: 'Document Request Tracking',
@@ -130,7 +130,7 @@ const CLIENT_KNOWLEDGE_BASE = [
   {
     topic: 'Barangay AI Assistant',
     keywords: ['hello', 'hi', 'hey', 'kumusta', 'maayong adlaw', 'good morning', 'good afternoon', 'good evening', 'help', 'unsa imong mabuhat', 'ano ang magagawa mo', 'who are you', 'sino ka'],
-    answer: `👋 *Magandang araw! Maayong adlaw!*\n\nI am your official **Barangay Pianing AI Assistant**. I'm here 24/7 to help you with:\n• 📄 *Clearances & Documents:* Requirements, fees, and processing times\n• 🏥 *Health Center Services:* Free checkups, prenatal care, and clinic hours\n• 💉 *Child Immunization:* Free vaccine schedules and requirements\n• 📝 *Resident Accounts:* Registration, verification, and status tracking\n• 📞 *Contact & Location:* Hotlines, office hours, and emergency contacts\n\nHow can I help you today? Feel free to ask a question or tap one of the quick pills below!`
+    answer: `👋 *Magandang araw! Maayong adlaw!*\n\nI am your official **Barangay AI Assistant**. I'm here 24/7 to help you with:\n• 📄 *Clearances & Documents:* Requirements, fees, and processing times\n• 🏥 *Health Center Services:* Free checkups, prenatal care, and clinic hours\n• 💉 *Child Immunization:* Free vaccine schedules and requirements\n• 📝 *Resident Accounts:* Registration, verification, and status tracking\n• 📞 *Contact & Location:* Hotlines, office hours, and emergency contacts\n\nHow can I help you today? Feel free to ask a question or tap one of the quick pills below!`
   }
 ];
 
@@ -298,7 +298,7 @@ export default function BarangayChatbot() {
       } else {
         setMessages(prev => [...prev, {
           sender: 'bot',
-          text: "I'm having trouble connecting to the server right now, but you can contact the Barangay Pianing Office directly at 0917-890-1234 / (085) 341-2345, or visit the Barangay Hall from Mon–Fri, 8:00 AM – 5:00 PM.",
+          text: "I'm having trouble connecting to the server right now, but you can contact the Barangay Office directly at 0917-890-1234 / (085) 341-2345, or visit the Barangay Hall from Mon–Fri, 8:00 AM – 5:00 PM.",
           topic: 'Offline Assistance',
           timestamp: new Date()
         }]);

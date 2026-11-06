@@ -420,7 +420,7 @@ export default function ResidentProfileModal({
                     )}
                   </DialogTitle>
                   <DialogDescription className="text-[11px] text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
-                    <span className="flex items-center gap-1"><MapPin size={11} className="text-slate-400" /> {resident?.address || (resident?.purok ? `Purok ${resident.purok}, Barangay Pianing` : 'Barangay Pianing')}</span>
+                    <span className="flex items-center gap-1"><MapPin size={11} className="text-slate-400" /> {resident?.address || (resident?.purok ? `Purok ${resident.purok}, Barangay ${resident?.barangay || 'Community'}` : `Barangay ${resident?.barangay || 'Community'}`)}</span>
                     <span className="flex items-center gap-1 font-mono text-slate-700"><Phone size={11} className="text-slate-400" /> {resident?.phone || '09171234567'}</span>
                     {resident?.email && <span className="text-slate-400 font-mono">({resident.email})</span>}
                   </DialogDescription>

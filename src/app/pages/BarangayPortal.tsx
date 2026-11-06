@@ -737,7 +737,7 @@ export default function BarangayPortal() {
               <span className="font-semibold">Back</span>
             </Button>
             <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-[#D5E2E8] flex items-center justify-center">
-              <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
+              <img src="/assets/pianing-logo.png" alt={`Barangay ${userBarangay}`} className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Barangay {userBarangay}</h1>
@@ -1172,7 +1172,7 @@ export default function BarangayPortal() {
                           label="Business Location / Address"
                           value={extraFields['Business Address'] || ''}
                           onChange={(e) => setField('Business Address', e.target.value)}
-                          placeholder="e.g. Purok 3, Barangay Pianing"
+                          placeholder={`e.g. Purok 3, Barangay ${userBarangay}`}
                         />
                       </div>
                     </div>
@@ -1193,7 +1193,7 @@ export default function BarangayPortal() {
                           label="Employer / Establishment Name"
                           value={extraFields['Employer'] || ''}
                           onChange={(e) => setField('Employer', e.target.value)}
-                          placeholder="e.g. Pianing Community Store"
+                          placeholder="e.g. Community General Merchandise"
                           required
                         />
                       </div>

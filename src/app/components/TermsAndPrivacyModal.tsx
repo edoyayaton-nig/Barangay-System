@@ -47,7 +47,7 @@ export default function TermsAndPrivacyModal({
                     Republic of the Philippines
                   </span>
                   <span className="text-[10px] text-slate-300 font-medium hidden sm:inline-block">
-                    Barangay Pianing • Butuan City
+                    Smart Barangay Portal &bull; Local Government
                   </span>
                 </div>
                 <DialogTitle className="text-base sm:text-lg font-bold text-white leading-tight">
@@ -58,7 +58,7 @@ export default function TermsAndPrivacyModal({
                 <DialogDescription className="text-xs text-blue-100/80 mt-0.5">
                   {activeTab === 'privacy'
                     ? 'Mandated under Republic Act No. 10173 (Philippine Data Privacy Act of 2012)'
-                    : 'Barangay Pianing Electronic Governance & Health Center Ecosystem'}
+                    : 'Smart Barangay Electronic Governance & Health Center Ecosystem'}
                 </DialogDescription>
               </div>
             </div>
@@ -107,7 +107,7 @@ export default function TermsAndPrivacyModal({
                     National Privacy Commission (NPC) Compliance Notice
                   </h4>
                   <p className="text-[11px] text-blue-900/90 mt-0.5 leading-relaxed">
-                    Barangay Pianing upholds your constitutional right to personal privacy under <strong>Republic Act No. 10173</strong>. Personal and medical information collected via this portal is stored securely and processed exclusively for legitimate barangay governance and community healthcare.
+                    The Barangay Administration upholds your constitutional right to personal privacy under <strong>Republic Act No. 10173</strong>. Personal and medical information collected via this portal is stored securely and processed exclusively for legitimate barangay governance and community healthcare.
                   </p>
                 </div>
               </div>
@@ -128,7 +128,7 @@ export default function TermsAndPrivacyModal({
                   </div>
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
                     <strong className="text-slate-900 block text-[11px] mb-0.5">Jurisdiction &amp; Residency</strong>
-                    <span className="text-slate-600 text-[10.5px]">Purok designation, physical address, and documented years of residency in Pianing.</span>
+                    <span className="text-slate-600 text-[10.5px]">Purok designation, physical address, and documented years of residency in the jurisdiction.</span>
                   </div>
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
                     <strong className="text-slate-900 block text-[11px] mb-0.5">Accreditation ID Document</strong>
@@ -222,7 +222,7 @@ export default function TermsAndPrivacyModal({
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wide">
-                    Barangay Pianing Citizen Charter &amp; User Agreement
+                    Barangay Citizen Charter &amp; User Agreement
                   </h4>
                   <p className="text-[11px] text-indigo-900/90 mt-0.5 leading-relaxed">
                     By accessing and using this portal, you agree to conduct all transactions truthfully, abide by public service protocols, and uphold the integrity of official barangay and health center records.
@@ -270,7 +270,7 @@ export default function TermsAndPrivacyModal({
                   <span className="uppercase tracking-wide">Document Clearance Claiming &amp; Releases</span>
                 </div>
                 <p className="text-slate-600 text-[11px] leading-relaxed">
-                  Official certificates and clearances issued through this system are authenticated with unique reference codes. In-person claiming at the Barangay Pianing Hall requires presenting the registered Government ID or an authorized letter of representation.
+                  Official certificates and clearances issued through this system are authenticated with unique reference codes. In-person claiming at the Barangay Hall requires presenting the registered Government ID or an authorized letter of representation.
                 </p>
               </div>
             </div>
@@ -313,7 +313,7 @@ export default function TermsAndPrivacyModal({
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
                 <ShieldCheck size={14} className="text-slate-400" />
-                Barangay Pianing Official Digital Charter
+                Official Smart Barangay Digital Charter
               </span>
               <Button
                 type="button"

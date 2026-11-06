@@ -13,10 +13,10 @@ export default function NotFoundPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-10 h-10 rounded-full overflow-hidden bg-white border border-[#D5E2E8] shadow-xs flex items-center justify-center shrink-0">
-              <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
+              <img src="/assets/pianing-logo.png" alt="Smart Barangay Portal" className="w-full h-full object-contain" />
             </div>
             <div>
-              <span className="text-sm font-bold text-[#1C2B36] block leading-tight">Barangay Pianing</span>
+              <span className="text-sm font-bold text-[#1C2B36] block leading-tight">Smart Barangay Portal</span>
               <span className="text-[11px] text-[#526374] font-medium">Smart Public Health &amp; Civic Governance Portal</span>
             </div>
           </div>
@@ -109,14 +109,14 @@ export default function NotFoundPage() {
           </div>
 
           <p className="text-[11px] text-[#526374]">
-            Republic of the Philippines &bull; City of Butuan &bull; Barangay Pianing
+            Republic of the Philippines &bull; Smart Barangay Governance System
           </p>
         </div>
       </main>
 
       {/* Official Footer */}
       <footer className="bg-white border-t border-[#D5E2E8] py-4 px-4 text-center text-xs text-[#526374]">
-        &copy; {new Date().getFullYear()} Barangay Pianing Management System &bull; All Rights Reserved.
+        &copy; {new Date().getFullYear()} Smart Barangay Management System &bull; All Rights Reserved.
       </footer>
     </div>
   );

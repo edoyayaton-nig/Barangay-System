@@ -2027,7 +2027,7 @@ export default function NurseDashboard() {
 
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-teal-200 flex items-center justify-center shrink-0">
-                <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
+                <img src="/assets/pianing-logo.png" alt={`Barangay ${nurseBarangay} Health Center`} className="w-full h-full object-contain" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -2080,7 +2080,7 @@ export default function NurseDashboard() {
         <div className="flex items-center justify-between px-4 pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-teal-200 flex items-center justify-center shrink-0">
-              <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
+              <img src="/assets/pianing-logo.png" alt={`Barangay ${nurseBarangay} Health Center`} className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="text-xs font-bold text-slate-900 dark:text-white block">Health Center</span>
@@ -4080,7 +4080,7 @@ export default function NurseDashboard() {
                         <div>
                           <span className="font-bold text-slate-800 group-hover:text-teal-700 block">{p.name}</span>
                           <span className="text-[10px] text-slate-500 block">
-                            {p.gender} · {p.purok || 'Pianing'} · {p.phone || 'No phone'} · Age: {p.age || '—'}
+                            {p.gender} · {p.purok || nurseBarangay} · {p.phone || 'No phone'} · Age: {p.age || '—'}
                           </span>
                         </div>
                         <Badge variant="outline" className="text-[9px] bg-white border-teal-300 text-teal-700 shrink-0">

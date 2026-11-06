@@ -70,11 +70,11 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full overflow-hidden bg-white shadow-md border border-[#D5E2E8] flex items-center justify-center">
-              <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
+              <img src="/assets/pianing-logo.png" alt="Smart Barangay Portal" className="w-full h-full object-contain" />
             </div>
             <div>
-              <span className="text-base font-bold text-[#1C2B36] dark:text-[#F5F8FA] block leading-tight">Barangay Pianing</span>
-              <span className="text-xs text-[#526374] dark:text-slate-400 font-medium">Smart Barangay Portal — Butuan City</span>
+              <span className="text-base font-bold text-[#1C2B36] dark:text-[#F5F8FA] block leading-tight">Smart Barangay Portal</span>
+              <span className="text-xs text-[#526374] dark:text-slate-400 font-medium">Digital Community &amp; Primary Healthcare Portal</span>
             </div>
           </div>
 
@@ -101,10 +101,10 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 text-center">
         <Badge variant="outline" className="bg-[#E9F4F2] text-[#006B66] border-[#006B66]/30 px-3 py-1 mb-4 text-xs font-semibold rounded-full shadow-xs">
-          ✨ Barangay Pianing, Butuan City, Agusan del Norte
+          ✨ Official Smart Barangay E-Services &amp; Healthcare Portal
         </Badge>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-[#1C2B36] dark:text-[#F5F8FA] tracking-tight mb-4 max-w-4xl mx-auto leading-tight">
-          Smart Digital Services for <span className="text-[#006B66]">Barangay Pianing</span> Residents
+          Smart Digital Services for <span className="text-[#006B66]">Community</span> Residents
         </h1>
         <p className="text-lg text-[#526374] dark:text-slate-300 max-w-3xl mx-auto mb-8 leading-relaxed">
           A modern online portal connecting residents with fast, convenient access to barangay clearances, health services, and community announcements — anytime, anywhere.
@@ -112,7 +112,7 @@ export default function LandingPage() {
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-[#526374] dark:text-slate-400 mt-2">
           <MapPin size={14} className="text-[#006B66]" />
-          <span className="font-medium">Barangay Pianing, Butuan City, Agusan del Norte</span>
+          <span className="font-medium">Online Barangay E-Services &amp; Primary Healthcare Portal</span>
         </div>
       </section>
 
@@ -132,7 +132,7 @@ export default function LandingPage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-10">
           <h2 className="text-2xl font-bold text-[#1C2B36] dark:text-[#F5F8FA]">What You Can Do Here</h2>
-          <p className="text-xs text-[#526374] dark:text-slate-400 mt-1">Services available to Barangay Pianing residents, health workers, and administrators.</p>
+          <p className="text-xs text-[#526374] dark:text-slate-400 mt-1">Services available to community residents, health workers, and administrators.</p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -159,7 +159,7 @@ export default function LandingPage() {
         <div className="bg-gradient-to-r from-[#173B5E] via-[#0F2942] to-[#006B66] text-white rounded-2xl p-8 sm:p-10 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-[#223A50]">
           <div className="space-y-2 text-center md:text-left">
             <Badge className="bg-[#D8A443] text-[#1C2B36] font-bold text-[11px] hover:bg-[#c99534]">Official Barangay Portal</Badge>
-            <h3 className="text-2xl font-bold">Barangay Pianing Hall & Health Center</h3>
+            <h3 className="text-2xl font-bold">Barangay Hall &amp; Primary Health Center</h3>
             <p className="text-xs text-slate-200 max-w-xl leading-relaxed">
               Serving the community with streamlined document processing, maternal and child healthcare, and transparent local governance.
             </p>
@@ -179,12 +179,12 @@ export default function LandingPage() {
       <footer className="mt-auto bg-[#173B5E] text-slate-300 py-8 border-t border-[#0F2942] text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
           <div>
-            <p className="font-semibold text-white">Barangay Pianing — Smart Governance Portal</p>
-            <p className="text-[11px] text-slate-300 mt-0.5">Office of the Punong Barangay · Hon. Virgenia S. Golandrina · Butuan City, Agusan del Norte</p>
+            <p className="font-semibold text-white">Smart Barangay Portal — Digital Governance System</p>
+            <p className="text-[11px] text-slate-300 mt-0.5">Office of the Punong Barangay · Public E-Services &amp; Primary Healthcare System</p>
           </div>
           <div className="flex items-center gap-2">
             <MapPin size={13} className="text-[#D8A443]" />
-            <span className="text-[11px] text-slate-200">Barangay Pianing, Butuan City</span>
+            <span className="text-[11px] text-slate-200">Republic of the Philippines</span>
           </div>
         </div>
       </footer>

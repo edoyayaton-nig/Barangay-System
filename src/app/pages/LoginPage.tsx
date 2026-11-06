@@ -658,10 +658,10 @@ export default function LoginPage() {
       <header className="w-full px-6 py-4 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
           <div className="w-10 h-10 rounded-full overflow-hidden bg-white shadow-xs border border-slate-200 shrink-0">
-            <img src="/assets/pianing-logo.png" alt="Barangay Pianing Logo" className="w-full h-full object-contain" />
+            <img src="/assets/pianing-logo.png" alt="Smart Barangay Logo" className="w-full h-full object-contain" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Barangay Pianing</h1>
+            <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Smart Barangay Portal</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Smart Public Health &amp; Admin Portal</p>
           </div>
         </div>
@@ -676,7 +676,7 @@ export default function LoginPage() {
           {/* Card Header matching Screenshot with Logo */}
           <div className="text-center pb-4">
             <div className="mx-auto w-12 h-12 rounded-full overflow-hidden bg-white shadow-md border-2 border-[#173B5E]/30 flex items-center justify-center mb-2.5">
-              <img src="/assets/pianing-logo.png" alt="Barangay Pianing Logo" className="w-full h-full object-contain" />
+              <img src="/assets/pianing-logo.png" alt="Smart Barangay Logo" className="w-full h-full object-contain" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Smart Barangay Portal</h2>
             <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
@@ -1066,7 +1066,7 @@ export default function LoginPage() {
 
                   <div>
                     <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                      Barangay Jurisdiction <span className="text-slate-400 font-normal">(Default: Pianing)</span>
+                      Barangay Jurisdiction
                     </label>
                     <select
                       value={regBarangay || 'Pianing'}
@@ -1724,7 +1724,7 @@ export default function LoginPage() {
               Account Recovery Assistance
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 text-center mt-1">
-              Barangay Pianing Citizen &amp; Official Identity Management
+              Smart Barangay Citizen &amp; Official Identity Management
             </DialogDescription>
           </DialogHeader>
 
@@ -1732,7 +1732,7 @@ export default function LoginPage() {
             <div className="p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl space-y-1.5">
               <strong className="text-blue-900 font-bold block">For Registered Residents:</strong>
               <p>
-                To maintain compliance with the Data Privacy Act (RA 10173), password resets require identity verification. Please visit the <strong>Barangay Pianing Hall</strong> with your valid Government ID, or reach out to our Helpdesk during office hours (Mon–Fri, 8:00 AM – 5:00 PM).
+                To maintain compliance with the Data Privacy Act (RA 10173), password resets require identity verification. Please visit your <strong>Barangay Hall</strong> with your valid Government ID, or reach out to our Helpdesk during office hours (Mon–Fri, 8:00 AM – 5:00 PM).
               </p>
             </div>
 
@@ -1750,7 +1750,7 @@ export default function LoginPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Mail size={14} className="text-blue-600 shrink-0" />
-                <span>Official Email: support@barangaypianing.gov.ph</span>
+                <span>Official Email: support@barangay.gov.ph</span>
               </div>
             </div>
           </div>

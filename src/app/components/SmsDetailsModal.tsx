@@ -115,7 +115,7 @@ export default function SmsDetailsModal({
           <div className="relative bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-4 rounded-2xl rounded-tl-sm shadow-md text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-sans">
             <p>{notification.message}</p>
             <div className="mt-3 pt-2 border-t border-white/20 flex items-center justify-between text-[10px] text-blue-100">
-              <span>Sender: BARANGAY PIANING</span>
+              <span>Sender: BARANGAY {(notification as any).barangay?.toUpperCase() || 'CIVIL REGISTRY'}</span>
               <span>Delivered via SMS Gateway</span>
             </div>
           </div>

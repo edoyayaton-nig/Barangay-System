@@ -465,7 +465,7 @@ export default function BhwDashboard() {
         service_type: newScheduleServiceType,
         day_of_week: newScheduleDay,
         time_slot: newScheduleTime,
-        location: newScheduleLocation || 'Barangay Pianing Health Center',
+        location: newScheduleLocation || `Barangay ${bhwBarangay} Health Center`,
         slots_available: Number(newScheduleSlots) || 20,
         bhw_in_charge: newScheduleBhw || user?.name || 'Nurse Maria Santos',
         barangay: user?.barangay || 'Pianing',
@@ -1335,10 +1335,10 @@ export default function BhwDashboard() {
 
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-full overflow-hidden bg-white shadow-xs border border-blue-200 flex items-center justify-center shrink-0">
-                <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
+                <img src="/assets/pianing-logo.png" alt={`Barangay ${bhwBarangay}`} className="w-full h-full object-contain" />
               </div>
               <div>
-                <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Barangay Pianing</h1>
+                <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Barangay {bhwBarangay}</h1>
                 <span className="text-xs text-blue-600 font-semibold">BHW Health Portal</span>
               </div>
             </div>
@@ -1457,10 +1457,10 @@ export default function BhwDashboard() {
         <div className="flex items-center justify-between px-4 pb-3 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
-              <img src="/assets/pianing-logo.png" alt="Barangay Pianing" className="w-full h-full object-contain" />
+              <img src="/assets/pianing-logo.png" alt={`Barangay ${bhwBarangay}`} className="w-full h-full object-contain" />
             </div>
             <div>
-              <span className="text-xs font-bold text-slate-900 dark:text-white block">Barangay Pianing</span>
+              <span className="text-xs font-bold text-slate-900 dark:text-white block">Barangay {bhwBarangay}</span>
               <span className="text-[10px] text-[#006B66] dark:text-[#55EFC4] font-semibold">BHW Health Portal</span>
             </div>
           </div>
@@ -2333,7 +2333,7 @@ export default function BhwDashboard() {
                       <Input
                         value={newScheduleLocation}
                         onChange={e => setNewScheduleLocation(e.target.value)}
-                        placeholder="Barangay Pianing Health Center - Room 1"
+                        placeholder={`Barangay ${bhwBarangay} Health Center - Room 1`}
                         className="mt-1 h-9 text-xs"
                       />
                     </div>
@@ -2567,7 +2567,7 @@ export default function BhwDashboard() {
                                         onClick={() => {
                                           setSmsRecipientName(imm.guardian_name || imm.child_name);
                                           setSmsPhone(imm.parent_phone || '');
-                                          setSmsMessage(`Reminder: Baby ${imm.child_name} is scheduled for ${imm.vaccine_name} (${imm.dose_number}) at Barangay Pianing Health Center. Due: ${imm.due_date || 'this week'}.`);
+                                          setSmsMessage(`Reminder: Baby ${imm.child_name} is scheduled for ${imm.vaccine_name} (${imm.dose_number}) at Barangay ${bhwBarangay} Health Center. Due: ${imm.due_date || 'this week'}.`);
                                           setIsSendSmsOpen(true);
                                         }}
                                         className="h-7 text-[11px] text-blue-700 border-blue-200 hover:bg-blue-50 px-2 gap-1"
@@ -3188,7 +3188,7 @@ export default function BhwDashboard() {
                                     onClick={() => {
                                       setSmsRecipientName(mat.mother_name);
                                       setSmsPhone((mat as any).phone || (mat as any).contact_number || '');
-                                      setSmsMessage(`Reminder: Mrs. ${mat.mother_name}, your prenatal checkup is scheduled at Barangay Pianing Health Center on ${mat.next_visit || 'this week'}. Please bring your mother book.`);
+                                      setSmsMessage(`Reminder: Mrs. ${mat.mother_name}, your prenatal checkup is scheduled at Barangay ${bhwBarangay} Health Center on ${mat.next_visit || 'this week'}. Please bring your mother book.`);
                                       setIsSendSmsOpen(true);
                                     }}
                                     className="h-7 text-[11px] text-pink-700 border-pink-200 hover:bg-pink-50 px-2 gap-1"
@@ -3340,7 +3340,7 @@ export default function BhwDashboard() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white">Public Health Reports & Analytics</h2>
-                  <p className="text-xs text-slate-500">Official Barangay Pianing Health Center reports, vaccination coverage, and maternal monitoring.</p>
+                  <p className="text-xs text-slate-500">Official Barangay {bhwBarangay} Health Center reports, vaccination coverage, and maternal monitoring.</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -3404,7 +3404,7 @@ export default function BhwDashboard() {
                     onClick={() => {
                       printOfficialReport({
                         title: 'Public Health & Immunization Performance Report',
-                        subtitle: 'Barangay Pianing Health Center • Comprehensive Child Healthcare & Maternal Program',
+                        subtitle: `Barangay ${bhwBarangay} Health Center • Comprehensive Child Healthcare & Maternal Program`,
                         department: 'Barangay Health Center • Public Health Office',
                         preparedBy: user?.name || 'Nurse Maria Santos',
                         preparedByTitle: 'Barangay Health Worker / Nurse',
