@@ -150,17 +150,19 @@ function cleanBusinessName(f: Record<string, string>, purpose?: string): string 
 }
 
 function cleanPermitDetails(f: Record<string, string>, doc: DocumentRequest) {
+  const docBrgy = (doc as any).barangay || (doc as any).resident_barangay || 'Pianing';
   const bizName = f['Business Name'] || f['Store Name'] || f['Company Name'] || 'COMMERCIAL ESTABLISHMENT';
   const representative = f['Representative'] || f['representative'] || doc.resident_name || 'CITIZEN';
-  const repAddress = f['Representative Address'] || f['rep_address'] || (doc as any).resident_address || 'Pianing, Butuan City';
+  const repAddress = f['Representative Address'] || f['rep_address'] || (doc as any).resident_address || `${docBrgy}, Butuan City`;
   const activityDates = f['Activity Dates'] || f['activity_dates'] || '';
   const activityDesc = f['Activity Description'] || f['activity_description'] || 'conduct a demonstration on their products within the vicinity of the Barangay';
   return { bizName, representative, repAddress, activityDates, activityDesc };
 }
 
-function cleanEmploymentDetails(f: Record<string, string>) {
+function cleanEmploymentDetails(f: Record<string, string>, doc?: DocumentRequest) {
+  const docBrgy = (doc as any)?.barangay || (doc as any)?.resident_barangay || 'Pianing';
   const position = f['Job Position'] || f['Position'] || f['Role'] || f['Designation'] || 'Barangay Worker';
-  const employer = f['Employer'] || f['Company'] || f['Office'] || f['Establishment'] || 'Barangay Pianing';
+  const employer = f['Employer'] || f['Company'] || f['Office'] || f['Establishment'] || `Barangay ${docBrgy}`;
   const period = f['Employment Period'] || f['Period'] || (f['Start Date'] && f['End Date'] ? `${f['Start Date']} to ${f['End Date']}` : 'January 2024 to Present');
   let startDate = f['Start Date'] || '';
   let endDate = f['End Date'] || '';
@@ -384,8 +386,9 @@ function getCertificateBody(doc: DocumentRequest): string {
   const day = getOrdinalDay(now);
   const { month, year } = getMonthYear(now);
 
+  const docBrgy = (doc as any).barangay || (doc as any).resident_barangay || 'Pianing';
   const pronouns = cleanPronouns(doc, f);
-  const emp = cleanEmploymentDetails(f);
+  const emp = cleanEmploymentDetails(f, doc);
   const bizName = cleanBusinessName(f, purpose);
 
   const logoHeaderPunong = `
@@ -394,9 +397,9 @@ function getCertificateBody(doc: DocumentRequest): string {
       <div class="hdr-center">
         <p class="rep">Republic of the Philippines</p>
         <p class="bold">OFFICE OF THE PUNONG BARANGAY</p>
-        <p class="loc">Pianing, Butuan City</p>
+        <p class="loc">${docBrgy}, Butuan City</p>
       </div>
-      <div class="hdr-logo-box"><img src="${PIANING_LOGO_BASE64}" class="hdr-logo" alt="Barangay Pianing Seal" /></div>
+      <div class="hdr-logo-box"><img src="${PIANING_LOGO_BASE64}" class="hdr-logo" alt="Barangay ${docBrgy} Seal" /></div>
     </div>`;
 
   const logoHeaderSangguniang = `
@@ -405,9 +408,9 @@ function getCertificateBody(doc: DocumentRequest): string {
       <div class="hdr-center">
         <p class="rep">Republic of the Philippines</p>
         <p class="bold">OFFICE OF THE SANGGUNIANG BARANGAY</p>
-        <p class="loc">Pianing, Butuan City</p>
+        <p class="loc">${docBrgy}, Butuan City</p>
       </div>
-      <div class="hdr-logo-box"><img src="${PIANING_LOGO_BASE64}" class="hdr-logo" alt="Barangay Pianing Seal" /></div>
+      <div class="hdr-logo-box"><img src="${PIANING_LOGO_BASE64}" class="hdr-logo" alt="Barangay ${docBrgy} Seal" /></div>
     </div>`;
 
   const logoHeader = logoHeaderPunong;
@@ -451,7 +454,7 @@ function getCertificateBody(doc: DocumentRequest): string {
           <div class="doc-title">BARANGAY CLEARANCE</div>
           <p class="salute">TO WHOM IT MAY CONCERN:</p>
           <p class="para">This is to certify that <strong>${name}</strong> of legal age,
-            ${civilStatus} is a bona fide resident of Purok ${purok}, Pianing, Butuan City.</p>
+            ${civilStatus} is a bona fide resident of Purok ${purok}, ${docBrgy}, Butuan City.</p>
           <p class="para"><strong>${pronouns.HeShe}</strong> is known to be a person of <strong>GOOD MORAL CHARACTER</strong>
             and is a law-abiding citizen. Our records show that ${pronouns.heShe} is not currently been charged
             of any crime against ${pronouns.hisHer} person, no pending case &nbsp; nor a member of any
@@ -461,7 +464,7 @@ function getCertificateBody(doc: DocumentRequest): string {
             best. This document is valid for six (6) months from the date of issuance.</p>
           <p class="para">This is being issued on the <strong>${day}</strong> day of
             <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at the Office of the
-            Punong Barangay of Pianing, Butuan City, Agusan Del Norte, Philippines.</p>
+            Punong Barangay of ${docBrgy}, Butuan City, Agusan Del Norte, Philippines.</p>
           ${affiantLine}
           ${attestedApproved}
         </div>`;
@@ -481,7 +484,7 @@ function getCertificateBody(doc: DocumentRequest): string {
       const rawAddr = (doc as any).resident_address || '';
       const fullAddress = rawAddr
         ? rawAddr
-        : `${purok.startsWith('Purok') ? purok : `Purok ${purok}`}, Barangay Pianing, Butuan City`;
+        : `${purok.startsWith('Purok') ? purok : `Purok ${purok}`}, Barangay ${docBrgy}, Butuan City`;
       return `
         <div class="doc-wrapper">
           ${logoHeaderPunong}
@@ -490,7 +493,7 @@ function getCertificateBody(doc: DocumentRequest): string {
           <p class="para" style="line-height: 1.65; margin-bottom: 14px;">This is to certify that <strong style="text-decoration: underline;">${salutation} ${fullNameCaps}</strong>, of legal age and a bonafide resident of ${fullAddress}.</p>
           <p class="para" style="line-height: 1.65; margin-bottom: 14px;">This further certifies that <strong>${salutation} ${fullNameCaps}</strong> as per records on file of this office, <strong>${pronounSlashed}</strong> has not been involved in any unlawful act or activities within the barangay and <strong>NOT in the BADAC list</strong>.</p>
           <p class="para" style="line-height: 1.65; margin-bottom: 22px;">This certification is being issued upon the request of the above-named person as a requirement for ${possessiveSlashed} <strong>${purpose}</strong>.</p>
-          <p class="para" style="line-height: 1.65; margin-bottom: 22px;">Issued this <strong>${day}</strong> day of <strong>${month}</strong>, <strong>${year}</strong> at the Office of the Punong Barangay of Pianing, Butuan City, Philippines.</p>
+          <p class="para" style="line-height: 1.65; margin-bottom: 22px;">Issued this <strong>${day}</strong> day of <strong>${month}</strong>, <strong>${year}</strong> at the Office of the Punong Barangay of ${docBrgy}, Butuan City, Philippines.</p>
           ${certifiedBy}
         </div>`;
     }
@@ -502,10 +505,10 @@ function getCertificateBody(doc: DocumentRequest): string {
           ${logoHeader}
           <div class="doc-title">CERTIFICATE OF RESIDENCY</div>
           <p class="salute">TO WHOM IT MAY CONCERN:</p>
-          <p class="para">This is to certify that <strong>${name}</strong>, Filipino, is a bonafide <strong>resident</strong> of Purok ${purok}, Barangay Pianing, Butuan City together with ${pronouns.hisHer} entire family circle.</p>
-          <p class="para">This certifies further that the above-mentioned resident has been permanently living and residing at Purok ${purok}, Barangay Pianing, Butuan City <strong>${cleanResidencyYears(f)}</strong>.</p>
+          <p class="para">This is to certify that <strong>${name}</strong>, Filipino, is a bonafide <strong>resident</strong> of Purok ${purok}, Barangay ${docBrgy}, Butuan City together with ${pronouns.hisHer} entire family circle.</p>
+          <p class="para">This certifies further that the above-mentioned resident has been permanently living and residing at Purok ${purok}, Barangay ${docBrgy}, Butuan City <strong>${cleanResidencyYears(f)}</strong>.</p>
           <p class="para">This certification is being issued upon the request of the concerned party for whatever legal purposes it may serve best.</p>
-          <p class="para">This document is given this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at the Office of the Punong Barangay of Pianing, Butuan City, Philippines.</p>
+          <p class="para">This document is given this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at the Office of the Punong Barangay of ${docBrgy}, Butuan City, Philippines.</p>
           ${certifiedBy}
         </div>`;
 
@@ -516,10 +519,10 @@ function getCertificateBody(doc: DocumentRequest): string {
           ${logoHeader}
           <div class="doc-title">CERTIFICATE OF INDIGENCY</div>
           <p class="salute">TO WHOM IT MAY CONCERN:</p>
-          <p class="para">This is to certify that <strong>${name}</strong>, <strong>${cleanAge(doc, f)}</strong>, <strong>${pronouns.genderLabel}</strong> and a resident of P ${purok}, Barangay Pianing, Butuan City.</p>
+          <p class="para">This is to certify that <strong>${name}</strong>, <strong>${cleanAge(doc, f)}</strong>, <strong>${pronouns.genderLabel}</strong> and a resident of P ${purok}, Barangay ${docBrgy}, Butuan City.</p>
           <p class="para">This certifies further that the above-mentioned-name and ${pronouns.hisHer} family is one of our identified <strong>INDIGENT</strong> constituents in the community and in need of <strong>${purpose}</strong> assistance.</p>
           <p class="para">This certification is being issued upon the request of the above mentioned-name for whatever legal purposes it may serve best.</p>
-          <p class="para">Issued this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at Barangay Pianing, Butuan City, Philippines.</p>
+          <p class="para">Issued this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at Barangay ${docBrgy}, Butuan City, Philippines.</p>
           ${certifiedBy}
         </div>`;
 
@@ -536,7 +539,7 @@ function getCertificateBody(doc: DocumentRequest): string {
             (as document presented), came to this office to obtain a permit to ${permit.activityDesc}${permit.activityDates ? ` on ${permit.activityDates}` : ''}.</p>
           <p class="para">This certification is issued upon the request of the party for whatever legal purposes it may serve best.</p>
           <p class="para">Issued this <strong>${day}</strong> day of <strong><u>${month} ${year}</u></strong>
-            at Barangay Pianing, Butuan City, Philippines.</p>
+            at Barangay ${docBrgy}, Butuan City, Philippines.</p>
           ${certifiedBy}
         </div>`;
     }
@@ -550,9 +553,9 @@ function getCertificateBody(doc: DocumentRequest): string {
           ${logoHeaderSangguniang}
           <div class="doc-title">BARANGAY BUSINESS CLEARANCE</div>
           <p class="salute">TO WHOM IT MAY CONCERN:</p>
-          <p class="para">This is to certify that <strong>${name}</strong>, of legal age, bona-fide resident of ${purok.includes('Purok') ? purok : `Purok ${purok}`}, Barangay Pianing, Butuan City, Philippines, has a <strong>${bizName}</strong> store business located in its/own residence Based on the verification gathered.</p>
+          <p class="para">This is to certify that <strong>${name}</strong>, of legal age, bona-fide resident of ${purok.includes('Purok') ? purok : `Purok ${purok}`}, Barangay ${docBrgy}, Butuan City, Philippines, has a <strong>${bizName}</strong> store business located in its/own residence Based on the verification gathered.</p>
           <p class="para">This certification is issued upon the request of the above-named person for <strong>${purpose}</strong> and for whatever legal purpose it may serve.</p>
-          <p class="para">Issued this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at Barangay <strong>Pianing</strong>, Butuan City, Philippines.</p>
+          <p class="para">Issued this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at Barangay <strong>${docBrgy}</strong>, Butuan City, Philippines.</p>
           ${certifiedBy}
         </div>`;
 
@@ -563,10 +566,10 @@ function getCertificateBody(doc: DocumentRequest): string {
           ${logoHeaderPunong}
           <div class="doc-title">CERTIFICATION</div>
           <p class="salute">TO WHOM IT MAY CONCERN:</p>
-          <p class="para">This is to certify that <strong>${name}</strong>, of legal age, ${civilStatus} is a <strong>bona fide resident</strong> of Purok ${purok}, Barangay Pianing, Butuan City together with ${pronouns.hisHer} entire family.</p>
+          <p class="para">This is to certify that <strong>${name}</strong>, of legal age, ${civilStatus} is a <strong>bona fide resident</strong> of Purok ${purok}, Barangay ${docBrgy}, Butuan City together with ${pronouns.hisHer} entire family.</p>
           <p class="para">This certifies further that the above-mentioned person has worked as <strong>${emp.position}</strong> of <strong>${emp.employer}</strong> from <strong>${emp.startDate}</strong> to <strong>${emp.endDate}</strong>.</p>
           <p class="para">This certification is being issued upon the request of the party for whatever legal purposes it may serve best.</p>
-          <p class="para">Issued this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at the Office of the Punong Barangay of Pianing, this City, Philippines.</p>
+          <p class="para">Issued this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at the Office of the Punong Barangay of ${docBrgy}, this City, Philippines.</p>
           ${certifiedBy}
         </div>`;
 
@@ -582,9 +585,9 @@ function getCertificateBody(doc: DocumentRequest): string {
           ${logoHeaderPunong}
           <div class="doc-title" style="font-size: 20pt; letter-spacing: 1px; margin: 22px 0 18px 0;">CERTIFICATE OF LAND OCCUPANCY</div>
           <p class="salute">TO WHOM IT MAY CONCERN:</p>
-          <p class="para" style="line-height: 1.65; margin-bottom: 18px;">This is to certify that <strong style="text-decoration: underline;">${name.toUpperCase()}</strong>, Filipino, ${civilStatus.toLowerCase()}, a bona fide resident of ${formattedPurok} Pianing, Butuan City is the <strong style="text-decoration: underline;">ACTUAL OCCUPANT</strong> on a parcel of land with an area of <strong style="text-decoration: underline;">${land.landArea}</strong> square meters more or less, identified as Lot # ${land.lotNumber}, ${land.surveyInfo} <span style="text-decoration: underline;">since</span> the year ${land.yearStarted} until this document has been made.</p>
+          <p class="para" style="line-height: 1.65; margin-bottom: 18px;">This is to certify that <strong style="text-decoration: underline;">${name.toUpperCase()}</strong>, Filipino, ${civilStatus.toLowerCase()}, a bona fide resident of ${formattedPurok} ${docBrgy}, Butuan City is the <strong style="text-decoration: underline;">ACTUAL OCCUPANT</strong> on a parcel of land with an area of <strong style="text-decoration: underline;">${land.landArea}</strong> square meters more or less, identified as Lot # ${land.lotNumber}, ${land.surveyInfo} <span style="text-decoration: underline;">since</span> the year ${land.yearStarted} until this document has been made.</p>
           <p class="para" style="line-height: 1.65; margin-bottom: 22px;">This certification is being issued upon the requesting party for whatever legal purposes it may serve best.</p>
-          <p class="para" style="line-height: 1.65; margin-bottom: 24px;">Given this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at the Office of the Punong Barangay of Pianing, Butuan City, Philippines.</p>
+          <p class="para" style="line-height: 1.65; margin-bottom: 24px;">Given this <strong>${day}</strong> day of <strong>${month}</strong>&nbsp;&nbsp;<strong>${year}</strong> at the Office of the Punong Barangay of ${docBrgy}, Butuan City, Philippines.</p>
           ${certifiedBy}
         </div>`;
     }
@@ -592,7 +595,7 @@ function getCertificateBody(doc: DocumentRequest): string {
     // ── BARANGAY ID ───────────────────────────────────────────────────────────
     case 'Barangay ID': {
       const idNum = doc.request_code || `BID-${doc.id || 'N/A'}`;
-      const rawAddr = (doc as any).resident_address || `Purok ${purok}, Barangay Pianing, Butuan City`;
+      const rawAddr = (doc as any).resident_address || `Purok ${purok}, Barangay ${docBrgy}, Butuan City`;
       const dob = (doc as any).resident_birth_date || (doc as any).date_of_birth || f['Date of Birth'] || '';
       const dobFormatted = dob ? (() => { try { return new Date(dob).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }); } catch { return dob; } })() : '';
       const gender = (f['Gender'] || (doc as any).resident_gender || 'Male');
@@ -606,7 +609,7 @@ function getCertificateBody(doc: DocumentRequest): string {
                 <td width="40" style="vertical-align:middle;"><img src="${BUTUAN_LOGO_BASE64}" width="35" height="35" /></td>
                 <td style="text-align:center; vertical-align:middle;">
                   <div style="font-size:6pt;">Republic of the Philippines</div>
-                  <div style="font-size:7pt; font-weight:bold;">BARANGAY PIANING</div>
+                  <div style="font-size:7pt; font-weight:bold;">BARANGAY ${docBrgy.toUpperCase()}</div>
                   <div style="font-size:6pt;">Butuan City</div>
                 </td>
                 <td width="40" style="vertical-align:middle; text-align:right;"><img src="${PIANING_LOGO_BASE64}" width="35" height="35" /></td>
@@ -662,11 +665,11 @@ function getCertificateBody(doc: DocumentRequest): string {
           <p class="salute">TO WHOM IT MAY CONCERN:</p>
           <p class="para">This is to certify that <strong>${name}</strong>, of legal age,
             ${civilStatus}, Filipino citizen, and a bonafide resident of Purok ${purok},
-            Pianing, Butuan City, Agusan Del Norte. This certification is issued for the purpose
+            ${docBrgy}, Butuan City, Agusan Del Norte. This certification is issued for the purpose
             of <strong>${purpose}</strong> and for whatever legal purposes it may serve.</p>
           <p class="para">This document is issued on the <strong>${day}</strong> day of
             <strong>${month}</strong>, <strong>${year}</strong> at the Office of the Punong Barangay
-            of Pianing, Butuan City, Agusan Del Norte, Philippines.</p>
+            of ${docBrgy}, Butuan City, Agusan Del Norte, Philippines.</p>
           ${attestedApproved}
         </div>`;
   }
@@ -683,8 +686,9 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
   const day = getOrdinalDay(now);
   const { month, year } = getMonthYear(now);
 
+  const docBrgy = (doc as any).barangay || (doc as any).resident_barangay || 'Pianing';
   const pronouns = cleanPronouns(doc, f);
-  const emp = cleanEmploymentDetails(f);
+  const emp = cleanEmploymentDetails(f, doc);
   const bizName = cleanBusinessName(f, purpose);
 
   const OfficialHeader = ({ office = 'OFFICE OF THE PUNONG BARANGAY' }: { office?: string }) => (
@@ -695,10 +699,10 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
       <div className="text-center flex-1 px-3 font-sans">
         <p className="text-[11pt] text-black">Republic of the Philippines</p>
         <p className="text-[13pt] font-bold text-black uppercase tracking-wide">{office}</p>
-        <p className="text-[11pt] text-black">Pianing, Butuan City</p>
+        <p className="text-[11pt] text-black">{docBrgy}, Butuan City</p>
       </div>
       <div style={{ width: '1.45in', height: '1.45in' }} className="flex-shrink-0 flex items-center justify-center overflow-hidden">
-        <img src={PIANING_LOGO_BASE64} alt="Barangay Pianing Seal" className="w-full h-full object-cover scale-115" />
+        <img src={PIANING_LOGO_BASE64} alt={`Barangay ${docBrgy} Seal`} className="w-full h-full object-cover scale-115" />
       </div>
     </div>
   );
@@ -748,7 +752,7 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
           <h2 className={title}>BARANGAY CLEARANCE</h2>
           <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
           <p className={p}>This is to certify that <strong>{name}</strong> of legal age,
-            {' '}{civilStatus} is a bona fide resident of Purok {purok}, Pianing, Butuan City.</p>
+            {' '}{civilStatus} is a bona fide resident of Purok {purok}, {docBrgy}, Butuan City.</p>
           <p className={p}><strong>{pronouns.HeShe}</strong> is known to be a person of <strong>GOOD MORAL CHARACTER</strong> and
             is a law-abiding citizen. Our records show that {pronouns.heShe} is not currently been charged of any
             crime against {pronouns.hisHer} person, no pending case &nbsp; nor a member of any subversive
@@ -758,7 +762,7 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
             document is valid for six (6) months from the date of issuance.</p>
           <p className={p}>This is being issued on the <strong>{day}</strong> day of{' '}
             <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at the Office of the Punong
-            Barangay of Pianing, Butuan City, Agusan Del Norte, Philippines.</p>
+            Barangay of {docBrgy}, Butuan City, Agusan Del Norte, Philippines.</p>
           <AffiantLine />
           <AttestedApprovedSig />
         </>);
@@ -772,7 +776,7 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
         const rawAddr = (doc as any).resident_address || '';
         const fullAddress = rawAddr
           ? rawAddr
-          : `${purok.startsWith('Purok') ? purok : `Purok ${purok}`}, Barangay Pianing, Butuan City`;
+          : `${purok.startsWith('Purok') ? purok : `Purok ${purok}`}, Barangay ${docBrgy}, Butuan City`;
         return (<>
           <OfficialHeader office="OFFICE OF THE PUNONG BARANGAY" />
           <h2 className={title}>Good Moral Clearance</h2>
@@ -781,7 +785,7 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
           <p className={p}>This further certifies that <strong>{salutation} {fullNameCaps}</strong> as per records on file of this office, <strong>{pronounSlashed}</strong> has not been involved in any unlawful act or activities within the barangay and <strong>NOT in the BADAC list</strong>.</p>
           <p className={p}>This certification is being issued upon the request of the above-named person as a requirement for {possessiveSlashed} <strong>{purpose}</strong>.</p>
           <p className={p}>Issued this <strong>{day}</strong> day of{' '}
-            <strong>{month}</strong>, <strong>{year}</strong> at the Office of the Punong Barangay of Pianing, Butuan City, Philippines.</p>
+            <strong>{month}</strong>, <strong>{year}</strong> at the Office of the Punong Barangay of {docBrgy}, Butuan City, Philippines.</p>
           <CertifiedBySig />
         </>);
       }
@@ -791,11 +795,11 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
           <OfficialHeader />
           <h2 className={title}>CERTIFICATE OF RESIDENCY</h2>
           <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
-          <p className={p}>This is to certify that <strong>{name}</strong>, Filipino, is a bonafide <strong>resident</strong> of Purok {purok}, Barangay Pianing, Butuan City together with {pronouns.hisHer} entire family circle.</p>
-          <p className={p}>This certifies further that the above-mentioned resident has been permanently living and residing at Purok {purok}, Barangay Pianing, Butuan City <strong>{cleanResidencyYears(f)}</strong>.</p>
+          <p className={p}>This is to certify that <strong>{name}</strong>, Filipino, is a bonafide <strong>resident</strong> of Purok {purok}, Barangay ${docBrgy}, Butuan City together with {pronouns.hisHer} entire family circle.</p>
+          <p className={p}>This certifies further that the above-mentioned resident has been permanently living and residing at Purok {purok}, Barangay ${docBrgy}, Butuan City <strong>{cleanResidencyYears(f)}</strong>.</p>
           <p className={p}>This certification is being issued upon the request of the concerned party for whatever legal purposes it may serve best.</p>
           <p className={p}>This document is given this <strong>{day}</strong> day of{' '}
-            <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at the Office of the Punong Barangay of Pianing, Butuan City, Philippines.</p>
+            <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at the Office of the Punong Barangay of {docBrgy}, Butuan City, Philippines.</p>
           <CertifiedBySig />
         </>);
 
@@ -804,11 +808,11 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
           <OfficialHeader />
           <h2 className={title}>CERTIFICATE OF INDIGENCY</h2>
           <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
-          <p className={p}>This is to certify that <strong>{name}</strong>, <strong>{cleanAge(doc, f)}</strong>, <strong>{pronouns.genderLabel}</strong> and a resident of P {purok}, Barangay Pianing, Butuan City.</p>
+          <p className={p}>This is to certify that <strong>{name}</strong>, <strong>{cleanAge(doc, f)}</strong>, <strong>{pronouns.genderLabel}</strong> and a resident of P {purok}, Barangay {docBrgy}, Butuan City.</p>
           <p className={p}>This certifies further that the above-mentioned-name and {pronouns.hisHer} family is one of our identified <strong>INDIGENT</strong> constituents in the community and in need of <strong>{purpose}</strong> assistance.</p>
           <p className={p}>This certification is being issued upon the request of the above mentioned-name for whatever legal purposes it may serve best.</p>
           <p className={p}>Issued this <strong>{day}</strong> day of{' '}
-            <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at Barangay Pianing, Butuan City, Philippines.</p>
+            <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at Barangay {docBrgy}, Butuan City, Philippines.</p>
           <CertifiedBySig />
         </>);
 
@@ -823,7 +827,7 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
             {' '}(as document presented), came to this office to obtain a permit to {permit.activityDesc}{permit.activityDates ? ` on ${permit.activityDates}` : ''}.</p>
           <p className={p}>This certification is issued upon the request of the party for whatever legal purposes it may serve best.</p>
           <p className={p}>Issued this <strong>{day}</strong> day of{' '}
-            <strong><u>{month} {year}</u></strong> at Barangay Pianing, Butuan City, Philippines.</p>
+            <strong><u>{month} {year}</u></strong> at Barangay {docBrgy}, Butuan City, Philippines.</p>
           <CertifiedBySig />
         </>);
       }
@@ -835,10 +839,10 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
           <OfficialHeader office="OFFICE OF THE SANGGUNIANG BARANGAY" />
           <h2 className={title}>BARANGAY BUSINESS CLEARANCE</h2>
           <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
-          <p className={p}>This is to certify that <strong>{name}</strong>, of legal age, bona-fide resident of {purok.includes('Purok') ? purok : `Purok ${purok}`}, Barangay Pianing, Butuan City, Philippines, has a <strong>{bizName}</strong> store business located in its/own residence Based on the verification gathered.</p>
+          <p className={p}>This is to certify that <strong>{name}</strong>, of legal age, bona-fide resident of {purok.includes('Purok') ? purok : `Purok ${purok}`}, Barangay {docBrgy}, Butuan City, Philippines, has a <strong>{bizName}</strong> store business located in its/own residence Based on the verification gathered.</p>
           <p className={p}>This certification is issued upon the request of the above-named person for <strong>{purpose}</strong> and for whatever legal purpose it may serve.</p>
           <p className={p}>Issued this <strong>{day}</strong> day of{' '}
-            <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at Barangay <strong>Pianing</strong>, Butuan City, Philippines.</p>
+            <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at Barangay <strong>{docBrgy}</strong>, Butuan City, Philippines.</p>
           <CertifiedBySig />
         </>);
 
@@ -847,11 +851,11 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
           <OfficialHeader office="OFFICE OF THE PUNONG BARANGAY" />
           <h2 className={title}>CERTIFICATION</h2>
           <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
-          <p className={p}>This is to certify that <strong>{name}</strong>, of legal age, {civilStatus} is a <strong>bona fide resident</strong> of Purok {purok}, Barangay Pianing, Butuan City together with {pronouns.hisHer} entire family.</p>
+          <p className={p}>This is to certify that <strong>{name}</strong>, of legal age, {civilStatus} is a <strong>bona fide resident</strong> of Purok {purok}, Barangay {docBrgy}, Butuan City together with {pronouns.hisHer} entire family.</p>
           <p className={p}>This certifies further that the above-mentioned person has worked as <strong>{emp.position}</strong> of <strong>{emp.employer}</strong> from <strong>{emp.startDate}</strong> to <strong>{emp.endDate}</strong>.</p>
           <p className={p}>This certification is being issued upon the request of the party for whatever legal purposes it may serve best.</p>
           <p className={p}>Issued this <strong>{day}</strong> day of{' '}
-            <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at the Office of the Punong Barangay of Pianing, this City, Philippines.</p>
+            <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at the Office of the Punong Barangay of {docBrgy}, this City, Philippines.</p>
           <CertifiedBySig />
         </>);
 
@@ -865,17 +869,17 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
           <OfficialHeader office="OFFICE OF THE PUNONG BARANGAY" />
           <h2 className={title}>CERTIFICATE OF LAND OCCUPANCY</h2>
           <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
-          <p className={p}>This is to certify that <strong className="underline uppercase">{name}</strong>, Filipino, {civilStatus.toLowerCase()}, a bona fide resident of {formattedPurok} Pianing, Butuan City is the <strong className="underline">ACTUAL OCCUPANT</strong> on a parcel of land with an area of <strong className="underline">{land.landArea}</strong> square meters more or less, identified as Lot # {land.lotNumber}, {land.surveyInfo} <span className="underline">since</span> the year {land.yearStarted} until this document has been made.</p>
+          <p className={p}>This is to certify that <strong className="underline uppercase">{name}</strong>, Filipino, {civilStatus.toLowerCase()}, a bona fide resident of {formattedPurok} {docBrgy}, Butuan City is the <strong className="underline">ACTUAL OCCUPANT</strong> on a parcel of land with an area of <strong className="underline">{land.landArea}</strong> square meters more or less, identified as Lot # {land.lotNumber}, {land.surveyInfo} <span className="underline">since</span> the year {land.yearStarted} until this document has been made.</p>
           <p className={p}>This certification is being issued upon the requesting party for whatever legal purposes it may serve best.</p>
           <p className={p}>Given this <strong>{day}</strong> day of{' '}
-            <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at the Office of the Punong Barangay of Pianing, Butuan City, Philippines.</p>
+            <strong>{month}</strong>&nbsp;&nbsp;<strong>{year}</strong> at the Office of the Punong Barangay of {docBrgy}, Butuan City, Philippines.</p>
           <CertifiedBySig />
         </>);
       }
 
       case 'Barangay ID': {
         const idNum = doc.request_code || `BID-${doc.id || 'N/A'}`;
-        const rawAddr = (doc as any).resident_address || `Purok ${purok}, Barangay Pianing, Butuan City`;
+        const rawAddr = (doc as any).resident_address || `Purok ${purok}, Barangay ${docBrgy}, Butuan City`;
         const dob = (doc as any).resident_birth_date || (doc as any).date_of_birth || f['Date of Birth'] || '';
         const dobFormatted = dob ? (() => { try { return new Date(dob).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }); } catch { return dob; } })() : '';
         const idGender = (f['Gender'] || (doc as any).resident_gender || 'Male');
@@ -890,7 +894,7 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
                   <img src={BUTUAN_LOGO_BASE64} alt="" className="w-[35px] h-[35px]" />
                   <div className="flex-1 px-2">
                     <p style={{ fontSize: '6pt' }}>Republic of the Philippines</p>
-                    <p style={{ fontSize: '7pt', fontWeight: 'bold' }}>BARANGAY PIANING</p>
+                    <p style={{ fontSize: '7pt', fontWeight: 'bold' }}>BARANGAY {docBrgy.toUpperCase()}</p>
                     <p style={{ fontSize: '6pt' }}>Butuan City</p>
                   </div>
                   <img src={PIANING_LOGO_BASE64} alt="" className="w-[35px] h-[35px]" />
@@ -950,11 +954,11 @@ function CertificatePreview({ doc }: { doc: DocumentRequest }) {
           <p className="text-[12pt] font-normal mb-3 font-sans">TO WHOM IT MAY CONCERN:</p>
           <p className={p}>This is to certify that <strong>{name}</strong>, of legal age,
             {' '}{civilStatus}, Filipino citizen, and a bonafide resident of Purok {purok},
-            Pianing, Butuan City, Agusan Del Norte. This certification is issued for the purpose
+            {docBrgy}, Butuan City, Agusan Del Norte. This certification is issued for the purpose
             of <strong>{purpose}</strong> and for whatever legal purposes it may serve.</p>
           <p className={p}>This document is issued on the <strong>{day}</strong> day of{' '}
             <strong>{month}</strong>, <strong>{year}</strong> at the Office of the Punong Barangay
-            of Pianing, Butuan City, Agusan Del Norte, Philippines.</p>
+            of {docBrgy}, Butuan City, Agusan Del Norte, Philippines.</p>
           <AttestedApprovedSig />
         </>);
     }
@@ -1093,7 +1097,7 @@ export default function DocumentPrintModal({ isOpen, onClose, document: docItem,
                   Official Barangay Document Preview &amp; Print
                 </h2>
                 <p className="text-[11px] text-slate-500">
-                  Office of the Punong Barangay — Pianing, Butuan City &bull; {docItem.document_type}
+                  Office of the Punong Barangay — {(docItem as any).barangay || 'Local Barangay'}, Butuan City &bull; {docItem.document_type}
                 </p>
               </div>
             </div>

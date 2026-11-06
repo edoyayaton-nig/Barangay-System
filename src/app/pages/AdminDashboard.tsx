@@ -691,8 +691,8 @@ export default function AdminDashboard() {
       const res = await sendEmailNotification({
         to_name: 'Resident Constituent',
         to_email: emailJsTestTarget.trim(),
-        subject: '🧪 [Test] Barangay Pianing Smart System EmailJS Test',
-        message: 'Mabuhay! This is an automated test message from the Barangay Pianing Smart Governance System powered by EmailJS (Service ID: service_6nk2ylj). If you received this email, automated resident notifications for approvals, clearance pick-up, and correction notices are active and working!',
+        subject: `🧪 [Test] Barangay ${userBarangay || 'Smart System'} EmailJS Test`,
+        message: 'Mabuhay! This is an automated test message from the Smart Barangay Governance System powered by EmailJS (Service ID: service_6nk2ylj). If you received this email, automated resident notifications for approvals, clearance pick-up, and correction notices are active and working!',
         barangay: user?.barangay || 'Pianing',
         status: 'Operational'
       });
@@ -941,7 +941,7 @@ export default function AdminDashboard() {
         service_type: newScheduleServiceType,
         day_of_week: newScheduleDay,
         time_slot: newScheduleTime,
-        location: newScheduleLocation || 'Barangay Pianing Health Center',
+        location: newScheduleLocation || `Barangay ${userBarangay || 'Health Center'}`,
         slots_available: Number(newScheduleSlots) || 20,
         bhw_in_charge: newScheduleBhw || user?.name || 'Assigned Staff',
         barangay: userBarangay || 'Pianing',
@@ -6212,7 +6212,7 @@ export default function AdminDashboard() {
                                 type="email"
                                 value={newUserEmail}
                                 onChange={e => setNewUserEmail(e.target.value)}
-                                placeholder="e.g. maria.santos@pianing.gov.ph"
+                                placeholder="e.g. maria.santos@barangay.gov.ph"
                                 autoComplete="off"
                                 required
                                 className="h-9 text-xs mt-1"
@@ -6726,7 +6726,7 @@ export default function AdminDashboard() {
                               list="edit-user-barangay-datalist"
                               value={editUserBarangay}
                               onChange={e => setEditUserBarangay(e.target.value)}
-                              placeholder="Type Barangay (e.g. Pianing)"
+                              placeholder="Type Barangay (e.g. Libertad)"
                               className="h-9 text-xs bg-white"
                             />
                             <datalist id="edit-user-barangay-datalist">
@@ -6739,7 +6739,7 @@ export default function AdminDashboard() {
                           <Input
                             value={editUserBarangay || user?.barangay || 'Pianing'}
                             onChange={e => setEditUserBarangay(e.target.value)}
-                            placeholder="e.g. Pianing"
+                            placeholder="e.g. Libertad"
                             className="h-9 text-xs bg-white"
                           />
                         )}

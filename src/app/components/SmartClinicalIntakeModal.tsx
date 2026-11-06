@@ -719,7 +719,7 @@ export default function SmartClinicalIntakeModal({
                         <div>
                           <span className="font-bold text-slate-800 group-hover:text-teal-700 block">{p.name}</span>
                           <span className="text-[10px] text-slate-500 block">
-                            {p.gender} · {p.purok || 'Pianing'} · {p.phone || 'No phone'} · Age: {p.age || '—'}
+                            {p.gender} · {p.purok || barangay} · {p.phone || 'No phone'} · Age: {p.age || '—'}
                           </span>
                         </div>
                         <Badge variant="outline" className="text-[9px] bg-white border-teal-300 text-teal-700 shrink-0">

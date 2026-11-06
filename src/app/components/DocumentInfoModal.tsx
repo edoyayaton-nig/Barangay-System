@@ -197,7 +197,7 @@ export default function DocumentInfoModal({
     id: doc.resident_id || (doc as any).matched_resident_id || liveResidentProfile?.id || 1,
     name: doc.resident_name || (liveResidentProfile ? `${liveResidentProfile.first_name} ${liveResidentProfile.last_name}` : 'Resident'),
     purok: doc.resident_purok || liveResidentProfile?.purok || '1',
-    address: doc.resident_address || liveResidentProfile?.address || 'Barangay Pianing, Butuan City, 8600',
+    address: doc.resident_address || liveResidentProfile?.address || `Barangay ${doc.barangay || 'Community'}, Butuan City, 8600`,
     civil_status: doc.resident_civil_status || liveResidentProfile?.civil_status || 'Single',
     gender: doc.resident_gender || liveResidentProfile?.gender || 'Male',
     age: doc.resident_age || liveResidentProfile?.age || '25',

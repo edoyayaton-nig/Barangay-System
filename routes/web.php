@@ -92,7 +92,7 @@ Route::get('/{any?}', function () {
     }
 
     return response()->json([
-        'system' => 'Barangay Pianing Smart Governance & Public Health System',
+        'system' => 'Smart Barangay Governance & Public Health System',
         'backend' => 'Laravel Framework 12',
         'status' => 'Online',
         'message' => 'React frontend bundle not found. Please run npm run build to generate dist/index.html',
