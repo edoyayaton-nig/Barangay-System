@@ -1136,7 +1136,6 @@ export default function LoginPage() {
                       <option value="Unemployed">Unemployed</option>
                       <option value="Student">Student</option>
                       <option value="Retired">Retired</option>
-                      <option value="Housewife/Househusband">Housewife / Househusband</option>
                     </select>
                   </div>
                 </div>
