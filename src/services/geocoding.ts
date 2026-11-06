@@ -202,3 +202,4 @@ export async function geocodeCurrentPosition(): Promise<GeocodeResult> {
     location: { lat: latitude, lng: longitude }
   };
 }
+
