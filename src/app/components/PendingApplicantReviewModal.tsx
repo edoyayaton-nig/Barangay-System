@@ -11,11 +11,9 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import {
   UserCheck,
-  User,
   Calendar,
   Phone,
   Mail,
-  MapPin,
   FileText,
   AlertTriangle,
   CheckCircle2,
@@ -28,11 +26,7 @@ import {
   Maximize2,
   Clock,
   ShieldAlert,
-  Info,
-  Building2,
   Sparkles,
-  Search,
-  Check,
   AlertCircle
 } from 'lucide-react';
 import { PendingResident, Resident, apiService, CensusSimilarityResult, CensusSimilarityCandidate } from '../../services/api';

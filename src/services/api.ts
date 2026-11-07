@@ -241,6 +241,7 @@ export interface PendingResident {
   civil_status?: string;
   years_of_residency?: string;
   submitted_id?: string | null;
+  id_type?: string;
   submitted_at?: string;
   verification_status: 'Pending_Review' | 'Verified' | 'Rejected';
   rejection_reason?: string;
@@ -427,7 +428,10 @@ export interface SmsNotification {
   recipient_email?: string;
   send_sms?: boolean;
   type: string;
+  title?: string;
   message: string;
+  ref_code?: string;
+  barangay?: string;
   status: 'Sent' | 'Failed' | 'Pending';
   sent_at?: string;
   is_read?: boolean | number;
