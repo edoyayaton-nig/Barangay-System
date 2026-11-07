@@ -523,7 +523,7 @@ export default function PendingApplicantReviewModal({
                     <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800/60">
                       <span className="text-[10.5px] text-slate-400 font-medium block">Household Number</span>
                       <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
-                        {matchedResident.household_number || 'HH-PIANING-001'}
+                        {matchedResident.household_number || `P${(matchedResident.purok || '1').toString().replace(/purok\s*/i, '').trim() || '1'}-H${matchedResident.id}`}
                       </p>
                     </div>
 

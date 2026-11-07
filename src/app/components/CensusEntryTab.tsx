@@ -150,9 +150,9 @@ export default function CensusEntryTab({
     if (showLoading) setLoading(true);
     try {
       const [resData, hhData, statsData] = await Promise.all([
-        apiService.getResidents(barangay, selectedPurok).catch(() => []),
-        apiService.getHouseholds(barangay, selectedPurok).catch(() => []),
-        apiService.getCensusStats(barangay, selectedPurok).catch(() => null),
+        apiService.getResidents(barangay).catch(() => []),
+        apiService.getHouseholds(barangay).catch(() => []),
+        apiService.getCensusStats(barangay, 'all').catch(() => null),
       ]);
       setResidents(Array.isArray(resData) ? resData : []);
       setHouseholds(Array.isArray(hhData) ? hhData : []);
@@ -181,7 +181,7 @@ export default function CensusEntryTab({
       unsubscribeSync();
       clearInterval(interval);
     };
-  }, [barangay, selectedPurok]);
+  }, [barangay]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -334,12 +334,12 @@ export default function CensusEntryTab({
       // Purok filter
       if (selectedPurok !== 'all') {
         const cleanP = selectedPurok.replace(/purok\s*/i, '').trim();
-        if (
-          !hh.purok.includes(cleanP) &&
-          !hh.household_number.includes(`HH-P${cleanP}`)
-        ) {
-          return false;
-        }
+        const hhP = (hh.purok || '').toString().replace(/purok\s*/i, '').trim();
+        const hhNum = (hh.household_number || '').toUpperCase();
+        const match = hhP === cleanP ||
+                      hhNum.startsWith(`P${cleanP}-`) ||
+                      hhNum.includes(`HH-P${cleanP}`);
+        if (!match) return false;
       }
 
       // Search query

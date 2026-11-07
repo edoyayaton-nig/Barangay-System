@@ -524,36 +524,93 @@ class ResidentController extends Controller
             ], 422);
         }
 
-        if ($resident) {
-            $resident->update([
-                'verification_status' => 'Verified',
-                'rejection_reason' => null,
-            ]);
-        }
-
-        if ($user) {
-            $user->update([
-                'verification_status' => 'Verified',
-                'rejection_reason' => null,
-            ]);
-        }
-
         $linkCensusId = $request->input('link_census_id');
+        $cen = null;
         if (!empty($linkCensusId)) {
             $cen = Resident::find($linkCensusId);
-            if ($cen) {
-                $cen->update([
-                    'linked_user_id' => $user?->id ?: ($resident?->linked_user_id ?: $resident?->id),
-                    'verification_status' => 'Verified',
-                    'is_census_only' => 0,
-                ]);
-            }
         }
 
-        $email = $resident?->email ?: ($user?->email ?: '');
-        $phone = $resident?->phone ?: ($user?->phone ?: '');
-        $name = $resident ? "{$resident->first_name} {$resident->last_name}" : ($user?->name ?: 'Resident');
-        $barangay = $resident?->barangay ?: ($user?->barangay ?: 'Pianing');
+        // Auto-match census record if not explicitly provided but matching census inhabitant exists
+        if (!$cen && $resident && empty($resident->household_number)) {
+            $cen = Resident::where('id', '!=', $resident->id)
+                ->where(function ($q) use ($resident) {
+                    $q->where(function ($sub) use ($resident) {
+                        $sub->whereRaw('LOWER(first_name) = ?', [strtolower(trim($resident->first_name))])
+                            ->whereRaw('LOWER(last_name) = ?', [strtolower(trim($resident->last_name))]);
+                    });
+                })
+                ->whereNotNull('household_number')
+                ->first();
+        }
+
+        if ($cen) {
+            // THE OFFICIAL CENSUS RECORD IS ABSOLUTE AND FIXED.
+            // Under no circumstances do we overwrite official census fields:
+            // (first_name, middle_name, last_name, date_of_birth, gender, civil_status, address, purok, household_number, family_name, family_role)
+            // It only receives account verification linkage and contact credentials:
+            $cleanP = trim(str_ireplace('purok', '', (string)($cen->purok ?: '1'))) ?: '1';
+            $cenHh = $cen->household_number ?: "P{$cleanP}-H{$cen->id}";
+
+            $cen->update([
+                'household_number' => $cenHh,
+                'linked_user_id' => $user?->id ?: ($cen->linked_user_id ?: $resident?->linked_user_id),
+                'verification_status' => 'Verified',
+                'is_census_only' => 0,
+                'phone' => $resident?->phone ?: ($user?->phone ?: $cen->phone),
+                'email' => $resident?->email ?: ($user?->email ?: $cen->email),
+                'submitted_id' => $resident?->submitted_id ?: ($user?->submitted_id ?: $cen->submitted_id),
+                'id_type' => $resident?->id_type ?: ($user?->id_type ?: $cen->id_type),
+                'rejection_reason' => null,
+            ]);
+
+            // Synchronize the user account to match the authoritative, verified census identity
+            if ($user) {
+                $user->update([
+                    'verification_status' => 'Verified',
+                    'rejection_reason' => null,
+                    'name' => trim("{$cen->first_name} " . (!empty($cen->middle_name) ? "{$cen->middle_name} " : "") . "{$cen->last_name}"),
+                    'address' => $cen->address,
+                    'barangay' => $cen->barangay,
+                    'purok' => $cen->purok,
+                ]);
+            }
+
+            // If the applicant record was a separate temporary resident row created during registration:
+            if ($resident && $resident->id !== $cen->id) {
+                // Re-link any document requests or appointments from temporary row to official census row
+                DB::table('document_requests')->where('resident_id', $resident->id)->update(['resident_id' => $cen->id]);
+                DB::table('appointments')->where('resident_id', $resident->id)->update(['resident_id' => $cen->id]);
+                $resident->delete();
+            }
+
+            $activeResident = $cen;
+        } else {
+            // Standalone resident verified directly (e.g. added by admin or verified without prior census row)
+            $cleanP = trim(str_ireplace('purok', '', (string)($resident?->purok ?: '1'))) ?: '1';
+            $hhNum = $resident?->household_number ?: "P{$cleanP}-H{$resident->id}";
+
+            if ($resident) {
+                $resident->update([
+                    'household_number' => $hhNum,
+                    'verification_status' => 'Verified',
+                    'rejection_reason' => null,
+                ]);
+            }
+
+            if ($user) {
+                $user->update([
+                    'verification_status' => 'Verified',
+                    'rejection_reason' => null,
+                ]);
+            }
+
+            $activeResident = $resident ?: $user;
+        }
+
+        $email = $activeResident?->email ?: ($user?->email ?: '');
+        $phone = $activeResident?->phone ?: ($user?->phone ?: '');
+        $name = ($activeResident instanceof Resident) ? "{$activeResident->first_name} {$activeResident->last_name}" : ($user?->name ?: 'Resident');
+        $barangay = $activeResident?->barangay ?: ($user?->barangay ?: 'Pianing');
 
         ActivityLog::create([
             'user_name' => $request->input('approved_by', 'Barangay Administrator'),
@@ -585,7 +642,7 @@ class ResidentController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Resident applicant verified successfully.',
-            'resident' => $resident ?: $user,
+            'resident' => $activeResident ?: ($resident ?: $user),
         ]);
     }
 

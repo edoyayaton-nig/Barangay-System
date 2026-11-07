@@ -883,7 +883,7 @@ export default function AdminDashboard() {
       const activeBarangayParam = isSuperMegaAdmin ? undefined : (userBarangay || 'Pianing');
       const [docsData, resData, usersData, statsData, pendingData, catData, logsData, schedData, aptsData, popData, cStats, hhData] = await Promise.all([
         apiService.getDocuments(activeBarangayParam),
-        apiService.getResidents(activeBarangayParam, selectedCensusPurok),
+        apiService.getResidents(activeBarangayParam),
         apiService.getUsers(activeBarangayParam),
         apiService.getAdminStats(activeBarangayParam),
         apiService.getPendingResidents(activeBarangayParam),
@@ -892,8 +892,8 @@ export default function AdminDashboard() {
         apiService.getClinicSchedules(activeBarangayParam).catch(() => []),
         apiService.getAppointments({ barangay: activeBarangayParam }).catch(() => []),
         apiService.getPopulationStats(activeBarangayParam).catch(() => null),
-        apiService.getCensusStats(activeBarangayParam, selectedCensusPurok).catch(() => null),
-        apiService.getHouseholds(activeBarangayParam, selectedCensusPurok).catch(() => [])
+        apiService.getCensusStats(activeBarangayParam, 'all').catch(() => null),
+        apiService.getHouseholds(activeBarangayParam).catch(() => [])
       ]);
       setDocuments(docsData);
       setResidents(resData);
@@ -1204,17 +1204,14 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === 'records') {
       const activeBarangayParam = isSuperMegaAdmin ? undefined : (userBarangay || undefined);
-      apiService.getCensusStats(activeBarangayParam, selectedCensusPurok).then(data => {
+      apiService.getCensusStats(activeBarangayParam, 'all').then(data => {
         if (data) setCensusStats(data);
       }).catch(() => { });
-      apiService.getHouseholds(activeBarangayParam, selectedCensusPurok).then(data => {
+      apiService.getHouseholds(activeBarangayParam).then(data => {
         if (data) setCensusHouseholds(data);
       }).catch(() => { });
-      apiService.getResidents(activeBarangayParam, selectedCensusPurok).then(data => {
-        if (data) setResidents(data);
-      }).catch(() => { });
     }
-  }, [selectedCensusPurok, activeTab, isSuperMegaAdmin, userBarangay]);
+  }, [activeTab, isSuperMegaAdmin, userBarangay]);
 
   useEffect(() => {
     if (activeTab === 'logs' || (activeTab === 'overview' && isSuperAdmin)) {
@@ -2292,13 +2289,14 @@ export default function AdminDashboard() {
   const handleRefreshCensus = async () => {
     setIsRefreshingCensus(true);
     try {
-      const freshResidents = await apiService.getResidents(user?.barangay, selectedCensusPurok);
+      const activeBarangayParam = isSuperMegaAdmin ? undefined : (userBarangay || undefined);
+      const [freshResidents, cStats, cHouseholds] = await Promise.all([
+        apiService.getResidents(activeBarangayParam),
+        apiService.getCensusStats(activeBarangayParam, 'all').catch(() => null),
+        apiService.getHouseholds(activeBarangayParam).catch(() => [])
+      ]);
       setResidents(freshResidents);
       setStats(prev => ({ ...prev, totalResidents: freshResidents.length }));
-      const [cStats, cHouseholds] = await Promise.all([
-        apiService.getCensusStats(user?.barangay, selectedCensusPurok).catch(() => null),
-        apiService.getHouseholds(user?.barangay, selectedCensusPurok).catch(() => [])
-      ]);
       if (cStats) setCensusStats(cStats);
       if (cHouseholds) setCensusHouseholds(cHouseholds);
     } catch {
@@ -3030,12 +3028,14 @@ export default function AdminDashboard() {
     if (selectedCensusPurok !== 'all') {
       const cleanP = selectedCensusPurok.replace(/purok\s*/i, '').trim();
       const rPurok = (res.purok || '').toString().replace(/purok\s*/i, '').trim();
-      if (rPurok !== cleanP) {
-        const addrLower = (res.address || '').toLowerCase();
-        if (!addrLower.includes(`purok ${cleanP}`) && !addrLower.includes(`purok ${cleanP} `)) {
-          return false;
-        }
-      }
+      const hhNum = (res.household_number || '').toUpperCase();
+      const addrLower = (res.address || '').toLowerCase();
+      const match = rPurok === cleanP ||
+                    hhNum.startsWith(`P${cleanP}-`) ||
+                    hhNum.includes(`HH-P${cleanP}`) ||
+                    addrLower.includes(`purok ${cleanP}`) ||
+                    addrLower.includes(`purok ${cleanP} `);
+      if (!match) return false;
     }
     const q = residentSearch.toLowerCase().trim();
     if (!q) return true;
@@ -5631,9 +5631,12 @@ export default function AdminDashboard() {
                     .filter(hh => {
                       if (selectedCensusPurok !== 'all') {
                         const cleanP = selectedCensusPurok.replace(/purok\s*/i, '').trim();
-                        if (!hh.purok.includes(cleanP) && !hh.household_number.includes(`HH-P${cleanP}`)) {
-                          return false;
-                        }
+                        const hhP = (hh.purok || '').toString().replace(/purok\s*/i, '').trim();
+                        const hhNum = (hh.household_number || '').toUpperCase();
+                        const match = hhP === cleanP ||
+                                      hhNum.startsWith(`P${cleanP}-`) ||
+                                      hhNum.includes(`HH-P${cleanP}`);
+                        if (!match) return false;
                       }
                       const q = residentSearch.toLowerCase().trim();
                       if (!q) return true;

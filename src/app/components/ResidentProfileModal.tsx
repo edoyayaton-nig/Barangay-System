@@ -716,8 +716,8 @@ export default function ResidentProfileModal({
                     </div>
                     <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
                       <span className="text-[9.5px] text-slate-400 uppercase tracking-wider font-bold block">Household &amp; Family</span>
-                      <p className="font-mono text-slate-800 font-medium mt-0.5 truncate text-xs" title={`${resident?.household_number || `HH-P${resident?.purok || '1'}-${resident?.id || 1}`} (${resident?.family_name || resident?.last_name || 'Resident'})`}>
-                        {resident?.household_number || `HH-P${resident?.purok || '1'}-${resident?.id || 1}`} ({resident?.family_name || resident?.last_name || 'Resident'})
+                      <p className="font-mono text-slate-800 font-medium mt-0.5 truncate text-xs" title={`${resident?.household_number || `P${(resident?.purok || '1').toString().replace(/purok\s*/i, '').trim() || '1'}-H${resident?.id || 1}`} (${resident?.family_name || resident?.last_name || 'Resident'})`}>
+                        {resident?.household_number || `P${(resident?.purok || '1').toString().replace(/purok\s*/i, '').trim() || '1'}-H${resident?.id || 1}`} ({resident?.family_name || resident?.last_name || 'Resident'})
                       </p>
                     </div>
                     <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs min-w-0">
