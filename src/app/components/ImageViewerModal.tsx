@@ -199,7 +199,7 @@ export default function ImageViewerModal({
                   </div>
                   <div className="text-left">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Republic of the Philippines</span>
-                    <span className="text-xs font-bold text-slate-900">Barangay Pianing Civil Registry</span>
+                    <span className="text-xs font-bold text-slate-900">Barangay Civil Registry</span>
                   </div>
                 </div>
 
@@ -231,7 +231,7 @@ export default function ImageViewerModal({
                 </div>
 
                 <p className="text-[11px] text-slate-400 leading-normal">
-                  This identification document is certified under Republic Act No. 10173 and archived in the Barangay Pianing Administrative System.
+                  This identification document is certified under Republic Act No. 10173 and archived in the Barangay Administrative System.
                 </p>
               </div>
             )}
@@ -243,7 +243,7 @@ export default function ImageViewerModal({
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
             <span className="text-[11px] font-medium text-slate-600">
-              Barangay Pianing Official Document Registry • Protected under RA 10173
+              Barangay Official Document Registry • Protected under RA 10173
             </span>
           </div>
           <Button

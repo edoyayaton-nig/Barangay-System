@@ -282,7 +282,7 @@ export default function PendingApplicantReviewModal({
                 <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
                   <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">APP-#{applicant.id}</span>
                   <span>•</span>
-                  <span>Barangay {applicant.barangay || 'Pianing'}</span>
+                  <span>{applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay'}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <Clock size={11} />
@@ -360,7 +360,7 @@ export default function PendingApplicantReviewModal({
                     </span>
                   </div>
                   <p className="font-semibold text-slate-800 dark:text-slate-200 mt-1 leading-relaxed">
-                    {applicant.address || `Purok ${applicant.purok || '1'}, Barangay ${applicant.barangay || 'Pianing'}, Butuan City`}
+                    {applicant.address || `Purok ${applicant.purok || '1'}, ${applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay'}`}
                   </p>
                 </div>
 
@@ -516,7 +516,7 @@ export default function PendingApplicantReviewModal({
                         </span>
                       </div>
                       <p className="font-bold text-slate-900 dark:text-white mt-1 leading-relaxed">
-                        {matchedResident.address || `Purok ${matchedResident.purok || '1'}, Barangay ${matchedResident.barangay || 'Pianing'}, Butuan City`}
+                        {matchedResident.address || `Purok ${matchedResident.purok || '1'}, ${matchedResident.barangay ? `Barangay ${matchedResident.barangay}` : 'Barangay'}`}
                       </p>
                     </div>
 
@@ -597,7 +597,7 @@ export default function PendingApplicantReviewModal({
                       No Matching Record in Barangay Census
                     </h5>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-1 leading-relaxed">
-                      We searched <strong>Barangay {applicant.barangay || 'Pianing'}</strong> census records for &ldquo;{fullName}&rdquo;, but found no existing census entry.
+                      We searched <strong>{applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay'}</strong> census records for &ldquo;{fullName}&rdquo;, but found no existing census entry.
                     </p>
                   </div>
                   <div className="p-2.5 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl text-[10.5px] text-amber-900 dark:text-amber-200 border border-amber-200 text-left">
@@ -608,7 +608,7 @@ export default function PendingApplicantReviewModal({
             </div>
 
             <div className="pt-2 border-t border-blue-200/70 dark:border-blue-800/60 text-[10.5px] text-blue-700 dark:text-blue-400 flex items-center justify-between">
-              <span>Jurisdiction: Barangay {applicant.barangay || 'Pianing'}</span>
+              <span>Jurisdiction: {applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay'}</span>
               <span>Census Engine v2.4</span>
             </div>
           </div>
@@ -739,7 +739,7 @@ export default function PendingApplicantReviewModal({
           onClose={() => setIsViewerOpen(false)}
           imageUrl={applicant.submitted_id || null}
           title={`Government ID — ${fullName}`}
-          subtitle={`Applicant Verification • Barangay ${applicant.barangay || 'Pianing'}`}
+          subtitle={applicant.barangay ? `Applicant Verification • Barangay ${applicant.barangay}` : 'Applicant Verification'}
           fileName={`${fullName.replace(/\s+/g, '-').toLowerCase()}-submitted-id.png`}
         />
       </DialogContent>

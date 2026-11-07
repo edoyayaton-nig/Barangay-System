@@ -147,21 +147,6 @@ class DocumentController extends Controller
             }
             $extraFields = !empty($extraArr) ? json_encode($extraArr) : null;
 
-            // On-the-fly table schema heal if missing columns
-            try {
-                if (!\Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'purok_certificate_photo')) {
-                    DB::statement("ALTER TABLE document_requests ADD COLUMN purok_certificate_photo LONGTEXT NULL");
-                }
-                if (!\Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'extra_fields')) {
-                    DB::statement("ALTER TABLE document_requests ADD COLUMN extra_fields LONGTEXT NULL");
-                }
-                if (!\Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'barangay')) {
-                    DB::statement("ALTER TABLE document_requests ADD COLUMN barangay VARCHAR(100) DEFAULT 'Pianing'");
-                }
-            } catch (\Throwable $schemaErr) {
-                \Illuminate\Support\Facades\Log::warning("DocumentController table heal notice: " . $schemaErr->getMessage());
-            }
-
             $hasPurokCol = \Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'purok_certificate_photo');
             $hasExtraCol = \Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'extra_fields');
             $hasBrgyCol = \Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'barangay');

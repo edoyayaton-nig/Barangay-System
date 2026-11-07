@@ -20,6 +20,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         try {
+            static $dbMigrated = false;
+            if ($dbMigrated) {
+                return;
+            }
+            $dbMigrated = true;
+
             // Ensure uploads directories exist for photos and documents
             $pubUploads = public_path('uploads');
             if (!file_exists($pubUploads)) {
@@ -33,23 +39,22 @@ class AppServiceProvider extends ServiceProvider
             }
             @chmod($srvUploads, 0777);
 
+            // One-time table schema checks without redundant DDL table locks
             if (\Illuminate\Support\Facades\Schema::hasTable('document_requests')) {
                 if (!\Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'purok_certificate_photo')) {
-                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE document_requests ADD COLUMN purok_certificate_photo LONGTEXT NULL");
-                } else {
                     try {
-                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE document_requests MODIFY COLUMN purok_certificate_photo LONGTEXT NULL");
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE document_requests ADD COLUMN purok_certificate_photo LONGTEXT NULL");
                     } catch (\Throwable $e) {}
                 }
                 if (!\Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'extra_fields')) {
-                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE document_requests ADD COLUMN extra_fields LONGTEXT NULL");
-                } else {
                     try {
-                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE document_requests MODIFY COLUMN extra_fields LONGTEXT NULL");
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE document_requests ADD COLUMN extra_fields LONGTEXT NULL");
                     } catch (\Throwable $e) {}
                 }
                 if (!\Illuminate\Support\Facades\Schema::hasColumn('document_requests', 'barangay')) {
-                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE document_requests ADD COLUMN barangay VARCHAR(100) DEFAULT 'Pianing'");
+                    try {
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE document_requests ADD COLUMN barangay VARCHAR(100) DEFAULT 'Pianing'");
+                    } catch (\Throwable $e) {}
                 }
             }
 
@@ -65,15 +70,11 @@ class AppServiceProvider extends ServiceProvider
                 ];
                 foreach ($apptCols as $col => $def) {
                     if (!\Illuminate\Support\Facades\Schema::hasColumn('health_appointments', $col)) {
-                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE health_appointments ADD COLUMN `{$col}` {$def}");
+                        try {
+                            \Illuminate\Support\Facades\DB::statement("ALTER TABLE health_appointments ADD COLUMN `{$col}` {$def}");
+                        } catch (\Throwable $e) {}
                     }
                 }
-            }
-
-            if (\Illuminate\Support\Facades\Schema::hasTable('sms_notifications')) {
-                try {
-                    \Illuminate\Support\Facades\DB::statement("ALTER TABLE sms_notifications MODIFY COLUMN `type` VARCHAR(100) NOT NULL");
-                } catch (\Throwable $e) {}
             }
         } catch (\Throwable $e) {
             // Non-blocking in case DB is offline or during pre-migration artisan calls

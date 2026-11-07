@@ -352,7 +352,7 @@ export default function LoginPage() {
     }
     setResidentMode('new');
     toast.info('Barangay Hall Registration Required', {
-      description: `Please proceed to your Barangay Hall to register to Barangay ${existingBarangay || 'Pianing'}.`
+      description: `Please proceed to your Barangay Hall to register${existingBarangay ? ` to Barangay ${existingBarangay}` : ''}.`
     });
   };
 
@@ -1262,7 +1262,7 @@ export default function LoginPage() {
                       list="reg-barangays-list"
                       value={regBarangay}
                       onChange={(e) => setRegBarangay(e.target.value)}
-                      placeholder="e.g. Pianing or type barangay"
+                      placeholder="e.g. Type your barangay"
                       required
                       className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-[#D5E2E8] dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 dark:focus:ring-blue-900/40"
                     />
