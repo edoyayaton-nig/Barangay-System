@@ -243,7 +243,9 @@ class ResidentController extends Controller
     {
         $query = Resident::where(function ($q) {
             $q->where('verification_status', 'Pending_Review')
-              ->orWhere('verification_status', 'Pending');
+              ->orWhere('verification_status', 'Pending')
+              ->orWhere('verification_status', 'Correction_Required')
+              ->orWhere('verification_status', 'Rejected');
         });
 
         $barangay = $request->input('barangay');
@@ -713,6 +715,21 @@ class ResidentController extends Controller
                 $phone,
                 "Barangay {$barangay}: Hello {$name}, your resident application requires revision. Reason: {$reason}. Please log in to re-upload your ID."
             );
+        }
+
+        // Strictly record 1 In-App Notification to resident's notification center
+        if (!empty($email)) {
+            try {
+                \App\Models\UserNotification::create([
+                    'recipient_email' => $email,
+                    'type' => 'account',
+                    'title' => '⚠️ Notice: ID Verification / Correction Required',
+                    'message' => "Hello {$name}, your account application for Barangay {$barangay} requires revision. Reason: \"{$reason}\". Please log in to your portal to re-upload a clear copy of your valid Government ID.",
+                    'ref_code' => "APP-{$id}",
+                    'is_read' => 0,
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable $e) {}
         }
 
         return response()->json([

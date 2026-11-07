@@ -470,30 +470,34 @@ export default function NurseDashboard() {
   const selectedInventoryItem = useMemo(() => {
     if (!medName) return null;
     const lower = medName.toLowerCase().trim();
-    return inventory.find(i => i.item_name.toLowerCase() === lower) ||
-      inventory.find(i => i.item_name.toLowerCase().includes(lower) || lower.includes(i.item_name.toLowerCase())) ||
+    return inventory.find(i => (i?.item_name || '').toLowerCase() === lower) ||
+      inventory.find(i => {
+        const iName = (i?.item_name || '').toLowerCase();
+        return iName && (iName.includes(lower) || lower.includes(iName));
+      }) ||
       null;
   }, [medName, inventory]);
 
   // Available medicines for prescription search
   const availableMedicines = useMemo(() => {
     const meds = inventory.filter(i => {
-      const cat = (i.category || '').toLowerCase();
+      const cat = (i?.category || '').toLowerCase();
       if (cat.includes('vaccine')) return false;
-      return i.category === 'Essential Medicine' || i.category === 'Maternal Vitamin' || cat.includes('med') || cat.includes('vitamin');
+      return i?.category === 'Essential Medicine' || i?.category === 'Maternal Vitamin' || cat.includes('med') || cat.includes('vitamin');
     });
-    return meds.length > 0 ? meds : inventory.filter(i => !((i.category || '').toLowerCase().includes('vaccine')));
+    return meds.length > 0 ? meds : inventory.filter(i => !((i?.category || '').toLowerCase().includes('vaccine')));
   }, [inventory]);
 
   // Real-time filtered medicines matching user input
   const filteredMedicines = useMemo(() => {
     const q = medName.trim().toLowerCase();
     if (!q) return availableMedicines;
-    return availableMedicines.filter(m =>
-      m.item_name.toLowerCase().includes(q) ||
-      (m.category && m.category.toLowerCase().includes(q)) ||
-      (m.unit && m.unit.toLowerCase().includes(q))
-    );
+    return availableMedicines.filter(m => {
+      const mName = (m?.item_name || '').toLowerCase();
+      const mCat = (m?.category || '').toLowerCase();
+      const mUnit = (m?.unit || '').toLowerCase();
+      return mName.includes(q) || mCat.includes(q) || mUnit.includes(q);
+    });
   }, [availableMedicines, medName]);
 
   const handleSelectMedicine = (med: InventoryItem) => {
@@ -932,18 +936,19 @@ export default function NurseDashboard() {
 
   // Open 360 Patient Profile Modal with intelligent tab focus
   const openPatient360 = (name: string, phone: string, barangay?: string, preferredTab?: 'overview' | 'consultations' | 'maternal' | 'immunizations') => {
-    const patientCons = consultations.filter(c => c.patient_name.toLowerCase() === name.toLowerCase()).map(c => ({
+    const targetName = (name || '').toLowerCase().trim();
+    const patientCons = consultations.filter(c => (c.patient_name || '').toLowerCase().trim() === targetName).map(c => ({
       id: c.id, date: c.consultation_date, service_type: c.service_type, vitals: `BP: ${c.bp}, Temp: ${c.temp}`,
       complaint: c.chief_complaint, diagnosis: c.diagnosis, treatment: c.treatment, attending: c.attending_nurse
     }));
 
-    const patientPrenatal = prenatalRecords.filter(p => p.patient_name.toLowerCase() === name.toLowerCase()).map(p => ({
+    const patientPrenatal = prenatalRecords.filter(p => (p.patient_name || '').toLowerCase().trim() === targetName).map(p => ({
       id: p.id, date: p.visit_date || '', gravida: p.gravida, para: p.para, lmp: p.lmp, edd: p.edd, aog: p.aog_weeks,
       bp: p.bp, fhr: p.fetal_heart_rate, next_visit: p.next_visit_date, meds: p.prescribed_meds, attending: p.attending_nurse,
       visit_number: p.visit_number
     }));
 
-    const patientImmun = immunRecords.filter(i => i.child_name.toLowerCase() === name.toLowerCase()).map(i => ({
+    const patientImmun = immunRecords.filter(i => (i.child_name || '').toLowerCase().trim() === targetName).map(i => ({
       id: i.id, vaccine: i.vaccine_given, dose: i.dose_number, date_given: i.date_given, next_due: i.next_due_date,
       batch_number: i.batch_number, attending: i.attending_nurse, guardian: i.guardian, age_months: i.age_months
     }));
@@ -1146,7 +1151,11 @@ export default function NurseDashboard() {
       // Locally decrement stock for each prescribed item with EXACT quantity
       if (cPrescriptions.length > 0) {
         setInventory(prev => prev.map(invItem => {
-          const match = cPrescriptions.find(p => p.name.toLowerCase().includes(invItem.item_name.toLowerCase()) || invItem.item_name.toLowerCase().includes(p.name.toLowerCase()));
+          const invLower = (invItem?.item_name || '').toLowerCase();
+          const match = cPrescriptions.find(p => {
+            const pLower = (p?.name || '').toLowerCase();
+            return pLower && invLower && (pLower.includes(invLower) || invLower.includes(pLower));
+          });
           if (match) {
             const qtyToDeduct = match.quantity || 1;
             const newStock = Math.max(0, invItem.stock - qtyToDeduct);
@@ -1681,10 +1690,11 @@ export default function NurseDashboard() {
     // Auto-fill Age & Gender from patient / resident registry
     try {
       const res = await apiService.searchPatients(apt.resident_name, nurseBarangay);
-      const match = res?.patients?.find((p: any) => 
-        p.name.toLowerCase().includes(apt.resident_name.toLowerCase()) || 
-        apt.resident_name.toLowerCase().includes(p.name.toLowerCase())
-      ) || res?.patients?.[0];
+      const aptName = (apt.resident_name || '').toLowerCase().trim();
+      const match = res?.patients?.find((p: any) => {
+        const pName = (p?.name || '').toLowerCase().trim();
+        return (pName && aptName && (pName.includes(aptName) || aptName.includes(pName)));
+      }) || res?.patients?.[0];
 
       if (match) {
         if (match.phone && !apt.resident_phone) setCPhone(match.phone);
@@ -1946,45 +1956,57 @@ export default function NurseDashboard() {
 
   // Filtered lists
   const filteredConsultations = useMemo(() => {
+    const sLower = (search || '').toLowerCase().trim();
     return consultations.filter(c => {
-      const matchSearch = !search || c.patient_name.toLowerCase().includes(search.toLowerCase()) || c.contact_number.includes(search);
-      const matchProg = consFilterProgram === 'All' || (c.program_type || c.service_type || '').toLowerCase().includes(consFilterProgram.toLowerCase());
+      const pName = (c?.patient_name || '').toLowerCase();
+      const cNum = String(c?.contact_number || '');
+      const matchSearch = !sLower || pName.includes(sLower) || cNum.includes(sLower);
+      const prog = (c?.program_type || c?.service_type || '').toLowerCase();
+      const matchProg = consFilterProgram === 'All' || prog.includes(consFilterProgram.toLowerCase());
       return matchSearch && matchProg;
     });
   }, [consultations, search, consFilterProgram]);
 
   const filteredMaternal = useMemo(() => {
+    const sLower = (search || '').toLowerCase().trim();
     return prenatalRecords.filter(r => {
-      const matchSearch = !search || r.patient_name.toLowerCase().includes(search.toLowerCase()) || r.contact_number.includes(search);
+      const pName = (r?.patient_name || '').toLowerCase();
+      const cNum = String(r?.contact_number || '');
+      const matchSearch = !sLower || pName.includes(sLower) || cNum.includes(sLower);
+      if (!matchSearch) return false;
       if (maternalFilterVisit === '1st') {
-        return (r.visit_number === 1 || !r.visit_number) && !r.next_visit_date;
+        return (r?.visit_number === 1 || !r?.visit_number) && !r?.next_visit_date;
       }
       if (maternalFilterVisit === '2nd') {
-        const isVisit2 = r.visit_number === 2;
-        const isVisit1ScheduledFor2nd = (r.visit_number === 1 || !r.visit_number) && Boolean(r.next_visit_date);
-        const has2ndExplicit = (r.next_visit_note || '').toLowerCase().includes('2nd') ||
-          ((r as any).remarks || '').toLowerCase().includes('2nd');
+        const isVisit2 = r?.visit_number === 2;
+        const isVisit1ScheduledFor2nd = (r?.visit_number === 1 || !r?.visit_number) && Boolean(r?.next_visit_date);
+        const has2ndExplicit = (r?.next_visit_note || '').toLowerCase().includes('2nd') ||
+          ((r as any)?.remarks || '').toLowerCase().includes('2nd');
         return isVisit2 || isVisit1ScheduledFor2nd || has2ndExplicit;
       }
-      if (maternalFilterVisit === '3rd') return r.visit_number >= 3 || (r.next_visit_note || '').toLowerCase().includes('3rd');
+      if (maternalFilterVisit === '3rd') return (r?.visit_number ?? 0) >= 3 || (r?.next_visit_note || '').toLowerCase().includes('3rd');
       if (maternalFilterVisit === 'due') {
-        const diff = getDaysDiffFromToday(r.next_visit_date);
-        return r.next_visit_date && diff <= 7;
+        const diff = getDaysDiffFromToday(r?.next_visit_date);
+        return r?.next_visit_date && diff <= 7;
       }
       return true;
     });
   }, [prenatalRecords, search, maternalFilterVisit]);
 
   const filteredImmun = useMemo(() => {
+    const sLower = (search || '').toLowerCase().trim();
     return immunRecords.filter(r => {
-      const matchSearch = !search || r.child_name.toLowerCase().includes(search.toLowerCase()) || r.contact_number.includes(search);
+      const cName = (r?.child_name || '').toLowerCase();
+      const cNum = String(r?.contact_number || '');
+      const matchSearch = !sLower || cName.includes(sLower) || cNum.includes(sLower);
       if (!matchSearch) return false;
-      if (immunFilterDose === 'dose1') return r.dose_number.includes('1');
-      if (immunFilterDose === 'dose2') return r.dose_number.includes('2');
-      if (immunFilterDose === 'dose3') return r.dose_number.includes('3') || r.dose_number.toLowerCase().includes('booster');
+      const dose = String(r?.dose_number || '');
+      if (immunFilterDose === 'dose1') return dose.includes('1');
+      if (immunFilterDose === 'dose2') return dose.includes('2');
+      if (immunFilterDose === 'dose3') return dose.includes('3') || dose.toLowerCase().includes('booster');
       if (immunFilterDose === 'due') {
-        const diff = getDaysDiffFromToday(r.next_due_date);
-        return r.next_due_date && diff <= 7;
+        const diff = getDaysDiffFromToday(r?.next_due_date);
+        return r?.next_due_date && diff <= 7;
       }
       return true;
     });
@@ -5696,7 +5718,7 @@ export default function NurseDashboard() {
           )}
         </DialogContent>
       </Dialog>
-
+      
       {/* Intra-System Messenger (floating Staff Chat) */}
       <SystemMessenger
         currentUserRole="nurse"

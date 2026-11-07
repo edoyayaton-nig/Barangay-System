@@ -80,6 +80,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import { apiService, DocumentRequest, Resident, SystemUser, UserPermissions, hasUserPermission, PendingResident, ActivityLog, ClinicSchedule, HealthAppointment, PopulationStats, BarangayOverviewItem, HouseholdGroup, CensusAnalytics } from '../../services/api';
+import { notificationStore } from '../../services/notificationStore';
 import { ID_TYPES } from '../../utils/idTypes';
 import { validatePasswordComplexity } from '../../utils/passwordValidation';
 import { compressImage } from '../../utils/imageCompressor';
@@ -1670,19 +1671,18 @@ export default function AdminDashboard() {
       // 1. Mark resident as rejected with specific cause saved in database
       await apiService.rejectResident(applicant.id, cause);
 
-      // 2. Dispatch automated in-app notification to resident's portal
-      if (applicant.email) {
-        dispatchResidentNotification({
-          residentEmail: applicant.email,
-          residentName: applicantName,
+      // 2. Local in-app notification sync (Backend already dispatched exactly 1 SMS, 1 Email, and 1 In-App DB record)
+      if (applicant && applicant.email) {
+        const applicantName = applicant.name || `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() || 'Resident';
+        notificationStore.addNotification(applicant.email.toLowerCase().trim(), {
+          id: `acct-correction-${applicant.id}`,
           type: 'account',
           title: '⚠️ Notice: ID Verification / Correction Required',
           message: `Hello ${applicantName}, your account application for Barangay ${applicant.barangay || user?.barangay || 'Pianing'} requires revision. Discrepancy details: "${cause}". Please log in to your portal to re-upload a clear photo of your valid Government ID.`,
-          statusBadge: 'Action Needed',
-          badgeColor: 'red',
-          barangay: applicant.barangay || user?.barangay || 'Pianing',
-          externalDispatchedByBackend: true
-        }).catch(() => { });
+          status_badge: 'Action Needed',
+          badge_color: 'red',
+          action_type: 'resubmit_id'
+        });
       }
 
       toast.warning(`Application rejected: ${applicantName} notified`, {
@@ -1717,20 +1717,18 @@ export default function AdminDashboard() {
         description: `Reason: ${reason}`
       });
 
-      // Automated In-App Notification to Resident's Portal
+      // Local in-app notification sync (Backend already dispatched exactly 1 SMS, 1 Email, and 1 In-App DB record)
       if (applicant && applicant.email) {
         const applicantName = applicant.name || `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() || 'Resident';
-        dispatchResidentNotification({
-          residentEmail: applicant.email,
-          residentName: applicantName,
+        notificationStore.addNotification(applicant.email.toLowerCase().trim(), {
+          id: `acct-correction-${id}`,
           type: 'account',
           title: '⚠️ Notice: ID Verification / Correction Required',
           message: `Hello ${applicantName}, your account application for Barangay ${applicant.barangay || user?.barangay || 'Pianing'} requires revision. Reason: "${reason}". Please log in to your portal to re-upload a clear copy of your valid Government ID.`,
-          statusBadge: 'Action Needed',
-          badgeColor: 'red',
-          barangay: applicant.barangay || user?.barangay || 'Pianing',
-          externalDispatchedByBackend: true
-        }).catch(() => { });
+          status_badge: 'Action Needed',
+          badge_color: 'red',
+          action_type: 'resubmit_id'
+        });
       }
 
       loadData();

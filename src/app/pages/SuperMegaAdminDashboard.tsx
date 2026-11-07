@@ -685,25 +685,29 @@ export default function SuperMegaAdminDashboard() {
   /* ── Role badge ─────────────────────────────────────────── */
   function roleBadge(role: string) {
     const map: Record<string, string> = {
-      super_mega_admin: 'bg-violet-950 text-violet-300 border border-violet-700',
-      superadmin: 'bg-blue-950 text-blue-300 border border-blue-700',
-      admin: 'bg-indigo-950 text-indigo-300 border border-indigo-700',
-      staff: 'bg-slate-800 text-slate-300 border border-slate-600',
-      bhw: 'bg-orange-950 text-orange-300 border border-orange-700',
-      nurse: 'bg-teal-950 text-teal-300 border border-teal-700',
-      resident: 'bg-emerald-950 text-emerald-300 border border-emerald-700',
+      super_mega_admin: 'bg-violet-100 dark:bg-violet-950 text-violet-800 dark:text-violet-300 border border-violet-300 dark:border-violet-700',
+      superadmin: 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700',
+      admin: 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700',
+      staff: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-600',
+      bhw: 'bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-300 border border-orange-300 dark:border-orange-700',
+      nurse: 'bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-700',
+      resident: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700',
     };
-    return map[role] || 'bg-slate-800 text-slate-300 border border-slate-600';
+    return map[role] || 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-600';
   }
 
   function logTypeBadge(type?: string) {
     const map: Record<string, string> = {
-      Auth: 'bg-blue-950 text-blue-300', Document: 'bg-indigo-950 text-indigo-300',
-      Resident: 'bg-emerald-950 text-emerald-300', Health: 'bg-teal-950 text-teal-300',
-      System: 'bg-violet-950 text-violet-300', Security: 'bg-rose-950 text-rose-300',
-      User: 'bg-orange-950 text-orange-300', Category: 'bg-amber-950 text-amber-300',
+      Auth: 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60',
+      Document: 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60',
+      Resident: 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60',
+      Health: 'bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800/60',
+      System: 'bg-violet-100 dark:bg-violet-950 text-violet-800 dark:text-violet-300 border border-violet-200 dark:border-violet-800/60',
+      Security: 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60',
+      User: 'bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-800/60',
+      Category: 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60',
     };
-    return map[type || ''] || 'bg-slate-800 text-slate-300';
+    return map[type || ''] || 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
   }
 
   /* ── Citizen Identity Approvals & Governance ──────────────── */
@@ -1008,17 +1012,17 @@ export default function SuperMegaAdminDashboard() {
                 className="flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm"
               >
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/60 text-emerald-400 text-xs font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-400 text-xs font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     City Node Mesh: 100% Operational
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                    <Database size={13} className="text-cyan-400" />
-                    <span>MySQL: <strong className="text-slate-200">smart_db</strong> (3306)</span>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
+                    <Database size={13} className="text-cyan-600 dark:text-cyan-400" />
+                    <span>MySQL: <strong className="text-slate-900 dark:text-slate-200">smart_db</strong> (3306)</span>
                   </div>
-                  <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                    <Globe size={13} className="text-violet-400" />
-                    <span>Jurisdiction: <strong className="text-slate-200">86 Butuan Barangays</strong></span>
+                  <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
+                    <Globe size={13} className="text-violet-600 dark:text-violet-400" />
+                    <span>Jurisdiction: <strong className="text-slate-900 dark:text-slate-200">86 Butuan Barangays</strong></span>
                   </div>
                 </div>
 
@@ -1066,21 +1070,21 @@ export default function SuperMegaAdminDashboard() {
                       </h3>
                     </div>
                     <div
-                      style={{ background: `${ACCENT_VIOLET}25`, border: `1px solid ${ACCENT_VIOLET}40`, color: '#C4B5FD' }}
+                      style={{ background: `${ACCENT_VIOLET}25`, border: `1px solid ${ACCENT_VIOLET}40`, color: isDark ? '#C4B5FD' : '#6D28D9' }}
                       className="p-2.5 rounded-xl"
                     >
                       <Crown size={20} />
                     </div>
                   </div>
-                  <p style={{ color: '#C4B5FD', fontSize: 11, marginTop: 10, fontWeight: 500 }} className="flex items-center gap-1">
-                    <ShieldCheck size={12} className="text-violet-400" />
+                  <p style={{ color: isDark ? '#C4B5FD' : '#6D28D9', fontSize: 11, marginTop: 10, fontWeight: 500 }} className="flex items-center gap-1">
+                    <ShieldCheck size={12} className="text-violet-600 dark:text-violet-400" />
                     Covering {assignedBarangays.length} of 86 Butuan Barangays
                   </p>
-                  <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
                     <span className="text-slate-500">Tier 2 Governance</span>
                     <button
                       onClick={() => { setUserRoleFilter('superadmin'); setActiveTab('users'); }}
-                      className="text-violet-400 hover:text-violet-300 font-semibold flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
+                      className="text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-semibold flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
                     >
                       Manage <ChevronRight size={12} />
                     </button>
@@ -1100,20 +1104,20 @@ export default function SuperMegaAdminDashboard() {
                       </h3>
                     </div>
                     <div
-                      style={{ background: '#3B82F625', border: '1px solid #3B82F640', color: '#93C5FD' }}
+                      style={{ background: '#3B82F625', border: '1px solid #3B82F640', color: isDark ? '#93C5FD' : '#1D4ED8' }}
                       className="p-2.5 rounded-xl"
                     >
                       <Users2 size={20} />
                     </div>
                   </div>
-                  <p style={{ color: '#93C5FD', fontSize: 11, marginTop: 10, fontWeight: 500 }}>
+                  <p style={{ color: isDark ? '#93C5FD' : '#1D4ED8', fontSize: 11, marginTop: 10, fontWeight: 500 }}>
                     {adminCount} Admins • {clinicalStaff} Clinical • {clerkStaff} Clerks
                   </p>
-                  <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
                     <span className="text-slate-500">Multi-Role Mesh</span>
                     <button
                       onClick={() => { setUserRoleFilter('all'); setActiveTab('users'); }}
-                      className="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
                     >
                       Directory <ChevronRight size={12} />
                     </button>
@@ -1133,7 +1137,7 @@ export default function SuperMegaAdminDashboard() {
                       </h3>
                     </div>
                     <div
-                      style={{ background: `${ACCENT_EMERALD}25`, border: `1px solid ${ACCENT_EMERALD}40`, color: '#6EE7B7' }}
+                      style={{ background: `${ACCENT_EMERALD}25`, border: `1px solid ${ACCENT_EMERALD}40`, color: isDark ? '#6EE7B7' : '#047857' }}
                       className="p-2.5 rounded-xl"
                     >
                       <Globe size={20} />
@@ -1141,21 +1145,21 @@ export default function SuperMegaAdminDashboard() {
                   </div>
                   <div className="mt-2.5 space-y-1">
                     <div className="flex justify-between text-[11px]">
-                      <span className="text-emerald-400 font-medium">{verifiedResidents} Verified</span>
-                      <span className="text-slate-400">{totalResidents - verifiedResidents} Pending</span>
+                      <span className="text-emerald-700 dark:text-emerald-400 font-medium">{verifiedResidents} Verified</span>
+                      <span className="text-slate-600 dark:text-slate-400">{totalResidents - verifiedResidents} Pending</span>
                     </div>
-                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
                         style={{ width: `${totalResidents > 0 ? (verifiedResidents / totalResidents) * 100 : 0}%` }}
                       />
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
                     <span className="text-slate-500">Demographic Registry</span>
                     <button
                       onClick={() => setActiveTab('reports')}
-                      className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
+                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-semibold flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
                     >
                       Reports <ChevronRight size={12} />
                     </button>
@@ -1175,21 +1179,21 @@ export default function SuperMegaAdminDashboard() {
                       </h3>
                     </div>
                     <div
-                      style={{ background: `${ACCENT_CYAN}25`, border: `1px solid ${ACCENT_CYAN}40`, color: '#67E8F9' }}
+                      style={{ background: `${ACCENT_CYAN}25`, border: `1px solid ${ACCENT_CYAN}40`, color: isDark ? '#67E8F9' : '#0E7490' }}
                       className="p-2.5 rounded-xl"
                     >
                       <Activity size={20} />
                     </div>
                   </div>
-                  <p style={{ color: '#67E8F9', fontSize: 11, marginTop: 10, fontWeight: 500 }} className="flex items-center gap-1">
-                    <CheckCircle2 size={12} className="text-cyan-400" />
+                  <p style={{ color: isDark ? '#67E8F9' : '#0E7490', fontSize: 11, marginTop: 10, fontWeight: 500 }} className="flex items-center gap-1">
+                    <CheckCircle2 size={12} className="text-cyan-600 dark:text-cyan-400" />
                     Immutable city-wide audit trail active
                   </p>
-                  <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
                     <span className="text-slate-500">Security & Integrity</span>
                     <button
                       onClick={() => setActiveTab('logs')}
-                      className="text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
+                      className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-semibold flex items-center gap-1 cursor-pointer bg-transparent border-none p-0"
                     >
                       Audit Trail <ChevronRight size={12} />
                     </button>
@@ -1220,15 +1224,15 @@ export default function SuperMegaAdminDashboard() {
                       </div>
                       <button
                         onClick={() => openCreateSuperadmin()}
-                        style={{ background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}50`, color: '#C4B5FD' }}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-violet-600/30 transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto"
+                        style={{ background: isDark ? `${ACCENT_VIOLET}20` : '#EDE9FE', border: `1px solid ${isDark ? `${ACCENT_VIOLET}50` : '#C4B5FD'}`, color: isDark ? '#C4B5FD' : '#6D28D9' }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto"
                       >
                         <UserPlus size={12} /> Assign New
                       </button>
                     </div>
 
                     {superadminsList.length === 0 ? (
-                      <div className="p-8 text-center border border-dashed border-slate-800 rounded-xl">
+                      <div className="p-8 text-center border border-dashed border-slate-300 dark:border-slate-800 rounded-xl">
                         <Crown size={28} className="text-violet-400 mx-auto mb-2 opacity-50" />
                         <p style={{ color: TEXT, fontWeight: 600, fontSize: 13 }}>No Barangay Superadmins Assigned Yet</p>
                         <p style={{ color: MUTED, fontSize: 12, marginTop: 2 }}>
@@ -1247,28 +1251,28 @@ export default function SuperMegaAdminDashboard() {
                           <div
                             key={sa.id}
                             style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '12px 14px' }}
-                            className="flex items-center justify-between gap-3 hover:border-slate-700 transition-all"
+                            className="flex items-center justify-between gap-3 hover:border-slate-400 dark:hover:border-slate-700 transition-all"
                           >
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-700 text-white font-bold text-xs flex items-center justify-center shrink-0">
                                 {sa.name?.slice(0, 2).toUpperCase() || 'SA'}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-bold text-slate-200 truncate">{sa.name}</p>
-                                <p className="text-[11px] text-slate-400 truncate">{sa.email}</p>
+                                <p className="text-xs font-bold text-slate-900 dark:text-slate-200 truncate">{sa.name}</p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{sa.email}</p>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-violet-950/80 border border-violet-800/60 text-violet-300">
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/80 border border-violet-300 dark:border-violet-800/60 text-violet-800 dark:text-violet-300">
                                 {sa.barangay || 'Pianing'}
                               </span>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sa.status === 'Active' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' : 'bg-red-950 text-red-400 border border-red-800/60'}`}>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sa.status === 'Active' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60' : 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-400 border border-red-300 dark:border-red-800/60'}`}>
                                 {sa.status || 'Active'}
                               </span>
                               <button
                                 onClick={() => { setUserRoleFilter('superadmin'); setActiveTab('users'); }}
-                                className="text-slate-400 hover:text-slate-200 p-1 cursor-pointer bg-transparent border-none"
+                                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 cursor-pointer bg-transparent border-none"
                                 title="View in User Management"
                               >
                                 <ExternalLink size={13} />
@@ -1280,7 +1284,7 @@ export default function SuperMegaAdminDashboard() {
                         {superadminsList.length > 5 && (
                           <button
                             onClick={() => { setUserRoleFilter('superadmin'); setActiveTab('users'); }}
-                            className="w-full py-2 text-xs font-semibold text-violet-400 hover:text-violet-300 text-center bg-transparent border-none cursor-pointer"
+                            className="w-full py-2 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 text-center bg-transparent border-none cursor-pointer"
                           >
                             View all {superadminsList.length} Barangay Superadmins →
                           </button>
@@ -1290,18 +1294,18 @@ export default function SuperMegaAdminDashboard() {
 
                     {/* Coverage notice banner */}
                     <div
-                      style={{ background: `${ACCENT_VIOLET}12`, border: `1px solid ${ACCENT_VIOLET}30`, borderRadius: 10, padding: '10px 14px', marginTop: 14 }}
+                      style={{ background: isDark ? `${ACCENT_VIOLET}12` : '#FAF5FF', border: `1px solid ${isDark ? `${ACCENT_VIOLET}30` : '#E9D5FF'}`, borderRadius: 10, padding: '10px 14px', marginTop: 14 }}
                       className="flex items-center justify-between gap-3 text-xs"
                     >
                       <div className="flex items-center gap-2">
-                        <Building2 size={15} className="text-violet-400 shrink-0" />
-                        <span className="text-slate-300">
-                          <strong className="text-violet-300">{86 - assignedBarangays.length} Barangays</strong> in Butuan City are currently available for Superadmin delegation.
+                        <Building2 size={15} className="text-violet-600 dark:text-violet-400 shrink-0" />
+                        <span className="text-slate-700 dark:text-slate-300">
+                          <strong className="text-violet-700 dark:text-violet-300">{86 - assignedBarangays.length} Barangays</strong> in Butuan City are currently available for Superadmin delegation.
                         </span>
                       </div>
                       <button
                         onClick={() => openCreateSuperadmin()}
-                        className="text-violet-300 hover:underline font-bold text-xs shrink-0 bg-transparent border-none cursor-pointer"
+                        className="text-violet-700 dark:text-violet-300 hover:underline font-bold text-xs shrink-0 bg-transparent border-none cursor-pointer"
                       >
                         Deploy Node +
                       </button>
@@ -1314,8 +1318,8 @@ export default function SuperMegaAdminDashboard() {
                       <div>
                         <div className="flex items-center gap-2">
                           <FileText size={18} className="text-indigo-400" />
-                          <h3 style={{ color: TEXT, fontWeight: 700, fontSize: 15 }}>Global Document & Service Categories</h3>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800/60">
+                          <h3 style={{ color: TEXT, fontWeight: 700, fontSize: 15 }}>Global Document &amp; Service Categories</h3>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800/60">
                             {categories.length} Categories
                           </span>
                         </div>
@@ -1336,19 +1340,19 @@ export default function SuperMegaAdminDashboard() {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
                       <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '8px 12px' }}>
                         <span className="text-[10px] text-slate-500 font-semibold block">Total Templates</span>
-                        <span className="text-sm font-bold text-slate-200">{categories.length}</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-slate-200">{categories.length}</span>
                       </div>
                       <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '8px 12px' }}>
                         <span className="text-[10px] text-slate-500 font-semibold block">Requests Logged</span>
-                        <span className="text-sm font-bold text-slate-200">{documents.length}</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-slate-200">{documents.length}</span>
                       </div>
                       <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '8px 12px' }}>
-                        <span className="text-[10px] text-amber-400 font-semibold block">In Review</span>
-                        <span className="text-sm font-bold text-amber-300">{pendingDocsCount}</span>
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold block">In Review</span>
+                        <span className="text-sm font-bold text-amber-700 dark:text-amber-300">{pendingDocsCount}</span>
                       </div>
                       <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '8px 12px' }}>
-                        <span className="text-[10px] text-emerald-400 font-semibold block">Completed</span>
-                        <span className="text-sm font-bold text-emerald-300">{completedDocsCount}</span>
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold block">Completed</span>
+                        <span className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{completedDocsCount}</span>
                       </div>
                     </div>
 
@@ -1358,9 +1362,9 @@ export default function SuperMegaAdminDashboard() {
                         <div
                           key={c.id || i}
                           style={{ background: CARD2, border: `1px solid ${BORDER}` }}
-                          className="px-2.5 py-1 rounded-md text-xs text-slate-300 flex items-center gap-1.5"
+                          className="px-2.5 py-1 rounded-md text-xs text-slate-800 dark:text-slate-300 flex items-center gap-1.5"
                         >
-                          <Tag size={10} className="text-indigo-400" />
+                          <Tag size={10} className="text-indigo-500 dark:text-indigo-400" />
                           <span>{c.name}</span>
                           <span className="text-[10px] text-slate-500 font-medium">({c.department || 'Barangay'})</span>
                         </div>
@@ -1368,7 +1372,7 @@ export default function SuperMegaAdminDashboard() {
                       {categories.length > 10 && (
                         <button
                           onClick={() => { setActiveTab('system'); }}
-                          className="px-2 py-1 rounded-md text-xs text-indigo-400 hover:text-indigo-300 bg-transparent border-none font-semibold cursor-pointer"
+                          className="px-2 py-1 rounded-md text-xs text-indigo-600 dark:text-indigo-400 hover:underline bg-transparent border-none font-semibold cursor-pointer"
                         >
                           +{categories.length - 10} more in Category Manager →
                         </button>
@@ -1385,13 +1389,13 @@ export default function SuperMegaAdminDashboard() {
                   <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 20 }}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <Server size={18} className="text-cyan-400" />
+                        <Server size={18} className="text-cyan-500 dark:text-cyan-400" />
                         <h3 style={{ color: TEXT, fontWeight: 700, fontSize: 15 }}>Core Infrastructure Health</h3>
                       </div>
                       <button
                         onClick={loadDbHealth}
                         style={{ color: MUTED }}
-                        className="hover:text-slate-200 cursor-pointer bg-transparent border-none p-0"
+                        className="hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer bg-transparent border-none p-0"
                         title="Ping diagnostics"
                       >
                         <RefreshCcw size={13} className={dbLoading ? 'animate-spin' : ''} />
@@ -1407,13 +1411,13 @@ export default function SuperMegaAdminDashboard() {
                         className="flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2.5">
-                          <Database size={15} className="text-cyan-400" />
+                          <Database size={15} className="text-cyan-600 dark:text-cyan-400" />
                           <div>
-                            <p className="text-xs font-bold text-slate-200">MySQL Database (smart_db)</p>
-                            <p className="text-[10px] text-slate-500">Port 3306 • {dbHealth.length || DB_TABLES.length} monitored tables</p>
+                            <p className="text-xs font-bold text-slate-900 dark:text-slate-200">MySQL Database (smart_db)</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Port 3306 • {dbHealth.length || DB_TABLES.length} monitored tables</p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800/60">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60">
                           {gatewayStatus.db}
                         </span>
                       </div>
@@ -1423,13 +1427,13 @@ export default function SuperMegaAdminDashboard() {
                         className="flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2.5">
-                          <Send size={15} className="text-amber-400" />
+                          <Send size={15} className="text-amber-600 dark:text-amber-400" />
                           <div>
-                            <p className="text-xs font-bold text-slate-200">iProg SMS Gateway</p>
-                            <p className="text-[10px] text-slate-500">Bearer token active • Live SMS queue</p>
+                            <p className="text-xs font-bold text-slate-900 dark:text-slate-200">iProg SMS Gateway</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Bearer token active • Live SMS queue</p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800/60">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60">
                           {gatewayStatus.sms}
                         </span>
                       </div>
@@ -1439,13 +1443,13 @@ export default function SuperMegaAdminDashboard() {
                         className="flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2.5">
-                          <Mail size={15} className="text-rose-400" />
+                          <Mail size={15} className="text-rose-600 dark:text-rose-400" />
                           <div>
-                            <p className="text-xs font-bold text-slate-200">Gmail SMTP Dispatcher</p>
-                            <p className="text-[10px] text-slate-500">Official notice & appointment emails</p>
+                            <p className="text-xs font-bold text-slate-900 dark:text-slate-200">Gmail SMTP Dispatcher</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Official notice &amp; appointment emails</p>
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800/60">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/60">
                           {gatewayStatus.smtp}
                         </span>
                       </div>
@@ -1453,9 +1457,9 @@ export default function SuperMegaAdminDashboard() {
 
                     <button
                       onClick={() => setActiveTab('system')}
-                      className="mt-4 w-full py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-slate-700/60"
+                      className="mt-4 w-full py-2 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-slate-300 dark:border-slate-700/60"
                     >
-                      <Cpu size={13} /> Full System & Backup Console →
+                      <Cpu size={13} /> Full System &amp; Backup Console →
                     </button>
                   </div>
 
@@ -1463,11 +1467,11 @@ export default function SuperMegaAdminDashboard() {
                   <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: 20 }}>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <History size={18} className="text-emerald-400" />
+                        <History size={18} className="text-emerald-500 dark:text-emerald-400" />
                         <h3 style={{ color: TEXT, fontWeight: 700, fontSize: 15 }}>Real-Time Audit Stream</h3>
                       </div>
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800/60 px-2 py-0.5 rounded-full">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         LIVE
                       </div>
                     </div>
@@ -1476,9 +1480,9 @@ export default function SuperMegaAdminDashboard() {
                     </p>
 
                     {recentAuditLogs.length === 0 ? (
-                      <div className="p-6 text-center border border-dashed border-slate-800 rounded-xl">
-                        <Activity size={24} className="text-slate-600 mx-auto mb-1" />
-                        <p className="text-xs text-slate-400">No activity logs recorded yet.</p>
+                      <div className="p-6 text-center border border-dashed border-slate-300 dark:border-slate-800 rounded-xl">
+                        <Activity size={24} className="text-slate-400 mx-auto mb-1" />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">No activity logs recorded yet.</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1486,7 +1490,7 @@ export default function SuperMegaAdminDashboard() {
                           <div
                             key={log.id}
                             style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '10px 12px' }}
-                            className="text-xs hover:border-slate-700 transition-all"
+                            className="text-xs hover:border-slate-400 dark:hover:border-slate-700 transition-all"
                           >
                             <div className="flex items-center justify-between gap-2 mb-1">
                               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${logTypeBadge(log.action_type)}`}>
@@ -1497,17 +1501,17 @@ export default function SuperMegaAdminDashboard() {
                                 {formatTimeAgo(log.created_at)}
                               </span>
                             </div>
-                            <p className="font-semibold text-slate-200 truncate">{log.action}</p>
-                            <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                            <p className="font-semibold text-slate-900 dark:text-slate-200 truncate">{log.action}</p>
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                               <span className="truncate">{log.user_name} ({log.user_role || 'user'})</span>
-                              <span className="text-violet-400 font-semibold shrink-0 ml-2">{log.barangay || 'Pianing'}</span>
+                              <span className="text-violet-600 dark:text-violet-400 font-semibold shrink-0 ml-2">{log.barangay || 'Pianing'}</span>
                             </div>
                           </div>
                         ))}
 
                         <button
                           onClick={() => setActiveTab('logs')}
-                          className="mt-2 w-full py-2 text-xs font-semibold text-emerald-400 hover:text-emerald-300 text-center bg-transparent border-none cursor-pointer flex items-center justify-center gap-1"
+                          className="mt-2 w-full py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-center bg-transparent border-none cursor-pointer flex items-center justify-center gap-1"
                         >
                           View all {activityLogs.length} activity logs <ArrowUpRight size={13} />
                         </button>
