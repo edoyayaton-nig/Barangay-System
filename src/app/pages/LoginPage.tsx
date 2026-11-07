@@ -1579,31 +1579,6 @@ export default function LoginPage() {
                 </span>
               </div>
 
-              {/* Barangay Jurisdiction Selector */}
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/80">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1.5 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin size={13} className="text-amber-600 dark:text-amber-400" />
-                    Select Your Barangay Jurisdiction:
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-normal">Butuan City</span>
-                </label>
-                <select
-                  value={regBarangay || existingBarangay || 'Pianing'}
-                  onChange={(e) => {
-                    setRegBarangay(e.target.value);
-                    setExistingBarangay(e.target.value);
-                  }}
-                  className="w-full h-10 px-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-white focus:border-amber-500 focus:ring-2 focus:ring-amber-200 dark:focus:ring-amber-900/40 outline-none transition-all cursor-pointer"
-                >
-                  {BUTUAN_BARANGAYS.map((b) => (
-                    <option key={b} value={b} className="dark:bg-slate-900 dark:text-white">
-                      Barangay {b}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {/* Main Official Notice Card (Prominently in Front) */}
               <div className="relative overflow-hidden p-6 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/40 dark:via-amber-900/15 dark:to-transparent border-2 border-amber-400/90 dark:border-amber-600/70 rounded-2xl shadow-sm text-center space-y-3.5">
                 <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shadow-lg shadow-amber-500/30">
@@ -1618,7 +1593,7 @@ export default function LoginPage() {
 
                   {/* PROMINENT MESSAGE REQUIRED BY USER */}
                   <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug">
-                    Proceed to your Barangay Hall to register to Barangay {regBarangay || existingBarangay || 'your Barangay'}!
+                    Proceed to your Barangay Hall to register{regBarangay ? ` to Barangay ${regBarangay}` : ''}!
                   </h3>
 
                   <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
@@ -1633,7 +1608,7 @@ export default function LoginPage() {
                     <div>
                       <strong className="text-slate-900 dark:text-white font-bold block">Office Location:</strong>
                       <span className="text-slate-600 dark:text-slate-300 text-[11.5px]">
-                        Barangay {regBarangay || existingBarangay || 'Local'} Hall, Government Center{regCity ? `, ${regCity}` : ', Butuan City'}
+                        {regBarangay ? `Barangay ${regBarangay} Hall` : 'Barangay Hall'}, Government Center{regCity ? `, ${regCity}` : ''}
                       </span>
                     </div>
                   </div>
@@ -1672,20 +1647,6 @@ export default function LoginPage() {
 
               {/* Action Buttons */}
               <div className="space-y-2 pt-1">
-                <Button
-                  type="button"
-                  onClick={() => {
-                    const targetBrgy = regBarangay || existingBarangay || 'Pianing';
-                    setExistingBarangay(targetBrgy);
-                    setResidentMode('existing');
-                    setExistingStep(1);
-                  }}
-                  className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <Search size={14} />
-                  Check if Name is in Existing Resident Census
-                </Button>
-
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
