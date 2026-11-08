@@ -83,6 +83,8 @@ Route::get('/stats/population', [CensusController::class, 'population']);
 // Demographic Census & Household Analytics
 Route::get('/census/stats', [CensusController::class, 'stats']);
 Route::get('/census/households', [CensusController::class, 'households']);
+Route::get('/census/public-search', [CensusController::class, 'publicSearch']);
+Route::post('/census/claim-credentials', [CensusController::class, 'claimCredentials']);
 
 // Community Healthcare - EPI Immunization
 Route::get('/immunizations', [HealthController::class, 'getImmunizations']);

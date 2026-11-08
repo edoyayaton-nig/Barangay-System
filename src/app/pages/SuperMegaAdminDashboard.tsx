@@ -20,7 +20,7 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
-import { apiService, notifySystemNoticeChange, SystemUser, ActivityLog } from '../../services/api';
+import { apiService, notifySystemNoticeChange, SystemUser, ActivityLog, BarangayOverviewItem } from '../../services/api';
 import { BUTUAN_BARANGAYS } from '../../utils/barangays';
 import { AGUSAN_DEL_NORTE_LGUS, getBarangaysForCity } from '../../utils/caragaJurisdictions';
 import { toast } from 'sonner';
@@ -93,7 +93,10 @@ const BLANK_NEW_SA = {
   phone: '',
   jobTitle: 'Barangay Super Administrator',
   city: 'Butuan City',
+  province: 'Agusan del Norte',
+  zipCode: '8600',
   barangay: '',
+  barangayCode: '',
   purok: '1',
   password: '',
   confirmPassword: ''
@@ -222,6 +225,7 @@ export default function SuperMegaAdminDashboard() {
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
   const [userBarangayFilter, setUserBarangayFilter] = useState<string>('all');
   const [isCreateSuperadminOpen, setIsCreateSuperadminOpen] = useState(false);
+  const [apiBarangays, setApiBarangays] = useState<BarangayOverviewItem[]>([]);
   const [newSA, setNewSA] = useState({ ...BLANK_NEW_SA });
   const [newSAError, setNewSAError] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
@@ -235,35 +239,56 @@ export default function SuperMegaAdminDashboard() {
     }
   }, [isCreateSuperadminOpen]);
 
+  // Integrated Barangay API list with designated codes & jurisdiction IDs
   const saBarangays = useMemo(() => {
+    if (apiBarangays && apiBarangays.length > 0 && (!newSA.city || newSA.city === 'Butuan City')) {
+      return apiBarangays;
+    }
     if (!newSA.city) return [];
-    return getBarangaysForCity(newSA.city);
-  }, [newSA.city]);
+    return getBarangaysForCity(newSA.city).map((b, idx) => ({
+      id: idx + 1,
+      code: `BRGY-${String(idx + 1).padStart(3, '0')}`,
+      name: b,
+      city: newSA.city,
+      province: 'Agusan del Norte',
+      zip_code: '8600',
+      status: 'Unstaffed' as const,
+      admin: null,
+      total_residents: 0,
+      pending_approvals: 0,
+      total_documents: 0,
+      office_address: `Barangay Hall, ${b}`,
+      hotline: 'N/A'
+    }));
+  }, [apiBarangays, newSA.city]);
 
-  // Open modal with pre-selected barangay for deployed jurisdiction
+  // Open modal with pre-selected barangay for deployed jurisdiction linked to Barangay API code/ID
   const openCreateSuperadmin = (targetBarangay?: string) => {
-    let matchedBarangay = '';
+    let matchedItem: BarangayOverviewItem | undefined;
     if (targetBarangay) {
       const cleanB = targetBarangay.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
-      const cityBarangays = getBarangaysForCity('Butuan City');
-      matchedBarangay = cityBarangays.find(b => 
-        b.toLowerCase().trim() === cleanB.toLowerCase().trim()
-      ) || cityBarangays.find(b => 
-        b.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanB.toLowerCase().replace(/[^a-z0-9]/g, '')
-      ) || cityBarangays.find(b =>
-        b.toLowerCase().includes(cleanB.toLowerCase()) || cleanB.toLowerCase().includes(b.toLowerCase())
-      ) || cleanB;
+      matchedItem = saBarangays.find(b => 
+        b.name.toLowerCase().trim() === cleanB.toLowerCase().trim()
+      ) || saBarangays.find(b => 
+        b.name.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanB.toLowerCase().replace(/[^a-z0-9]/g, '')
+      ) || saBarangays.find(b =>
+        b.name.toLowerCase().includes(cleanB.toLowerCase()) || cleanB.toLowerCase().includes(b.name.toLowerCase())
+      );
     }
+    const finalBrgy = matchedItem?.name || targetBarangay || '';
     setNewSA({
       ...BLANK_NEW_SA,
-      city: 'Butuan City',
-      barangay: matchedBarangay
+      city: matchedItem?.city || 'Butuan City',
+      province: matchedItem?.province || 'Agusan del Norte',
+      zipCode: matchedItem?.zip_code || '8600',
+      barangay: finalBrgy,
+      barangayCode: matchedItem?.code || ''
     });
     setNewSAError('');
     setShowNewSAPass(false);
     setIsCreateSuperadminOpen(true);
-    if (matchedBarangay) {
-      toast.info(`Deploying Administrator for Barangay ${matchedBarangay}. Fill in details to activate.`);
+    if (finalBrgy) {
+      toast.info(`Deploying Administrator for Barangay ${finalBrgy} (${matchedItem?.code || 'Designated Jurisdiction'}).`);
     }
   };
 
@@ -295,7 +320,7 @@ export default function SuperMegaAdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [usersData, logsData, residentsData, catData, docsData, maintData, pendingData] = await Promise.all([
+      const [usersData, logsData, residentsData, catData, docsData, maintData, pendingData, brgyOverviewData] = await Promise.all([
         apiService.getUsers().catch(() => []),
         apiService.getActivityLogs().catch(() => []),
         apiService.getResidents().catch(() => []),
@@ -303,6 +328,7 @@ export default function SuperMegaAdminDashboard() {
         apiService.getDocuments().catch(() => []),
         apiService.getMaintenanceMode().catch(() => null),
         apiService.getPendingResidents().catch(() => []),
+        apiService.getBarangaysOverview().catch(() => []),
       ]);
       setSystemUsers(usersData);
       setActivityLogs(logsData);
@@ -310,6 +336,7 @@ export default function SuperMegaAdminDashboard() {
       setCategories(catData);
       setDocuments(docsData);
       setPendingResidents(pendingData || []);
+      setApiBarangays(Array.isArray(brgyOverviewData) ? brgyOverviewData : []);
       if (maintData) {
         setMaintenanceMode(Boolean(maintData.enabled));
         if (maintData.type) setNoticeType(maintData.type);
@@ -510,14 +537,19 @@ export default function SuperMegaAdminDashboard() {
         password: newSA.password,
         role: 'superadmin',
         city: newSA.city,
+        province: newSA.province || 'Agusan del Norte',
+        zip_code: newSA.zipCode || '8600',
         barangay: newSA.barangay,
+        barangay_code: newSA.barangayCode || undefined,
         purok: newSA.purok || '1',
         phone: ph,
         status: 'Active',
         job_title: title
       } as any);
 
-      toast.success(`Barangay Superadmin for ${newSA.barangay} (${newSA.city}) created!`);
+      toast.success(`Barangay Superadmin for ${newSA.barangay} created!`, {
+        description: `Linked to official code ${newSA.barangayCode || 'BRGY'}. Login credentials dispatched to ${em}.`
+      });
       setIsCreateSuperadminOpen(false);
       setNewSA({ ...BLANK_NEW_SA });
       setNewSAError('');
@@ -3372,10 +3404,22 @@ export default function SuperMegaAdminDashboard() {
                   </div>
 
                   <div>
-                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Select Barangay *</label>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                      Select Barangay (Barangay API) *
+                    </label>
                     <select
                       value={newSA.barangay}
-                      onChange={e => setNewSA(prev => ({ ...prev, barangay: e.target.value }))}
+                      onChange={e => {
+                        const val = e.target.value;
+                        const item = saBarangays.find(b => b.name === val);
+                        setNewSA(prev => ({
+                          ...prev,
+                          barangay: val,
+                          barangayCode: item?.code || '',
+                          province: item?.province || prev.province || 'Agusan del Norte',
+                          zipCode: item?.zip_code || prev.zipCode || '8600'
+                        }));
+                      }}
                       disabled={!newSA.city}
                       style={{
                         colorScheme: 'dark',
@@ -3392,14 +3436,14 @@ export default function SuperMegaAdminDashboard() {
                       required
                     >
                       <option value="" disabled style={{ background: '#161F30', color: '#94A3B8' }}>
-                        {newSA.city ? 'Select Barangay' : 'Select City / Municipality first'}
+                        {newSA.city ? 'Select Barangay (Barangay API)' : 'Select City / Municipality first'}
                       </option>
                       {saBarangays.map(b => (
-                        <option key={b} value={b} style={{ background: '#161F30', color: '#F8FAFC' }}>
-                          {b}
+                        <option key={b.code || b.name} value={b.name} style={{ background: '#161F30', color: '#F8FAFC' }}>
+                          [{b.code || `BRGY-${b.id}`}] {b.name}
                         </option>
                       ))}
-                      {newSA.barangay && !saBarangays.includes(newSA.barangay) && (
+                      {newSA.barangay && !saBarangays.some(b => b.name === newSA.barangay) && (
                         <option value={newSA.barangay} style={{ background: '#161F30', color: '#F8FAFC' }}>
                           {newSA.barangay}
                         </option>
@@ -3407,9 +3451,38 @@ export default function SuperMegaAdminDashboard() {
                     </select>
                   </div>
                 </div>
+
+                {/* Complete Address: Province & Zip Code */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2.5">
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                      Province *
+                    </label>
+                    <input
+                      type="text"
+                      value={newSA.province}
+                      onChange={e => setNewSA(prev => ({ ...prev, province: e.target.value }))}
+                      style={{ background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: '#F8FAFC', fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                      Zip Code *
+                    </label>
+                    <input
+                      type="text"
+                      value={newSA.zipCode}
+                      onChange={e => setNewSA(prev => ({ ...prev, zipCode: e.target.value }))}
+                      style={{ background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: '#F8FAFC', fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      required
+                    />
+                  </div>
+                </div>
+
                 {newSA.city && (
                   <p style={{ color: MUTED, fontSize: 10, marginTop: 4 }}>
-                    {saBarangays.length} official barangays loaded for {newSA.city}.
+                    {saBarangays.length} official barangays synced via Barangay API for {newSA.city}. {newSA.barangayCode ? `Designated ID: ${newSA.barangayCode}` : ''}
                   </p>
                 )}
               </div>

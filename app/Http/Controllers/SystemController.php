@@ -29,6 +29,18 @@ class SystemController extends Controller
         'Pianing', 'Anticala', 'Agao Poblacion', 'Agusan Pequeño', 'Ambago', 'Amparo', 'Ampayon', 'Antongalon', 'Aupagan', 'Baan Km 3', 'Baan Riverside', 'Babag', 'Bading', 'Banza', 'Baobaoan', 'Basag', 'Bayanihan', 'Bilay', 'Bit-os', 'Bitan-agan', 'Bobon', 'Bonbon', 'Bugabus', 'Buhangin', 'Cabcabon', 'Camayahan', 'Dagohoy', 'Dankias', 'De Oro', 'Diego Silang', 'Doongan', 'Dumalagan', 'Golden Ribbon', 'Holy Redeemer', 'Humabon', 'Imadejas', 'Kinamlutan', 'Lapu-lapu', 'Lemon', 'Libertad', 'Limaha', 'Los Angeles', 'Lumbocan', 'Maguinda', 'Mahay', 'Mahogany', 'Maibu', 'Mandamo', 'Manila de Bugabus', 'Maon', 'Masao', 'Maug', 'New Society Village', 'Nong-nong', 'Obrero', 'Ong Yiu', 'Pagatpatan', 'Pangabugan', 'Pangaylan IP', 'Pinamanculan', 'Port Poyohon', 'Pigdaulan', 'Rajahnath', 'San Ignacio', 'San Mateo', 'San Vicente', 'Santa Cruz', 'Santo Niño', 'Silongan', 'Sumilihon', 'Tagabaca', 'Taguibo', 'Taligaman', 'Tandag', 'Tiniwisan', 'Tungao', 'Urduja', 'Villa Kananga', 'Bonifacio', 'Dulag', 'Florida', 'Guinabsan', 'New Manat', 'Riverside', 'Salvacion', 'Tuburan'
     ];
 
+    public static function resolveBarangayCode(?string $barangay): ?string
+    {
+        if (empty($barangay)) return 'BRGY-001';
+        $clean = trim(preg_replace('/^barangay\s+/i', '', $barangay));
+        foreach (self::ALL_86_BUTUAN_BARANGAYS as $idx => $b) {
+            if (strcasecmp($b, $clean) === 0 || strcasecmp($b, $barangay) === 0) {
+                return 'BRGY-' . str_pad($idx + 1, 3, '0', STR_PAD_LEFT);
+            }
+        }
+        return 'BRGY-001';
+    }
+
     public function statsAdmin(Request $request)
     {
         $barangay = $request->input('barangay');
@@ -577,7 +589,11 @@ class SystemController extends Controller
 
             $result[] = [
                 'id' => $index + 1,
+                'code' => 'BRGY-' . str_pad($index + 1, 3, '0', STR_PAD_LEFT),
                 'name' => $bName,
+                'city' => 'Butuan City',
+                'province' => 'Agusan del Norte',
+                'zip_code' => '8600',
                 'status' => $assignedAdmin ? 'Active' : 'Unstaffed',
                 'admin' => $assignedAdmin ? [
                     'id' => $assignedAdmin->id,

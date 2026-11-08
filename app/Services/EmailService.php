@@ -126,6 +126,32 @@ class EmailService
         return self::sendEmail(['to' => $email, 'subject' => $subject, 'text' => $text, 'recipientName' => $name, 'barangay' => $brgy]);
     }
 
+    public static function sendCredentialNoticeEmail(string $email, string $name, string $defaultPassword, ?string $barangay = null): array
+    {
+        $brgy = self::getBarangayName($barangay);
+        $subject = "[{$brgy}] Official Login Credentials & Access Details";
+        $text = "Dear {$name},\n\nYour account has been officially created in {$brgy} Online Governance Portal.\n\nLogin Email: {$email}\nDefault Password: {$defaultPassword}\n\nPlease log in at your portal and change your password in Profile Settings.\n\nRespectfully,\n{$brgy} Administration";
+
+        // Try Laravel Mailable first if SMTP is configured
+        try {
+            if (env('MAIL_USERNAME') && env('MAIL_PASSWORD')) {
+                Mail::to($email, $name)->send(new \App\Mail\ResidentCredentialsMailable($name, $email, $defaultPassword, $brgy));
+                Log::info("📧 [Email – LIVE SMTP Mailable] Sent credentials successfully to {$email}");
+                return ['success' => true, 'provider' => 'smtp_mailable'];
+            }
+        } catch (\Throwable $e) {
+            Log::warning("⚠️ [Email – Mailable SMTP Error] " . $e->getMessage());
+        }
+
+        return self::sendEmail([
+            'to' => $email,
+            'subject' => $subject,
+            'text' => $text,
+            'recipientName' => $name,
+            'barangay' => $brgy,
+        ]);
+    }
+
     public static function sendVerificationNoticeEmail(string $email, string $name, string $status, ?string $reason = null, ?string $barangay = null): array
     {
         $brgy = self::getBarangayName($barangay);

@@ -356,6 +356,9 @@ export default function PendingApplicantReviewModal({
                   <p className="font-semibold text-slate-800 dark:text-slate-200 mt-1 leading-relaxed">
                     {applicant.address || `Purok ${applicant.purok || '1'}, ${applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay'}`}
                   </p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Province: {applicant.province || 'Agusan del Norte'} • Zip: {applicant.zip_code || '8600'}
+                  </p>
                 </div>
 
                 {/* Contact details */}

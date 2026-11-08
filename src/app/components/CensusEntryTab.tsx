@@ -88,6 +88,8 @@ export default function CensusEntryTab({
   const [fCivilStatus, setFCivilStatus] = useState('Single');
   const [fPurok, setFPurok] = useState('1');
   const [fAddress, setFAddress] = useState('');
+  const [fProvince, setFProvince] = useState('Agusan del Norte');
+  const [fZipCode, setFZipCode] = useState('8600');
   const [fPhone, setFPhone] = useState('');
   const [fEmail, setFEmail] = useState('');
   const [fEmployment, setFEmployment] = useState<
@@ -210,6 +212,8 @@ export default function CensusEntryTab({
     setFCivilStatus('Single');
     setFPurok('1');
     setFAddress('');
+    setFProvince('Agusan del Norte');
+    setFZipCode('8600');
     setFPhone('');
     setFEmail('');
     setFEmployment('Employed');
@@ -267,6 +271,9 @@ export default function CensusEntryTab({
         civil_status: fCivilStatus || 'Single',
         purok: targetPurok,
         barangay: barangay,
+        city: 'Butuan City',
+        province: fProvince.trim() || 'Agusan del Norte',
+        zip_code: fZipCode.trim() || '8600',
         address: fullAddress,
         phone: fPhone.trim() || undefined,
         email: fEmail.trim() || undefined,
@@ -285,7 +292,9 @@ export default function CensusEntryTab({
 
       setResidents(prev => [newResident, ...prev]);
       toast.success(
-        `${fFirstName} ${fLastName} added to Census (${finalHhNum})! Synchronized across all portals.`
+        fEmail.trim()
+          ? `${fFirstName} ${fLastName} added to Census (${finalHhNum})! Account created & credentials sent to ${fEmail.trim()}.`
+          : `${fFirstName} ${fLastName} added to Census (${finalHhNum})! Account provisioned. Resident can claim credentials using phone confirmation.`
       );
       setIsAddOpen(false);
       resetForm();
@@ -1393,6 +1402,30 @@ export default function CensusEntryTab({
                 placeholder={`Purok ${fPurok}, Brgy. ${barangay}, Butuan City`}
                 className="h-8 text-xs mt-1"
               />
+            </div>
+
+            {/* Province & Zip Code */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Province *</Label>
+                <Input
+                  value={fProvince}
+                  onChange={e => setFProvince(e.target.value)}
+                  placeholder="Agusan del Norte"
+                  className="h-8 text-xs mt-1"
+                  required
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Zip Code *</Label>
+                <Input
+                  value={fZipCode}
+                  onChange={e => setFZipCode(e.target.value)}
+                  placeholder="8600"
+                  className="h-8 text-xs mt-1"
+                  required
+                />
+              </div>
             </div>
 
             {/* Head of Household Checkbox */}

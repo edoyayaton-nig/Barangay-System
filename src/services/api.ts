@@ -58,6 +58,10 @@ export interface Resident {
   civil_status?: string;
   purok?: string;
   barangay?: string;
+  barangay_code?: string;
+  city?: string;
+  province?: string;
+  zip_code?: string;
   address: string;
   phone?: string;
   email?: string;
@@ -75,6 +79,8 @@ export interface Resident {
   years_of_residency?: string;
   id_type?: string;
   is_census_only?: boolean | number;
+  linked_user_id?: number | null;
+  claimed_at?: string | null;
 }
 
 export interface HouseholdGroup {
@@ -148,7 +154,10 @@ export interface SystemUser {
   role: 'super_mega_admin' | 'superadmin' | 'admin' | 'staff' | 'bhw' | 'nurse' | 'resident';
   status: 'Active' | 'Inactive' | 'Archived';
   barangay?: string;
+  barangay_code?: string;
   city?: string;
+  province?: string;
+  zip_code?: string;
   phone?: string;
   address?: string;
   purok?: string;
@@ -236,6 +245,9 @@ export interface PendingResident {
   address?: string;
   purok?: string;
   barangay?: string;
+  city?: string;
+  province?: string;
+  zip_code?: string;
   date_of_birth?: string;
   gender?: string;
   civil_status?: string;
@@ -279,7 +291,10 @@ export interface CensusResidentSearchResult {
   address?: string;
   purok?: string;
   barangay?: string;
+  barangay_code?: string;
   city?: string;
+  province?: string;
+  zip_code?: string;
   phone?: string;
   email?: string | null;
   household_number?: string | null;
@@ -621,6 +636,29 @@ export const apiService = {
     const qs = q.toString();
     const url = qs ? `${API_BASE}/census/households?${qs}` : `${API_BASE}/census/households`;
     const res = await fetch(url);
+    return await res.json();
+  },
+
+  async publicSearchCensus(query: string, barangay?: string): Promise<{ success: boolean; results: MaskedCensusResult[]; count?: number; message?: string }> {
+    const q = new URLSearchParams();
+    q.append('query', query.trim());
+    if (barangay && barangay !== 'all' && barangay !== 'All Barangays') {
+      q.append('barangay', barangay);
+    }
+    const res = await fetch(`${API_BASE}/census/public-search?${q.toString()}`);
+    return await res.json();
+  },
+
+  async claimCensusCredentials(residentId: number, confirmPhone: string, email?: string): Promise<{ success: boolean; message: string; masked_email?: string; email?: string; error?: string; requires_email?: boolean }> {
+    const res = await fetch(`${API_BASE}/census/claim-credentials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resident_id: residentId,
+        confirm_phone: confirmPhone,
+        email: email || undefined
+      })
+    });
     return await res.json();
   },
 
@@ -1520,7 +1558,11 @@ export interface PopulationStats {
 
 export interface BarangayOverviewItem {
   id: number;
+  code?: string;
   name: string;
+  city?: string;
+  province?: string;
+  zip_code?: string;
   status: 'Active' | 'Unstaffed';
   admin: { id: number; name: string; email: string; phone: string } | null;
   total_residents: number;
@@ -1528,5 +1570,18 @@ export interface BarangayOverviewItem {
   total_documents: number;
   office_address: string;
   hotline: string;
+}
+
+export interface MaskedCensusResult {
+  id: number;
+  masked_name: string;
+  masked_phone: string;
+  masked_email: string | null;
+  barangay: string;
+  purok: string;
+  has_email: boolean;
+  has_phone: boolean;
+  has_account: boolean;
+  is_claimed: boolean;
 }
 

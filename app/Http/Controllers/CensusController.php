@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Resident;
+use App\Models\User;
+use App\Services\EmailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class CensusController extends Controller
 {
@@ -316,6 +320,208 @@ class CensusController extends Controller
                 'other' => $other,
             ],
             'purok_distribution' => $purokDist,
+        ]);
+    }
+
+    public static function maskName(string $name): string
+    {
+        $words = preg_split('/\s+/', trim($name));
+        $masked = [];
+        foreach ($words as $w) {
+            $len = mb_strlen($w);
+            if ($len <= 2) {
+                $masked[] = mb_substr($w, 0, 1) . '*';
+            } else {
+                $masked[] = mb_substr($w, 0, 1) . str_repeat('*', min(6, $len - 1));
+            }
+        }
+        return implode(' ', $masked);
+    }
+
+    public static function maskPhone(string $phone): string
+    {
+        $clean = preg_replace('/[^0-9]/', '', $phone);
+        if (str_starts_with($clean, '63') && strlen($clean) === 12) {
+            $clean = '0' . substr($clean, 2);
+        }
+        if (strlen($clean) >= 10) {
+            $prefix = substr($clean, 0, 4);
+            $suffix = substr($clean, -3);
+            return "{$prefix} **** {$suffix}";
+        }
+        return '09** **** ***';
+    }
+
+    public static function maskEmail(string $email): string
+    {
+        $parts = explode('@', trim($email));
+        if (count($parts) !== 2) return '******@gmail.com';
+        $user = $parts[0];
+        $domain = $parts[1];
+        $first = mb_substr($user, 0, 1);
+        $userMasked = $first . str_repeat('*', max(3, mb_strlen($user) - 1));
+        return "{$userMasked}@{$domain}";
+    }
+
+    public function publicSearch(Request $request)
+    {
+        $query = trim((string)$request->input('query', ''));
+        $barangay = trim((string)$request->input('barangay', ''));
+
+        if (mb_strlen($query) < 2) {
+            return response()->json([
+                'success' => true,
+                'results' => [],
+                'message' => 'Please enter at least 2 characters to search'
+            ]);
+        }
+
+        $base = Resident::query();
+
+        if (!empty($barangay) && !str_contains(strtolower($barangay), 'all') && !str_contains(strtolower($barangay), 'city-wide')) {
+            $norm = AuthController::normalizeBarangayName($barangay);
+            $base->whereRaw("LOWER(barangay) = ?", [strtolower($norm)]);
+        }
+
+        // Clean digits for potential phone query
+        $digits = preg_replace('/[^0-9]/', '', $query);
+
+        $base->where(function ($q) use ($query, $digits) {
+            $q->whereRaw("LOWER(first_name) LIKE ?", ['%' . strtolower($query) . '%'])
+              ->orWhereRaw("LOWER(last_name) LIKE ?", ['%' . strtolower($query) . '%'])
+              ->orWhereRaw("LOWER(middle_name) LIKE ?", ['%' . strtolower($query) . '%'])
+              ->orWhereRaw("LOWER(family_name) LIKE ?", ['%' . strtolower($query) . '%'])
+              ->orWhereRaw("LOWER(CONCAT(first_name, ' ', last_name)) LIKE ?", ['%' . strtolower($query) . '%']);
+
+            if (!empty($digits) && strlen($digits) >= 3) {
+                $q->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+63', '0') LIKE ?", ['%' . $digits . '%']);
+            }
+        });
+
+        $matches = $base->orderBy('last_name')->orderBy('first_name')->limit(12)->get();
+
+        $results = $matches->map(function ($r) {
+            $fullName = trim("{$r->first_name} {$r->middle_name} {$r->last_name}");
+            return [
+                'id' => $r->id,
+                'masked_name' => self::maskName($fullName),
+                'masked_phone' => !empty($r->phone) ? self::maskPhone($r->phone) : 'No phone recorded',
+                'masked_email' => !empty($r->email) ? self::maskEmail($r->email) : null,
+                'barangay' => $r->barangay ?: 'Pianing',
+                'purok' => $r->purok ? "Purok " . preg_replace('/purok\s*/i', '', $r->purok) : 'Purok 1',
+                'has_email' => !empty($r->email),
+                'has_phone' => !empty($r->phone),
+                'has_account' => (bool)$r->linked_user_id,
+                'is_claimed' => (bool)$r->claimed_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'count' => $results->count(),
+            'results' => $results,
+        ]);
+    }
+
+    public function claimCredentials(Request $request)
+    {
+        $residentId = $request->input('resident_id');
+        $confirmPhone = preg_replace('/[^0-9]/', '', (string)$request->input('confirm_phone', ''));
+        $inputEmail = strtolower(trim((string)$request->input('email', '')));
+
+        if (empty($residentId)) {
+            return response()->json(['success' => false, 'error' => 'Resident ID is required'], 400);
+        }
+        if (empty($confirmPhone)) {
+            return response()->json(['success' => false, 'error' => 'Phone number confirmation is required'], 400);
+        }
+
+        $resident = Resident::find($residentId);
+        if (!$resident) {
+            return response()->json(['success' => false, 'error' => 'Resident record not found'], 404);
+        }
+
+        $resPhone = preg_replace('/[^0-9]/', '', (string)$resident->phone);
+        if (str_starts_with($confirmPhone, '63') && strlen($confirmPhone) === 12) {
+            $confirmPhone = '0' . substr($confirmPhone, 2);
+        }
+        if (str_starts_with($resPhone, '63') && strlen($resPhone) === 12) {
+            $resPhone = '0' . substr($resPhone, 2);
+        }
+
+        // Compare phones: if resident has phone recorded, it must match
+        if (!empty($resPhone) && $confirmPhone !== $resPhone) {
+            return response()->json([
+                'success' => false,
+                'error' => 'The mobile phone number entered does not match the official census record. Please enter the exact phone number registered during census profiling.'
+            ], 422);
+        }
+
+        // Check email
+        $targetEmail = strtolower(trim((string)$resident->email));
+        if (empty($targetEmail)) {
+            if (!empty($inputEmail) && filter_var($inputEmail, FILTER_VALIDATE_EMAIL)) {
+                $targetEmail = $inputEmail;
+                $resident->email = $targetEmail;
+                $resident->save();
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'requires_email' => true,
+                    'error' => 'No email address is linked to this census record. Please enter your Gmail address to receive your login credentials.'
+                ], 422);
+            }
+        }
+
+        // Generate default password
+        $defaultPassword = 'Brgy@' . date('Y') . '!' . mt_rand(100, 999);
+
+        $user = User::whereRaw('LOWER(email) = ?', [$targetEmail])->first();
+        if (!$user) {
+            $user = User::create([
+                'name' => trim("{$resident->first_name} {$resident->last_name}"),
+                'email' => $targetEmail,
+                'password_hash' => Hash::make($defaultPassword),
+                'role' => 'resident',
+                'status' => 'Active',
+                'verification_status' => 'Verified',
+                'civil_status' => $resident->civil_status ?: 'Single',
+                'phone' => $resident->phone ?: $confirmPhone,
+                'address' => $resident->address,
+                'purok' => $resident->purok,
+                'barangay' => $resident->barangay ?: 'Pianing',
+                'city' => $resident->city ?: 'Butuan City',
+                'province' => $resident->province ?: 'Agusan del Norte',
+                'zip_code' => $resident->zip_code ?: '8600',
+            ]);
+        } else {
+            $user->password_hash = Hash::make($defaultPassword);
+            $user->status = 'Active';
+            $user->verification_status = 'Verified';
+            if (!empty($resident->phone)) $user->phone = $resident->phone;
+            $user->save();
+        }
+
+        $resident->linked_user_id = $user->id;
+        $resident->claimed_at = now();
+        $resident->save();
+
+        // Dispatch credentials to Gmail immediately!
+        try {
+            EmailService::sendCredentialNoticeEmail($targetEmail, $user->name, $defaultPassword, $resident->barangay);
+        } catch (\Throwable $e) {}
+
+        ActivityLog::create([
+            'user_name' => $user->name,
+            'user_role' => 'resident',
+            'action' => "Confirmed census phone and dispatched credentials to email ({$resident->barangay})",
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login credentials successfully dispatched to your email address!',
+            'masked_email' => self::maskEmail($targetEmail),
+            'email' => $targetEmail,
         ]);
     }
 }

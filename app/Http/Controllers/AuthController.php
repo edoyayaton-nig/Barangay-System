@@ -452,10 +452,17 @@ class AuthController extends Controller
     public function createUser(Request $request)
     {
         $email = strtolower(trim((string)$request->input('email', '')));
-        $password = (string)$request->input('password', 'Password123!');
+        $password = (string)$request->input('password', '');
+        if (empty($password)) {
+            $password = 'Brgy@' . date('Y') . '!' . mt_rand(100, 999);
+        }
         $name = trim((string)$request->input('name', ''));
         $role = strtolower(trim((string)$request->input('role', 'staff')));
         $barangay = self::normalizeBarangayName($request->input('barangay'));
+        $barangayCode = $request->input('barangay_code') ?: SystemController::resolveBarangayCode($barangay);
+        $province = (string)$request->input('province', 'Agusan del Norte');
+        $zipCode = (string)$request->input('zip_code', '8600');
+        $city = (string)$request->input('city', 'Butuan City');
 
         if (empty($email) || empty($name)) {
             return response()->json(['error' => 'Name and email are required'], 400);
@@ -474,21 +481,31 @@ class AuthController extends Controller
             'verification_status' => 'Verified',
             'phone' => (string)$request->input('phone', '09171234567'),
             'address' => (string)$request->input('address', ''),
+            'purok' => (string)$request->input('purok', '1'),
             'barangay' => $barangay,
-            'city' => 'Butuan City',
+            'barangay_code' => $barangayCode,
+            'city' => $city,
+            'province' => $province,
+            'zip_code' => $zipCode,
             'employee_id' => $request->input('employee_id'),
             'job_title' => $request->input('job_title'),
         ]);
 
+        // Immediately send credentials via EmailService / Laravel Mail
+        try {
+            EmailService::sendCredentialNoticeEmail($email, $name, $password, $barangay);
+        } catch (\Throwable $e) {}
+
         ActivityLog::create([
             'user_name' => 'System Admin',
             'user_role' => 'admin',
-            'action' => "Onboarded staff account: {$name} ({$role})",
+            'action' => "Onboarded {$role} account: {$name} ({$barangay}) with code {$barangayCode}",
         ]);
 
         return response()->json([
             'success' => true,
             'user' => $user,
+            'generated_password' => $password,
         ], 201);
     }
 

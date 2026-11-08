@@ -76,6 +76,38 @@ class AppServiceProvider extends ServiceProvider
                     }
                 }
             }
+
+            // Ensure complete address fields & barangay code in residents & users
+            if (\Illuminate\Support\Facades\Schema::hasTable('residents')) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('residents', 'province')) {
+                    try {
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE residents ADD COLUMN province VARCHAR(100) DEFAULT 'Agusan del Norte'");
+                    } catch (\Throwable $e) {}
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('residents', 'zip_code')) {
+                    try {
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE residents ADD COLUMN zip_code VARCHAR(20) DEFAULT '8600'");
+                    } catch (\Throwable $e) {}
+                }
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('users')) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'province')) {
+                    try {
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE users ADD COLUMN province VARCHAR(100) DEFAULT 'Agusan del Norte'");
+                    } catch (\Throwable $e) {}
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'zip_code')) {
+                    try {
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE users ADD COLUMN zip_code VARCHAR(20) DEFAULT '8600'");
+                    } catch (\Throwable $e) {}
+                }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'barangay_code')) {
+                    try {
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE users ADD COLUMN barangay_code VARCHAR(50) NULL DEFAULT NULL");
+                    } catch (\Throwable $e) {}
+                }
+            }
         } catch (\Throwable $e) {
             // Non-blocking in case DB is offline or during pre-migration artisan calls
         }

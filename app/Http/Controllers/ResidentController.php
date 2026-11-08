@@ -14,6 +14,7 @@ use App\Models\UserNotification;
 use App\Services\EmailService;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class ResidentController extends Controller
 {
@@ -403,6 +404,12 @@ class ResidentController extends Controller
         $lastName = trim((string)$request->input('last_name', ''));
         $barangay = AuthController::normalizeBarangayName($request->input('barangay'));
         $email = strtolower(trim((string)$request->input('email', '')));
+        $province = (string)$request->input('province', 'Agusan del Norte');
+        $zipCode = (string)$request->input('zip_code', '8600');
+        $city = (string)$request->input('city', 'Butuan City');
+        $phone = (string)$request->input('phone', '');
+        $purok = (string)$request->input('purok', '1');
+        $address = (string)$request->input('address', '');
 
         $submittedId = $request->input('submitted_id');
         $idPath = AuthController::saveBase64Image($submittedId, 'census_id');
@@ -414,11 +421,13 @@ class ResidentController extends Controller
             'date_of_birth' => $request->input('date_of_birth', '2000-01-01'),
             'gender' => $request->input('gender', 'Male'),
             'civil_status' => $request->input('civil_status', 'Single'),
-            'address' => (string)$request->input('address', ''),
-            'purok' => (string)$request->input('purok', '1'),
+            'address' => $address,
+            'purok' => $purok,
             'barangay' => $barangay,
-            'city' => 'Butuan City',
-            'phone' => (string)$request->input('phone', ''),
+            'city' => $city,
+            'province' => $province,
+            'zip_code' => $zipCode,
+            'phone' => $phone,
             'email' => $email,
             'employment_status' => $request->input('employment_status', 'Employed'),
             'submitted_id' => $idPath,
@@ -431,6 +440,38 @@ class ResidentController extends Controller
             'verification_status' => $request->input('verification_status', 'Verified'),
         ]);
 
+        // When a citizen is censused, automatically provision an account
+        $generatedPassword = 'Brgy@' . date('Y') . '!' . mt_rand(100, 999);
+        $linkedUser = null;
+        if (!empty($email)) {
+            $linkedUser = User::whereRaw('LOWER(email) = ?', [$email])->first();
+            if (!$linkedUser) {
+                $linkedUser = User::create([
+                    'name' => trim("{$firstName} {$lastName}"),
+                    'email' => $email,
+                    'password_hash' => Hash::make($generatedPassword),
+                    'role' => 'resident',
+                    'status' => 'Active',
+                    'verification_status' => 'Verified',
+                    'civil_status' => $request->input('civil_status', 'Single'),
+                    'phone' => $phone,
+                    'address' => $address,
+                    'purok' => $purok,
+                    'barangay' => $barangay,
+                    'city' => $city,
+                    'province' => $province,
+                    'zip_code' => $zipCode,
+                ]);
+            }
+            $resident->linked_user_id = $linkedUser->id;
+            $resident->save();
+
+            // Automatically send credentials via EmailService / Laravel Mail
+            try {
+                EmailService::sendCredentialNoticeEmail($email, "{$firstName} {$lastName}", $generatedPassword, $barangay);
+            } catch (\Throwable $e) {}
+        }
+
         ActivityLog::create([
             'user_name' => 'BHW / Worker',
             'user_role' => 'bhw',
@@ -440,6 +481,8 @@ class ResidentController extends Controller
         return response()->json([
             'success' => true,
             'resident' => $resident,
+            'user_created' => (bool)$linkedUser,
+            'account_email' => $email ?: null,
         ], 201);
     }
 

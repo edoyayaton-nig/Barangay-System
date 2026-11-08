@@ -2372,13 +2372,18 @@ export default function AdminDashboard() {
         role: newUserRole === 'resident' ? 'staff' : newUserRole,
         status: 'Active',
         barangay: assignedBarangay,
+        city: 'Butuan City',
+        province: 'Agusan del Norte',
+        zip_code: '8600',
         phone: cleanPhone,
         employee_id: newUserEmployeeId.trim() || undefined,
         job_title: newUserJobTitle.trim() || undefined,
         created_by: user?.name || 'Administrator'
       } as any);
       setUsers([created, ...users]);
-      toast.success(`${newUserRole === 'admin' ? 'Administrator' : newUserRole.toUpperCase()} account created for Barangay ${assignedBarangay}`);
+      toast.success(`${newUserRole === 'admin' ? 'Administrator' : newUserRole.toUpperCase()} account created!`, {
+        description: `Official credentials delivered to ${newUserEmail}.`
+      });
       setIsAddUserOpen(false);
       setNewUserFirstName('');
       setNewUserMiddleName('');

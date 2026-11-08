@@ -83,6 +83,8 @@ export default function ResidentProfileModal({
     email: '',
     purok: '',
     address: '',
+    province: 'Agusan del Norte',
+    zip_code: '8600',
     civil_status: '',
     date_of_birth: '',
     gender: 'Male',
@@ -129,6 +131,8 @@ export default function ResidentProfileModal({
               email: data.resident.email || '',
               purok: data.resident.purok ? String(data.resident.purok).replace(/purok\s*/i, '').trim() : '',
               address: data.resident.address || '',
+              province: data.resident.province || 'Agusan del Norte',
+              zip_code: data.resident.zip_code || '8600',
               civil_status: data.resident.civil_status || 'Single',
               date_of_birth: data.resident.date_of_birth ? String(data.resident.date_of_birth).split('T')[0] : '',
               gender: data.resident.gender || 'Male',
@@ -657,9 +661,30 @@ export default function ResidentProfileModal({
                             <SelectItem value="Unemployed">Unemployed</SelectItem>
                             <SelectItem value="Student">Student</SelectItem>
                             <SelectItem value="Retired">Retired</SelectItem>
-                            <SelectItem value="Homemaker">Homemaker</SelectItem>
+                            <SelectItem value="Minor">Minor</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-[11px] font-semibold text-slate-700">Province</Label>
+                        <Input
+                          value={editForm.province}
+                          onChange={e => setEditForm(prev => ({ ...prev, province: e.target.value }))}
+                          placeholder="Agusan del Norte"
+                          className="h-8 text-xs bg-white mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] font-semibold text-slate-700">Zip Code</Label>
+                        <Input
+                          value={editForm.zip_code}
+                          onChange={e => setEditForm(prev => ({ ...prev, zip_code: e.target.value }))}
+                          placeholder="8600"
+                          className="h-8 text-xs bg-white mt-1"
+                        />
                       </div>
                     </div>
 
