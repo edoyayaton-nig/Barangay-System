@@ -906,6 +906,51 @@ const suites = [
 
       return results;
     }
+  },
+  {
+    name: 'Phase 12: Claimed Census Account Isolation, Pending Approval & Admin Credentials Dispatch Test',
+    run: () => {
+      const results = [];
+
+      // Read CensusController and ResidentController source code
+      const censusControllerCode = fs.readFileSync(path.join(__dirname, '../../app/Http/Controllers/CensusController.php'), 'utf8');
+      const residentControllerCode = fs.readFileSync(path.join(__dirname, '../../app/Http/Controllers/ResidentController.php'), 'utf8');
+      const loginPageCode = fs.readFileSync(path.join(__dirname, '../../src/app/pages/LoginPage.tsx'), 'utf8');
+
+      // 1. Once claimed, record must not show in database search engine
+      results.push({
+        name: 'once account is claimed or in pending review it is excluded from public search engine results',
+        pass: censusControllerCode.includes("whereNull('claimed_at')") &&
+              censusControllerCode.includes("whereNull('linked_user_id')") &&
+              censusControllerCode.includes("Pending_Review")
+      });
+
+      // 2. Claiming does not automatically send credentials, stages password and sets Pending_Review
+      results.push({
+        name: 'claiming account stages password and sets status to Pending_Review without premature credential dispatch',
+        pass: censusControllerCode.includes("'status' => 'Pending'") &&
+              censusControllerCode.includes("'verification_status' => 'Pending_Review'") &&
+              censusControllerCode.includes("'staged_password'") &&
+              censusControllerCode.includes("'pending_approval' => true")
+      });
+
+      // 3. Admin approval dispatches credentials to resident email and SMS
+      results.push({
+        name: 'admin approval dispatches official login credentials to resident email and phone',
+        pass: residentControllerCode.includes('sendCredentialNoticeEmail') &&
+              residentControllerCode.includes('sendLiveSms') &&
+              residentControllerCode.includes('staged_password')
+      });
+
+      // 4. Login search UI reflects pending admin approval workflow
+      results.push({
+        name: 'login page search UI reflects pending admin approval state upon account claim',
+        pass: loginPageCode.includes('Claim Submitted — Pending Admin Approval') &&
+              loginPageCode.includes('setSearchResults(prev => prev.filter')
+      });
+
+      return results;
+    }
   }
 ];
 

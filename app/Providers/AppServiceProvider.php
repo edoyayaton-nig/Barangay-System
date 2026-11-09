@@ -112,6 +112,19 @@ class AppServiceProvider extends ServiceProvider
                         \Illuminate\Support\Facades\DB::statement("ALTER TABLE users ADD COLUMN barangay_code VARCHAR(50) NULL DEFAULT NULL");
                     } catch (\Throwable $e) {}
                 }
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'staged_password')) {
+                    try {
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE users ADD COLUMN staged_password VARCHAR(255) NULL DEFAULT NULL");
+                    } catch (\Throwable $e) {}
+                }
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('residents')) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('residents', 'staged_password')) {
+                    try {
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE residents ADD COLUMN staged_password VARCHAR(255) NULL DEFAULT NULL");
+                    } catch (\Throwable $e) {}
+                }
             }
 
             // Ensure all census residents are fully acknowledged constituents (is_census_only = 0)

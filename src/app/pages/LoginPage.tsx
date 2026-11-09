@@ -164,11 +164,13 @@ export default function LoginPage() {
         setClaimSuccess({
           masked_email: res.masked_email || 'your registered email',
           email: res.email,
-          message: res.message || 'Login credentials successfully delivered!'
+          message: res.message || 'Claim submitted successfully! Your account is now pending Barangay Admin approval. Once approved, your login credentials will be delivered to your email and phone.'
         });
-        toast.success('Credentials Sent to Email!', {
-          description: `Login email & temporary password delivered to ${res.masked_email || 'your Gmail'}.`
+        toast.success('Claim Submitted — Pending Approval!', {
+          description: `Application forwarded to Barangay Admin. Once approved, your login credentials will be delivered to ${res.masked_email || 'your Gmail'}.`
         });
+        // Immediately remove claimed resident from public search database results
+        setSearchResults(prev => prev.filter(r => r.id !== selectedResident.id));
       } else {
         setClaimError(res.error || 'Failed to verify phone number. Please ensure it matches your census record.');
       }
@@ -563,10 +565,10 @@ export default function LoginPage() {
               <KeyRound size={22} />
             </div>
             <DialogTitle className="text-slate-900 dark:text-white font-bold text-center text-base">
-              Confirm Phone to Receive Credentials
+              Confirm Phone &amp; Claim Citizen Account
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 text-center mt-1">
-              Verify your mobile number to trigger automated login credential delivery.
+              Confirm your registered mobile number to submit your account claim for Barangay Admin approval.
             </DialogDescription>
           </DialogHeader>
 
@@ -577,16 +579,19 @@ export default function LoginPage() {
                 <CheckCircle2 size={26} />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Credentials Sent to Email!</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                  We have dispatched your portal login credentials and temporary password to:
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Claim Submitted — Pending Admin Approval</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
+                  Your identity claim has been forwarded to the Barangay Administration. Your account is now in the <strong>Pending for Approval</strong> queue.
                 </p>
-                <div className="mt-2 py-1.5 px-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl inline-block font-bold text-xs text-emerald-800 dark:text-emerald-300">
-                  {claimSuccess.masked_email}
+                <div className="mt-2.5 py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-left text-xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-500">
+                    <span>Credentials Destination:</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{claimSuccess.masked_email}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700">
+                    Once the Barangay Admin verifies and approves your claim, your official login email and default password will be automatically sent to your Gmail and phone.
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-                  Please check your Gmail inbox (and Spam folder), then proceed to Sign In.
-                </p>
               </div>
 
               <Button
@@ -598,7 +603,7 @@ export default function LoginPage() {
                 }}
                 className="w-full h-10 bg-[#006B66] hover:bg-[#005753] text-white font-bold text-xs rounded-xl cursor-pointer"
               >
-                Proceed to Sign In &rarr;
+                Return to Sign In &rarr;
               </Button>
             </div>
           ) : (
@@ -689,7 +694,7 @@ export default function LoginPage() {
                   className="h-9 px-4 bg-[#006B66] hover:bg-[#005753] text-white font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1.5"
                 >
                   {isClaiming ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                  {isClaiming ? 'Verifying & Dispatching...' : 'Verify & Send Credentials'}
+                  {isClaiming ? 'Submitting Claim...' : 'Submit Claim for Approval'}
                 </Button>
               </div>
             </form>

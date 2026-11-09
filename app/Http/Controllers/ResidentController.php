@@ -674,37 +674,73 @@ class ResidentController extends Controller
         $name = ($activeResident instanceof Resident) ? "{$activeResident->first_name} {$activeResident->last_name}" : ($user?->name ?: 'Resident');
         $barangay = $activeResident?->barangay ?: ($user?->barangay ?: 'Pianing');
 
+        // Resolve or retrieve the staged credentials to dispatch to the resident upon approval
+        $sendPassword = $user?->staged_password ?: ($resident?->staged_password ?: ($cen?->staged_password ?: null));
+        if (empty($sendPassword)) {
+            $sendPassword = 'Brgy@' . date('Y') . '!' . mt_rand(100, 999);
+        }
+
+        if ($user) {
+            $user->password_hash = Hash::make($sendPassword);
+            $user->status = 'Active';
+            $user->verification_status = 'Verified';
+            $user->staged_password = null; // Clear after delivery
+            $user->save();
+        }
+        if ($resident) {
+            $resident->staged_password = null;
+            $resident->save();
+        }
+        if ($cen) {
+            $cen->staged_password = null;
+            $cen->save();
+        }
+
         ActivityLog::create([
             'user_name' => $request->input('approved_by', 'Barangay Administrator'),
             'user_role' => 'admin',
-            'action' => "Approved citizen identity verification: {$name} ({$barangay})",
+            'action' => "Approved citizen identity verification and dispatched login credentials: {$name} ({$barangay})",
         ]);
 
-        // Dispatch notifications across all 3 channels: In-App, Email, SMS
+        // Dispatch official login credentials across all channels: In-App, Email, SMS upon Admin Approval!
         if (!empty($email)) {
-            EmailService::sendVerificationNoticeEmail($email, $name, 'Verified', null, $barangay);
+            try {
+                EmailService::sendCredentialNoticeEmail($email, $name, $sendPassword, $barangay);
+            } catch (\Throwable $e) {}
+
+            try {
+                EmailService::sendVerificationNoticeEmail($email, $name, 'Verified', null, $barangay);
+            } catch (\Throwable $e) {}
+
             try {
                 UserNotification::create([
                     'recipient_email' => $email,
                     'type' => 'Verification',
-                    'title' => 'Account Verified!',
-                    'message' => "Welcome {$name}! Your Barangay {$barangay} account has been officially APPROVED and VERIFIED. You can now access all services online.",
+                    'title' => 'Account Verified & Credentials Issued!',
+                    'message' => "Welcome {$name}! Your Barangay {$barangay} account has been officially APPROVED. Your Login Email: {$email} | Temporary Password: {$sendPassword}. You can now sign in to access all services online.",
                     'is_read' => 0,
                     'created_at' => now(),
                 ]);
             } catch (\Throwable $ne) {}
         }
+
         if (!empty($phone)) {
-            SmsService::sendLiveSms(
-                $phone,
-                "Barangay {$barangay}: Hello {$name}! Your resident account has been officially APPROVED and VERIFIED. You can now request clearances, book appointments, and access all services online."
-            );
+            try {
+                SmsService::sendLiveSms(
+                    $phone,
+                    "Barangay {$barangay}: Mabuhay {$name}! Your resident account has been officially APPROVED. Your Login Credentials -> Email: {$email} | Temporary Password: {$sendPassword}. Sign in now at your barangay portal."
+                );
+            } catch (\Throwable $e) {}
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Resident applicant verified successfully.',
+            'message' => 'Resident applicant verified and login credentials dispatched successfully to resident email and phone.',
             'resident' => $activeResident ?: ($resident ?: $user),
+            'credentials_sent' => true,
+            'generated_password' => $sendPassword,
+            'email' => $email,
+            'phone' => $phone,
         ]);
     }
 

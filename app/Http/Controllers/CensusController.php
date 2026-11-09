@@ -389,6 +389,24 @@ class CensusController extends Controller
 
         $base = Resident::query();
 
+        // Once an account is claimed or in pending review / verified, it MUST NOT be shown in the database search engine!
+        $base->whereNull('claimed_at')
+             ->whereNull('linked_user_id')
+             ->where(function ($q) {
+                 $q->whereNull('verification_status')
+                   ->orWhereNotIn('verification_status', ['Verified', 'Pending_Review', 'Pending']);
+             });
+
+        // Also exclude any records whose email is already an active user in the system
+        $existingEmails = User::whereNotNull('email')->where('email', '!=', '')->pluck('email')->map(fn($e) => strtolower(trim($e)))->filter()->toArray();
+        if (!empty($existingEmails)) {
+            $base->where(function ($q) use ($existingEmails) {
+                $q->whereNull('email')
+                  ->orWhere('email', '')
+                  ->orWhereNotIn(DB::raw('LOWER(email)'), $existingEmails);
+            });
+        }
+
         if (!empty($barangay) && !str_contains(strtolower($barangay), 'all') && !str_contains(strtolower($barangay), 'city-wide')) {
             $norm = AuthController::normalizeBarangayName($barangay);
             $base->whereRaw("LOWER(barangay) = ?", [strtolower($norm)]);
@@ -452,6 +470,14 @@ class CensusController extends Controller
             return response()->json(['success' => false, 'error' => 'Resident record not found'], 404);
         }
 
+        // Check if already claimed
+        if (!empty($resident->claimed_at) || $resident->verification_status === 'Pending_Review' || $resident->verification_status === 'Verified') {
+            return response()->json([
+                'success' => false,
+                'error' => 'This census record has already been claimed and is pending Barangay Admin approval.'
+            ], 422);
+        }
+
         $resPhone = preg_replace('/[^0-9]/', '', (string)$resident->phone);
         if (str_starts_with($confirmPhone, '63') && strlen($confirmPhone) === 12) {
             $confirmPhone = '0' . substr($confirmPhone, 2);
@@ -487,7 +513,7 @@ class CensusController extends Controller
             $resident->phone = $confirmPhone;
         }
 
-        // Generate default password
+        // Generate default password and stage it (DO NOT SEND AUTOMATICALLY YET)
         $defaultPassword = 'Brgy@' . date('Y') . '!' . mt_rand(100, 999);
 
         try {
@@ -499,8 +525,8 @@ class CensusController extends Controller
                 'email' => $targetEmail,
                 'password_hash' => Hash::make($defaultPassword),
                 'role' => 'resident',
-                'status' => 'Active',
-                'verification_status' => 'Verified',
+                'status' => 'Pending',                   // Pending approval!
+                'verification_status' => 'Pending_Review',  // Enters pending approval queue!
                 'civil_status' => $resident->civil_status ?: 'Single',
                 'phone' => $resident->phone ?: $confirmPhone,
                 'address' => $resident->address,
@@ -508,6 +534,7 @@ class CensusController extends Controller
                 'city' => $resident->city ?: 'Butuan City',
                 'province' => $resident->province ?: 'Agusan del Norte',
                 'zip_code' => $resident->zip_code ?: '8600',
+                'staged_password' => $defaultPassword,   // Staged until Admin approves!
             ];
 
             if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'purok')) {
@@ -518,54 +545,47 @@ class CensusController extends Controller
                 $user = User::create($userFields);
             } else {
                 $user->password_hash = Hash::make($defaultPassword);
-                $user->status = 'Active';
-                $user->verification_status = 'Verified';
+                $user->status = 'Pending';
+                $user->verification_status = 'Pending_Review';
+                $user->staged_password = $defaultPassword;
                 if (!empty($resident->phone)) $user->phone = $resident->phone;
                 $user->save();
             }
 
+            // Update resident record into Pending_Review queue
             $resident->linked_user_id = $user->id;
             $resident->claimed_at = now();
-            $resident->is_census_only = 0;
+            $resident->submitted_at = now();
+            $resident->verification_status = 'Pending_Review'; // Place into pending approval queue!
+            $resident->staged_password = $defaultPassword;
             $resident->save();
+
+            ActivityLog::create([
+                'user_name' => trim("{$resident->first_name} {$resident->last_name}"),
+                'user_role' => 'resident',
+                'action' => "Submitted census credential claim for {$targetEmail} (Pending Admin Approval)",
+            ]);
 
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'error' => 'Failed to link account credentials: ' . $e->getMessage()
+                'error' => 'Failed to submit credential claim: ' . $e->getMessage()
             ], 500);
         }
 
-        // Dispatch credentials to Gmail immediately!
-        try {
-            EmailService::sendCredentialNoticeEmail($targetEmail, $user->name, $defaultPassword, $resident->barangay);
-        } catch (\Throwable $e) {}
-
-        // Also dispatch live SMS notification to mobile phone!
-        $targetPhone = $resident->phone ?: $confirmPhone;
-        if (!empty($targetPhone)) {
-            try {
-                \App\Services\SmsService::sendLiveSms(
-                    $targetPhone,
-                    "Barangay {$resident->barangay}: Hello {$user->name}! Your citizen account credentials: Login Email: {$targetEmail}, Default Password: {$defaultPassword}. Log in at your portal."
-                );
-            } catch (\Throwable $e) {}
-        }
-
-        ActivityLog::create([
-            'user_name' => $user->name,
-            'user_role' => 'resident',
-            'action' => "Confirmed census phone and dispatched credentials to email & phone ({$resident->barangay})",
-        ]);
+        // NOTE: Credentials (email & password) are NOT sent yet.
+        // They will be sent upon Admin Approval in ResidentController::approve.
 
         return response()->json([
             'success' => true,
-            'message' => 'Login credentials successfully dispatched to your email address and mobile phone!',
+            'pending_approval' => true,
+            'message' => 'Your claim request has been submitted to the Barangay Administration! Your account is now Pending for Approval. Once approved by the administrator, your official login credentials will be delivered to your email and phone.',
             'masked_email' => self::maskEmail($targetEmail),
-            'email' => $targetEmail,
-            'phone' => $targetPhone,
+            'masked_phone' => self::maskPhone($confirmPhone),
+            'resident_name' => trim("{$resident->first_name} {$resident->last_name}"),
+            'barangay' => $resident->barangay ?: 'Pianing'
         ]);
     }
 }

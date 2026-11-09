@@ -1596,8 +1596,10 @@ export default function AdminDashboard() {
   const handleApproveResident = async (id: number) => {
     try {
       const applicant = pendingResidents.find(r => r.id === id);
-      await apiService.approveResident(id, user?.name || 'Admin Juan');
-      toast.success('Resident application approved! Account is now Verified.');
+      const approveRes = await apiService.approveResident(id, user?.name || 'Admin Juan');
+      toast.success('Resident application approved! Account is now Verified.', {
+        description: `Official login credentials dispatched to ${(approveRes as any)?.email || applicant?.email || 'resident email'} and SMS.`
+      });
 
       // Refresh Purok Population Density after approval mutation
       apiService.getPopulationStats(isSuperMegaAdmin ? undefined : userBarangay).then(p => { if (p) setPopulationStats(p); }).catch(() => { });
@@ -11620,8 +11622,10 @@ export default function AdminDashboard() {
             setIsApprovingApplicant(true);
             try {
               const applicant = selectedApplicantForReview;
-              await apiService.approveResident(id, user?.name || 'Admin', linkCensusId);
-              toast.success('Resident account approved and verified!');
+              const approveRes = await apiService.approveResident(id, user?.name || 'Admin', linkCensusId);
+              toast.success('Resident account approved and verified!', {
+                description: `Official login credentials dispatched to ${(approveRes as any)?.email || applicant?.email || 'resident email'} and SMS.`
+              });
               if (applicant && (applicant.email || applicant.phone)) {
                 const applicantName = applicant.name || `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() || 'Resident';
                 dispatchResidentNotification({
