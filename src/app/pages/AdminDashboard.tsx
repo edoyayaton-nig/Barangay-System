@@ -1942,7 +1942,7 @@ export default function AdminDashboard() {
     const listToSearch = allCensusRegistry.length > 0 ? allCensusRegistry : residents;
 
     if (!rawSearch) {
-      return [];
+      return listToSearch.slice(0, 20);
     }
 
     const tokens = rawSearch.split(/\s+/).filter(Boolean);
@@ -1977,94 +1977,52 @@ export default function AdminDashboard() {
       if (allTokensMatch) return true;
 
       return false;
-    }).slice(0, 15);
+    }).slice(0, 25);
   }, [resAccCensusSearch, allCensusRegistry, residents]);
 
-  // Auto-fill census information for resident account creation
+  // Select census inhabitant for resident account creation
   const applyCensusMatch = (r: Resident) => {
     setResAccCensusMatch(r);
     setResAccLinkedCensusId(r.id);
     setResAccFirstName(r.first_name || '');
     setResAccMiddleName(r.middle_name || '');
     setResAccLastName(r.last_name || '');
-    if (r.date_of_birth) {
-      setResAccDOB(r.date_of_birth.split('T')[0]);
-    }
-    if (r.gender === 'Male' || r.gender === 'Female') {
-      setResAccGender(r.gender);
-    }
-    if (r.civil_status) {
-      setResAccCivilStatus(r.civil_status);
-    }
-    if ((r as any).employment_status) {
-      setResAccEmployment((r as any).employment_status);
-    }
-    if ((r as any).years_of_residency) {
-      setResAccResidencyYears(String((r as any).years_of_residency));
-    }
-    if ((r as any).id_type) {
-      setResAccIdType((r as any).id_type);
-    }
-    if ((r as any).submitted_id) {
-      setResAccIdPhoto((r as any).submitted_id);
-      setResAccIdFileName('Census_Verified_ID.jpg');
-    }
-    if (r.purok) {
-      const cleanP = r.purok.replace(/purok\s*/i, '').trim();
-      setResAccPurok(cleanP || '1');
-    }
-    if (r.household_number) {
-      setResAccHouseholdNum(r.household_number);
-    }
-    if (r.barangay) {
-      setResAccBarangay(r.barangay);
-    }
     if (r.phone) {
       setResAccPhone(r.phone);
+    } else {
+      setResAccPhone('');
     }
     if (r.email && r.email.includes('@')) {
       setResAccEmail(r.email);
-    } else if (!resAccEmail) {
-      const cleanF = (r.first_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const cleanL = (r.last_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      setResAccEmail(`${cleanF}.${cleanL}@resident.barangay.ph`);
+    } else {
+      setResAccEmail('');
     }
     setIsSearchDropdownOpen(false);
-    toast.success(`Demographics auto-filled from Census Record for ${r.first_name} ${r.last_name}!`);
   };
 
   // Check if system user account already exists
   const existingResidentUserAccount = useMemo(() => {
-    if (!resAccEmail && (!resAccFirstName || !resAccLastName)) return null;
+    if (!resAccCensusMatch) return null;
+    const emailToMatch = resAccEmail.toLowerCase().trim();
+    const nameToMatch = `${resAccCensusMatch.first_name || ''} ${resAccCensusMatch.last_name || ''}`.toLowerCase().trim();
     return users.find(u => {
-      const matchEmail = resAccEmail && u.email?.toLowerCase().trim() === resAccEmail.toLowerCase().trim();
-      const matchName = resAccFirstName && resAccLastName && u.name?.toLowerCase().trim() === `${resAccFirstName.trim()} ${resAccLastName.trim()}`.toLowerCase();
-      return matchEmail || matchName;
+      const matchEmail = emailToMatch && u.email?.toLowerCase().trim() === emailToMatch;
+      const matchResidentId = u.resident_id && u.resident_id === resAccCensusMatch.id;
+      const matchName = nameToMatch && u.name?.toLowerCase().trim() === nameToMatch;
+      return matchEmail || matchResidentId || matchName;
     });
-  }, [resAccEmail, resAccFirstName, resAccLastName, users]);
+  }, [resAccEmail, resAccCensusMatch, users]);
 
-  // Handle resident system user creation
+  // Handle resident system user creation via Census Search
   const handleCreateResidentUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resAccFirstName.trim() || !resAccLastName.trim()) {
-      toast.error('First Name and Last Name are required.');
-      return;
-    }
-    if (!resAccGender) {
-      toast.error('Gender is required for resident registration.');
-      return;
-    }
-    if (!resAccEmail.trim()) {
-      toast.error('Resident Email is required for portal login.');
-      return;
-    }
-    if (!resAccPassword.trim()) {
-      toast.error('Password is required for resident account.');
+    if (!resAccCensusMatch) {
+      toast.error('Please search and select a census resident first.');
       return;
     }
 
-    if (resAccPassword.trim() !== resAccConfirmPassword.trim()) {
-      toast.error('Passwords do not match. Please re-enter and confirm.');
+    if (!resAccEmail.trim() || !resAccEmail.includes('@')) {
+      toast.error('Valid resident Gmail / Email address is required.');
       return;
     }
 
@@ -2074,162 +2032,94 @@ export default function AdminDashboard() {
     } else if (cleanPhone.startsWith('9') && cleanPhone.length === 10) {
       cleanPhone = '0' + cleanPhone;
     }
-    if (cleanPhone && !/^09\d{9}$/.test(cleanPhone)) {
-      toast.error('Please enter a valid Philippine mobile number (e.g. 09XXXXXXXXX) or leave blank.');
+    if (!/^09\d{9}$/.test(cleanPhone)) {
+      toast.error('Please enter a valid 11-digit Philippine mobile number (e.g. 09XXXXXXXXX).');
       return;
     }
 
-    const passCheck = validatePasswordComplexity(resAccPassword);
-    if (!passCheck.isValid) {
-      toast.error('Password does not meet security requirements', {
-        description: passCheck.error || 'Password must be at least 6 characters with 1 uppercase, 1 lowercase, 1 number, and 1 special character.'
-      });
+    const r = resAccCensusMatch;
+    const fullName = `${r.first_name || ''}${r.middle_name ? ' ' + r.middle_name : ''} ${r.last_name || ''}`.trim();
+    const assignedBarangay = r.barangay || user?.barangay || 'Pianing';
+    const cleanPurokNum = (r.purok || '1').replace(/purok\s*/i, '').trim() || '1';
+    const fullAddress = r.address || `Purok ${cleanPurokNum}, Barangay ${assignedBarangay}, Butuan City`;
+
+    const existingUser = users.find(u =>
+      (u.resident_id && u.resident_id === r.id) ||
+      (u.email && u.email.toLowerCase().trim() === resAccEmail.toLowerCase().trim())
+    );
+    if (existingUser) {
+      toast.error(`A system account already exists for ${fullName} (${existingUser.email}). Role: ${existingUser.role}`);
       return;
     }
 
     setIsCreatingResAccount(true);
     try {
-      const fullName = `${resAccFirstName.trim()}${resAccMiddleName.trim() ? ' ' + resAccMiddleName.trim() : ''} ${resAccLastName.trim()}`;
-      const assignedBarangay = resAccBarangay || user?.barangay || 'Pianing';
-      const cleanPurokNum = resAccPurok.replace(/purok\s*/i, '').trim() || '1';
-      const fullAddress = `Purok ${cleanPurokNum}, Barangay ${assignedBarangay}, ${resAccCity || 'Butuan City'}`;
+      const defaultPassword = 'Brgy@' + new Date().getFullYear() + '!' + Math.floor(100 + Math.random() * 900);
 
-      let finalCensusId = resAccLinkedCensusId;
-      let addedToCensus = false;
-
-      // 1. If resident is NOT linked to an existing census ID, check database or INSERT them!
-      if (!finalCensusId) {
-        // Search if already in loaded registry to prevent duplicates
-        const existingInRegistry = (allCensusRegistry.length > 0 ? allCensusRegistry : residents).find(r =>
-          r.first_name?.toLowerCase().trim() === resAccFirstName.toLowerCase().trim() &&
-          r.last_name?.toLowerCase().trim() === resAccLastName.toLowerCase().trim() &&
-          (r.barangay || '').toLowerCase().trim() === assignedBarangay.toLowerCase().trim()
-        );
-
-        if (existingInRegistry) {
-          finalCensusId = existingInRegistry.id;
-          try {
-            await apiService.updateResident(existingInRegistry.id, {
-              email: resAccEmail.trim().toLowerCase(),
-              phone: cleanPhone || undefined,
-              verification_status: 'Verified',
-              household_number: resAccHouseholdNum.trim() || undefined,
-              purok: cleanPurokNum,
-              address: fullAddress,
-              id_type: resAccIdType || undefined,
-              submitted_id: resAccIdPhoto || undefined
-            });
-          } catch (syncErr) {
-            console.warn('Sync existing resident warning:', syncErr);
-          }
-        } else {
-          // Resident is NOT in the database: ADD THEM TO THE DATABASE!
-          try {
-            const createdRes = await apiService.createResident({
-              first_name: resAccFirstName.trim(),
-              middle_name: resAccMiddleName.trim() || undefined,
-              last_name: resAccLastName.trim(),
-              barangay: assignedBarangay,
-              date_of_birth: resAccDOB || '2000-01-01',
-              gender: resAccGender,
-              civil_status: resAccCivilStatus || 'Single',
-              years_of_residency: resAccResidencyYears.trim() || '1',
-              address: fullAddress,
-              purok: cleanPurokNum,
-              phone: cleanPhone || undefined,
-              email: resAccEmail.trim().toLowerCase(),
-              id_type: resAccIdType || 'Philippine National ID (PhilSys)',
-              submitted_id: resAccIdPhoto || undefined,
-              household_number: resAccHouseholdNum.trim() || undefined,
-              family_name: resAccLastName.trim(),
-              is_head_of_household: 0,
-              relationship_to_head: 'Member',
-              employment_status: (resAccEmployment as any) || 'Employed',
-              verification_status: 'Verified',
-              is_census_only: false
-            });
-
-            if (createdRes && (createdRes.id || (createdRes as any).resident?.id)) {
-              finalCensusId = createdRes.id || (createdRes as any).resident?.id;
-            }
-            addedToCensus = true;
-
-            // Refresh residents & census households list
-            const freshResidents = await apiService.getResidents(assignedBarangay, 'all');
-            if (Array.isArray(freshResidents)) {
-              setResidents(freshResidents);
-              setAllCensusRegistry(freshResidents);
-              setStats(prev => ({ ...prev, totalResidents: freshResidents.length }));
-            }
-            apiService.getCensusStats(assignedBarangay, 'all').then(d => { if (d) setCensusStats(d); }).catch(() => { });
-            apiService.getHouseholds(assignedBarangay, 'all').then(d => { if (d) setCensusHouseholds(d); }).catch(() => { });
-          } catch (censusCreateErr) {
-            console.warn('Auto-create resident in census registry notice:', censusCreateErr);
-          }
-        }
-      } else {
-        // Linked census resident is in database: update with verified portal email/phone
-        try {
-          await apiService.updateResident(finalCensusId, {
-            email: resAccEmail.trim().toLowerCase(),
-            phone: cleanPhone || undefined,
-            verification_status: 'Verified',
-            household_number: resAccHouseholdNum.trim() || undefined,
-            purok: cleanPurokNum,
-            address: fullAddress,
-            id_type: resAccIdType || undefined,
-            submitted_id: resAccIdPhoto || undefined
-          });
-        } catch (linkErr) {
-          console.warn('Census link sync notice:', linkErr);
-        }
+      // 1. Update the resident census record in the database
+      try {
+        await apiService.updateResident(r.id, {
+          email: resAccEmail.trim().toLowerCase(),
+          phone: cleanPhone,
+          verification_status: 'Verified',
+          purok: cleanPurokNum,
+          address: fullAddress,
+          claimed_at: new Date().toISOString()
+        });
+      } catch (updateErr) {
+        console.warn('Sync resident notice:', updateErr);
       }
 
       // 2. Create the System User portal account linked to census resident
       await apiService.createUser({
         name: fullName,
         email: resAccEmail.trim().toLowerCase(),
-        password: resAccPassword.trim(),
+        password: defaultPassword,
         role: 'resident',
         status: 'Active',
         barangay: assignedBarangay,
-        phone: cleanPhone || undefined,
+        phone: cleanPhone,
         created_by: user?.name || 'Administrator',
-        first_name: resAccFirstName.trim(),
-        middle_name: resAccMiddleName.trim() || undefined,
-        last_name: resAccLastName.trim(),
-        household_number: resAccHouseholdNum.trim() || undefined,
+        first_name: r.first_name || '',
+        middle_name: r.middle_name || undefined,
+        last_name: r.last_name || '',
+        household_number: r.household_number || undefined,
         purok: cleanPurokNum,
         address: fullAddress,
-        gender: resAccGender,
-        civil_status: resAccCivilStatus,
-        employment_status: resAccEmployment,
-        years_of_residency: resAccResidencyYears.trim() || undefined,
-        date_of_birth: resAccDOB || undefined,
-        id_type: resAccIdType,
-        submitted_id: resAccIdPhoto || undefined,
+        gender: r.gender,
+        civil_status: r.civil_status,
+        date_of_birth: r.date_of_birth ? r.date_of_birth.split('T')[0] : undefined,
         verification_status: 'Verified',
-        resident_id: finalCensusId || undefined
+        resident_id: r.id
       } as any);
 
-      // Refresh users list so new resident account appears instantly in User Management
-      const freshUsers = await apiService.getUsers();
-      if (Array.isArray(freshUsers)) {
-        setUsers(freshUsers);
+      // 3. Dispatch official notification (In-app, SMS, Email)
+      try {
+        await dispatchResidentNotification({
+          residentEmail: resAccEmail.trim().toLowerCase(),
+          residentName: fullName,
+          phone: cleanPhone,
+          type: 'verification',
+          title: 'Resident Portal Account Created',
+          message: `Welcome to Smart Barangay ${assignedBarangay}! Your resident citizen account has been created. Your login email is ${resAccEmail.trim().toLowerCase()} and your default password is ${defaultPassword}. Please change your password upon your first login.`,
+          statusBadge: 'Verified',
+          badgeColor: 'emerald',
+          refCode: `ACC-${r.id}`,
+          barangay: assignedBarangay,
+          externalDispatchedByBackend: true
+        });
+      } catch (notifErr) {
+        console.warn('Notification dispatch notice:', notifErr);
       }
 
-      if (addedToCensus) {
-        toast.success(`Resident account created & added to Census Database!`, {
-          description: `${fullName} is registered in Census Registry & can log in with ${resAccEmail.trim().toLowerCase()}`
-        });
-      } else {
-        toast.success(`Resident portal account created for ${fullName}!`, {
-          description: `Login Email: ${resAccEmail.trim().toLowerCase()} • Access: Verified Resident`
-        });
-      }
+      toast.success(`Resident portal account created for ${fullName}!`, {
+        description: `Login Email: ${resAccEmail.trim().toLowerCase()} • Default Password: ${defaultPassword} dispatched via Email & SMS.`
+      });
 
+      // Reset modal and reload data
       setIsCreateResidentUserOpen(false);
-      setIsSearchDropdownOpen(false);
+      setResAccCensusMatch(null);
+      setResAccLinkedCensusId(null);
       setResAccCensusSearch('');
       setResAccFirstName('');
       setResAccMiddleName('');
@@ -2237,21 +2127,7 @@ export default function AdminDashboard() {
       setResAccEmail('');
       setResAccPassword('');
       setResAccConfirmPassword('');
-      setResAccShowConfirmPassword(false);
       setResAccPhone('');
-      setResAccDOB('');
-      setResAccGender('');
-      setResAccCivilStatus('');
-      setResAccEmployment('');
-      setResAccResidencyYears('');
-      setResAccPurok('');
-      setResAccCity('Butuan City');
-      setResAccHouseholdNum('');
-      setResAccIdType('');
-      setResAccIdPhoto(null);
-      setResAccIdFileName('');
-      setResAccLinkedCensusId(null);
-      setResAccCensusMatch(null);
 
       await loadData();
     } catch (err: any) {
@@ -7017,24 +6893,7 @@ export default function AdminDashboard() {
                         setResAccCensusMatch(null);
                         setResAccLinkedCensusId(null);
                         setResAccCensusSearch('');
-                        setResAccFirstName('');
-                        setResAccMiddleName('');
-                        setResAccLastName('');
-                        setResAccDOB('');
-                        setResAccGender('');
-                        setResAccCivilStatus('');
-                        setResAccEmployment('');
-                        setResAccResidencyYears('');
-                        setResAccPurok('');
-                        setResAccHouseholdNum('');
-                        setResAccIdType('');
-                        setResAccIdPhoto(null);
-                        setResAccIdFileName('');
                         setResAccEmail('');
-                        setResAccPassword('');
-                        setResAccConfirmPassword('');
-                        setResAccShowPassword(false);
-                        setResAccShowConfirmPassword(false);
                         setResAccPhone('');
                         setIsCreateResidentUserOpen(true);
                       }}
@@ -9763,7 +9622,7 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Dedicated Resident User Account Creation Modal with Census Auto-Fill */}
+      {/* Dedicated Resident User Account Creation Modal via Census Search */}
       <Dialog open={isCreateResidentUserOpen} onOpenChange={setIsCreateResidentUserOpen}>
         <DialogContent className="bg-white max-w-2xl max-h-[88vh] overflow-y-auto p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xl">
           <DialogHeader>
@@ -9777,562 +9636,298 @@ export default function AdminDashboard() {
                 </DialogTitle>
               </div>
               <Badge className="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] uppercase font-bold tracking-wider">
-                Resident Portal Access Only
+                Census Resident Search
               </Badge>
             </div>
             <DialogDescription className="text-xs text-slate-500">
-              Provision a digital citizen portal account for Barangay {resAccBarangay || user?.barangay || 'Pianing'}. Type the resident&apos;s name to auto-fill verified demographic details from the Census Registry.
+              Search for an official inhabitant from the Barangay {resAccBarangay || user?.barangay || 'Pianing'} Census Registry to provision their resident portal account.
             </DialogDescription>
           </DialogHeader>
 
-          {/* Existing Account Warning */}
+          {/* Existing Account Notice */}
           {existingResidentUserAccount && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
               <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-amber-900">Existing Account Notice</p>
+                <p className="font-bold text-amber-900">Existing Account Warning</p>
                 <p className="text-[11px] text-amber-800 mt-0.5">
-                  A system account already exists for <strong className="font-semibold">{existingResidentUserAccount.name}</strong> ({existingResidentUserAccount.email}). Role: <span className="uppercase font-mono font-bold">{existingResidentUserAccount.role}</span> • Status: <span className="font-semibold">{existingResidentUserAccount.status}</span>.
+                  A system user account already exists for <strong className="font-semibold">{existingResidentUserAccount.name}</strong> ({existingResidentUserAccount.email}). Role: <span className="uppercase font-mono font-bold">{existingResidentUserAccount.role}</span> • Status: <span className="font-semibold">{existingResidentUserAccount.status}</span>.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Census Search & Auto-Fill Section */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Search size={14} className="text-blue-600" />
-                <Label className="text-xs font-bold text-slate-800">
-                  Search Barangay Census to Auto-Fill
+          {!resAccCensusMatch ? (
+            /* STEP 1: SEARCH & SELECT RESIDENT FROM CENSUS REGISTRY */
+            <div className="space-y-3.5">
+              {/* Search Engine Input Bar */}
+              <div>
+                <Label className="text-xs font-bold text-slate-800 block mb-1">
+                  Search Inhabitant (Name, Phone Number, or Household #)
                 </Label>
-                <span className="text-[10px] text-slate-500 font-normal hidden sm:inline">
-                  (Searchable Dropdown • Auto-Syncs to Database)
-                </span>
-              </div>
-              {resAccCensusMatch && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Full reset of all census-autofilled fields
-                    setResAccCensusMatch(null);
-                    setResAccLinkedCensusId(null);
-                    setResAccCensusSearch('');
-                    setResAccFirstName('');
-                    setResAccMiddleName('');
-                    setResAccLastName('');
-                    setResAccDOB('');
-                    setResAccGender('');
-                    setResAccCivilStatus('');
-                    setResAccPhone('');
-                    setResAccEmail('');
-                    setResAccPurok('');
-                    setResAccHouseholdNum('');
-                    setResAccEmployment('');
-                    setResAccResidencyYears('');
-                    setResAccIdType('');
-                    setResAccIdPhoto(null);
-                    setResAccIdFileName('');
-                    if (resAccFileInputRef.current) resAccFileInputRef.current.value = '';
-                  }}
-                  className="text-[11px] text-red-600 hover:text-red-700 font-semibold cursor-pointer flex items-center gap-1"
-                >
-                  <X size={12} />
-                  Unlink Record
-                </button>
-              )}
-            </div>
-
-            {!resAccCensusMatch ? (
-              <div className="relative">
                 <div className="relative flex items-center">
-                  <Search size={14} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+                  <Search size={15} className="absolute left-3 text-slate-400 pointer-events-none" />
                   <Input
+                    type="text"
                     value={resAccCensusSearch}
-                    onChange={e => {
-                      setResAccCensusSearch(e.target.value);
-                      setIsSearchDropdownOpen(true);
-                    }}
-                    placeholder="Type name, letter, household #, or purok to auto-fill..."
-                    className="text-xs pl-8 pr-8 bg-white border-slate-300 focus:border-blue-500 rounded-lg h-9 shadow-xs"
+                    onChange={e => setResAccCensusSearch(e.target.value)}
+                    placeholder="e.g. Juan dela Cruz, 09XXXXXXXXX, or HH-001..."
+                    className="w-full h-10 pl-9 pr-8 text-xs bg-slate-50 border-slate-300 focus:border-blue-500 focus:bg-white rounded-xl shadow-2xs"
+                    autoFocus
                   />
                   {resAccCensusSearch && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setResAccCensusSearch('');
-                        setIsSearchDropdownOpen(false);
-                      }}
-                      className="absolute right-2 p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                      onClick={() => setResAccCensusSearch('')}
+                      className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
                       title="Clear search"
                     >
-                      <X size={13} />
+                      <X size={14} />
                     </button>
                   )}
                 </div>
+              </div>
 
-                {/* Dropdown Menu — ONLY displays when the user types something! */}
-                {resAccCensusSearch.trim().length > 0 && isSearchDropdownOpen && (
-                  <div className="mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100 max-h-56 overflow-y-auto z-20">
-                    <div className="px-3 py-1.5 bg-slate-50 flex items-center justify-between text-[11px] font-semibold text-slate-600">
-                      <span>
-                        Matching Census Records for &quot;{resAccCensusSearch.trim()}&quot; ({censusMatches.length})
-                      </span>
-                      <span className="text-[10px] text-blue-600 font-normal">
-                        Click resident to auto-fill
-                      </span>
-                    </div>
+              {/* Inhabitants List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-0.5">
+                  <span className="text-[11px] font-bold text-slate-700">
+                    {resAccCensusSearch.trim() ? (
+                      <>Matching Census Records ({censusMatches.length})</>
+                    ) : (
+                      <>Official Census Directory ({censusMatches.length} Inhabitants)</>
+                    )}
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-1">
+                    <CheckCircle2 size={11} /> Verified Barangay Registry
+                  </span>
+                </div>
 
-                    {censusMatches.length > 0 ? (
-                      censusMatches.map(r => (
+                {censusMatches.length === 0 ? (
+                  <div className="py-8 px-4 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                    <Users size={28} className="mx-auto text-slate-400 mb-2" />
+                    <h4 className="text-xs font-bold text-slate-700">
+                      No Censused Resident Found
+                    </h4>
+                    <p className="text-[11px] text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
+                      We could not find an official census record matching &ldquo;{resAccCensusSearch}&rdquo; in Barangay {resAccBarangay || user?.barangay || 'Pianing'}. Please make sure the citizen is first recorded in the <strong>Census &amp; Demographics</strong> tab.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                    {censusMatches.map(r => {
+                      const hasUser = users.some(u => 
+                        (u.resident_id && u.resident_id === r.id) || 
+                        (r.email && u.email?.toLowerCase().trim() === r.email.toLowerCase().trim())
+                      );
+
+                      return (
                         <div
                           key={r.id}
-                          onClick={() => applyCensusMatch(r)}
-                          className="p-2.5 flex items-center justify-between hover:bg-blue-50/80 cursor-pointer transition-colors gap-2 group"
+                          className="p-3 bg-white hover:bg-blue-50/40 border border-slate-200 hover:border-blue-300 rounded-xl transition-all shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                          <div className="flex items-start sm:items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
                               {(r.first_name || 'R').charAt(0).toUpperCase()}
                             </div>
-                            <div className="truncate">
-                              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700">
-                                {r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}
-                              </p>
-                              <p className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
-                                <span>Household: <strong className="font-mono text-blue-600">{r.household_number || 'N/A'}</strong></span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-bold text-slate-900">
+                                  {r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}
+                                </span>
+                                <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-[9.5px] font-semibold py-0">
+                                  Censused Resident
+                                </Badge>
+                                {hasUser && (
+                                  <Badge className="bg-amber-50 text-amber-800 border-amber-200 text-[9.5px] font-semibold py-0">
+                                    Account Active
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-slate-500 mt-1">
+                                <span className="flex items-center gap-1">
+                                  <Building2 size={11} className="text-blue-600" />
+                                  Purok {r.purok || '1'}
+                                </span>
                                 <span>•</span>
-                                <span>Purok {r.purok || '1'}</span>
+                                <span>Household: <strong className="font-mono text-blue-700">{r.household_number || 'N/A'}</strong></span>
                                 {r.gender && (
                                   <>
                                     <span>•</span>
                                     <span>{r.gender}</span>
                                   </>
                                 )}
-                                {r.barangay && (
+                                {r.phone && (
                                   <>
                                     <span>•</span>
-                                    <span className="text-slate-400">Brgy. {r.barangay}</span>
+                                    <span className="font-mono text-slate-600">📱 {r.phone}</span>
                                   </>
                                 )}
-                              </p>
+                                {r.email && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-slate-600">✉️ {r.email}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
+
                           <Button
                             type="button"
                             size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              applyCensusMatch(r);
-                            }}
-                            className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shadow-2xs shrink-0 cursor-pointer"
+                            onClick={() => applyCensusMatch(r)}
+                            className="h-8 px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs whitespace-nowrap self-end sm:self-center flex items-center gap-1.5"
                           >
-                            Auto-Fill
+                            <UserCheck size={13} />
+                            Select Resident
                           </Button>
                         </div>
-                      ))
-                    ) : (
-                      <div className="p-3.5 text-center space-y-2">
-                        <div className="flex items-center justify-center text-amber-500">
-                          <AlertCircle size={20} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">
-                            No matching census record found for &quot;{resAccCensusSearch}&quot;
-                          </p>
-                          <p className="text-[11px] text-slate-500 mt-0.5">
-                            This resident is not yet registered in the Barangay Census database.
-                          </p>
-                        </div>
-                        <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-800 flex items-center justify-between text-left gap-2">
-                          <div>
-                            <span className="font-bold text-emerald-900 block">✨ Auto-Registration Enabled</span>
-                            <span>Fill out Step 1 &amp; Step 2 below. When you create the account, this resident will be <strong>automatically added to the Barangay Census database</strong>!</span>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => setIsSearchDropdownOpen(false)}
-                            className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 cursor-pointer"
-                          >
-                            Fill Form Below
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-emerald-100 rounded-full text-emerald-700">
-                    <CheckCircle2 size={16} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-emerald-950">
-                      Linked to Census: {resAccCensusMatch.first_name} {resAccCensusMatch.last_name}
-                    </p>
-                    <p className="text-[11px] text-emerald-800">
-                      Household: <span className="font-mono font-semibold">{resAccCensusMatch.household_number || 'HH-N/A'}</span> • Purok {resAccCensusMatch.purok || '1'} • Verified Inhabitant
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
-                    Database Linked
-                  </Badge>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setResAccCensusMatch(null);
-                      setResAccLinkedCensusId(null);
-                      setIsSearchDropdownOpen(true);
-                    }}
-                    className="h-6 text-[10px] px-2 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100 cursor-pointer"
-                  >
-                    Change
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
 
-          <form onSubmit={handleCreateResidentUser} autoComplete="off" className="space-y-4 pt-1">
-            {/* Step 1: Resident Demographics & Profile */}
-            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Users size={14} className="text-blue-600" />
-                Step 1: Resident Demographics &amp; Profile
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">First Name *</Label>
-                  <Input
-                    value={resAccFirstName}
-                    onChange={e => setResAccFirstName(e.target.value)}
-                    placeholder="e.g. Juan"
-                    className="text-xs mt-1 bg-white border-slate-300"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Middle Name</Label>
-                  <Input
-                    value={resAccMiddleName}
-                    onChange={e => setResAccMiddleName(e.target.value)}
-                    placeholder="e.g. Ramos"
-                    className="text-xs mt-1 bg-white border-slate-300"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Last Name *</Label>
-                  <Input
-                    value={resAccLastName}
-                    onChange={e => setResAccLastName(e.target.value)}
-                    placeholder="e.g. Dela Cruz"
-                    className="text-xs mt-1 bg-white border-slate-300"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold text-slate-700">Date of Birth</Label>
-                    {resAccDOB && getDynamicAge(resAccDOB) !== null && (
-                      <span className="text-[9px] text-blue-600 font-bold bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
-                        {getDynamicAge(resAccDOB)} yrs
-                      </span>
-                    )}
-                  </div>
-                  <Input
-                    type="date"
-                    value={resAccDOB}
-                    onChange={e => setResAccDOB(e.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
-                    className="text-xs mt-1 bg-white border-slate-300"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Gender *</Label>
-                  <Select value={resAccGender} onValueChange={(val: any) => setResAccGender(val)}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Gender" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Male">Male</SelectItem>
-                      <SelectItem value="Female">Female</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Civil Status</Label>
-                  <Select value={resAccCivilStatus} onValueChange={setResAccCivilStatus}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Single">Single</SelectItem>
-                      <SelectItem value="Married">Married</SelectItem>
-                      <SelectItem value="Widowed">Widowed</SelectItem>
-                      <SelectItem value="Separated">Separated</SelectItem>
-                      <SelectItem value="Live-In">Live-In / Common Law</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Employment Status</Label>
-                  <Select value={resAccEmployment} onValueChange={setResAccEmployment}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300"><SelectValue placeholder="Select Employment Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Employed">Employed</SelectItem>
-                      <SelectItem value="Self-Employed">Self-Employed / Business</SelectItem>
-                      <SelectItem value="Unemployed">Unemployed</SelectItem>
-                      <SelectItem value="Student">Student</SelectItem>
-                      <SelectItem value="Retired">Retired</SelectItem>
-                      <SelectItem value="Minor">Dependent Minor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700">Years of Residency</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={resAccResidencyYears}
-                    onChange={e => setResAccResidencyYears(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="e.g. 5"
-                    className="text-xs mt-1 bg-white border-slate-300"
-                  />
-                </div>
-              </div>
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCreateResidentUserOpen(false)}
+                  className="text-xs h-9 font-medium"
+                >
+                  Close
+                </Button>
+              </DialogFooter>
             </div>
+          ) : (
+            /* STEP 2: ENTER RESIDENT EMAIL & PHONE NUMBER */
+            <form onSubmit={handleCreateResidentUser} className="space-y-4 pt-1">
+              {/* Selected Resident Profile Card */}
+              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-sm flex items-center justify-center shrink-0">
+                    {(resAccCensusMatch.first_name || 'R').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-emerald-950 truncate">
+                        {resAccCensusMatch.first_name} {resAccCensusMatch.middle_name ? resAccCensusMatch.middle_name + ' ' : ''}{resAccCensusMatch.last_name}
+                      </p>
+                      <Badge className="bg-emerald-600 text-white text-[9.5px] font-bold">
+                        Selected Resident
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-emerald-800 mt-0.5">
+                      Barangay {resAccCensusMatch.barangay || user?.barangay || 'Pianing'} • Purok {resAccCensusMatch.purok || '1'} • Household: <span className="font-mono font-semibold">{resAccCensusMatch.household_number || 'N/A'}</span>
+                      {resAccCensusMatch.gender ? ` • ${resAccCensusMatch.gender}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setResAccCensusMatch(null);
+                    setResAccLinkedCensusId(null);
+                    setResAccEmail('');
+                    setResAccPhone('');
+                  }}
+                  className="h-7 text-xs px-2.5 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100 cursor-pointer shrink-0 font-semibold"
+                >
+                  Change
+                </Button>
+              </div>
 
-            {/* Step 2: Resident Portal Login Credentials */}
-            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <KeyRound size={14} className="text-blue-600" />
-                Step 2: Resident Portal Login Credentials
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Email & Phone Number Inputs ONLY */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3.5">
                 <div>
-                  <Label className="text-xs font-semibold text-slate-700">Login Email Address *</Label>
+                  <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Mail size={14} className="text-blue-600" />
+                    Resident Gmail / Email Address *
+                  </Label>
                   <div className="relative mt-1">
-                    <Mail size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
                     <Input
                       type="email"
-                      name="res_reg_portal_login_email"
-                      autoComplete="new-off"
                       value={resAccEmail}
                       onChange={e => setResAccEmail(e.target.value)}
-                      placeholder="citizen@resident.barangay.ph"
-                      className="text-xs pl-8 bg-white border-slate-300"
+                      placeholder="e.g. resident@gmail.com"
+                      className="text-xs bg-white border-slate-300 focus:border-blue-500 rounded-xl h-10 shadow-xs"
                       required
                     />
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Used by the resident to sign into their portal.</p>
+                  <p className="text-[10.5px] text-slate-500 mt-1">
+                    The resident will use this email to log in. Official credentials will be delivered to this address.
+                  </p>
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold text-slate-700">Initial Password *</Label>
-                    <button
-                      type="button"
-                      onClick={() => setResAccShowPassword(prev => !prev)}
-                      className="text-[11px] text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
-                    >
-                      {resAccShowPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
+                  <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Phone size={14} className="text-blue-600" />
+                    Resident Mobile Phone Number (11-Digit) *
+                  </Label>
                   <div className="relative mt-1">
-                    <Input
-                      type={resAccShowPassword ? 'text' : 'password'}
-                      name="res_reg_portal_login_pass"
-                      autoComplete="new-password"
-                      value={resAccPassword}
-                      onChange={e => setResAccPassword(e.target.value)}
-                      placeholder="Enter resident password"
-                      className="text-xs font-mono bg-white border-slate-300"
-                      required
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Min. 8 chars with uppercase, lowercase, digit &amp; symbol.</p>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-semibold text-slate-700">Confirm Password *</Label>
-                    <button
-                      type="button"
-                      onClick={() => setResAccShowConfirmPassword(prev => !prev)}
-                      className="text-[11px] text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
-                    >
-                      {resAccShowConfirmPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  <div className="relative mt-1">
-                    <Input
-                      type={resAccShowConfirmPassword ? 'text' : 'password'}
-                      name="res_reg_portal_confirm_pass"
-                      autoComplete="new-password"
-                      value={resAccConfirmPassword}
-                      onChange={e => setResAccConfirmPassword(e.target.value)}
-                      placeholder="Re-enter password to confirm"
-                      className="text-xs font-mono bg-white border-slate-300"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <Label className="text-xs font-semibold text-slate-700">Mobile Contact Number *</Label>
-                  <div className="relative mt-1">
-                    <Phone size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
                     <Input
                       type="tel"
                       value={resAccPhone}
                       onChange={e => setResAccPhone(e.target.value.replace(/[^0-9+]/g, '').slice(0, 13))}
                       placeholder="09XXXXXXXXX"
-                      className="text-xs pl-8 font-mono bg-white border-slate-300"
+                      className="text-xs font-mono bg-white border-slate-300 focus:border-blue-500 rounded-xl h-10 shadow-xs"
                       required
                     />
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Philippine 11-digit mobile number for SMS notifications.</p>
+                  <p className="text-[10.5px] text-slate-500 mt-1">
+                    Philippine 11-digit mobile number (e.g. 09171234567) for instant SMS notification and OTP recovery.
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* Step 3: Location Assignment */}
-            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <Building2 size={14} className="text-blue-600" />
-                Step 3: Location Details
-              </span>
-
-              <div>
-                <Label className="text-xs font-semibold text-slate-700">Purok *</Label>
-                <Select value={resAccPurok} onValueChange={setResAccPurok}>
-                  <SelectTrigger className="text-xs mt-1 bg-white border-slate-300">
-                    <SelectValue placeholder="Select Purok" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5, 6].map(p => (
-                      <SelectItem key={`p-${p}`} value={String(p)}>Purok {p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Step 4: Valid Government ID & Upload */}
-            <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <ShieldCheck size={14} className="text-blue-600" />
-                Step 4: Valid Government ID &amp; Document Photo
-              </span>
-
-              <div className="space-y-2.5">
+              {/* Automated Credentials Notice */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2.5 text-xs text-blue-900">
+                <KeyRound size={16} className="text-blue-600 shrink-0 mt-0.5" />
                 <div>
-                  <Label className="text-xs font-semibold text-slate-700">Valid Government ID Type *</Label>
-                  <Select value={resAccIdType} onValueChange={setResAccIdType}>
-                    <SelectTrigger className="text-xs mt-1 bg-white border-slate-300">
-                      <SelectValue placeholder="Select Government ID Type" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {ID_TYPES.map(t => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <p className="font-bold text-blue-900">✨ Automated Credential Generation & Delivery</p>
+                  <p className="text-[11px] text-blue-800 mt-0.5 leading-relaxed">
+                    The system will automatically generate a secure default password (e.g., <code className="font-mono font-bold bg-blue-100 px-1 py-0.5 rounded">Brgy@{new Date().getFullYear()}!***</code>) and dispatch login credentials directly via <strong>Email</strong> and <strong>SMS</strong>.
+                  </p>
                 </div>
+              </div>
 
-                <div>
-                  <Label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Government ID Photo Upload
-                  </Label>
-                  <input
-                    type="file"
-                    ref={resAccFileInputRef}
-                    onChange={handleResAccFileChange}
-                    accept="image/*"
-                    className="hidden"
-                  />
-
-                  {!resAccIdPhoto ? (
-                    <div
-                      onClick={() => resAccFileInputRef.current?.click()}
-                      className="border border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/20 rounded-xl p-3 text-center cursor-pointer transition-all group"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-1 group-hover:scale-105 transition-transform">
-                        <Camera size={16} />
-                      </div>
-                      <p className="text-xs font-semibold text-slate-700">Click to attach or capture resident valid ID photo</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">PNG, JPG, or JPEG up to 5MB (PhilSys, Driver's License, Voter's, etc.)</p>
-                    </div>
+              <DialogFooter className="pt-2 flex flex-col sm:flex-row gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setResAccCensusMatch(null);
+                    setResAccLinkedCensusId(null);
+                    setResAccEmail('');
+                    setResAccPhone('');
+                  }}
+                  className="text-xs h-9 font-medium"
+                >
+                  Back to Search
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isCreatingResAccount}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-9 shadow-xs cursor-pointer flex-1 gap-1.5"
+                >
+                  {isCreatingResAccount ? (
+                    <>
+                      <RefreshCcw size={14} className="animate-spin" />
+                      <span>Creating Account & Dispatching Credentials...</span>
+                    </>
                   ) : (
-                    <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={resAccIdPhoto}
-                          alt="ID Preview"
-                          className="w-12 h-9 object-cover rounded-lg border border-blue-300 shadow-2xs shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-blue-950 truncate">
-                            {resAccIdFileName || resAccIdType}
-                          </p>
-                          <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-1">
-                            <CheckCircle2 size={12} className="text-emerald-600" /> Valid ID Photo Attached
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleClearResAccIdPhoto}
-                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full cursor-pointer transition-colors"
-                        title="Remove photo"
-                      >
-                        <X size={15} />
-                      </button>
-                    </div>
+                    <>
+                      <Send size={14} />
+                      <span>Create Resident Account & Send Credentials</span>
+                    </>
                   )}
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter className="pt-2 flex flex-col sm:flex-row gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsCreateResidentUserOpen(false)}
-                className="text-xs h-9 font-medium"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isCreatingResAccount}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-9 shadow-xs cursor-pointer flex-1 gap-1.5"
-              >
-                {isCreatingResAccount ? (
-                  <>
-                    <RefreshCcw size={14} className="animate-spin" />
-                    <span>Creating Resident Account...</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck size={15} />
-                    <span>Create Resident Account &amp; Grant Access</span>
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 
