@@ -122,6 +122,7 @@ export interface CensusAnalytics {
     purok: string;
     population: number;
     households: number;
+    families?: number;
     seniors: number;
     children: number;
     employed: number;

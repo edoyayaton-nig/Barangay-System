@@ -41,6 +41,7 @@ class CensusController extends Controller
                 'purok' => "Purok {$i}",
                 'population' => 0,
                 'households' => 0,
+                'families' => 0,
                 'seniors' => 0,
                 'children' => 0,
                 'employed' => 0,
@@ -63,6 +64,16 @@ class CensusController extends Controller
                 }
             }
         }
+
+        foreach ($purokMap as $k => &$pInfo) {
+            if ($pInfo['households'] === 0 && $pInfo['population'] > 0) {
+                $pInfo['households'] = (int)ceil($pInfo['population'] / 3);
+            }
+            if ($pInfo['families'] === 0) {
+                $pInfo['families'] = $pInfo['households'];
+            }
+        }
+        unset($pInfo);
 
         // Apply purok filter if requested, or keep full barangay dataset
         $residents = $allBarangayResidents;

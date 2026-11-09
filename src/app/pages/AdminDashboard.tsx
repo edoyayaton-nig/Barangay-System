@@ -5529,7 +5529,7 @@ export default function AdminDashboard() {
 
                 const familiesVal = selectedCensusPurok === 'all'
                   ? (censusStats?.total_families ?? 409)
-                  : (activePurokData?.families || activePurokData?.households || Math.max(1, Math.ceil((activePurokData?.population || 0) / 3)));
+                  : (activePurokData?.households || Math.max(1, Math.ceil((activePurokData?.population || 0) / 3)));
 
                 const populationVal = selectedCensusPurok === 'all'
                   ? (censusStats?.total_population ?? 1770)
