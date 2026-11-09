@@ -20,15 +20,18 @@ export interface GeocodeResult {
   barangay?: string;
   city?: string;
   province?: string;
+  zipCode?: string;
   country?: string;
   purokOrStreet?: string;
   place_id?: string;
   raw?: any;
 }
 
-const DISTANCE_MATRIX_API_KEY =
+export const ACTIVE_DISTANCE_MATRIX_KEY =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DISTANCE_MATRIX_API_KEY) ||
   'CWRu7dBhi0Jjj0A5LCQKE04lIXSyqTZWVUxsybi87I0BBEs7iGly7AGkViOvwC43';
+
+const DISTANCE_MATRIX_API_KEY = ACTIVE_DISTANCE_MATRIX_KEY;
 
 const BASE_URL = 'https://api.distancematrix.ai/maps/api/geocode/json';
 
@@ -47,13 +50,14 @@ function toTitleCase(text: string): string {
 function parseComponents(
   item: any,
   originalQuery: string = ''
-): { barangay?: string; city?: string; province?: string; country?: string; purokOrStreet?: string } {
+): { barangay?: string; city?: string; province?: string; country?: string; purokOrStreet?: string; zipCode?: string } {
   const components: GeocodeAddressComponent[] = item.address_components || [];
   let city = '';
   let province = '';
   let country = '';
   let barangay = '';
   let purokOrStreet = '';
+  let zipCode = '';
 
   for (const c of components) {
     const types = c.types || [];
@@ -69,6 +73,8 @@ function parseComponents(
       if (!country) country = name;
     } else if (types.includes('route') || types.includes('street_address') || types.includes('premise')) {
       if (!purokOrStreet) purokOrStreet = name;
+    } else if (types.includes('postal_code')) {
+      if (!zipCode) zipCode = c.long_name || c.short_name || '';
     }
   }
 
@@ -96,7 +102,7 @@ function parseComponents(
     barangay = barangay.replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
   }
 
-  return { barangay, city, province, country, purokOrStreet };
+  return { barangay, city, province, country, purokOrStreet, zipCode };
 }
 
 /**
@@ -130,6 +136,7 @@ export async function geocodeAddress(query: string): Promise<GeocodeResult[]> {
       barangay: parsed.barangay,
       city: parsed.city,
       province: parsed.province,
+      zipCode: parsed.zipCode,
       country: parsed.country,
       purokOrStreet: parsed.purokOrStreet,
       place_id: item.place_id,
@@ -166,6 +173,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<GeocodeR
       barangay: parsed.barangay,
       city: parsed.city,
       province: parsed.province,
+      zipCode: parsed.zipCode,
       country: parsed.country,
       purokOrStreet: parsed.purokOrStreet,
       place_id: item.place_id,

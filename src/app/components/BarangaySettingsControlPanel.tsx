@@ -3,10 +3,12 @@ import {
   Building2, Mail, Send, Settings, Save, RotateCcw, CheckCircle2,
   Copy, Eye, Sparkles, AlertCircle, ShieldCheck, Plus, Search,
   ExternalLink, Smartphone, HelpCircle, Layers, Check, RefreshCw,
-  X, UserCheck, Key, Phone, UserPlus, Globe, Sliders, ChevronDown
+  X, UserCheck, Key, Phone, UserPlus, Globe, Sliders, ChevronDown,
+  MapPin, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BUTUAN_BARANGAYS } from '../../utils/barangays';
+import { geocodeAddress } from '../../services/geocoding';
 
 // ── Types ─────────────────────────────────────────────────────
 export interface NotificationTemplate {
@@ -306,6 +308,37 @@ export default function BarangaySettingsControlPanel() {
     plan: 'Municipal Enterprise Tier',
     modules: { documents: true, clinic: true, residentPortal: true, sms: true, census: true }
   });
+
+  const [onboardGeocoding, setOnboardGeocoding] = useState(false);
+  const [onboardGeocodedCoords, setOnboardGeocodedCoords] = useState<{ lat: number; lng: number; formatted: string } | null>(null);
+
+  const handleOnboardGeocode = async () => {
+    if (!newClient.name.trim()) {
+      toast.error('Please enter a Barangay name first to geocode.');
+      return;
+    }
+    setOnboardGeocoding(true);
+    try {
+      const q = `${newClient.name.trim()}, Butuan City, Agusan del Norte`;
+      const res = await geocodeAddress(q);
+      if (res && res.length > 0) {
+        setOnboardGeocodedCoords({
+          lat: res[0].location.lat,
+          lng: res[0].location.lng,
+          formatted: res[0].formatted_address
+        });
+        toast.success(`DistanceMatrix.ai: Verified coordinates for ${newClient.name}!`, {
+          description: `${res[0].location.lat.toFixed(5)}, ${res[0].location.lng.toFixed(5)}`
+        });
+      } else {
+        toast.error('DistanceMatrix.ai: No match found for this barangay name.');
+      }
+    } catch (e: any) {
+      toast.error('Geocoding Failed', { description: e.message || 'API error' });
+    } finally {
+      setOnboardGeocoding(false);
+    }
+  };
 
   // Current active template
   const currentTemplate = templates.find(t => t.id === selectedTemplateId) || templates[0];
@@ -1163,21 +1196,55 @@ export default function BarangaySettingsControlPanel() {
 
             <form onSubmit={handleOnboardSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="text-slate-300 font-bold block mb-1">Barangay Name *</label>
-                <input
-                  list="onboard-barangays-list"
-                  type="text"
-                  required
-                  value={newClient.name}
-                  onChange={e => setNewClient({ ...newClient, name: e.target.value })}
-                  placeholder="Select or type e.g. Libertad"
-                  className="w-full h-9 px-3 rounded-xl bg-[#0F172A] border border-[#1F293D] text-white focus:outline-none focus:border-cyan-500"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-slate-300 font-bold block">Barangay Name *</label>
+                  <button
+                    type="button"
+                    onClick={handleOnboardGeocode}
+                    disabled={onboardGeocoding}
+                    className="text-cyan-400 hover:text-cyan-300 text-[11px] font-semibold flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    {onboardGeocoding ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
+                    DistanceMatrix.ai Geocode
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    list="onboard-barangays-list"
+                    type="text"
+                    required
+                    value={newClient.name}
+                    onChange={e => setNewClient({ ...newClient, name: e.target.value })}
+                    placeholder="Select or type e.g. Libertad"
+                    className="flex-1 h-9 px-3 rounded-xl bg-[#0F172A] border border-[#1F293D] text-white focus:outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleOnboardGeocode}
+                    disabled={onboardGeocoding}
+                    className="px-3 h-9 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    {onboardGeocoding ? <Loader2 size={13} className="animate-spin" /> : <MapPin size={13} />}
+                    <span>Geocode</span>
+                  </button>
+                </div>
                 <datalist id="onboard-barangays-list">
                   {BUTUAN_BARANGAYS.map(b => (
                     <option key={b} value={b}>{b}</option>
                   ))}
                 </datalist>
+
+                {onboardGeocodedCoords && (
+                  <div className="mt-2 p-2 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-[11px] flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 size={12} className="text-emerald-400" />
+                      Distance Matrix Verified: {onboardGeocodedCoords.lat.toFixed(5)}, {onboardGeocodedCoords.lng.toFixed(5)}
+                    </span>
+                    <span className="text-[10px] text-emerald-400/80 truncate max-w-[180px]">
+                      {onboardGeocodedCoords.formatted}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

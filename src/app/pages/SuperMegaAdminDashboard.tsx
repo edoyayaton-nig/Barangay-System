@@ -6,8 +6,9 @@ import {
   FileText, Mail, Shield, Menu, Tag, PlusCircle, ShieldCheck, Users2, Send,
   LayoutDashboard, Globe, Building2, Cpu, CheckCircle2, ArrowUpRight, ChevronRight, Clock, ExternalLink,
   AlertOctagon, Wrench, Megaphone, Radio, UserCircle, Settings,
-  Key, Lock, Check, Layers
+  Key, Lock, Check, Layers, MapPin, Compass, Crosshair, Loader2, Sparkles, Navigation
 } from 'lucide-react';
+import { geocodeAddress, geocodeCurrentPosition, GeocodeResult, ACTIVE_DISTANCE_MATRIX_KEY } from '../../services/geocoding';
 import {
   ResponsiveContainer,
   PieChart,
@@ -234,11 +235,28 @@ export default function SuperMegaAdminDashboard() {
   const [creatingUser, setCreatingUser] = useState(false);
   const [showNewSAPass, setShowNewSAPass] = useState(false);
 
-  // Clear modal error and password toggle when closed
+  // DistanceMatrix.ai Geocoding state for Onboard Client Superadmin
+  const [saGeocoding, setSaGeocoding] = useState(false);
+  const [saGeocodeQuery, setSaGeocodeQuery] = useState('');
+  const [saGeocodedInfo, setSaGeocodedInfo] = useState<{
+    formattedAddress: string;
+    lat: number;
+    lng: number;
+    matchedBarangay?: string;
+    matchedCode?: string;
+  } | null>(null);
+  const [saGeocodeSuggestions, setSaGeocodeSuggestions] = useState<GeocodeResult[]>([]);
+  const [showSAGeocodeSuggestions, setShowSAGeocodeSuggestions] = useState(false);
+
+  // Clear modal error, password toggle and geocoding state when closed
   useEffect(() => {
     if (!isCreateSuperadminOpen) {
       setNewSAError('');
       setShowNewSAPass(false);
+      setSaGeocodeQuery('');
+      setSaGeocodedInfo(null);
+      setSaGeocodeSuggestions([]);
+      setShowSAGeocodeSuggestions(false);
     }
   }, [isCreateSuperadminOpen]);
 
@@ -289,9 +307,147 @@ export default function SuperMegaAdminDashboard() {
     });
     setNewSAError('');
     setShowNewSAPass(false);
+    if (finalBrgy) {
+      setSaGeocodeQuery(`${finalBrgy}, Butuan City`);
+    } else {
+      setSaGeocodeQuery('');
+    }
+    setSaGeocodedInfo(null);
+    setSaGeocodeSuggestions([]);
+    setShowSAGeocodeSuggestions(false);
     setIsCreateSuperadminOpen(true);
     if (finalBrgy) {
       toast.info(`Deploying Administrator for Barangay ${finalBrgy} (${matchedItem?.code || 'Designated Jurisdiction'}).`);
+    }
+  };
+
+  // Apply a Geocode Result from Distance Matrix API to the Onboard Client form
+  const applyGeocodeSuggestion = (res: GeocodeResult, explicitQuery?: string) => {
+    const lat = res.location?.lat ?? 0;
+    const lng = res.location?.lng ?? 0;
+
+    // 1. Detect City
+    let resolvedCity = newSA.city || 'Butuan City';
+    if (res.city) {
+      const matchCity = AGUSAN_DEL_NORTE_LGUS.find(
+        c => c.name.toLowerCase() === res.city!.toLowerCase() ||
+             res.city!.toLowerCase().includes(c.name.toLowerCase())
+      );
+      if (matchCity) resolvedCity = matchCity.name;
+    }
+
+    // 2. Detect Barangay against saBarangays / all barangays for this city
+    const availableBarangays = getBarangaysForCity(resolvedCity);
+    const queryTerm = (explicitQuery || saGeocodeQuery || '').toLowerCase();
+    const formattedTerm = (res.formatted_address || '').toLowerCase();
+    const resBrgyTerm = (res.barangay || '').toLowerCase();
+
+    let matchedBarangayName = '';
+    let matchedBarangayCode = '';
+
+    // First check saBarangays (from API / current city)
+    for (const b of saBarangays) {
+      const bNameLower = b.name.toLowerCase();
+      if (
+        (resBrgyTerm && (bNameLower === resBrgyTerm || bNameLower.includes(resBrgyTerm) || resBrgyTerm.includes(bNameLower))) ||
+        (queryTerm && queryTerm.includes(bNameLower)) ||
+        (formattedTerm && formattedTerm.includes(bNameLower))
+      ) {
+        matchedBarangayName = b.name;
+        matchedBarangayCode = b.code || '';
+        break;
+      }
+    }
+
+    // Fallback: search all barangays of this city
+    if (!matchedBarangayName) {
+      for (let i = 0; i < availableBarangays.length; i++) {
+        const bName = availableBarangays[i];
+        const bNameLower = bName.toLowerCase();
+        if (
+          (resBrgyTerm && (bNameLower === resBrgyTerm || bNameLower.includes(resBrgyTerm) || resBrgyTerm.includes(bNameLower))) ||
+          (queryTerm && queryTerm.includes(bNameLower)) ||
+          (formattedTerm && formattedTerm.includes(bNameLower))
+        ) {
+          matchedBarangayName = bName;
+          matchedBarangayCode = `BRGY-${String(i + 1).padStart(3, '0')}`;
+          break;
+        }
+      }
+    }
+
+    // Fallback: if res.barangay provided but not in list, use it
+    if (!matchedBarangayName && res.barangay) {
+      matchedBarangayName = res.barangay;
+    }
+
+    const resolvedProvince = res.province || 'Agusan del Norte';
+    const resolvedZip = res.zipCode || (resolvedCity === 'Butuan City' ? '8600' : '8600');
+
+    setNewSA(prev => ({
+      ...prev,
+      city: resolvedCity,
+      barangay: matchedBarangayName || prev.barangay,
+      barangayCode: matchedBarangayCode || prev.barangayCode,
+      province: resolvedProvince,
+      zipCode: resolvedZip
+    }));
+
+    setSaGeocodedInfo({
+      formattedAddress: res.formatted_address,
+      lat,
+      lng,
+      matchedBarangay: matchedBarangayName,
+      matchedCode: matchedBarangayCode
+    });
+
+    setShowSAGeocodeSuggestions(false);
+
+    toast.success('DistanceMatrix.ai: Geocoded successfully!', {
+      description: matchedBarangayName
+        ? `Matched [${matchedBarangayCode || 'BRGY'}] ${matchedBarangayName}, ${resolvedCity} (${lat.toFixed(5)}, ${lng.toFixed(5)})`
+        : `Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)} in ${resolvedCity}`
+    });
+  };
+
+  // Run Distance Matrix Geocode with query string
+  const handleSAGeocode = async (overrideQuery?: string) => {
+    const rawQuery = (overrideQuery ?? saGeocodeQuery).trim();
+    const query = rawQuery || (newSA.barangay ? `${newSA.barangay}, ${newSA.city || 'Butuan City'}, Agusan del Norte` : `${newSA.city || 'Butuan City'}, Agusan del Norte`);
+
+    setSaGeocoding(true);
+    try {
+      const results = await geocodeAddress(query);
+      if (!results || results.length === 0) {
+        toast.error('DistanceMatrix.ai: No geocoding results found for this query.');
+        return;
+      }
+      setSaGeocodeSuggestions(results);
+      if (results.length > 1) {
+        setShowSAGeocodeSuggestions(true);
+      }
+      applyGeocodeSuggestion(results[0], rawQuery);
+    } catch (err: any) {
+      toast.error('DistanceMatrix.ai Geocoding Error', {
+        description: err.message || 'Failed to geocode address'
+      });
+    } finally {
+      setSaGeocoding(false);
+    }
+  };
+
+  // Use GPS location via Distance Matrix Reverse Geocoding
+  const handleSAGpsLocation = async () => {
+    setSaGeocoding(true);
+    try {
+      const result = await geocodeCurrentPosition();
+      applyGeocodeSuggestion(result, 'Current GPS Position');
+    } catch (err: any) {
+      toast.error('GPS Geocoding Failed', {
+        description: err.message || 'Unable to retrieve GPS coordinates.'
+      });
+    } finally {
+      setSaGeocoding(false);
     }
   };
 
@@ -3305,7 +3461,7 @@ export default function SuperMegaAdminDashboard() {
                       placeholder="e.g. Maria"
                       value={newSA.firstName}
                       onChange={e => setNewSA(prev => ({ ...prev, firstName: e.target.value }))}
-                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      style={{ background: isDark ? '#0F172A' : '#FFFFFF', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
                       required
                     />
                   </div>
@@ -3316,7 +3472,7 @@ export default function SuperMegaAdminDashboard() {
                       placeholder="e.g. Santos (optional)"
                       value={newSA.middleName}
                       onChange={e => setNewSA(prev => ({ ...prev, middleName: e.target.value }))}
-                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      style={{ background: isDark ? '#0F172A' : '#FFFFFF', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
                     />
                   </div>
                   <div>
@@ -3326,7 +3482,7 @@ export default function SuperMegaAdminDashboard() {
                       placeholder="e.g. Dela Cruz"
                       value={newSA.lastName}
                       onChange={e => setNewSA(prev => ({ ...prev, lastName: e.target.value }))}
-                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      style={{ background: isDark ? '#0F172A' : '#FFFFFF', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
                       required
                     />
                   </div>
@@ -3346,7 +3502,7 @@ export default function SuperMegaAdminDashboard() {
                       placeholder="e.g. superadmin@butuancity.gov.ph"
                       value={newSA.email}
                       onChange={e => setNewSA(prev => ({ ...prev, email: e.target.value }))}
-                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      style={{ background: isDark ? '#0F172A' : '#FFFFFF', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
                       required
                     />
                   </div>
@@ -3358,11 +3514,11 @@ export default function SuperMegaAdminDashboard() {
                       maxLength={11}
                       value={newSA.phone}
                       onChange={e => setNewSA(prev => ({ ...prev, phone: e.target.value }))}
-                      style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      style={{ background: isDark ? '#0F172A' : '#FFFFFF', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 12px', width: '100%' }}
                       required
                     />
                   </div>
-                  <div>
+                  <div className="sm:col-span-2">
                     <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Official Designation</label>
                     <div style={{ background: `${ACCENT_VIOLET}15`, border: `1px solid ${ACCENT_VIOLET}50`, borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <ShieldCheck size={13} style={{ color: VIOLET_TEXT, flexShrink: 0 }} />
@@ -3375,21 +3531,245 @@ export default function SuperMegaAdminDashboard() {
 
               {/* SECTION: Territorial Jurisdiction */}
               <div>
-                <p style={{ color: VIOLET_TEXT, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-                  3. Territorial Jurisdiction (Agusan del Norte)
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>City / Municipality *</label>
-                    <select
-                      value={newSA.city}
-                      onChange={e => setNewSA(prev => ({ ...prev, city: e.target.value, barangay: '' }))}
+                <div className="flex items-center justify-between mb-2">
+                  <p style={{ color: VIOLET_TEXT, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    3. Territorial Jurisdiction (Agusan del Norte)
+                  </p>
+                  <span
+                    style={{
+                      background: isDark ? 'rgba(56, 189, 248, 0.15)' : 'rgba(2, 132, 199, 0.12)',
+                      border: isDark ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(2, 132, 199, 0.3)',
+                      color: isDark ? '#38BDF8' : '#0284C7',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: 6
+                    }}
+                    className="flex items-center gap-1"
+                  >
+                    <Globe size={11} /> DistanceMatrix.ai API Active
+                  </span>
+                </div>
+
+                {/* DistanceMatrix.ai Geocoding Toolbar */}
+                <div
+                  style={{
+                    background: isDark ? '#0F1926' : '#F1F5F9',
+                    border: `1px solid ${isDark ? '#1E293B' : '#CBD5E1'}`,
+                    borderRadius: 10,
+                    padding: '10px 12px',
+                    marginBottom: 10
+                  }}
+                  className="space-y-2.5"
+                >
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span style={{ color: isDark ? '#94A3B8' : '#475569', fontWeight: 600 }} className="flex items-center gap-1.5">
+                      <MapPin size={13} style={{ color: isDark ? '#38BDF8' : '#0284C7' }} />
+                      <span>DistanceMatrix.ai Geocode Search</span>
+                    </span>
+                    <span style={{ color: isDark ? '#64748B' : '#64748B', fontSize: 10 }}>
+                      Key: {ACTIVE_DISTANCE_MATRIX_KEY.slice(0, 6)}...{ACTIVE_DISTANCE_MATRIX_KEY.slice(-4)}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-1">
+                      <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: MUTED }} />
+                      <input
+                        type="text"
+                        placeholder="Search barangay, hall, or street (e.g. Bayanihan, Pianing, Libertad)"
+                        value={saGeocodeQuery}
+                        onChange={e => setSaGeocodeQuery(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSAGeocode();
+                          }
+                        }}
+                        style={{
+                          background: isDark ? '#162232' : '#FFFFFF',
+                          border: `1px solid ${BORDER}`,
+                          borderRadius: 8,
+                          color: TEXT,
+                          fontSize: 12,
+                          padding: '7px 10px 7px 32px',
+                          width: '100%'
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSAGeocode()}
+                        disabled={saGeocoding}
+                        style={{
+                          background: '#0284C7',
+                          color: '#FFFFFF',
+                          borderRadius: 8,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: '7px 12px',
+                          border: 'none',
+                          cursor: saGeocoding ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}
+                        className="hover:brightness-110 transition-all shadow-sm"
+                      >
+                        {saGeocoding ? <Loader2 size={13} className="animate-spin" /> : <Navigation size={13} />}
+                        <span>Distance Matrix Geocode</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSAGpsLocation}
+                        disabled={saGeocoding}
+                        title="Detect GPS & Reverse Geocode via DistanceMatrix.ai"
+                        style={{
+                          background: isDark ? '#1E293B' : '#E2E8F0',
+                          color: TEXT,
+                          borderRadius: 8,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: '7px 10px',
+                          border: `1px solid ${BORDER}`,
+                          cursor: saGeocoding ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                        className="hover:bg-opacity-80 transition-all"
+                      >
+                        <Crosshair size={13} />
+                        <span className="hidden sm:inline">Use GPS</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick Barangay chips */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span style={{ color: MUTED, fontSize: 10, fontWeight: 600 }}>Quick Geocode:</span>
+                    {['Bayanihan', 'Pianing', 'Libertad', 'Ampayon', 'Doongan'].map(brgy => (
+                      <button
+                        key={brgy}
+                        type="button"
+                        onClick={() => {
+                          setSaGeocodeQuery(`${brgy}, Butuan City`);
+                          handleSAGeocode(`${brgy}, Butuan City`);
+                        }}
+                        style={{
+                          background: isDark ? '#162232' : '#FFFFFF',
+                          border: `1px solid ${BORDER}`,
+                          color: TEXT,
+                          fontSize: 10,
+                          fontWeight: 500,
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                          cursor: 'pointer'
+                        }}
+                        className="hover:border-cyan-400 hover:text-cyan-400 transition-colors"
+                      >
+                        + {brgy}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Distance Matrix Geocoded Feedback Card */}
+                  {saGeocodedInfo && (
+                    <div
                       style={{
-                        colorScheme: 'dark',
-                        background: '#161F30',
+                        background: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.15)',
+                        border: '1px solid rgba(16, 185, 129, 0.4)',
+                        borderRadius: 8,
+                        padding: '8px 12px',
+                        color: isDark ? '#A7F3D0' : '#065F46',
+                        fontSize: 11
+                      }}
+                      className="space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold flex items-center gap-1.5">
+                          <CheckCircle2 size={13} style={{ color: '#10B981' }} />
+                          Verified via DistanceMatrix.ai API
+                        </span>
+                        <span style={{ fontSize: 10, opacity: 0.85 }}>
+                          Lat: {saGeocodedInfo.lat.toFixed(5)} • Lng: {saGeocodedInfo.lng.toFixed(5)}
+                        </span>
+                      </div>
+                      <p style={{ opacity: 0.9, fontSize: 10 }}>
+                        {saGeocodedInfo.formattedAddress}
+                      </p>
+                      {saGeocodedInfo.matchedBarangay && (
+                        <div className="flex items-center gap-2 pt-0.5" style={{ fontSize: 10, fontWeight: 600 }}>
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/30">
+                            {saGeocodedInfo.matchedCode || 'BRGY'}
+                          </span>
+                          <span>Auto-linked to {saGeocodedInfo.matchedBarangay} (Barangay API)</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Multi-result Suggestions Dropdown */}
+                  {showSAGeocodeSuggestions && saGeocodeSuggestions.length > 1 && (
+                    <div
+                      style={{
+                        background: isDark ? '#13202E' : '#FFFFFF',
                         border: `1px solid ${BORDER}`,
                         borderRadius: 8,
-                        color: '#F8FAFC',
+                        padding: '6px 8px',
+                        maxHeight: 130,
+                        overflowY: 'auto'
+                      }}
+                      className="space-y-1"
+                    >
+                      <span style={{ color: MUTED, fontSize: 10, fontWeight: 600, display: 'block', marginBottom: 2 }}>
+                        Multiple matches found ({saGeocodeSuggestions.length}) — select target:
+                      </span>
+                      {saGeocodeSuggestions.map((s, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => applyGeocodeSuggestion(s)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: TEXT,
+                            fontSize: 11,
+                            textAlign: 'left',
+                            width: '100%',
+                            padding: '4px 6px',
+                            borderRadius: 4,
+                            cursor: 'pointer'
+                          }}
+                          className="hover:bg-cyan-500/10 hover:text-cyan-400 block truncate transition-colors"
+                        >
+                          📍 {s.formatted_address}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* City & Barangay Dropdowns */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                      City / Municipality *
+                    </label>
+                    <select
+                      value={newSA.city}
+                      onChange={e => {
+                        const newCity = e.target.value;
+                        setNewSA(prev => ({ ...prev, city: newCity, barangay: '', barangayCode: '' }));
+                      }}
+                      style={{
+                        colorScheme: isDark ? 'dark' : 'light',
+                        background: isDark ? '#161F30' : '#FFFFFF',
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 8,
+                        color: TEXT,
                         fontSize: 12,
                         padding: '8px 12px',
                         width: '100%',
@@ -3397,9 +3777,11 @@ export default function SuperMegaAdminDashboard() {
                       }}
                       required
                     >
-                      <option value="" disabled style={{ background: '#161F30', color: '#94A3B8' }}>Select City / Municipality</option>
+                      <option value="" disabled style={{ background: isDark ? '#161F30' : '#FFFFFF', color: MUTED }}>
+                        Select City / Municipality
+                      </option>
                       {AGUSAN_DEL_NORTE_LGUS.map(lgu => (
-                        <option key={lgu.name} value={lgu.name} style={{ background: '#161F30', color: '#F8FAFC' }}>
+                        <option key={lgu.name} value={lgu.name} style={{ background: isDark ? '#161F30' : '#FFFFFF', color: TEXT }}>
                           {lgu.name} {lgu.isCity ? '(City)' : '(Municipality)'}
                         </option>
                       ))}
@@ -3407,9 +3789,25 @@ export default function SuperMegaAdminDashboard() {
                   </div>
 
                   <div>
-                    <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>
-                      Select Barangay (Barangay API) *
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block' }}>
+                        Select Barangay (Barangay API) *
+                      </label>
+                      {newSA.barangay && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const q = `${newSA.barangay}, ${newSA.city || 'Butuan City'}, Agusan del Norte`;
+                            setSaGeocodeQuery(q);
+                            handleSAGeocode(q);
+                          }}
+                          style={{ color: isDark ? '#38BDF8' : '#0284C7', fontSize: 10, background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                          className="hover:underline flex items-center gap-1"
+                        >
+                          <Sparkles size={10} /> Geocode via API
+                        </button>
+                      )}
+                    </div>
                     <select
                       value={newSA.barangay}
                       onChange={e => {
@@ -3425,11 +3823,11 @@ export default function SuperMegaAdminDashboard() {
                       }}
                       disabled={!newSA.city}
                       style={{
-                        colorScheme: 'dark',
-                        background: '#161F30',
+                        colorScheme: isDark ? 'dark' : 'light',
+                        background: isDark ? '#161F30' : '#FFFFFF',
                         border: `1px solid ${BORDER}`,
                         borderRadius: 8,
-                        color: '#F8FAFC',
+                        color: TEXT,
                         fontSize: 12,
                         padding: '8px 12px',
                         width: '100%',
@@ -3438,16 +3836,16 @@ export default function SuperMegaAdminDashboard() {
                       }}
                       required
                     >
-                      <option value="" disabled style={{ background: '#161F30', color: '#94A3B8' }}>
+                      <option value="" disabled style={{ background: isDark ? '#161F30' : '#FFFFFF', color: MUTED }}>
                         {newSA.city ? 'Select Barangay (Barangay API)' : 'Select City / Municipality first'}
                       </option>
                       {saBarangays.map(b => (
-                        <option key={b.code || b.name} value={b.name} style={{ background: '#161F30', color: '#F8FAFC' }}>
+                        <option key={b.code || b.name} value={b.name} style={{ background: isDark ? '#161F30' : '#FFFFFF', color: TEXT }}>
                           [{b.code || `BRGY-${b.id}`}] {b.name}
                         </option>
                       ))}
                       {newSA.barangay && !saBarangays.some(b => b.name === newSA.barangay) && (
-                        <option value={newSA.barangay} style={{ background: '#161F30', color: '#F8FAFC' }}>
+                        <option value={newSA.barangay} style={{ background: isDark ? '#161F30' : '#FFFFFF', color: TEXT }}>
                           {newSA.barangay}
                         </option>
                       )}
@@ -3465,7 +3863,15 @@ export default function SuperMegaAdminDashboard() {
                       type="text"
                       value={newSA.province}
                       onChange={e => setNewSA(prev => ({ ...prev, province: e.target.value }))}
-                      style={{ background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: '#F8FAFC', fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      style={{
+                        background: isDark ? '#161F30' : '#FFFFFF',
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 8,
+                        color: TEXT,
+                        fontSize: 12,
+                        padding: '8px 12px',
+                        width: '100%'
+                      }}
                       required
                     />
                   </div>
@@ -3477,7 +3883,15 @@ export default function SuperMegaAdminDashboard() {
                       type="text"
                       value={newSA.zipCode}
                       onChange={e => setNewSA(prev => ({ ...prev, zipCode: e.target.value }))}
-                      style={{ background: '#161F30', border: `1px solid ${BORDER}`, borderRadius: 8, color: '#F8FAFC', fontSize: 12, padding: '8px 12px', width: '100%' }}
+                      style={{
+                        background: isDark ? '#161F30' : '#FFFFFF',
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 8,
+                        color: TEXT,
+                        fontSize: 12,
+                        padding: '8px 12px',
+                        width: '100%'
+                      }}
                       required
                     />
                   </div>
@@ -3504,7 +3918,7 @@ export default function SuperMegaAdminDashboard() {
                         placeholder="••••••••"
                         value={newSA.password}
                         onChange={e => setNewSA(prev => ({ ...prev, password: e.target.value }))}
-                        style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 36px 8px 12px', width: '100%' }}
+                        style={{ background: isDark ? '#0F172A' : '#FFFFFF', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 36px 8px 12px', width: '100%' }}
                         required
                       />
                       <button
@@ -3526,7 +3940,7 @@ export default function SuperMegaAdminDashboard() {
                         placeholder="••••••••"
                         value={newSA.confirmPassword}
                         onChange={e => setNewSA(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                        style={{ background: '#0F172A', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 36px 8px 12px', width: '100%' }}
+                        style={{ background: isDark ? '#0F172A' : '#FFFFFF', border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, padding: '8px 36px 8px 12px', width: '100%' }}
                         required
                       />
                     </div>
@@ -3535,7 +3949,7 @@ export default function SuperMegaAdminDashboard() {
 
                 {/* Password Strength Checklist */}
                 {newSA.password && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-2.5 p-2 rounded-lg" style={{ background: '#0F172A', border: `1px solid ${BORDER}` }}>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mt-2.5 p-2 rounded-lg" style={{ background: isDark ? '#0F172A' : '#F8FAFC', border: `1px solid ${BORDER}` }}>
                     {[
                       { label: '8+ Characters', valid: newSA.password.length >= 8 },
                       { label: '1 Uppercase (A-Z)', valid: /[A-Z]/.test(newSA.password) },
