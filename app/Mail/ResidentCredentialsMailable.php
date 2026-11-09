@@ -86,3 +86,4 @@ class ResidentCredentialsMailable extends Mailable
                     ");
     }
 }
+

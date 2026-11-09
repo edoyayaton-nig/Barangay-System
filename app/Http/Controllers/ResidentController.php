@@ -446,7 +446,7 @@ class ResidentController extends Controller
         if (!empty($email)) {
             $linkedUser = User::whereRaw('LOWER(email) = ?', [$email])->first();
             if (!$linkedUser) {
-                $linkedUser = User::create([
+                $userFields = [
                     'name' => trim("{$firstName} {$lastName}"),
                     'email' => $email,
                     'password_hash' => Hash::make($generatedPassword),
@@ -456,12 +456,15 @@ class ResidentController extends Controller
                     'civil_status' => $request->input('civil_status', 'Single'),
                     'phone' => $phone,
                     'address' => $address,
-                    'purok' => $purok,
                     'barangay' => $barangay,
                     'city' => $city,
                     'province' => $province,
                     'zip_code' => $zipCode,
-                ]);
+                ];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'purok')) {
+                    $userFields['purok'] = $purok;
+                }
+                $linkedUser = User::create($userFields);
             }
             $resident->linked_user_id = $linkedUser->id;
             $resident->save();
@@ -470,6 +473,16 @@ class ResidentController extends Controller
             try {
                 EmailService::sendCredentialNoticeEmail($email, "{$firstName} {$lastName}", $generatedPassword, $barangay);
             } catch (\Throwable $e) {}
+
+            // Also send SMS credentials if phone is provided
+            if (!empty($phone)) {
+                try {
+                    \App\Services\SmsService::sendLiveSms(
+                        $phone,
+                        "Barangay {$barangay}: Welcome {$firstName}! Your resident account has been created. Login Email: {$email}, Password: {$generatedPassword}."
+                    );
+                } catch (\Throwable $e) {}
+            }
         }
 
         ActivityLog::create([
@@ -594,7 +607,7 @@ class ResidentController extends Controller
             // (first_name, middle_name, last_name, date_of_birth, gender, civil_status, address, purok, household_number, family_name, family_role)
             // It only receives account verification linkage and contact credentials:
             $cleanP = trim(str_ireplace('purok', '', (string)($cen->purok ?: '1'))) ?: '1';
-            $cenHh = $cen->household_number ?: "P{$cleanP}-H{$cen->id}";
+            $cenHh = !empty($cen->household_number) ? $cen->household_number : "P{$cleanP}-H{$cen->id}";
 
             $cen->update([
                 'household_number' => $cenHh,
@@ -610,14 +623,17 @@ class ResidentController extends Controller
 
             // Synchronize the user account to match the authoritative, verified census identity
             if ($user) {
-                $user->update([
+                $userUpdate = [
                     'verification_status' => 'Verified',
                     'rejection_reason' => null,
                     'name' => trim("{$cen->first_name} " . (!empty($cen->middle_name) ? "{$cen->middle_name} " : "") . "{$cen->last_name}"),
                     'address' => $cen->address,
                     'barangay' => $cen->barangay,
-                    'purok' => $cen->purok,
-                ]);
+                ];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'purok')) {
+                    $userUpdate['purok'] = $cen->purok;
+                }
+                $user->update($userUpdate);
             }
 
             // If the applicant record was a separate temporary resident row created during registration:
@@ -632,12 +648,13 @@ class ResidentController extends Controller
         } else {
             // Standalone resident verified directly (e.g. added by admin or verified without prior census row)
             $cleanP = trim(str_ireplace('purok', '', (string)($resident?->purok ?: '1'))) ?: '1';
-            $hhNum = $resident?->household_number ?: "P{$cleanP}-H{$resident->id}";
+            $hhNum = !empty($resident?->household_number) ? $resident->household_number : "P{$cleanP}-H{$resident->id}";
 
             if ($resident) {
                 $resident->update([
                     'household_number' => $hhNum,
                     'verification_status' => 'Verified',
+                    'is_census_only' => 0,
                     'rejection_reason' => null,
                 ]);
             }
@@ -717,23 +734,31 @@ class ResidentController extends Controller
             if ($user) {
                 $resident = Resident::whereRaw('LOWER(email) = ?', [strtolower($user->email)])->first();
             }
+        } else {
+            if ($resident->linked_user_id) {
+                $user = User::find($resident->linked_user_id);
+            }
+            if (!$user && !empty($resident->email)) {
+                $user = User::whereRaw('LOWER(email) = ?', [strtolower($resident->email)])->first();
+            }
         }
 
         if (!$resident && !$user) {
             return response()->json(['error' => 'Resident record not found'], 404);
         }
 
-        $reason = $request->input('rejection_reason', 'Uploaded Government ID is blurry or unreadable. Please upload a clear photo.');
+        $reason = $request->input('rejection_reason') ?: $request->input('reason') ?: 'Uploaded Government ID is blurry or unreadable. Please upload a clear photo.';
 
+        // Use 'Correction_Required' / 'Rejected' status — NEVER delete the user submission!
         if ($resident) {
             $resident->update([
-                'verification_status' => 'Rejected',
+                'verification_status' => 'Correction_Required',
                 'rejection_reason' => $reason,
             ]);
         }
         if ($user) {
             $user->update([
-                'verification_status' => 'Rejected',
+                'verification_status' => 'Correction_Required',
                 'rejection_reason' => $reason,
             ]);
         }
@@ -745,11 +770,12 @@ class ResidentController extends Controller
         ActivityLog::create([
             'user_name' => $request->input('rejected_by', 'Barangay Administrator'),
             'user_role' => 'admin',
-            'action' => "Rejected applicant identity verification: {$name}. Reason: {$reason}",
+            'action' => "Requested correction on resident identity verification: {$name}. Reason: {$reason}",
         ]);
 
+        // STRICT POLICY: Exactly 1 Email, exactly 1 SMS, and exactly 1 In-App notification!
         if (!empty($email)) {
-            EmailService::sendVerificationNoticeEmail($email, $name, 'Rejected', $reason, $barangay);
+            EmailService::sendVerificationNoticeEmail($email, $name, 'Correction_Required', $reason, $barangay);
         }
 
         $phone = $resident?->phone ?: ($user?->phone ?: '');

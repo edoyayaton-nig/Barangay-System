@@ -92,6 +92,11 @@ class AppServiceProvider extends ServiceProvider
             }
 
             if (\Illuminate\Support\Facades\Schema::hasTable('users')) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'purok')) {
+                    try {
+                        \Illuminate\Support\Facades\DB::statement("ALTER TABLE users ADD COLUMN purok VARCHAR(50) DEFAULT '1'");
+                    } catch (\Throwable $e) {}
+                }
                 if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'province')) {
                     try {
                         \Illuminate\Support\Facades\DB::statement("ALTER TABLE users ADD COLUMN province VARCHAR(100) DEFAULT 'Agusan del Norte'");
@@ -107,6 +112,13 @@ class AppServiceProvider extends ServiceProvider
                         \Illuminate\Support\Facades\DB::statement("ALTER TABLE users ADD COLUMN barangay_code VARCHAR(50) NULL DEFAULT NULL");
                     } catch (\Throwable $e) {}
                 }
+            }
+
+            // Ensure all census residents are fully acknowledged constituents (is_census_only = 0)
+            if (\Illuminate\Support\Facades\Schema::hasTable('residents')) {
+                try {
+                    \Illuminate\Support\Facades\DB::statement("UPDATE residents SET is_census_only = 0 WHERE is_census_only = 1");
+                } catch (\Throwable $e) {}
             }
         } catch (\Throwable $e) {
             // Non-blocking in case DB is offline or during pre-migration artisan calls

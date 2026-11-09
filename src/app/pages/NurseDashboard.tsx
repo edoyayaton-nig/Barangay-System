@@ -546,14 +546,18 @@ export default function NurseDashboard() {
 
   // Full list of maternal vitamins from inventory + standard health center stock
   const maternalVitaminsList = useMemo(() => {
-    const invMeds = inventory.filter(i => 
-      i.category === 'Maternal Vitamin' || 
-      i.item_name.toLowerCase().includes('folic') || 
-      i.item_name.toLowerCase().includes('iron') || 
-      i.item_name.toLowerCase().includes('ferrous') || 
-      i.item_name.toLowerCase().includes('calcium') ||
-      i.item_name.toLowerCase().includes('vitamin')
-    );
+    const invMeds = inventory.filter(i => {
+      const name = (i?.item_name || '').toLowerCase();
+      const cat = (i?.category || '').toLowerCase();
+      return (
+        cat === 'maternal vitamin' || 
+        name.includes('folic') || 
+        name.includes('iron') || 
+        name.includes('ferrous') || 
+        name.includes('calcium') ||
+        name.includes('vitamin')
+      );
+    });
     const standardMeds = [
       { id: 'std-1', item_name: 'Folic Acid 400mcg', stock: 120, unit: 'tablets' },
       { id: 'std-2', item_name: 'Ferrous Sulfate + Folic Acid 60mg', stock: 150, unit: 'capsules' },
@@ -564,7 +568,8 @@ export default function NurseDashboard() {
     ];
     const combined = [...invMeds];
     standardMeds.forEach(s => {
-      if (!combined.some(c => c.item_name.toLowerCase() === s.item_name.toLowerCase())) {
+      const sName = (s.item_name || '').toLowerCase();
+      if (!combined.some(c => (c?.item_name || '').toLowerCase() === sName)) {
         combined.push(s as any);
       }
     });
@@ -574,25 +579,27 @@ export default function NurseDashboard() {
   const filteredMaternalVitamins = useMemo(() => {
     const q = (pMeds || '').trim().toLowerCase();
     if (!q) return maternalVitaminsList;
-    return maternalVitaminsList.filter(m => m.item_name.toLowerCase().includes(q));
+    return maternalVitaminsList.filter(m => (m?.item_name || '').toLowerCase().includes(q));
   }, [maternalVitaminsList, pMeds]);
 
   // Find currently selected prenatal vitamin in inventory (exact item match)
   const selectedPrenatalInvItem = useMemo(() => {
     if (!pMeds) return null;
     const lower = pMeds.toLowerCase().trim();
-    const exact = inventory.find(i =>
-      i.item_name.toLowerCase() === lower ||
-      lower.includes(i.item_name.toLowerCase()) ||
-      i.item_name.toLowerCase().includes(lower)
-    );
+    const exact = inventory.find(i => {
+      const iName = (i?.item_name || '').toLowerCase();
+      return iName === lower || lower.includes(iName) || iName.includes(lower);
+    });
     if (exact) return exact;
 
     if (lower.includes('calcium')) {
-      return inventory.find(i => i.item_name.toLowerCase().includes('calcium')) || null;
+      return inventory.find(i => (i?.item_name || '').toLowerCase().includes('calcium')) || null;
     }
     if (lower.includes('folic') || lower.includes('feso4') || lower.includes('iron') || lower.includes('ferrous')) {
-      return inventory.find(i => i.item_name.toLowerCase().includes('ferrous') || i.item_name.toLowerCase().includes('folic')) || null;
+      return inventory.find(i => {
+        const iName = (i?.item_name || '').toLowerCase();
+        return iName.includes('ferrous') || iName.includes('folic');
+      }) || null;
     }
     return null;
   }, [pMeds, inventory]);
@@ -1361,7 +1368,9 @@ export default function NurseDashboard() {
       // Deduct vaccine from local inventory stock with exact quantity
       const vaccineDeductQty = isNaN(parseInt(iVaccineQty, 10)) ? 0 : parseInt(iVaccineQty, 10);
       setInventory(prev => prev.map(item => {
-        if (item.item_name.toLowerCase().includes(activeVaccine.toLowerCase()) || activeVaccine.toLowerCase().includes(item.item_name.toLowerCase())) {
+        const iName = (item?.item_name || '').toLowerCase();
+        const aVac = (activeVaccine || '').toLowerCase();
+        if (iName.includes(aVac) || (aVac && aVac.includes(iName))) {
           const updatedStock = Math.max(0, item.stock - vaccineDeductQty);
           return {
             ...item,

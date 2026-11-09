@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `civil_status` ENUM('Single', 'Married', 'Widowed', 'Separated') DEFAULT 'Single',
   `phone` VARCHAR(20) DEFAULT '',
   `address` VARCHAR(255) DEFAULT '',
+  `purok` VARCHAR(50) DEFAULT '1',
   `barangay` VARCHAR(100) DEFAULT 'Pianing',
   `barangay_code` VARCHAR(50) DEFAULT NULL,
   `city` VARCHAR(100) DEFAULT 'Butuan City',

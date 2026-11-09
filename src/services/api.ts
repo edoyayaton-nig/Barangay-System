@@ -1385,15 +1385,27 @@ export const apiService = {
   },
 
   async getMaintenanceMode(): Promise<{ enabled: boolean; type: 'down' | 'maintenance' | 'advisory'; title: string; message: string; estimated_uptime?: string; updated_at: string }> {
-    const res = await fetch(`${API_BASE}/system/maintenance?_t=${Date.now()}`, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
+    try {
+      const res = await fetch(`${API_BASE}/system/maintenance?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (res.ok) {
+        return await res.json();
       }
-    });
-    if (!res.ok) throw new Error('Failed to fetch maintenance status');
-    return await res.json();
+    } catch {
+      // Fallback below
+    }
+    return {
+      enabled: false,
+      type: 'down',
+      title: 'System Operational',
+      message: 'All systems online.',
+      updated_at: new Date().toISOString()
+    };
   },
 
   async toggleMaintenanceMode(

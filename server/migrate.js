@@ -74,6 +74,10 @@ async function syncAllSchemas(connection) {
   await safeAddColumn(connection, 'users', 'employee_id', "VARCHAR(50) DEFAULT NULL");
   await safeAddColumn(connection, 'users', 'job_title', "VARCHAR(100) DEFAULT NULL");
   await safeAddColumn(connection, 'users', 'permissions', "TEXT NULL");
+  await safeAddColumn(connection, 'users', 'purok', "VARCHAR(50) DEFAULT '1'");
+  await safeAddColumn(connection, 'users', 'province', "VARCHAR(100) DEFAULT 'Agusan del Norte'");
+  await safeAddColumn(connection, 'users', 'zip_code', "VARCHAR(20) DEFAULT '8600'");
+  await safeAddColumn(connection, 'users', 'barangay_code', "VARCHAR(50) NULL DEFAULT NULL");
 
   // 3. Residents
   await safeExecute(connection, "ALTER TABLE `residents` MODIFY COLUMN `verification_status` ENUM('Verified', 'Pending_Review', 'Rejected', 'Unverified', 'Pending') NOT NULL DEFAULT 'Pending_Review'");
@@ -82,6 +86,8 @@ async function syncAllSchemas(connection) {
 
   await safeAddColumn(connection, 'residents', 'barangay', "VARCHAR(100) DEFAULT 'Pianing'");
   await safeAddColumn(connection, 'residents', 'city', "VARCHAR(100) DEFAULT 'Butuan City'");
+  await safeAddColumn(connection, 'residents', 'province', "VARCHAR(100) DEFAULT 'Agusan del Norte'");
+  await safeAddColumn(connection, 'residents', 'zip_code', "VARCHAR(20) DEFAULT '8600'");
   await safeAddColumn(connection, 'residents', 'profile_photo', "LONGTEXT NULL");
   await safeAddColumn(connection, 'residents', 'civil_status', "VARCHAR(50) DEFAULT 'Single'");
   await safeAddColumn(connection, 'residents', 'years_of_residency', "VARCHAR(50) DEFAULT NULL");

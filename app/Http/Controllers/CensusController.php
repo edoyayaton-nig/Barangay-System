@@ -463,7 +463,6 @@ class CensusController extends Controller
             if (!empty($inputEmail) && filter_var($inputEmail, FILTER_VALIDATE_EMAIL)) {
                 $targetEmail = $inputEmail;
                 $resident->email = $targetEmail;
-                $resident->save();
             } else {
                 return response()->json([
                     'success' => false,
@@ -473,12 +472,18 @@ class CensusController extends Controller
             }
         }
 
+        if (empty($resident->phone) && !empty($confirmPhone)) {
+            $resident->phone = $confirmPhone;
+        }
+
         // Generate default password
         $defaultPassword = 'Brgy@' . date('Y') . '!' . mt_rand(100, 999);
 
-        $user = User::whereRaw('LOWER(email) = ?', [$targetEmail])->first();
-        if (!$user) {
-            $user = User::create([
+        try {
+            DB::beginTransaction();
+
+            $user = User::whereRaw('LOWER(email) = ?', [$targetEmail])->first();
+            $userFields = [
                 'name' => trim("{$resident->first_name} {$resident->last_name}"),
                 'email' => $targetEmail,
                 'password_hash' => Hash::make($defaultPassword),
@@ -488,40 +493,68 @@ class CensusController extends Controller
                 'civil_status' => $resident->civil_status ?: 'Single',
                 'phone' => $resident->phone ?: $confirmPhone,
                 'address' => $resident->address,
-                'purok' => $resident->purok,
                 'barangay' => $resident->barangay ?: 'Pianing',
                 'city' => $resident->city ?: 'Butuan City',
                 'province' => $resident->province ?: 'Agusan del Norte',
                 'zip_code' => $resident->zip_code ?: '8600',
-            ]);
-        } else {
-            $user->password_hash = Hash::make($defaultPassword);
-            $user->status = 'Active';
-            $user->verification_status = 'Verified';
-            if (!empty($resident->phone)) $user->phone = $resident->phone;
-            $user->save();
-        }
+            ];
 
-        $resident->linked_user_id = $user->id;
-        $resident->claimed_at = now();
-        $resident->save();
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'purok')) {
+                $userFields['purok'] = $resident->purok ?: '1';
+            }
+
+            if (!$user) {
+                $user = User::create($userFields);
+            } else {
+                $user->password_hash = Hash::make($defaultPassword);
+                $user->status = 'Active';
+                $user->verification_status = 'Verified';
+                if (!empty($resident->phone)) $user->phone = $resident->phone;
+                $user->save();
+            }
+
+            $resident->linked_user_id = $user->id;
+            $resident->claimed_at = now();
+            $resident->is_census_only = 0;
+            $resident->save();
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to link account credentials: ' . $e->getMessage()
+            ], 500);
+        }
 
         // Dispatch credentials to Gmail immediately!
         try {
             EmailService::sendCredentialNoticeEmail($targetEmail, $user->name, $defaultPassword, $resident->barangay);
         } catch (\Throwable $e) {}
 
+        // Also dispatch live SMS notification to mobile phone!
+        $targetPhone = $resident->phone ?: $confirmPhone;
+        if (!empty($targetPhone)) {
+            try {
+                \App\Services\SmsService::sendLiveSms(
+                    $targetPhone,
+                    "Barangay {$resident->barangay}: Hello {$user->name}! Your citizen account credentials: Login Email: {$targetEmail}, Default Password: {$defaultPassword}. Log in at your portal."
+                );
+            } catch (\Throwable $e) {}
+        }
+
         ActivityLog::create([
             'user_name' => $user->name,
             'user_role' => 'resident',
-            'action' => "Confirmed census phone and dispatched credentials to email ({$resident->barangay})",
+            'action' => "Confirmed census phone and dispatched credentials to email & phone ({$resident->barangay})",
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Login credentials successfully dispatched to your email address!',
+            'message' => 'Login credentials successfully dispatched to your email address and mobile phone!',
             'masked_email' => self::maskEmail($targetEmail),
             'email' => $targetEmail,
+            'phone' => $targetPhone,
         ]);
     }
 }

@@ -614,21 +614,25 @@ class SystemController extends Controller
 
     public function getMaintenance()
     {
-        $active = Broadcast::where('is_active', 1)->orderBy('id', 'desc')->first();
-        if ($active) {
-            $type = 'down';
-            if ($active->severity === 'Emergency') $type = 'down';
-            elseif ($active->severity === 'Advisory') $type = 'maintenance';
-            else $type = 'advisory';
+        try {
+            $active = Broadcast::where('is_active', 1)->orderBy('id', 'desc')->first();
+            if ($active) {
+                $type = 'down';
+                if ($active->severity === 'Emergency') $type = 'down';
+                elseif ($active->severity === 'Advisory') $type = 'maintenance';
+                else $type = 'advisory';
 
-            return response()->json([
-                'enabled' => true,
-                'type' => $type,
-                'title' => $active->title,
-                'message' => $active->message,
-                'estimated_uptime' => $active->estimated_uptime ?: 'Advisory active',
-                'updated_at' => $active->created_at ? (is_string($active->created_at) ? $active->created_at : $active->created_at->toIso8601String()) : now()->toIso8601String(),
-            ]);
+                return response()->json([
+                    'enabled' => true,
+                    'type' => $type,
+                    'title' => $active->title,
+                    'message' => $active->message,
+                    'estimated_uptime' => $active->estimated_uptime ?: 'Advisory active',
+                    'updated_at' => $active->created_at ? (is_string($active->created_at) ? $active->created_at : $active->created_at->toIso8601String()) : now()->toIso8601String(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // DB temporarily unavailable or table being updated; return default operational status
         }
 
         return response()->json([

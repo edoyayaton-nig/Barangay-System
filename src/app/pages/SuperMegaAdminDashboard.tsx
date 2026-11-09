@@ -111,6 +111,9 @@ export default function SuperMegaAdminDashboard() {
   const BORDER = isDark ? '#223A50' : '#D5E2E8';
   const TEXT = isDark ? '#F5F8FA' : '#1C2B36';
   const MUTED = isDark ? '#94A7B8' : '#526374';
+  const VIOLET_TEXT = isDark ? '#C4B5FD' : '#6D28D9';
+  const VIOLET_BG = isDark ? `${ACCENT_VIOLET}25` : '#EDE9FE';
+  const VIOLET_BORDER = isDark ? `${ACCENT_VIOLET}50` : '#C4B5FD';
 
   const [user, setUser] = useState<any>(() => {
     try { return JSON.parse(localStorage.getItem('barangay_user') || 'null'); } catch { return null; }
@@ -1011,7 +1014,7 @@ export default function SuperMegaAdminDashboard() {
           <div style={{ background: `linear-gradient(135deg, ${ACCENT_VIOLET}18, ${ACCENT_CYAN}10)`, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 20px' }}
             className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <p style={{ color: '#C4B5FD', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>MUNICIPAL GOVERNANCE ROOT</p>
+              <p style={{ color: VIOLET_TEXT, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>MUNICIPAL GOVERNANCE ROOT</p>
               <h1 style={{ color: TEXT, fontWeight: 800, fontSize: 20, marginTop: 2 }}>{greeting()}, Super Mega Administrator</h1>
               <p style={{ color: MUTED, fontSize: 12 }}>City of Butuan — Municipal Governance Oversight Portal</p>
             </div>
@@ -1564,7 +1567,7 @@ export default function SuperMegaAdminDashboard() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span style={{ background: `${ACCENT_VIOLET}20`, color: '#C4B5FD', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px', border: `1px solid ${ACCENT_VIOLET}40` }}>
+                    <span style={{ background: `${ACCENT_VIOLET}20`, color: VIOLET_TEXT, fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px', border: `1px solid ${ACCENT_VIOLET}40` }}>
                       CENTRAL JURISDICTION GATEWAY
                     </span>
                     <span style={{ background: `${ACCENT_AMBER}20`, color: ACCENT_AMBER, fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px', border: `1px solid ${ACCENT_AMBER}40` }}>
@@ -1672,7 +1675,7 @@ export default function SuperMegaAdminDashboard() {
                             <tr key={r.id} style={{ borderBottom: `1px solid ${BORDER}50` }} className="hover:bg-white/2 transition-colors">
                               <td style={{ padding: '12px 14px' }}>
                                 <div className="flex items-center gap-3">
-                                  <div style={{ background: `${ACCENT_VIOLET}25`, border: `1px solid ${ACCENT_VIOLET}50`, color: '#C4B5FD', width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }} className="shrink-0">
+                                  <div style={{ background: `${ACCENT_VIOLET}25`, border: `1px solid ${ACCENT_VIOLET}50`, color: VIOLET_TEXT, width: 34, height: 34, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }} className="shrink-0">
                                     {(applicantName.charAt(0) || 'R').toUpperCase()}
                                   </div>
                                   <div>
@@ -1722,7 +1725,7 @@ export default function SuperMegaAdminDashboard() {
                                     <button
                                       type="button"
                                       onClick={() => setPreviewApplicant(r)}
-                                      style={{ color: '#C4B5FD', textDecoration: 'underline' }}
+                                      style={{ color: VIOLET_TEXT, textDecoration: 'underline' }}
                                       className="cursor-pointer bg-transparent border-none p-0 text-[10px] hover:text-white"
                                     >
                                       Inspect Document
@@ -1753,7 +1756,7 @@ export default function SuperMegaAdminDashboard() {
                                     <button
                                       type="button"
                                       onClick={() => handleOpenDeployForApplicant(r.barangay)}
-                                      style={{ color: '#C4B5FD', background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}50`, borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 700, marginTop: 4 }}
+                                      style={{ color: VIOLET_TEXT, background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}50`, borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 700, marginTop: 4 }}
                                       className="cursor-pointer hover:bg-violet-900/40 transition-colors flex items-center gap-1"
                                     >
                                       <Crown size={10} /> Deploy Official
@@ -1834,7 +1837,7 @@ export default function SuperMegaAdminDashboard() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span style={{ background: `${ACCENT_VIOLET}20`, color: '#C4B5FD', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px', border: `1px solid ${ACCENT_VIOLET}40` }}>
+                    <span style={{ background: `${ACCENT_VIOLET}20`, color: VIOLET_TEXT, fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px', border: `1px solid ${ACCENT_VIOLET}40` }}>
                       GLOBAL WORKFLOW CONTROL
                     </span>
                   </div>
@@ -2420,7 +2423,7 @@ export default function SuperMegaAdminDashboard() {
                   </div>
                   <button
                     onClick={() => setActiveTab('categories')}
-                    style={{ background: `${ACCENT_VIOLET}25`, border: `1px solid ${ACCENT_VIOLET}50`, color: '#C4B5FD', borderRadius: 8, padding: '7px 14px', fontSize: 11, fontWeight: 600 }}
+                    style={{ background: `${ACCENT_VIOLET}25`, border: `1px solid ${ACCENT_VIOLET}50`, color: VIOLET_TEXT, borderRadius: 8, padding: '7px 14px', fontSize: 11, fontWeight: 600 }}
                     className="flex items-center gap-1.5 hover:bg-violet-500/20 transition-colors cursor-pointer shrink-0"
                   >
                     Open Category Manager <ChevronRight size={13} />
@@ -2436,7 +2439,7 @@ export default function SuperMegaAdminDashboard() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span style={{ background: `${ACCENT_VIOLET}20`, color: '#C4B5FD', fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px', border: `1px solid ${ACCENT_VIOLET}40` }}>
+                    <span style={{ background: `${ACCENT_VIOLET}20`, color: VIOLET_TEXT, fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 8px', border: `1px solid ${ACCENT_VIOLET}40` }}>
                       GLOBAL SYSTEM AUDIT
                     </span>
                   </div>
@@ -2542,7 +2545,7 @@ export default function SuperMegaAdminDashboard() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, background: `${ACCENT_VIOLET}25`, color: '#C4B5FD', border: `1px solid ${ACCENT_VIOLET}40` }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 8px', borderRadius: 6, background: `${ACCENT_VIOLET}25`, color: VIOLET_TEXT, border: `1px solid ${ACCENT_VIOLET}40` }}>
                       Platform Owner Tier
                     </span>
                     <span style={{ fontSize: 11, color: MUTED }}>Multi-Tenant Architecture</span>
@@ -2582,9 +2585,9 @@ export default function SuperMegaAdminDashboard() {
                 <div style={{ background: CARD2, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
                   <div className="flex items-center justify-between mb-1">
                     <p style={{ color: MUTED, fontSize: 10, fontWeight: 600 }}>Client Superadmins</p>
-                    <Crown size={15} style={{ color: '#C4B5FD' }} />
+                    <Crown size={15} style={{ color: VIOLET_TEXT }} />
                   </div>
-                  <p style={{ color: '#C4B5FD', fontSize: 24, fontWeight: 800 }}>{fmt(superadminCount)}</p>
+                  <p style={{ color: VIOLET_TEXT, fontSize: 24, fontWeight: 800 }}>{fmt(superadminCount)}</p>
                   <p style={{ color: MUTED, fontSize: 10 }}>Barangay Chief Executives</p>
                 </div>
 
@@ -2696,7 +2699,7 @@ export default function SuperMegaAdminDashboard() {
                   {/* Informational Callout */}
                   <div style={{ background: `${ACCENT_VIOLET}12`, border: `1px solid ${ACCENT_VIOLET}30`, borderRadius: 12, padding: '14px 18px' }}
                     className="flex items-start gap-3">
-                    <Crown size={20} style={{ color: '#C4B5FD' }} className="shrink-0 mt-0.5" />
+                    <Crown size={20} style={{ color: VIOLET_TEXT }} className="shrink-0 mt-0.5" />
                     <div>
                       <p style={{ color: '#E2E8F0', fontSize: 13, fontWeight: 700 }}>System Owner Multi-Tenant Management</p>
                       <p style={{ color: '#94A3B8', fontSize: 11, marginTop: 2, lineHeight: 1.5 }}>
@@ -2714,7 +2717,7 @@ export default function SuperMegaAdminDashboard() {
                       </div>
                       <button
                         onClick={() => openCreateSuperadmin()}
-                        style={{ color: '#C4B5FD', background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}40`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}
+                        style={{ color: VIOLET_TEXT, background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}40`, borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}
                         className="hover:bg-violet-900/40 cursor-pointer transition-colors flex items-center gap-1.5"
                       >
                         <UserPlus size={13} /> + Provision Superadmin
@@ -2745,7 +2748,7 @@ export default function SuperMegaAdminDashboard() {
                                 <td style={{ padding: '12px 14px' }}>
                                   <div className="flex items-center gap-2.5">
                                     <div style={{ width: 32, height: 32, borderRadius: 8, background: `${ACCENT_VIOLET}20`, border: `1px solid ${ACCENT_VIOLET}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                      <Building2 size={16} style={{ color: '#C4B5FD' }} />
+                                      <Building2 size={16} style={{ color: VIOLET_TEXT }} />
                                     </div>
                                     <div>
                                       <p style={{ color: TEXT, fontWeight: 700, fontSize: 12 }}>Barangay {c.name}</p>
@@ -2761,7 +2764,7 @@ export default function SuperMegaAdminDashboard() {
 
                                 <td style={{ padding: '12px 14px' }}>
                                   <div className="flex items-center gap-2">
-                                    <Crown size={13} style={{ color: '#C4B5FD' }} />
+                                    <Crown size={13} style={{ color: VIOLET_TEXT }} />
                                     <div>
                                       <p style={{ color: TEXT, fontWeight: 600, fontSize: 12 }}>{saName}</p>
                                       <p style={{ color: MUTED, fontSize: 11 }}>{saEmail}</p>
@@ -2802,7 +2805,7 @@ export default function SuperMegaAdminDashboard() {
                                     <button
                                       onClick={() => handleResetSuperadminKey(saEmail, c.name)}
                                       title="Generate emergency access key for client superadmin"
-                                      style={{ color: '#C4B5FD', border: `1px solid ${ACCENT_VIOLET}40`, borderRadius: 6, padding: '4px 8px', fontSize: 10, fontWeight: 600, background: `${ACCENT_VIOLET}15` }}
+                                      style={{ color: VIOLET_TEXT, border: `1px solid ${ACCENT_VIOLET}40`, borderRadius: 6, padding: '4px 8px', fontSize: 10, fontWeight: 600, background: `${ACCENT_VIOLET}15` }}
                                       className="hover:bg-violet-900/30 cursor-pointer transition-colors flex items-center gap-1"
                                     >
                                       <Key size={11} /> Reset Key
@@ -2861,14 +2864,14 @@ export default function SuperMegaAdminDashboard() {
                           </div>
                           <div>
                             <p style={{ color: TEXT, fontWeight: 700, fontSize: 14 }}>{user?.name || 'Master System Owner'}</p>
-                            <p style={{ color: '#C4B5FD', fontSize: 11 }}>{user?.email || 'supermegaadmin@barangay.gov'}</p>
+                            <p style={{ color: VIOLET_TEXT, fontSize: 11 }}>{user?.email || 'supermegaadmin@barangay.gov'}</p>
                           </div>
                         </div>
 
                         <div className="space-y-1.5 text-[11px] pt-2 border-t" style={{ borderColor: `${BORDER}80` }}>
                           <div className="flex justify-between">
                             <span style={{ color: MUTED }}>Platform Clearance:</span>
-                            <span style={{ color: '#C4B5FD', fontWeight: 700 }}>Full Root Authority (System Owner)</span>
+                            <span style={{ color: VIOLET_TEXT, fontWeight: 700 }}>Full Root Authority (System Owner)</span>
                           </div>
                           <div className="flex justify-between">
                             <span style={{ color: MUTED }}>Jurisdictional Scope:</span>
@@ -2986,7 +2989,7 @@ export default function SuperMegaAdminDashboard() {
                                     <button
                                       onClick={() => handleResetAnyUserKey(u)}
                                       title="Reset account access key / password"
-                                      style={{ color: '#C4B5FD', border: `1px solid ${ACCENT_VIOLET}40`, borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 600, background: `${ACCENT_VIOLET}15` }}
+                                      style={{ color: VIOLET_TEXT, border: `1px solid ${ACCENT_VIOLET}40`, borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 600, background: `${ACCENT_VIOLET}15` }}
                                       className="hover:bg-violet-900/30 cursor-pointer transition-colors flex items-center gap-1"
                                     >
                                       <Key size={11} /> Reset Key
@@ -3264,7 +3267,7 @@ export default function SuperMegaAdminDashboard() {
             <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: `${BORDER}80` }}>
               <div className="flex items-center gap-2.5">
                 <div style={{ width: 34, height: 34, borderRadius: 10, background: `${ACCENT_VIOLET}25`, border: `1px solid ${ACCENT_VIOLET}50`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Crown size={18} style={{ color: '#C4B5FD' }} />
+                  <Crown size={18} style={{ color: VIOLET_TEXT }} />
                 </div>
                 <div>
                   <h3 style={{ color: TEXT, fontWeight: 700, fontSize: 16 }}>Create Barangay Superadmin</h3>
@@ -3291,7 +3294,7 @@ export default function SuperMegaAdminDashboard() {
 
               {/* SECTION: Identity */}
               <div>
-                <p style={{ color: '#C4B5FD', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                <p style={{ color: VIOLET_TEXT, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                   1. Official Identity & Full Name
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -3332,7 +3335,7 @@ export default function SuperMegaAdminDashboard() {
 
               {/* SECTION: Contact & Governance */}
               <div>
-                <p style={{ color: '#C4B5FD', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                <p style={{ color: VIOLET_TEXT, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                   2. Official Contact & Designation
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -3362,8 +3365,8 @@ export default function SuperMegaAdminDashboard() {
                   <div>
                     <label style={{ color: MUTED, fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Official Designation</label>
                     <div style={{ background: `${ACCENT_VIOLET}15`, border: `1px solid ${ACCENT_VIOLET}50`, borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <ShieldCheck size={13} style={{ color: '#C4B5FD', flexShrink: 0 }} />
-                      <span style={{ color: '#C4B5FD', fontSize: 12, fontWeight: 600 }}>Barangay Super Administrator</span>
+                      <ShieldCheck size={13} style={{ color: VIOLET_TEXT, flexShrink: 0 }} />
+                      <span style={{ color: VIOLET_TEXT, fontSize: 12, fontWeight: 600 }}>Barangay Super Administrator</span>
                     </div>
                     <p style={{ color: MUTED, fontSize: 10, marginTop: 3 }}>Fixed system role — cannot be changed.</p>
                   </div>
@@ -3372,7 +3375,7 @@ export default function SuperMegaAdminDashboard() {
 
               {/* SECTION: Territorial Jurisdiction */}
               <div>
-                <p style={{ color: '#C4B5FD', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                <p style={{ color: VIOLET_TEXT, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                   3. Territorial Jurisdiction (Agusan del Norte)
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -3489,7 +3492,7 @@ export default function SuperMegaAdminDashboard() {
 
               {/* SECTION: Security & Passwords */}
               <div>
-                <p style={{ color: '#C4B5FD', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                <p style={{ color: VIOLET_TEXT, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                   4. Security & Account Password
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -3673,7 +3676,7 @@ export default function SuperMegaAdminDashboard() {
             <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
               <div className="flex items-center gap-2.5">
                 <div style={{ background: `${ACCENT_VIOLET}25`, padding: 8, borderRadius: 10 }}>
-                  <ShieldCheck size={20} color="#C4B5FD" />
+                  <ShieldCheck size={20} color={VIOLET_TEXT} />
                 </div>
                 <div>
                   <h3 style={{ color: TEXT, fontWeight: 800, fontSize: 16 }}>
@@ -3688,7 +3691,7 @@ export default function SuperMegaAdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
               {/* Personal Information */}
               <div style={{ background: `${BORDER}30`, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }} className="space-y-2.5">
-                <p style={{ color: '#C4B5FD', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>APPLICANT CREDENTIALS</p>
+                <p style={{ color: VIOLET_TEXT, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>APPLICANT CREDENTIALS</p>
                 <div className="text-xs space-y-1.5">
                   <div className="flex justify-between py-1 border-b border-slate-800">
                     <span style={{ color: MUTED }}>Barangay:</span>
@@ -3719,7 +3722,7 @@ export default function SuperMegaAdminDashboard() {
 
               {/* Submitted Government ID Photo */}
               <div style={{ background: `${BORDER}30`, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 14 }}>
-                <p style={{ color: '#C4B5FD', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 8 }}>SUBMITTED GOVERNMENT ID</p>
+                <p style={{ color: VIOLET_TEXT, fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 8 }}>SUBMITTED GOVERNMENT ID</p>
                 {previewApplicant.submitted_id ? (
                   <div className="relative group rounded-lg overflow-hidden border border-slate-700 aspect-video bg-black/50 flex items-center justify-center">
                     <img src={previewApplicant.submitted_id} alt="Government ID" className="w-full h-full object-contain" />
