@@ -366,7 +366,7 @@ export async function dispatchResidentNotification(params: {
   residentEmail: string;
   residentName?: string;
   phone?: string;
-  type?: 'account' | 'document' | 'health' | 'system';
+  type?: 'account' | 'document' | 'health' | 'system' | 'verification';
   title: string;
   message: string;
   statusBadge?: string;
@@ -421,7 +421,7 @@ export async function dispatchResidentNotification(params: {
   // 2. Single-Transaction Credit Conservation Policy Gate
   let isExternalEligible = true;
 
-  if (params.type === 'account') {
+  if (params.type === 'account' || params.type === 'verification') {
     // Only send on official verification (Approved) or rejection (Declined/Action Needed). NEVER on registration/creation.
     const validAccountStatuses = ['verified', 'approved', 'rejected', 'action needed', 'declined'];
     isExternalEligible = validAccountStatuses.includes(rawStatus);

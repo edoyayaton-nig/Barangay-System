@@ -170,6 +170,9 @@ export interface SystemUser {
   years_of_residency?: string;
   employee_id?: string | null;
   job_title?: string | null;
+  resident_id?: number | null;
+  claimed_at?: string | null;
+  staged_password?: string | null;
   last_login?: string;
   created_at?: string;
   verification_status?: string;

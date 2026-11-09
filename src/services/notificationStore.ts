@@ -3,7 +3,7 @@
 
 export interface PersistentNotification {
   id: string;
-  type: 'account' | 'document' | 'health' | 'system';
+  type: 'account' | 'document' | 'health' | 'system' | 'verification';
   title: string;
   message: string;
   ref_code?: string;
