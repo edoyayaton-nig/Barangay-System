@@ -3035,7 +3035,13 @@ export default function AdminDashboard() {
     return Array.from(set).sort();
   }, [barangaysOverview]);
 
-  const verifiedAccountsCount = barangayResidents.length;
+  const verifiedAccountsCount = useMemo(() => {
+    return barangayResidents.filter(r => 
+      (r.verification_status === 'Verified' || (r as any).status === 'Verified') && 
+      Boolean((r as any).linked_user_id || (r as any).claimed_at || (r.email && r.email.includes('@')))
+    ).length;
+  }, [barangayResidents]);
+
   const [quickSearch, setQuickSearch] = useState('');
 
   const menuItems = [
@@ -3862,16 +3868,16 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                          {populationStats?.adoption_rate ?? 0}%
+                          {populationStats?.adoption_rate ?? (residents.length > 0 ? Math.round((verifiedAccountsCount / residents.length) * 100) : 0)}%
                         </span>
                         <span className="text-[11px] text-slate-500 font-medium">
-                          ({populationStats?.online_registered ?? 0} registered citizens)
+                          ({populationStats?.online_registered ?? verifiedAccountsCount} registered citizens)
                         </span>
                       </div>
                       <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
                         <div
                           className="bg-emerald-600 h-1.5 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, populationStats?.adoption_rate ?? 0)}%` }}
+                          style={{ width: `${Math.min(100, populationStats?.adoption_rate ?? (residents.length > 0 ? Math.round((verifiedAccountsCount / residents.length) * 100) : 0))}%` }}
                         />
                       </div>
                     </div>
@@ -4764,7 +4770,7 @@ export default function AdminDashboard() {
                         <div>
                           <p className="text-[11px] font-semibold text-blue-700">Verified Residents</p>
                           <h3 className="text-xl font-bold text-blue-900">
-                            {residents.filter(r => (r as any).verification_status === 'Verified').length}
+                            {residents.filter(r => ((r as any).verification_status === 'Verified' || (r as any).status === 'Verified') && Boolean((r as any).linked_user_id || (r as any).claimed_at || (r.email && r.email.includes('@')))).length}
                           </h3>
                         </div>
                       </div>
@@ -7045,7 +7051,9 @@ export default function AdminDashboard() {
                           }
 
                           return resList.map((res) => {
-                            const isVerified = res.verification_status === 'Verified' || (res as any).status === 'Verified';
+                            const isVerified = (res.verification_status === 'Verified' || (res as any).status === 'Verified') && 
+                              Boolean((res as any).linked_user_id || (res as any).claimed_at || (res.email && res.email.includes('@')));
+                            const isPending = res.verification_status === 'Pending_Review' || res.verification_status === 'Pending';
                             const fullName = `${res.first_name || ''} ${res.last_name || ''}`.trim() || (res as any).name || 'Resident';
 
                             return (
@@ -7067,8 +7075,14 @@ export default function AdminDashboard() {
                                   <span className="text-slate-400 block text-[11px]">{res.civil_status || 'Single'}</span>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge className={`text-[10px] font-bold border-0 ${isVerified ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                                    {isVerified ? '✓ Verified' : '⏳ Unverified'}
+                                  <Badge className={`text-[10px] font-bold border-0 ${
+                                    isVerified 
+                                      ? 'bg-emerald-100 text-emerald-800' 
+                                      : isPending 
+                                        ? 'bg-amber-100 text-amber-800' 
+                                        : 'bg-slate-100 text-slate-700'
+                                  }`}>
+                                    {isVerified ? '✓ Verified' : isPending ? '⏳ Pending Review' : '📋 Unclaimed'}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right pr-4">

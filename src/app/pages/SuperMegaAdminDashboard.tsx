@@ -828,7 +828,10 @@ export default function SuperMegaAdminDashboard() {
 
   /* ── Analytics ───────────────────────────────────────────── */
   const totalResidents = residents.length;
-  const verifiedResidents = residents.filter(r => r.verification_status === 'Verified').length;
+  const verifiedResidents = residents.filter(r => 
+    (r.verification_status === 'Verified' || (r as any).status === 'Verified') && 
+    Boolean((r as any).linked_user_id || (r as any).claimed_at || (r.email && r.email.includes('@')))
+  ).length;
   const superadminsList = systemUsers.filter(u => u.role === 'superadmin');
   const superadminCount = superadminsList.length;
   const adminCount = systemUsers.filter(u => u.role === 'admin').length;
@@ -1337,7 +1340,7 @@ export default function SuperMegaAdminDashboard() {
                   <div className="mt-2.5 space-y-1">
                     <div className="flex justify-between text-[11px]">
                       <span className="text-emerald-700 dark:text-emerald-400 font-medium">{verifiedResidents} Verified</span>
-                      <span className="text-slate-600 dark:text-slate-400">{totalResidents - verifiedResidents} Pending</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-medium">{pendingResidents.length} Pending</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div

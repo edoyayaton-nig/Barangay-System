@@ -132,6 +132,18 @@ class AppServiceProvider extends ServiceProvider
                 try {
                     \Illuminate\Support\Facades\DB::statement("UPDATE residents SET is_census_only = 0 WHERE is_census_only = 1");
                 } catch (\Throwable $e) {}
+
+                // Reset raw, unclaimed census residents to 'Unverified'.
+                // Citizens only become 'Verified' once they claim their account and are approved by the administrator!
+                try {
+                    \Illuminate\Support\Facades\DB::statement("
+                        UPDATE residents 
+                        SET verification_status = 'Unverified' 
+                        WHERE linked_user_id IS NULL 
+                          AND claimed_at IS NULL 
+                          AND (verification_status = 'Verified' OR verification_status IS NULL)
+                    ");
+                } catch (\Throwable $e) {}
             }
         } catch (\Throwable $e) {
             // Non-blocking in case DB is offline or during pre-migration artisan calls

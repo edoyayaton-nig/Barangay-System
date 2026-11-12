@@ -78,6 +78,7 @@ async function syncAllSchemas(connection) {
   await safeAddColumn(connection, 'users', 'province', "VARCHAR(100) DEFAULT 'Agusan del Norte'");
   await safeAddColumn(connection, 'users', 'zip_code', "VARCHAR(20) DEFAULT '8600'");
   await safeAddColumn(connection, 'users', 'barangay_code', "VARCHAR(50) NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'users', 'staged_password', "VARCHAR(255) NULL DEFAULT NULL");
 
   // 3. Residents
   await safeExecute(connection, "ALTER TABLE `residents` MODIFY COLUMN `verification_status` ENUM('Verified', 'Pending_Review', 'Rejected', 'Unverified', 'Pending') NOT NULL DEFAULT 'Pending_Review'");
@@ -105,6 +106,17 @@ async function syncAllSchemas(connection) {
   await safeAddColumn(connection, 'residents', 'submitted_id', "LONGTEXT NULL");
   await safeAddColumn(connection, 'residents', 'submitted_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
   await safeAddColumn(connection, 'residents', 'rejection_reason', "TEXT NULL");
+  await safeAddColumn(connection, 'residents', 'staged_password', "VARCHAR(255) NULL DEFAULT NULL");
+
+  // Ensure raw census records (unclaimed) are set to 'Unverified'.
+  // Citizens only become 'Verified' once they claim their account and are approved by the administrator!
+  await safeExecute(connection, `
+    UPDATE \`residents\` 
+    SET \`verification_status\` = 'Unverified' 
+    WHERE \`linked_user_id\` IS NULL 
+      AND \`claimed_at\` IS NULL 
+      AND (\`verification_status\` = 'Verified' OR \`verification_status\` IS NULL)
+  `);
 
   // 4. Messages
   await safeExecute(connection, `

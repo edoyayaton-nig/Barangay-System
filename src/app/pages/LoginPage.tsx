@@ -166,7 +166,7 @@ export default function LoginPage() {
           email: res.email,
           message: res.message || 'Claim submitted successfully! Your account is now pending Barangay Admin approval. Once approved, your login credentials will be delivered to your email and phone.'
         });
-        toast.success('Claim Submitted — Pending Approval!', {
+        toast.success('Claim Submitted — Pending Admin Approval', {
           description: `Application forwarded to Barangay Admin. Once approved, your login credentials will be delivered to ${res.masked_email || 'your Gmail'}.`
         });
         // Immediately remove claimed resident from public search database results

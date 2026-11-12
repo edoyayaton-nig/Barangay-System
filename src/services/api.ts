@@ -654,16 +654,35 @@ export const apiService = {
   },
 
   async claimCensusCredentials(residentId: number, confirmPhone: string, email?: string): Promise<{ success: boolean; message: string; masked_email?: string; email?: string; error?: string; requires_email?: boolean }> {
-    const res = await fetch(`${API_BASE}/census/claim-credentials`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        resident_id: residentId,
-        confirm_phone: confirmPhone,
-        email: email || undefined
-      })
-    });
-    return await res.json();
+    try {
+      const res = await fetch(`${API_BASE}/census/claim-credentials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          resident_id: residentId,
+          confirm_phone: confirmPhone,
+          email: email || undefined
+        })
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        return {
+          success: false,
+          message: data?.error || data?.message || `Request failed (${res.status}). Please try again.`,
+          error: data?.error || data?.message || `Request failed (${res.status}). Please try again.`
+        };
+      }
+      return data || { success: false, message: 'Invalid response from server.', error: 'Invalid response from server.' };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || 'Network connection error. Please try again.',
+        error: err?.message || 'Network connection error. Please try again.'
+      };
+    }
   },
 
   async createResident(data: Partial<Resident>): Promise<Resident> {

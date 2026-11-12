@@ -17,7 +17,7 @@ class CensusController extends Controller
         $barangay = $request->input('barangay');
         $purok = $request->input('purok');
 
-        $baseQuery = Resident::whereIn(DB::raw("LOWER(COALESCE(verification_status, ''))"), ['verified', 'active']);
+        $baseQuery = Resident::query();
 
         if (!empty($barangay) && !str_contains(strtolower($barangay), 'all') && !str_contains(strtolower($barangay), 'city-wide')) {
             $norm = AuthController::normalizeBarangayName($barangay);
@@ -259,7 +259,7 @@ class CensusController extends Controller
     public function population(Request $request)
     {
         $barangay = $request->input('barangay');
-        $query = Resident::whereIn(DB::raw("LOWER(COALESCE(verification_status, ''))"), ['verified', 'active']);
+        $query = Resident::query();
 
         if (!empty($barangay) && !str_contains(strtolower($barangay), 'all') && !str_contains(strtolower($barangay), 'city-wide')) {
             $norm = AuthController::normalizeBarangayName($barangay);
@@ -313,14 +313,27 @@ class CensusController extends Controller
             ];
         }
 
-        $onlineRegistered = $totalPopulation;
-        $adoptionRate = $totalPopulation > 0 ? min(100, round(($onlineRegistered / max(1, $totalPopulation)) * 100)) : 85;
+        // Verified accounts are only residents who have claimed their account and been approved
+        $verifiedResidentsCount = $residents->filter(function ($r) {
+            return ($r->verification_status === 'Verified') &&
+                (!empty($r->linked_user_id) || !empty($r->claimed_at) || (!empty($r->email) && str_contains($r->email, '@')));
+        })->count();
+
+        $pendingResidentsCount = $residents->filter(function ($r) {
+            return in_array($r->verification_status, ['Pending_Review', 'Pending']) ||
+                (!empty($r->claimed_at) && $r->verification_status !== 'Verified');
+        })->count();
+
+        $adoptionRate = $totalPopulation > 0 ? min(100, round(($verifiedResidentsCount / max(1, $totalPopulation)) * 100)) : 0;
 
         return response()->json([
             'success' => true,
             'barangay' => $barangay ?: 'Pianing',
             'total_population' => $totalPopulation,
-            'online_registered' => $onlineRegistered,
+            'online_registered' => $verifiedResidentsCount,
+            'verified_accounts' => $verifiedResidentsCount,
+            'pending_verifications' => $pendingResidentsCount,
+            'unclaimed_count' => max(0, $totalPopulation - $verifiedResidentsCount - $pendingResidentsCount),
             'adoption_rate' => $adoptionRate,
             'registered_voters' => $voters,
             'senior_citizens' => $seniors,
@@ -389,11 +402,13 @@ class CensusController extends Controller
 
         $base = Resident::query();
 
-        // Once an account is claimed or in pending review / verified, it MUST NOT be shown in the database search engine!
+        // Unclaimed census citizens can be searched and claimed.
+        // Once an account is claimed or in pending review / verified, it is excluded from public search engine results:
         $base->whereNull('claimed_at')
              ->whereNull('linked_user_id')
              ->where(function ($q) {
                  $q->whereNull('verification_status')
+                   ->orWhere('verification_status', 'Unverified')
                    ->orWhereNotIn('verification_status', ['Verified', 'Pending_Review', 'Pending']);
              });
 
@@ -416,11 +431,28 @@ class CensusController extends Controller
         $digits = preg_replace('/[^0-9]/', '', $query);
 
         $base->where(function ($q) use ($query, $digits) {
-            $q->whereRaw("LOWER(first_name) LIKE ?", ['%' . strtolower($query) . '%'])
-              ->orWhereRaw("LOWER(last_name) LIKE ?", ['%' . strtolower($query) . '%'])
-              ->orWhereRaw("LOWER(middle_name) LIKE ?", ['%' . strtolower($query) . '%'])
-              ->orWhereRaw("LOWER(family_name) LIKE ?", ['%' . strtolower($query) . '%'])
-              ->orWhereRaw("LOWER(CONCAT(first_name, ' ', last_name)) LIKE ?", ['%' . strtolower($query) . '%']);
+            $lowerQ = strtolower($query);
+            $q->whereRaw("LOWER(first_name) LIKE ?", ['%' . $lowerQ . '%'])
+              ->orWhereRaw("LOWER(last_name) LIKE ?", ['%' . $lowerQ . '%'])
+              ->orWhereRaw("LOWER(middle_name) LIKE ?", ['%' . $lowerQ . '%'])
+              ->orWhereRaw("LOWER(family_name) LIKE ?", ['%' . $lowerQ . '%'])
+              ->orWhereRaw("LOWER(CONCAT(first_name, ' ', last_name)) LIKE ?", ['%' . $lowerQ . '%'])
+              ->orWhereRaw("LOWER(CONCAT(last_name, ' ', first_name)) LIKE ?", ['%' . $lowerQ . '%'])
+              ->orWhereRaw("LOWER(CONCAT(first_name, ' ', middle_name, ' ', last_name)) LIKE ?", ['%' . $lowerQ . '%']);
+
+            $words = array_filter(explode(' ', $lowerQ));
+            if (count($words) > 1) {
+                $q->orWhere(function ($sub) use ($words) {
+                    foreach ($words as $w) {
+                        $sub->where(function ($wQ) use ($w) {
+                            $wQ->whereRaw("LOWER(first_name) LIKE ?", ['%' . $w . '%'])
+                               ->orWhereRaw("LOWER(last_name) LIKE ?", ['%' . $w . '%'])
+                               ->orWhereRaw("LOWER(middle_name) LIKE ?", ['%' . $w . '%'])
+                               ->orWhereRaw("LOWER(family_name) LIKE ?", ['%' . $w . '%']);
+                        });
+                    }
+                });
+            }
 
             if (!empty($digits) && strlen($digits) >= 3) {
                 $q->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+63', '0') LIKE ?", ['%' . $digits . '%']);
@@ -431,6 +463,11 @@ class CensusController extends Controller
 
         $results = $matches->map(function ($r) {
             $fullName = trim("{$r->first_name} {$r->middle_name} {$r->last_name}");
+            $isClaimed = !empty($r->claimed_at);
+            $isPending = in_array($r->verification_status, ['Pending_Review', 'Pending']);
+            $isVerified = ($r->verification_status === 'Verified') && (!empty($r->linked_user_id) || !empty($r->claimed_at) || !empty($r->email));
+            $canClaim = !$isClaimed && empty($r->linked_user_id) && $r->verification_status !== 'Verified' && $r->verification_status !== 'Pending_Review';
+
             return [
                 'id' => $r->id,
                 'masked_name' => self::maskName($fullName),
@@ -441,7 +478,11 @@ class CensusController extends Controller
                 'has_email' => !empty($r->email),
                 'has_phone' => !empty($r->phone),
                 'has_account' => (bool)$r->linked_user_id,
-                'is_claimed' => (bool)$r->claimed_at,
+                'is_claimed' => $isClaimed,
+                'is_pending' => $isPending,
+                'is_verified' => $isVerified,
+                'can_claim' => $canClaim,
+                'verification_status' => $r->verification_status ?: 'Unverified',
             ];
         });
 
@@ -540,6 +581,11 @@ class CensusController extends Controller
             if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'purok')) {
                 $userFields['purok'] = $resident->purok ?: '1';
             }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'staged_password')) {
+                $userFields['staged_password'] = $defaultPassword;
+            } else {
+                unset($userFields['staged_password']);
+            }
 
             if (!$user) {
                 $user = User::create($userFields);
@@ -547,7 +593,9 @@ class CensusController extends Controller
                 $user->password_hash = Hash::make($defaultPassword);
                 $user->status = 'Pending';
                 $user->verification_status = 'Pending_Review';
-                $user->staged_password = $defaultPassword;
+                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'staged_password')) {
+                    $user->staged_password = $defaultPassword;
+                }
                 if (!empty($resident->phone)) $user->phone = $resident->phone;
                 $user->save();
             }
@@ -557,7 +605,9 @@ class CensusController extends Controller
             $resident->claimed_at = now();
             $resident->submitted_at = now();
             $resident->verification_status = 'Pending_Review'; // Place into pending approval queue!
-            $resident->staged_password = $defaultPassword;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('residents', 'staged_password')) {
+                $resident->staged_password = $defaultPassword;
+            }
             $resident->save();
 
             ActivityLog::create([
