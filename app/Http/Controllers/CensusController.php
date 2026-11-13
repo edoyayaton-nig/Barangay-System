@@ -185,7 +185,7 @@ class CensusController extends Controller
         $barangay = $request->input('barangay');
         $purok = $request->input('purok');
 
-        $query = Resident::whereIn(DB::raw("LOWER(COALESCE(verification_status, ''))"), ['verified', 'active']);
+        $query = Resident::query();
 
         if (!empty($barangay) && !str_contains(strtolower($barangay), 'all') && !str_contains(strtolower($barangay), 'city-wide')) {
             $norm = AuthController::normalizeBarangayName($barangay);
