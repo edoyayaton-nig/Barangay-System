@@ -3067,10 +3067,10 @@ export default function AdminDashboard() {
       const hhNum = (res.household_number || '').toUpperCase();
       const addrLower = (res.address || '').toLowerCase();
       const match = rPurok === cleanP ||
-                    hhNum.startsWith(`P${cleanP}-`) ||
-                    hhNum.includes(`HH-P${cleanP}`) ||
-                    addrLower.includes(`purok ${cleanP}`) ||
-                    addrLower.includes(`purok ${cleanP} `);
+        hhNum.startsWith(`P${cleanP}-`) ||
+        hhNum.includes(`HH-P${cleanP}`) ||
+        addrLower.includes(`purok ${cleanP}`) ||
+        addrLower.includes(`purok ${cleanP} `);
       if (!match) return false;
     }
     const q = residentSearch.toLowerCase().trim();
@@ -3192,8 +3192,8 @@ export default function AdminDashboard() {
   }, [barangaysOverview]);
 
   const verifiedAccountsCount = useMemo(() => {
-    return barangayResidents.filter(r => 
-      (r.verification_status === 'Verified' || (r as any).status === 'Verified') && 
+    return barangayResidents.filter(r =>
+      (r.verification_status === 'Verified' || (r as any).status === 'Verified') &&
       Boolean((r as any).linked_user_id || (r as any).claimed_at || (r.email && r.email.includes('@')))
     ).length;
   }, [barangayResidents]);
@@ -3374,8 +3374,8 @@ export default function AdminDashboard() {
                   }
                 }}
                 className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${isActive
-                    ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
-                    : 'text-slate-600 hover:bg-[#006B66]/10 hover:text-[#006B66]'
+                  ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
+                  : 'text-slate-600 hover:bg-[#006B66]/10 hover:text-[#006B66]'
                   }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -3439,8 +3439,8 @@ export default function AdminDashboard() {
                     }
                   }}
                   className={`w-full flex items-center justify-between px-4 py-2.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${isActive
-                      ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-[#006B66]/10 hover:text-[#006B66]'
+                    ? 'bg-gradient-to-r from-[#173B5E] to-[#006B66] text-white shadow-[0_4px_16px_rgba(0,107,102,0.35)]'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-[#006B66]/10 hover:text-[#006B66]'
                     }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -3793,8 +3793,8 @@ export default function AdminDashboard() {
                             <div key={i} className="flex-1 flex flex-col items-center h-full justify-end group relative">
                               <div
                                 className={`w-full max-w-[14px] rounded-t-sm transition-all cursor-pointer shadow-2xs ${bar.val > 0
-                                    ? 'bg-slate-800 group-hover:bg-blue-600'
-                                    : 'bg-slate-200/60 group-hover:bg-slate-300'
+                                  ? 'bg-slate-800 group-hover:bg-blue-600'
+                                  : 'bg-slate-200/60 group-hover:bg-slate-300'
                                   }`}
                                 style={{ height: `${Math.max(bar.val > 0 ? 8 : 3, (bar.val / monthlyIssuanceStats.maxScale) * 100)}%` }}
                                 title={`${bar.month}: ${bar.val} requests processed`}
@@ -4253,8 +4253,8 @@ export default function AdminDashboard() {
                     type="button"
                     onClick={() => setApprovalCensusFilter('all')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${approvalCensusFilter === 'all'
-                        ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/70'
-                        : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/70'
+                      : 'text-slate-600 hover:text-slate-900'
                       }`}
                   >
                     All ({basePendingResidents.length})
@@ -4263,8 +4263,8 @@ export default function AdminDashboard() {
                     type="button"
                     onClick={() => setApprovalCensusFilter('has_record')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${approvalCensusFilter === 'has_record'
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'text-emerald-700 hover:text-emerald-900'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-emerald-700 hover:text-emerald-900'
                       }`}
                   >
                     <CheckCircle2 size={12} />
@@ -4274,8 +4274,8 @@ export default function AdminDashboard() {
                     type="button"
                     onClick={() => setApprovalCensusFilter('no_record')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${approvalCensusFilter === 'no_record'
-                        ? 'bg-amber-600 text-white shadow-2xs'
-                        : 'text-amber-700 hover:text-amber-900'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'text-amber-700 hover:text-amber-900'
                       }`}
                   >
                     <AlertTriangle size={12} />
@@ -4580,8 +4580,8 @@ export default function AdminDashboard() {
                         key={tab.id}
                         onClick={() => setDocTypeFilter(tab.id)}
                         className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${docTypeFilter === tab.id
-                            ? 'bg-white text-blue-700 shadow-xs font-bold'
-                            : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-white text-blue-700 shadow-xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
                           }`}
                       >
                         <span>{tab.label}</span>
@@ -4604,8 +4604,8 @@ export default function AdminDashboard() {
                         key={s.id}
                         onClick={() => setDocStatusFilter(s.id)}
                         className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${docStatusFilter === s.id
-                            ? 'bg-white shadow-xs font-bold ' + (s.id === 'Pending' ? 'text-amber-700' : s.id === 'Processing' ? 'text-indigo-700' : s.id === 'Ready for Pickup' ? 'text-blue-700' : 'text-slate-700')
-                            : 'text-slate-500 hover:text-slate-900'
+                          ? 'bg-white shadow-xs font-bold ' + (s.id === 'Pending' ? 'text-amber-700' : s.id === 'Processing' ? 'text-indigo-700' : s.id === 'Ready for Pickup' ? 'text-blue-700' : 'text-slate-700')
+                          : 'text-slate-500 hover:text-slate-900'
                           }`}
                       >
                         {s.label}
@@ -4738,9 +4738,9 @@ export default function AdminDashboard() {
                                           'bg-amber-50 text-amber-700 border border-amber-300 font-semibold flex items-center gap-1 w-fit'
                                   }>
                                     <span className={`w-1.5 h-1.5 rounded-full ${doc.status === 'Completed' ? 'bg-emerald-500' :
-                                        doc.status === 'Ready for Pickup' ? 'bg-blue-500 animate-pulse' :
-                                          doc.status === 'Processing' ? 'bg-indigo-500 animate-pulse' :
-                                            'bg-amber-500 animate-pulse'
+                                      doc.status === 'Ready for Pickup' ? 'bg-blue-500 animate-pulse' :
+                                        doc.status === 'Processing' ? 'bg-indigo-500 animate-pulse' :
+                                          'bg-amber-500 animate-pulse'
                                       }`} />
                                     {doc.status}
                                   </Badge>
@@ -4813,8 +4813,8 @@ export default function AdminDashboard() {
                   type="button"
                   onClick={() => setSettingsSubTab('archive')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${settingsSubTab === 'archive'
-                      ? 'bg-white dark:bg-slate-800 text-indigo-700 shadow-sm border border-slate-200 dark:border-slate-700'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                    ? 'bg-white dark:bg-slate-800 text-indigo-700 shadow-sm border border-slate-200 dark:border-slate-700'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
                     }`}
                 >
                   <Archive size={14} />
@@ -4824,8 +4824,8 @@ export default function AdminDashboard() {
                   type="button"
                   onClick={() => setSettingsSubTab('notifications')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${settingsSubTab === 'notifications'
-                      ? 'bg-white dark:bg-slate-800 text-indigo-700 shadow-sm border border-slate-200 dark:border-slate-700'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
+                    ? 'bg-white dark:bg-slate-800 text-indigo-700 shadow-sm border border-slate-200 dark:border-slate-700'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
                     }`}
                 >
                   <Bell size={14} />
@@ -4890,8 +4890,8 @@ export default function AdminDashboard() {
                       type="button"
                       onClick={() => setArchiveCategory('docs')}
                       className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${archiveCategory === 'docs'
-                          ? 'bg-emerald-100/90 border-2 border-emerald-500 shadow-md ring-2 ring-emerald-500/30'
-                          : 'bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 hover:border-emerald-300 hover:shadow-xs hover:-translate-y-0.5'
+                        ? 'bg-emerald-100/90 border-2 border-emerald-500 shadow-md ring-2 ring-emerald-500/30'
+                        : 'bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 hover:border-emerald-300 hover:shadow-xs hover:-translate-y-0.5'
                         }`}
                     >
                       <div className="flex items-center gap-3">
@@ -4904,8 +4904,8 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${archiveCategory === 'docs'
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-emerald-700 bg-emerald-200/60 group-hover:bg-emerald-600 group-hover:text-white'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-emerald-700 bg-emerald-200/60 group-hover:bg-emerald-600 group-hover:text-white'
                         }`}>
                         {archiveCategory === 'docs' ? 'Active ✓' : 'View Only →'}
                       </span>
@@ -4915,8 +4915,8 @@ export default function AdminDashboard() {
                       type="button"
                       onClick={() => setArchiveCategory('residents')}
                       className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${archiveCategory === 'residents'
-                          ? 'bg-blue-100/90 border-2 border-blue-500 shadow-md ring-2 ring-blue-500/30'
-                          : 'bg-blue-50 hover:bg-blue-100/80 border border-blue-200 hover:border-blue-300 hover:shadow-xs hover:-translate-y-0.5'
+                        ? 'bg-blue-100/90 border-2 border-blue-500 shadow-md ring-2 ring-blue-500/30'
+                        : 'bg-blue-50 hover:bg-blue-100/80 border border-blue-200 hover:border-blue-300 hover:shadow-xs hover:-translate-y-0.5'
                         }`}
                     >
                       <div className="flex items-center gap-3">
@@ -4931,8 +4931,8 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${archiveCategory === 'residents'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'text-blue-700 bg-blue-200/60 group-hover:bg-blue-600 group-hover:text-white'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-blue-700 bg-blue-200/60 group-hover:bg-blue-600 group-hover:text-white'
                         }`}>
                         {archiveCategory === 'residents' ? 'Active ✓' : 'View Only →'}
                       </span>
@@ -4942,8 +4942,8 @@ export default function AdminDashboard() {
                       type="button"
                       onClick={() => setArchiveCategory('accounts')}
                       className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${archiveCategory === 'accounts'
-                          ? 'bg-rose-100/90 border-2 border-rose-500 shadow-md ring-2 ring-rose-500/30'
-                          : 'bg-rose-50 hover:bg-rose-100/80 border border-rose-200 hover:border-rose-300 hover:shadow-xs hover:-translate-y-0.5'
+                        ? 'bg-rose-100/90 border-2 border-rose-500 shadow-md ring-2 ring-rose-500/30'
+                        : 'bg-rose-50 hover:bg-rose-100/80 border border-rose-200 hover:border-rose-300 hover:shadow-xs hover:-translate-y-0.5'
                         }`}
                     >
                       <div className="flex items-center gap-3">
@@ -4958,8 +4958,8 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${archiveCategory === 'accounts'
-                          ? 'bg-rose-600 text-white shadow-xs'
-                          : 'text-rose-700 bg-rose-200/60 group-hover:bg-rose-600 group-hover:text-white'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'text-rose-700 bg-rose-200/60 group-hover:bg-rose-600 group-hover:text-white'
                         }`}>
                         {archiveCategory === 'accounts' ? 'Active ✓' : 'View Only →'}
                       </span>
@@ -4969,8 +4969,8 @@ export default function AdminDashboard() {
                       type="button"
                       onClick={() => setArchiveCategory('all')}
                       className={`rounded-2xl p-4 flex items-center justify-between text-left transition-all cursor-pointer group ${archiveCategory === 'all'
-                          ? 'bg-slate-100 border-2 border-slate-700 shadow-md ring-2 ring-slate-700/30'
-                          : 'bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-slate-300 hover:shadow-xs hover:-translate-y-0.5'
+                        ? 'bg-slate-100 border-2 border-slate-700 shadow-md ring-2 ring-slate-700/30'
+                        : 'bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-slate-300 hover:shadow-xs hover:-translate-y-0.5'
                         }`}
                     >
                       <div className="flex items-center gap-3">
@@ -4985,8 +4985,8 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all shrink-0 ${archiveCategory === 'all'
-                          ? 'bg-slate-800 text-white shadow-xs'
-                          : 'text-slate-700 bg-slate-200/60 group-hover:bg-slate-700 group-hover:text-white'
+                        ? 'bg-slate-800 text-white shadow-xs'
+                        : 'text-slate-700 bg-slate-200/60 group-hover:bg-slate-700 group-hover:text-white'
                         }`}>
                         {archiveCategory === 'all' ? 'All Active ✓' : 'View All →'}
                       </span>
@@ -5681,8 +5681,8 @@ export default function AdminDashboard() {
                   type="button"
                   onClick={() => setSelectedCensusPurok('all')}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${selectedCensusPurok === 'all'
-                      ? 'bg-white text-blue-600 shadow-xs border border-slate-200/60'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                    ? 'bg-white text-blue-600 shadow-xs border border-slate-200/60'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                     }`}
                 >
                   <span>All Puroks</span>
@@ -5700,8 +5700,8 @@ export default function AdminDashboard() {
                       type="button"
                       onClick={() => setSelectedCensusPurok(String(p))}
                       className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${isSelected
-                          ? 'bg-white text-blue-600 shadow-xs border border-slate-200/60'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                        ? 'bg-white text-blue-600 shadow-xs border border-slate-200/60'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                         }`}
                     >
                       <span>Purok {p}</span>
@@ -5734,8 +5734,8 @@ export default function AdminDashboard() {
                         const hhP = (hh.purok || '').toString().replace(/purok\s*/i, '').trim();
                         const hhNum = (hh.household_number || '').toUpperCase();
                         const match = hhP === cleanP ||
-                                      hhNum.startsWith(`P${cleanP}-`) ||
-                                      hhNum.includes(`HH-P${cleanP}`);
+                          hhNum.startsWith(`P${cleanP}-`) ||
+                          hhNum.includes(`HH-P${cleanP}`);
                         if (!match) return false;
                       }
                       const q = residentSearch.toLowerCase().trim();
@@ -5869,10 +5869,10 @@ export default function AdminDashboard() {
                                       </TableCell>
                                       <TableCell className="py-2">
                                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${m.employment_status === 'Employed' || m.employment_status === 'Self-Employed'
-                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                            : m.employment_status === 'Unemployed'
-                                              ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                              : 'bg-slate-100 text-slate-700 border-slate-200'
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                          : m.employment_status === 'Unemployed'
+                                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                            : 'bg-slate-100 text-slate-700 border-slate-200'
                                           }`}>
                                           {m.employment_status || 'Employed'}
                                         </span>
@@ -6001,10 +6001,10 @@ export default function AdminDashboard() {
                                 <TableCell className="text-slate-700 font-semibold">Purok {res.purok || '1'}</TableCell>
                                 <TableCell>
                                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${res.employment_status === 'Employed' || res.employment_status === 'Self-Employed'
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                      : res.employment_status === 'Unemployed'
-                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                        : 'bg-slate-100 text-slate-700 border-slate-200'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : res.employment_status === 'Unemployed'
+                                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                      : 'bg-slate-100 text-slate-700 border-slate-200'
                                     }`}>
                                     {res.employment_status || 'Employed'}
                                   </span>
@@ -6183,8 +6183,8 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setUserCategoryTab('all')}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${userCategoryTab === 'all'
-                        ? 'bg-white text-indigo-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-indigo-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                       }`}
                   >
                     <Users size={14} />
@@ -6196,8 +6196,8 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setUserCategoryTab('officials')}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${userCategoryTab === 'officials'
-                        ? 'bg-white text-indigo-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-indigo-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                       }`}
                   >
                     <Building2 size={14} />
@@ -6209,8 +6209,8 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setUserCategoryTab('health' as any)}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${(userCategoryTab as any) === 'health'
-                        ? 'bg-white text-teal-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-teal-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                       }`}
                   >
                     <Heart size={14} />
@@ -6222,8 +6222,8 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setUserCategoryTab('staff' as any)}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${(userCategoryTab as any) === 'staff'
-                        ? 'bg-white text-blue-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-blue-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                       }`}
                   >
                     <UserCheck size={14} />
@@ -6235,8 +6235,8 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setUserCategoryTab('archived')}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${userCategoryTab === 'archived'
-                        ? 'bg-white text-rose-700 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-rose-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                       }`}
                   >
                     <Archive size={14} />
@@ -6570,11 +6570,11 @@ export default function AdminDashboard() {
                                   <div
                                     onClick={() => handleOpenUserProfile(u)}
                                     className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-xs border overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-400 hover:scale-105 transition-all ${u.role === 'superadmin' ? 'bg-violet-100 text-violet-700 border-violet-200' :
-                                        u.role === 'admin' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
-                                          u.role === 'nurse' ? 'bg-teal-100 text-teal-700 border-teal-200' :
-                                            u.role === 'bhw' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                              u.role === 'staff' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                                'bg-slate-100 text-slate-700 border-slate-200'
+                                      u.role === 'admin' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' :
+                                        u.role === 'nurse' ? 'bg-teal-100 text-teal-700 border-teal-200' :
+                                          u.role === 'bhw' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                            u.role === 'staff' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                              'bg-slate-100 text-slate-700 border-slate-200'
                                       }`}
                                     title="Click to view full user profile & dossier"
                                   >
@@ -6652,15 +6652,15 @@ export default function AdminDashboard() {
                                 <button
                                   onClick={() => (isSuperAdmin || user?.role === 'admin') && handleToggleUserStatus(u)}
                                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-all ${u.status === 'Active'
-                                      ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                                      : u.status === 'Archived'
-                                        ? 'bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200'
-                                        : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                                    ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                    : u.status === 'Archived'
+                                      ? 'bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200'
+                                      : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
                                     }`}
                                   title="Click to toggle Active / Inactive status"
                                 >
                                   <span className={`w-2 h-2 rounded-full ${u.status === 'Active' ? 'bg-emerald-500 animate-pulse' :
-                                      u.status === 'Archived' ? 'bg-violet-500' : 'bg-amber-500'
+                                    u.status === 'Archived' ? 'bg-violet-500' : 'bg-amber-500'
                                     }`} />
                                   {u.status || 'Active'}
                                 </button>
@@ -7264,7 +7264,7 @@ export default function AdminDashboard() {
                           }
 
                           return resList.map((res) => {
-                            const isVerified = (res.verification_status === 'Verified' || (res as any).status === 'Verified') && 
+                            const isVerified = (res.verification_status === 'Verified' || (res as any).status === 'Verified') &&
                               Boolean((res as any).linked_user_id || (res as any).claimed_at || (res.email && res.email.includes('@')));
                             const isPending = res.verification_status === 'Pending_Review' || res.verification_status === 'Pending';
                             const fullName = `${res.first_name || ''} ${res.last_name || ''}`.trim() || (res as any).name || 'Resident';
@@ -7288,13 +7288,12 @@ export default function AdminDashboard() {
                                   <span className="text-slate-400 block text-[11px]">{res.civil_status || 'Single'}</span>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge className={`text-[10px] font-bold border-0 ${
-                                    isVerified 
-                                      ? 'bg-emerald-100 text-emerald-800' 
-                                      : isPending 
-                                        ? 'bg-amber-100 text-amber-800' 
+                                  <Badge className={`text-[10px] font-bold border-0 ${isVerified
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : isPending
+                                        ? 'bg-amber-100 text-amber-800'
                                         : 'bg-slate-100 text-slate-700'
-                                  }`}>
+                                    }`}>
                                     {isVerified ? '✓ Verified' : isPending ? '⏳ Pending Review' : '📋 Unclaimed'}
                                   </Badge>
                                 </TableCell>
@@ -8180,8 +8179,8 @@ export default function AdminDashboard() {
                     <button
                       onClick={() => setCategoryStatusFilter('all')}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${categoryStatusFilter === 'all'
-                          ? 'bg-white text-purple-700 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white text-purple-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                         }`}
                     >
                       All Statuses ({totalCount})
@@ -8189,8 +8188,8 @@ export default function AdminDashboard() {
                     <button
                       onClick={() => setCategoryStatusFilter('Active')}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${categoryStatusFilter === 'Active'
-                          ? 'bg-white text-emerald-700 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white text-emerald-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                         }`}
                     >
                       Active Only ({activeCount})
@@ -8198,8 +8197,8 @@ export default function AdminDashboard() {
                     <button
                       onClick={() => setCategoryStatusFilter('Inactive')}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${categoryStatusFilter === 'Inactive'
-                          ? 'bg-white text-rose-700 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white text-rose-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
                         }`}
                     >
                       Deactivated Only ({inactiveCount})
@@ -8326,8 +8325,8 @@ export default function AdminDashboard() {
                                 </TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className={`text-[10px] font-semibold ${cat.department === 'Health Center'
-                                      ? 'bg-teal-50 text-teal-700 border-teal-300'
-                                      : 'bg-indigo-50 text-indigo-700 border-indigo-300'
+                                    ? 'bg-teal-50 text-teal-700 border-teal-300'
+                                    : 'bg-indigo-50 text-indigo-700 border-indigo-300'
                                     }`}>
                                     {cat.department || 'Barangay'}
                                   </Badge>
@@ -8337,8 +8336,8 @@ export default function AdminDashboard() {
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${isActive
-                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                      : 'bg-rose-100 text-rose-800 border border-rose-300'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : 'bg-rose-100 text-rose-800 border border-rose-300'
                                     }`}>
                                     <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
                                     {isActive ? 'Active' : 'Deactivated'}
@@ -8471,8 +8470,8 @@ export default function AdminDashboard() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${isSuperAdmin
-                        ? 'bg-purple-100 text-purple-800 border-purple-300'
-                        : 'bg-indigo-100 text-indigo-800 border-indigo-300'
+                      ? 'bg-purple-100 text-purple-800 border-purple-300'
+                      : 'bg-indigo-100 text-indigo-800 border-indigo-300'
                       }`}>
                       {isSuperAdmin ? 'SUPER ADMIN & ADMIN AUDIT' : 'BARANGAY AUDIT TRAIL'}
                     </span>
@@ -8791,10 +8790,10 @@ export default function AdminDashboard() {
                                 <TableCell className="py-3 px-3">
                                   <div className="flex items-center gap-2.5">
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${role === 'superadmin' ? 'bg-purple-100 text-purple-700' :
-                                        role === 'admin' ? 'bg-indigo-100 text-indigo-700' :
-                                          role === 'bhw' ? 'bg-emerald-100 text-emerald-700' :
-                                            role === 'staff' ? 'bg-sky-100 text-sky-700' :
-                                              'bg-slate-200 text-slate-700'
+                                      role === 'admin' ? 'bg-indigo-100 text-indigo-700' :
+                                        role === 'bhw' ? 'bg-emerald-100 text-emerald-700' :
+                                          role === 'staff' ? 'bg-sky-100 text-sky-700' :
+                                            'bg-slate-200 text-slate-700'
                                       }`}>
                                       {log.user_name ? log.user_name.charAt(0).toUpperCase() : 'U'}
                                     </div>
@@ -9079,349 +9078,349 @@ export default function AdminDashboard() {
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader>
-                        <TableRow className="bg-slate-50 text-xs">
-                          <TableHead className="font-bold">Barangay Name</TableHead>
-                          <TableHead className="font-bold">Status</TableHead>
-                          <TableHead className="font-bold">Assigned Administrator</TableHead>
-                          <TableHead className="font-bold text-center">Census Residents</TableHead>
-                          <TableHead className="font-bold text-center">Pending Approvals</TableHead>
-                          <TableHead className="font-bold text-center">Docs Issued</TableHead>
-                          <TableHead className="font-bold">Official Hotline</TableHead>
-                          <TableHead className="font-bold text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(() => {
-                          const list = (barangaysOverview.length > 0 ? barangaysOverview : BUTUAN_BARANGAYS.map((bName, idx) => ({
-                            id: idx + 1,
-                            name: bName,
-                            status: bName === 'Pianing' || bName === 'Anticala' ? 'Active' : 'Unstaffed' as any,
-                            admin: bName === 'Pianing' ? { id: 2, name: 'Admin Juan Dela Cruz', email: 'admin@pianing.gov.ph', phone: '0917-123-4567' } : null,
-                            total_residents: bName === 'Pianing' ? residents.length : 0,
-                            pending_approvals: bName === 'Pianing' ? pendingResidents.length : 0,
-                            total_documents: bName === 'Pianing' ? documents.length : 0,
-                            office_address: `Barangay Hall, ${bName}, Butuan City`,
-                            hotline: '0917-123-4567'
-                          }))).filter(b => {
-                            if (barangayStatusFilter === 'active' && b.status !== 'Active') return false;
-                            if (barangayStatusFilter === 'unstaffed' && b.status === 'Active') return false;
-                            if (barangaySearch.trim()) {
-                              const q = barangaySearch.toLowerCase();
-                              return b.name.toLowerCase().includes(q) || (b.admin?.name || '').toLowerCase().includes(q) || (b.admin?.email || '').toLowerCase().includes(q);
-                            }
-                            return true;
-                          });
+                    <TableHeader>
+                      <TableRow className="bg-slate-50 text-xs">
+                        <TableHead className="font-bold">Barangay Name</TableHead>
+                        <TableHead className="font-bold">Status</TableHead>
+                        <TableHead className="font-bold">Assigned Administrator</TableHead>
+                        <TableHead className="font-bold text-center">Census Residents</TableHead>
+                        <TableHead className="font-bold text-center">Pending Approvals</TableHead>
+                        <TableHead className="font-bold text-center">Docs Issued</TableHead>
+                        <TableHead className="font-bold">Official Hotline</TableHead>
+                        <TableHead className="font-bold text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(() => {
+                        const list = (barangaysOverview.length > 0 ? barangaysOverview : BUTUAN_BARANGAYS.map((bName, idx) => ({
+                          id: idx + 1,
+                          name: bName,
+                          status: bName === 'Pianing' || bName === 'Anticala' ? 'Active' : 'Unstaffed' as any,
+                          admin: bName === 'Pianing' ? { id: 2, name: 'Admin Juan Dela Cruz', email: 'admin@pianing.gov.ph', phone: '0917-123-4567' } : null,
+                          total_residents: bName === 'Pianing' ? residents.length : 0,
+                          pending_approvals: bName === 'Pianing' ? pendingResidents.length : 0,
+                          total_documents: bName === 'Pianing' ? documents.length : 0,
+                          office_address: `Barangay Hall, ${bName}, Butuan City`,
+                          hotline: '0917-123-4567'
+                        }))).filter(b => {
+                          if (barangayStatusFilter === 'active' && b.status !== 'Active') return false;
+                          if (barangayStatusFilter === 'unstaffed' && b.status === 'Active') return false;
+                          if (barangaySearch.trim()) {
+                            const q = barangaySearch.toLowerCase();
+                            return b.name.toLowerCase().includes(q) || (b.admin?.name || '').toLowerCase().includes(q) || (b.admin?.email || '').toLowerCase().includes(q);
+                          }
+                          return true;
+                        });
 
-                          return list.map((item, bIdx) => (
-                            <TableRow key={`b-row-${item.id}-${bIdx}`} className="text-xs hover:bg-slate-50/60">
-                              <TableCell className="font-bold text-slate-900">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-md bg-indigo-50 border border-indigo-200 flex items-center justify-center text-[10px] font-black text-indigo-700">
-                                    {item.name.charAt(0)}
-                                  </div>
-                                  <span>{item.name}</span>
+                        return list.map((item, bIdx) => (
+                          <TableRow key={`b-row-${item.id}-${bIdx}`} className="text-xs hover:bg-slate-50/60">
+                            <TableCell className="font-bold text-slate-900">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-md bg-indigo-50 border border-indigo-200 flex items-center justify-center text-[10px] font-black text-indigo-700">
+                                  {item.name.charAt(0)}
                                 </div>
-                              </TableCell>
-                              <TableCell>
-                                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${item.status === 'Active'
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                    : 'bg-slate-100 text-slate-600 border-slate-200'
-                                  }`}>
-                                  {item.status === 'Active' ? 'Staffed' : 'Unstaffed'}
+                                <span>{item.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${item.status === 'Active'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                                }`}>
+                                {item.status === 'Active' ? 'Staffed' : 'Unstaffed'}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {item.admin ? (
+                                <div>
+                                  <p className="font-semibold text-slate-800">{item.admin.name}</p>
+                                  <p className="text-[11px] text-slate-400 font-mono">{item.admin.email}</p>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px]">No Admin Assigned</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center font-bold text-slate-800">
+                              {item.total_residents}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {item.pending_approvals > 0 ? (
+                                <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold text-[10px]">
+                                  {item.pending_approvals}
                                 </span>
-                              </TableCell>
-                              <TableCell>
-                                {item.admin ? (
-                                  <div>
-                                    <p className="font-semibold text-slate-800">{item.admin.name}</p>
-                                    <p className="text-[11px] text-slate-400 font-mono">{item.admin.email}</p>
-                                  </div>
-                                ) : (
-                                  <span className="text-slate-400 italic text-[11px]">No Admin Assigned</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-center font-bold text-slate-800">
-                                {item.total_residents}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {item.pending_approvals > 0 ? (
-                                  <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold text-[10px]">
-                                    {item.pending_approvals}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-400">0</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-center font-mono text-slate-600">
-                                {item.total_documents}
-                              </TableCell>
-                              <TableCell className="text-slate-500 font-mono text-[11px]">
-                                {item.hotline}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    if (item.admin) {
-                                      toast.info(`Assigned Administrator: ${item.admin.name} (${item.admin.email})`);
-                                    } else {
-                                      setActiveTab('users');
-                                      setNewUserRole('admin');
-                                      setNewUserBarangay(item.name);
-                                      setIsAddUserOpen(true);
-                                      toast.info(`Assign an administrator for Barangay ${item.name}`);
-                                    }
-                                  }}
-                                  className="h-7 text-[11px] gap-1 border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer"
-                                >
-                                  {item.admin ? 'Details' : 'Assign Admin'}
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ));
-                        })()}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
+                              ) : (
+                                <span className="text-slate-400">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center font-mono text-slate-600">
+                              {item.total_documents}
+                            </TableCell>
+                            <TableCell className="text-slate-500 font-mono text-[11px]">
+                              {item.hotline}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  if (item.admin) {
+                                    toast.info(`Assigned Administrator: ${item.admin.name} (${item.admin.email})`);
+                                  } else {
+                                    setActiveTab('users');
+                                    setNewUserRole('admin');
+                                    setNewUserBarangay(item.name);
+                                    setIsAddUserOpen(true);
+                                    toast.info(`Assign an administrator for Barangay ${item.name}`);
+                                  }
+                                }}
+                                className="h-7 text-[11px] gap-1 border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer"
+                              >
+                                {item.admin ? 'Details' : 'Assign Admin'}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ));
+                      })()}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
             </div>
           )}
 
-          {/* TAB: SYSTEM DIAGNOSTICS & 1-CLICK DATABASE BACKUP (Super Admin Only) */}
-          {activeTab === 'system' && isSuperAdmin && (
-            <div className="space-y-6">
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-purple-100 text-purple-800 border border-purple-300 text-[10px] font-extrabold px-2 py-0.5 rounded-md">
-                      MAINTENANCE &amp; DIAGNOSTICS
+      {/* TAB: SYSTEM DIAGNOSTICS & 1-CLICK DATABASE BACKUP (Super Admin Only) */}
+      {activeTab === 'system' && isSuperAdmin && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="bg-purple-100 text-purple-800 border border-purple-300 text-[10px] font-extrabold px-2 py-0.5 rounded-md">
+                  MAINTENANCE &amp; DIAGNOSTICS
+                </span>
+                <span className="text-xs text-slate-500 font-mono">Full System Integrity</span>
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
+                System Diagnostics &amp; 1-Click Database Backup
+              </h2>
+              <p className="text-xs text-slate-500">
+                Direct live MySQL database table health inspector, 1-click SQL/JSON backup exports, and maintenance mode controls.
+              </p>
+            </div>
+
+            {/* 1-Click Backup Export Buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <a
+                href="http://localhost:5000/api/system/database/backup?format=sql"
+                download="smart_db_backup.sql"
+                className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm transition-colors"
+              >
+                <Download size={14} />
+                <span>Download .SQL Backup</span>
+              </a>
+              <a
+                href="http://localhost:5000/api/system/database/backup?format=json"
+                download="smart_db_backup.json"
+                className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm transition-colors"
+              >
+                <Download size={14} />
+                <span>Download JSON Snapshot</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Maintenance Mode & Gateways Overview */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Maintenance Mode Controller */}
+            <Card className="border-slate-200 bg-white shadow-xs lg:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Sliders size={16} className="text-amber-600" />
+                    <span>Maintenance Mode</span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${maintenanceMode.enabled
+                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                    : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    }`}>
+                    {maintenanceMode.enabled ? 'MAINTENANCE ACTIVE' : 'SYSTEM LIVE'}
+                  </span>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Lock resident portal during scheduled maintenance or database migrations.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Announcement Message</Label>
+                  <Textarea
+                    value={maintenanceMode.message}
+                    onChange={e => setMaintenanceMode(prev => ({ ...prev, message: e.target.value }))}
+                    placeholder="Maintenance notification shown to users..."
+                    className="text-xs h-20"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    const newStatus = !maintenanceMode.enabled;
+                    try {
+                      await apiService.toggleMaintenanceMode(newStatus, maintenanceMode.message);
+                      setMaintenanceMode(prev => ({ ...prev, enabled: newStatus }));
+                      toast.success(`Maintenance Mode is now ${newStatus ? 'ENABLED' : 'DISABLED'}`);
+                    } catch {
+                      toast.error('Failed to toggle maintenance mode');
+                    }
+                  }}
+                  className={`w-full text-xs font-semibold h-8 cursor-pointer ${maintenanceMode.enabled
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-amber-600 hover:bg-amber-700 text-white'
+                    }`}
+                >
+                  {maintenanceMode.enabled ? 'Deactivate Maintenance (Resume Live)' : 'Activate Maintenance Mode'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Live Communication & Database Gateways */}
+            <Card className="border-slate-200 bg-white shadow-xs lg:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Server size={16} className="text-indigo-600" />
+                  Infrastructure &amp; Notification Gateways
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Active operational status of core external APIs and data persistence layer.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* MySQL Database Gateway */}
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">MySQL Database</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
+                    <p className="text-[11px] font-mono text-slate-600">Host: localhost:3306</p>
+                    <p className="text-[11px] font-mono text-slate-600">Schema: smart_db</p>
+                    <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.2 rounded">
+                      Connected (Pool Active)
                     </span>
-                    <span className="text-xs text-slate-500 font-mono">Full System Integrity</span>
                   </div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-                    System Diagnostics &amp; 1-Click Database Backup
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Direct live MySQL database table health inspector, 1-click SQL/JSON backup exports, and maintenance mode controls.
-                  </p>
-                </div>
 
-                {/* 1-Click Backup Export Buttons */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <a
-                    href="http://localhost:5000/api/system/database/backup?format=sql"
-                    download="smart_db_backup.sql"
-                    className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm transition-colors"
-                  >
-                    <Download size={14} />
-                    <span>Download .SQL Backup</span>
-                  </a>
-                  <a
-                    href="http://localhost:5000/api/system/database/backup?format=json"
-                    download="smart_db_backup.json"
-                    className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm transition-colors"
-                  >
-                    <Download size={14} />
-                    <span>Download JSON Snapshot</span>
-                  </a>
+                  {/* iProg SMS Gateway */}
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">iProg SMS API</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium">Provider: iProgTech Gateway</p>
+                    <p className="text-[11px] font-mono text-slate-500">Latency: 24ms</p>
+                    <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.2 rounded">
+                      Live Sending Ready
+                    </span>
+                  </div>
+
+                  {/* Gmail / EmailJS Gateway */}
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">Gmail / EmailJS</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium">Service: service_6nk2ylj</p>
+                    <p className="text-[11px] font-mono text-slate-500">SMTP: smtp.gmail.com</p>
+                    <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.2 rounded">
+                      Direct Dispatch Online
+                    </span>
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 14 MySQL Relational Tables Health Grid */}
+          <Card className="border-slate-200 bg-white shadow-xs">
+            <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Database size={16} className="text-purple-600" />
+                  MySQL Schema Table Health &amp; Row Counts
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Live table integrity across all 14 relational data tables in smart_db.
+                </CardDescription>
               </div>
-
-              {/* Maintenance Mode & Gateways Overview */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Maintenance Mode Controller */}
-                <Card className="border-slate-200 bg-white shadow-xs lg:col-span-1">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-bold flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Sliders size={16} className="text-amber-600" />
-                        <span>Maintenance Mode</span>
-                      </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${maintenanceMode.enabled
-                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                          : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        }`}>
-                        {maintenanceMode.enabled ? 'MAINTENANCE ACTIVE' : 'SYSTEM LIVE'}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const res = await apiService.getDatabaseStats().catch(() => null);
+                  if (res?.tables) setDbStats(res.tables);
+                  toast.success('Database table statistics refreshed');
+                }}
+                className="text-xs gap-1 h-8 border-slate-200 hover:bg-slate-50 cursor-pointer"
+              >
+                <RefreshCcw size={12} />
+                <span>Refresh Stats</span>
+              </Button>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {(dbStats.length > 0 ? dbStats : [
+                  { table: 'users', count: users.length, status: 'Healthy' },
+                  { table: 'residents', count: residents.length, status: 'Healthy' },
+                  { table: 'document_requests', count: documents.length, status: 'Healthy' },
+                  { table: 'document_categories', count: categories.length, status: 'Healthy' },
+                  { table: 'health_appointments', count: appointments.length, status: 'Healthy' },
+                  { table: 'clinic_schedules', count: clinicSchedules.length, status: 'Healthy' },
+                  { table: 'child_health_records', count: 12, status: 'Healthy' },
+                  { table: 'maternal_records', count: 8, status: 'Healthy' },
+                  { table: 'immunizations', count: 15, status: 'Healthy' },
+                  { table: 'activity_logs', count: activityLogs.length, status: 'Healthy' },
+                  { table: 'messages', count: 6, status: 'Healthy' },
+                  { table: 'sms_notifications', count: 18, status: 'Healthy' },
+                  { table: 'user_notifications', count: 24, status: 'Healthy' },
+                  { table: 'faq_knowledge', count: 12, status: 'Healthy' },
+                ]).map((tableItem, tIdx) => (
+                  <div
+                    key={`table-health-${tIdx}`}
+                    className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-slate-800 truncate" title={tableItem.table}>
+                        {tableItem.table}
                       </span>
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Lock resident portal during scheduled maintenance or database migrations.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">Announcement Message</Label>
-                      <Textarea
-                        value={maintenanceMode.message}
-                        onChange={e => setMaintenanceMode(prev => ({ ...prev, message: e.target.value }))}
-                        placeholder="Maintenance notification shown to users..."
-                        className="text-xs h-20"
-                      />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={async () => {
-                        const newStatus = !maintenanceMode.enabled;
-                        try {
-                          await apiService.toggleMaintenanceMode(newStatus, maintenanceMode.message);
-                          setMaintenanceMode(prev => ({ ...prev, enabled: newStatus }));
-                          toast.success(`Maintenance Mode is now ${newStatus ? 'ENABLED' : 'DISABLED'}`);
-                        } catch {
-                          toast.error('Failed to toggle maintenance mode');
-                        }
-                      }}
-                      className={`w-full text-xs font-semibold h-8 cursor-pointer ${maintenanceMode.enabled
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                          : 'bg-amber-600 hover:bg-amber-700 text-white'
-                        }`}
-                    >
-                      {maintenanceMode.enabled ? 'Deactivate Maintenance (Resume Live)' : 'Activate Maintenance Mode'}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {/* Live Communication & Database Gateways */}
-                <Card className="border-slate-200 bg-white shadow-xs lg:col-span-2">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2">
-                      <Server size={16} className="text-indigo-600" />
-                      Infrastructure &amp; Notification Gateways
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Active operational status of core external APIs and data persistence layer.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-1">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {/* MySQL Database Gateway */}
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800">MySQL Database</span>
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        </div>
-                        <p className="text-[11px] font-mono text-slate-600">Host: localhost:3306</p>
-                        <p className="text-[11px] font-mono text-slate-600">Schema: smart_db</p>
-                        <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.2 rounded">
-                          Connected (Pool Active)
-                        </span>
-                      </div>
-
-                      {/* iProg SMS Gateway */}
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800">iProg SMS API</span>
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        </div>
-                        <p className="text-[11px] text-slate-600 font-medium">Provider: iProgTech Gateway</p>
-                        <p className="text-[11px] font-mono text-slate-500">Latency: 24ms</p>
-                        <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.2 rounded">
-                          Live Sending Ready
-                        </span>
-                      </div>
-
-                      {/* Gmail / EmailJS Gateway */}
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800">Gmail / EmailJS</span>
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        </div>
-                        <p className="text-[11px] text-slate-600 font-medium">Service: service_6nk2ylj</p>
-                        <p className="text-[11px] font-mono text-slate-500">SMTP: smtp.gmail.com</p>
-                        <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-1.5 py-0.2 rounded">
-                          Direct Dispatch Online
-                        </span>
-                      </div>
+                    <div className="flex items-baseline justify-between pt-1">
+                      <span className="text-lg font-extrabold text-slate-900 font-mono">
+                        {tableItem.count.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">rows</span>
                     </div>
-                  </CardContent>
-                </Card>
+                    <span className="inline-block text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 rounded font-semibold">
+                      {tableItem.status}
+                    </span>
+                  </div>
+                ))}
               </div>
-
-              {/* 14 MySQL Relational Tables Health Grid */}
-              <Card className="border-slate-200 bg-white shadow-xs">
-                <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-sm font-bold flex items-center gap-2">
-                      <Database size={16} className="text-purple-600" />
-                      MySQL Schema Table Health &amp; Row Counts
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Live table integrity across all 14 relational data tables in smart_db.
-                    </CardDescription>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      const res = await apiService.getDatabaseStats().catch(() => null);
-                      if (res?.tables) setDbStats(res.tables);
-                      toast.success('Database table statistics refreshed');
-                    }}
-                    className="text-xs gap-1 h-8 border-slate-200 hover:bg-slate-50 cursor-pointer"
-                  >
-                    <RefreshCcw size={12} />
-                    <span>Refresh Stats</span>
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                    {(dbStats.length > 0 ? dbStats : [
-                      { table: 'users', count: users.length, status: 'Healthy' },
-                      { table: 'residents', count: residents.length, status: 'Healthy' },
-                      { table: 'document_requests', count: documents.length, status: 'Healthy' },
-                      { table: 'document_categories', count: categories.length, status: 'Healthy' },
-                      { table: 'health_appointments', count: appointments.length, status: 'Healthy' },
-                      { table: 'clinic_schedules', count: clinicSchedules.length, status: 'Healthy' },
-                      { table: 'child_health_records', count: 12, status: 'Healthy' },
-                      { table: 'maternal_records', count: 8, status: 'Healthy' },
-                      { table: 'immunizations', count: 15, status: 'Healthy' },
-                      { table: 'activity_logs', count: activityLogs.length, status: 'Healthy' },
-                      { table: 'messages', count: 6, status: 'Healthy' },
-                      { table: 'sms_notifications', count: 18, status: 'Healthy' },
-                      { table: 'user_notifications', count: 24, status: 'Healthy' },
-                      { table: 'faq_knowledge', count: 12, status: 'Healthy' },
-                    ]).map((tableItem, tIdx) => (
-                      <div
-                        key={`table-health-${tIdx}`}
-                        className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors space-y-1"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-xs font-bold text-slate-800 truncate" title={tableItem.table}>
-                            {tableItem.table}
-                          </span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                        </div>
-                        <div className="flex items-baseline justify-between pt-1">
-                          <span className="text-lg font-extrabold text-slate-900 font-mono">
-                            {tableItem.count.toLocaleString()}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-medium">rows</span>
-                        </div>
-                        <span className="inline-block text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 rounded font-semibold">
-                          {tableItem.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
 
 
-          {/* Dedicated Profile Settings Tab View */}
-          {activeTab === 'profile-settings' && (
-            <ProfileSettingsView
-              user={user}
-              onProfileUpdated={(updated) => setUser(updated)}
-            />
-          )}
+      {/* Dedicated Profile Settings Tab View */}
+      {activeTab === 'profile-settings' && (
+        <ProfileSettingsView
+          user={user}
+          onProfileUpdated={(updated) => setUser(updated)}
+        />
+      )}
 
-        </main>
+    </main>
       </div>
 
       {/* Intra-System Messenger (floating, Staff Chat) */}
@@ -9433,2447 +9432,2447 @@ export default function AdminDashboard() {
         currentUserBarangay={user?.barangay || (user?.email?.toLowerCase().includes('anticala') ? 'Anticala' : user?.address?.toLowerCase().includes('anticala') ? 'Anticala' : (isSuperMegaAdmin ? 'All (City-Wide)' : 'Pianing'))}
       />
 
-      {/* Resident 360° Profile Modal */}
-      <ResidentProfileModal
-        isOpen={profileModalOpen}
-        onClose={() => {
-          setProfileModalOpen(false);
-          setSelectedResidentId(null);
-          if (returnToDocOnProfileClose) {
-            const docToReopen = returnToDocOnProfileClose;
-            setReturnToDocOnProfileClose(null);
-            setSelectedInfoDoc(docToReopen);
-            setIsDocInfoOpen(true);
-          }
-        }}
-        returnDocTitle={returnToDocOnProfileClose ? `${returnToDocOnProfileClose.document_type} (${returnToDocOnProfileClose.request_code})` : undefined}
-        onBackToDoc={() => {
-          setProfileModalOpen(false);
-          setSelectedResidentId(null);
-          if (returnToDocOnProfileClose) {
-            const docToReopen = returnToDocOnProfileClose;
-            setReturnToDocOnProfileClose(null);
-            setSelectedInfoDoc(docToReopen);
-            setIsDocInfoOpen(true);
-          }
-        }}
-        residentId={selectedResidentId}
-        canVerify={isSuperAdmin || hasUserPermission(user, 'can_verify_residents')}
-        onStatusUpdated={loadData}
-        currentUserName={user?.name}
-      />
+{/* Resident 360° Profile Modal */ }
+<ResidentProfileModal
+  isOpen={profileModalOpen}
+  onClose={() => {
+    setProfileModalOpen(false);
+    setSelectedResidentId(null);
+    if (returnToDocOnProfileClose) {
+      const docToReopen = returnToDocOnProfileClose;
+      setReturnToDocOnProfileClose(null);
+      setSelectedInfoDoc(docToReopen);
+      setIsDocInfoOpen(true);
+    }
+  }}
+  returnDocTitle={returnToDocOnProfileClose ? `${returnToDocOnProfileClose.document_type} (${returnToDocOnProfileClose.request_code})` : undefined}
+  onBackToDoc={() => {
+    setProfileModalOpen(false);
+    setSelectedResidentId(null);
+    if (returnToDocOnProfileClose) {
+      const docToReopen = returnToDocOnProfileClose;
+      setReturnToDocOnProfileClose(null);
+      setSelectedInfoDoc(docToReopen);
+      setIsDocInfoOpen(true);
+    }
+  }}
+  residentId={selectedResidentId}
+  canVerify={isSuperAdmin || hasUserPermission(user, 'can_verify_residents')}
+  onStatusUpdated={loadData}
+  currentUserName={user?.name}
+/>
 
-      {/* Register Resident / Add Resident Modal */}
-      <Dialog
-        open={isAddResidentOpen}
-        onOpenChange={(open) => {
-          setIsAddResidentOpen(open);
-          if (!open) {
-            resetAddResidentForm();
-          }
-        }}
-      >
-        <DialogContent className="bg-white max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-5 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-slate-900">Register Resident / Household</DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Add a citizen to the official Barangay {newResBarangay || user?.barangay || 'Pianing'} Population &amp; Household Census Registry.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateResident} className="space-y-4 py-2">
-            {/* Step 1: Purok & Household Assignment */}
-            <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800">Household &amp; Purok Assignment</span>
-                <div className="flex items-center gap-1 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddResidentMode('new_household');
-                      const cleanP = (newResPurok || '1').replace(/purok\s*/i, '').trim();
-                      const existingInP = censusHouseholds.filter(h =>
-                        (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP ||
-                        (h.household_number || '').includes(`HH-P${cleanP}`)
-                      );
-                      setNewResHouseholdNum(`HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`);
-                      setNewResFamilyName('');
-                      setHouseholdSearchQuery('');
-                      setIsHouseholdDropdownOpen(false);
-                      setNewResIsHead(true);
-                      setNewResRelationship('Head');
-                    }}
-                    className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${addResidentMode === 'new_household' ? 'bg-blue-600 text-white font-semibold' : 'bg-slate-200 text-slate-700'}`}
-                  >
-                    New Household
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddResidentMode('existing_household');
-                      setNewResIsHead(false);
-                      setNewResRelationship('');
-                      setNewResHouseholdNum('');
-                      setNewResFamilyName('');
-                      setHouseholdSearchQuery('');
-                      setIsHouseholdDropdownOpen(false);
-                    }}
-                    className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${addResidentMode === 'existing_household' ? 'bg-blue-600 text-white font-semibold' : 'bg-slate-200 text-slate-700'}`}
-                  >
-                    Existing Household
-                  </button>
-                </div>
-              </div>
+{/* Register Resident / Add Resident Modal */ }
+<Dialog
+  open={isAddResidentOpen}
+  onOpenChange={(open) => {
+    setIsAddResidentOpen(open);
+    if (!open) {
+      resetAddResidentForm();
+    }
+  }}
+>
+  <DialogContent className="bg-white max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-5 rounded-2xl">
+    <DialogHeader>
+      <DialogTitle className="text-base font-bold text-slate-900">Register Resident / Household</DialogTitle>
+      <DialogDescription className="text-xs text-slate-500">
+        Add a citizen to the official Barangay {newResBarangay || user?.barangay || 'Pianing'} Population &amp; Household Census Registry.
+      </DialogDescription>
+    </DialogHeader>
+    <form onSubmit={handleCreateResident} className="space-y-4 py-2">
+      {/* Step 1: Purok & Household Assignment */}
+      <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-800">Household &amp; Purok Assignment</span>
+          <div className="flex items-center gap-1 text-[11px]">
+            <button
+              type="button"
+              onClick={() => {
+                setAddResidentMode('new_household');
+                const cleanP = (newResPurok || '1').replace(/purok\s*/i, '').trim();
+                const existingInP = censusHouseholds.filter(h =>
+                  (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP ||
+                  (h.household_number || '').includes(`HH-P${cleanP}`)
+                );
+                setNewResHouseholdNum(`HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`);
+                setNewResFamilyName('');
+                setHouseholdSearchQuery('');
+                setIsHouseholdDropdownOpen(false);
+                setNewResIsHead(true);
+                setNewResRelationship('Head');
+              }}
+              className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${addResidentMode === 'new_household' ? 'bg-blue-600 text-white font-semibold' : 'bg-slate-200 text-slate-700'}`}
+            >
+              New Household
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddResidentMode('existing_household');
+                setNewResIsHead(false);
+                setNewResRelationship('');
+                setNewResHouseholdNum('');
+                setNewResFamilyName('');
+                setHouseholdSearchQuery('');
+                setIsHouseholdDropdownOpen(false);
+              }}
+              className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${addResidentMode === 'existing_household' ? 'bg-blue-600 text-white font-semibold' : 'bg-slate-200 text-slate-700'}`}
+            >
+              Existing Household
+            </button>
+          </div>
+        </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <Label className="text-xs font-semibold">Purok *</Label>
-                  <Select
-                    value={newResPurok}
-                    onValueChange={(val) => {
-                      setNewResPurok(val);
-                      const cleanP = val.replace(/purok\s*/i, '').trim();
-                      if (addResidentMode === 'new_household') {
-                        const existingInP = censusHouseholds.filter(h =>
-                          (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP ||
-                          (h.household_number || '').includes(`HH-P${cleanP}`)
-                        );
-                        setNewResHouseholdNum(`HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`);
-                      } else {
-                        setNewResHouseholdNum('');
-                        setNewResFamilyName('');
-                        setHouseholdSearchQuery('');
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="text-xs bg-white"><SelectValue placeholder="Select Purok" /></SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6].map(p => (
-                        <SelectItem key={`p-sel-${p}`} value={String(p)}>Purok {p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div>
+            <Label className="text-xs font-semibold">Purok *</Label>
+            <Select
+              value={newResPurok}
+              onValueChange={(val) => {
+                setNewResPurok(val);
+                const cleanP = val.replace(/purok\s*/i, '').trim();
+                if (addResidentMode === 'new_household') {
+                  const existingInP = censusHouseholds.filter(h =>
+                    (h.purok || '').replace(/purok\s*/i, '').trim() === cleanP ||
+                    (h.household_number || '').includes(`HH-P${cleanP}`)
+                  );
+                  setNewResHouseholdNum(`HH-P${cleanP}-${String(existingInP.length + 1).padStart(3, '0')}`);
+                } else {
+                  setNewResHouseholdNum('');
+                  setNewResFamilyName('');
+                  setHouseholdSearchQuery('');
+                }
+              }}
+            >
+              <SelectTrigger className="text-xs bg-white"><SelectValue placeholder="Select Purok" /></SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5, 6].map(p => (
+                  <SelectItem key={`p-sel-${p}`} value={String(p)}>Purok {p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-                {addResidentMode === 'new_household' ? (
-                  <>
-                    <div>
-                      <Label className="text-xs font-semibold">Household Number</Label>
-                      <Input
-                        value={newResHouseholdNum}
-                        onChange={e => setNewResHouseholdNum(e.target.value)}
-                        placeholder="e.g. HH-P1-001"
-                        className="text-xs bg-white font-mono"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-semibold">Family Name</Label>
-                      <Input
-                        value={newResFamilyName}
-                        onChange={e => setNewResFamilyName(e.target.value)}
-                        placeholder="e.g. Dela Cruz"
-                        className="text-xs bg-white"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold text-slate-800">Search &amp; Select Household *</Label>
-                        {newResHouseholdNum && (
-                          <span className="text-[11px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                            Selected: {newResHouseholdNum}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="relative">
-                        <div className="relative">
-                          <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
-                          <Input
-                            value={householdSearchQuery}
-                            onChange={(e) => {
-                              setHouseholdSearchQuery(e.target.value);
-                              setIsHouseholdDropdownOpen(true);
-                            }}
-                            onFocus={() => setIsHouseholdDropdownOpen(true)}
-                            placeholder="Type family name, household #, or head of family..."
-                            className="text-xs pl-8 pr-8 bg-white border-slate-300 focus:border-blue-500 rounded-lg"
-                          />
-                          {householdSearchQuery && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setHouseholdSearchQuery('');
-                                setIsHouseholdDropdownOpen(false);
-                              }}
-                              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                            >
-                              <X size={14} />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Searchable dropdown list */}
-                        {isHouseholdDropdownOpen && (
-                          <div className="absolute z-50 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100">
-                            {filteredHouseholdsList.length > 0 ? (
-                              filteredHouseholdsList.map(h => (
-                                <button
-                                  type="button"
-                                  key={h.household_number}
-                                  onClick={() => {
-                                    setNewResHouseholdNum(h.household_number);
-                                    setNewResFamilyName(h.family_name);
-                                    const pClean = (h.purok || '').replace(/purok\s*/i, '').trim();
-                                    if (pClean) setNewResPurok(pClean);
-                                    setHouseholdSearchQuery(`${h.household_number} - ${h.family_name} Family`);
-                                    setIsHouseholdDropdownOpen(false);
-                                  }}
-                                  className={`w-full text-left p-2.5 hover:bg-blue-50 transition-colors flex items-center justify-between cursor-pointer ${newResHouseholdNum === h.household_number ? 'bg-blue-50 font-semibold' : ''
-                                    }`}
-                                >
-                                  <div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="font-mono text-xs font-bold text-blue-700">{h.household_number}</span>
-                                      <span className="text-xs font-medium text-slate-800">• {h.family_name} Family</span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-500 mt-0.5">
-                                      Head: <span className="text-slate-700 font-medium">{h.head_name || 'Not Recorded'}</span> • Purok {h.purok} ({h.total_members || h.members?.length || 1} members)
-                                    </p>
-                                  </div>
-                                  <Badge variant="outline" className="text-[10px] text-slate-600 shrink-0 ml-2">
-                                    Purok {h.purok}
-                                  </Badge>
-                                </button>
-                              ))
-                            ) : (
-                              <div className="p-3 text-center text-xs text-slate-500">
-                                No matching households found for &ldquo;{householdSearchQuery}&rdquo;.
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {newResHouseholdNum && (
-                        <div className="p-2 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <Home size={14} className="text-blue-600 shrink-0" />
-                            <div>
-                              <span className="font-mono font-bold text-blue-900">{newResHouseholdNum}</span>
-                              <span className="text-slate-700 ml-1.5">({newResFamilyName || 'Family'} Family)</span>
-                            </div>
-                          </div>
-                          <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                            Assigned
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                <div>
-                  <Label className="text-xs font-semibold">Relationship to Household Head</Label>
-                  <Select
-                    value={newResRelationship}
-                    onValueChange={(val) => {
-                      setNewResRelationship(val);
-                      // Auto-uncheck & disable head checkbox for dependent relations
-                      const dependentRelations = ['Spouse', 'Son', 'Daughter', 'Parent', 'Grandparent', 'Grandson', 'Granddaughter', 'Relative', 'Other'];
-                      if (dependentRelations.includes(val)) {
-                        setNewResIsHead(false);
-                      } else if (val === 'Head') {
-                        setNewResIsHead(true);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="text-xs bg-white"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Head">Head of Family</SelectItem>
-                      <SelectItem value="Spouse">Spouse</SelectItem>
-                      <SelectItem value="Son">Son</SelectItem>
-                      <SelectItem value="Daughter">Daughter</SelectItem>
-                      <SelectItem value="Parent">Parent</SelectItem>
-                      <SelectItem value="Grandparent">Grandparent</SelectItem>
-                      <SelectItem value="Grandson">Grandson</SelectItem>
-                      <SelectItem value="Granddaughter">Granddaughter</SelectItem>
-                      <SelectItem value="Relative">Relative</SelectItem>
-                      <SelectItem value="Other">Other / Member</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2 pt-5">
-                  <input
-                    type="checkbox"
-                    id="is_head_checkbox"
-                    checked={newResIsHead}
-                    disabled={['Spouse', 'Son', 'Daughter', 'Parent', 'Grandparent', 'Grandson', 'Granddaughter', 'Relative', 'Other'].includes(newResRelationship)}
-                    onChange={e => {
-                      setNewResIsHead(e.target.checked);
-                      if (e.target.checked) setNewResRelationship('Head');
-                    }}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                  />
-                  <label htmlFor="is_head_checkbox" className={`text-xs font-semibold cursor-pointer ${['Spouse', 'Son', 'Daughter', 'Parent', 'Grandparent', 'Grandson', 'Granddaughter', 'Relative', 'Other'].includes(newResRelationship) ? 'text-slate-400' : 'text-slate-700'}`}>
-                    Set as Primary Head of Household
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2: Member Personal Identity */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {addResidentMode === 'new_household' ? (
+            <>
               <div>
-                <Label className="text-xs font-semibold">First Name *</Label>
-                <Input value={newResFirstName} onChange={e => setNewResFirstName(e.target.value)} placeholder="e.g. Juan" required className="text-xs" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Middle Name</Label>
-                <Input value={newResMiddleName} onChange={e => setNewResMiddleName(e.target.value)} placeholder="e.g. Perez" className="text-xs" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Last Name *</Label>
+                <Label className="text-xs font-semibold">Household Number</Label>
                 <Input
-                  value={newResLastName}
-                  onChange={e => {
-                    setNewResLastName(e.target.value);
-                    if (addResidentMode === 'new_household' && !newResFamilyName) {
-                      setNewResFamilyName(e.target.value);
-                    }
-                  }}
+                  value={newResHouseholdNum}
+                  onChange={e => setNewResHouseholdNum(e.target.value)}
+                  placeholder="e.g. HH-P1-001"
+                  className="text-xs bg-white font-mono"
+                  required
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold">Family Name</Label>
+                <Input
+                  value={newResFamilyName}
+                  onChange={e => setNewResFamilyName(e.target.value)}
                   placeholder="e.g. Dela Cruz"
-                  required
-                  className="text-xs"
+                  className="text-xs bg-white"
                 />
               </div>
-            </div>
-
-            {/* Birthday, Computed Age & Gender */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <div>
-                <Label className="text-xs font-semibold">Date of Birth *</Label>
-                <Input type="date" value={newResDOB} onChange={e => setNewResDOB(e.target.value)} required className="text-xs" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Gender *</Label>
-                <Select value={newResGender} onValueChange={(val: any) => setNewResGender(val)}>
-                  <SelectTrigger className="text-xs"><SelectValue placeholder="Select Gender" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Male">Male</SelectItem>
-                    <SelectItem value="Female">Female</SelectItem>
-                    <SelectItem value="Other">Other / Non-Binary</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Civil Status</Label>
-                <Select value={newResCivilStatus} onValueChange={setNewResCivilStatus}>
-                  <SelectTrigger className="text-xs"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Single">Single</SelectItem>
-                    <SelectItem value="Married">Married</SelectItem>
-                    <SelectItem value="Widowed">Widowed</SelectItem>
-                    <SelectItem value="Separated">Separated</SelectItem>
-                    <SelectItem value="Live-In">Live-In / Common Law</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Dynamic Age & Sector Detection Banner */}
-            {newResDOB && getDynamicAge(newResDOB) !== null && (() => {
-              const age = getDynamicAge(newResDOB)!;
-              return (
-                <div className="text-xs p-2.5 rounded-lg border flex items-center justify-between bg-slate-50 border-slate-200">
-                  <div>
-                    <span className="text-slate-500">Calculated Age: </span>
-                    <strong className="text-slate-800">{age} years old</strong>
-                  </div>
-                  {age >= 60 ? (
-                    <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[11px] border border-amber-300">
-                      Senior Citizen (60+) — Auto-tallied in Household
-                    </span>
-                  ) : age < 18 ? (
-                    <span className="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[11px] border border-blue-300">
-                      Child / Minor (&lt;18)
-                    </span>
-                  ) : (
-                    <span className="bg-slate-200 text-slate-700 font-medium px-2 py-0.5 rounded text-[11px]">
-                      Adult (18-59)
-                    </span>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Employment Status & Contact */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <Label className="text-xs font-semibold">Employment Status *</Label>
-                <Select value={newResEmployment} onValueChange={setNewResEmployment}>
-                  <SelectTrigger className="text-xs"><SelectValue placeholder="Select Employment Status" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Employed">Employed (Have Work)</SelectItem>
-                    <SelectItem value="Self-Employed">Self-Employed / Business</SelectItem>
-                    <SelectItem value="Unemployed">Unemployed (Looking for work)</SelectItem>
-                    <SelectItem value="Student">Student</SelectItem>
-                    <SelectItem value="Retired">Retired / Pensioner</SelectItem>
-                    <SelectItem value="Minor">Dependent Minor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs font-semibold">Contact Number *</Label>
-                <Input
-                  value={newResPhone}
-                  onChange={e => setNewResPhone(e.target.value.replace(/[^0-9+]/g, '').slice(0, 13))}
-                  placeholder="09XXXXXXXXX"
-                  className="text-xs font-mono"
-                  inputMode="tel"
-                  required
-                />
-              </div>
-            </div>
-
-            <DialogFooter className="pt-2">
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white w-full text-xs font-bold h-9 shadow-xs">
-                Save to Population Registry
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dedicated Resident User Account Creation Modal via Census Search */}
-      <Dialog open={isCreateResidentUserOpen} onOpenChange={setIsCreateResidentUserOpen}>
-        <DialogContent className="bg-white max-w-2xl max-h-[88vh] overflow-y-auto p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xl">
-          <DialogHeader>
-            <div className="flex items-center justify-between gap-2 flex-wrap pb-1">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-600">
-                  <UserPlus size={18} />
-                </div>
-                <DialogTitle className="text-base font-bold text-slate-900">
-                  Create Resident System Account
-                </DialogTitle>
-              </div>
-              <Badge className="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] uppercase font-bold tracking-wider">
-                Census Resident Search
-              </Badge>
-            </div>
-            <DialogDescription className="text-xs text-slate-500">
-              Search for an official inhabitant from the Barangay {resAccBarangay || user?.barangay || 'Pianing'} Census Registry to provision their resident portal account.
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Existing Account Notice */}
-          {existingResidentUserAccount && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
-              <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-amber-900">Existing Account Warning</p>
-                <p className="text-[11px] text-amber-800 mt-0.5">
-                  A system user account already exists for <strong className="font-semibold">{existingResidentUserAccount.name}</strong> ({existingResidentUserAccount.email}). Role: <span className="uppercase font-mono font-bold">{existingResidentUserAccount.role}</span> • Status: <span className="font-semibold">{existingResidentUserAccount.status}</span>.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {!resAccCensusMatch ? (
-            /* STEP 1: SEARCH & SELECT RESIDENT FROM CENSUS REGISTRY */
-            <div className="space-y-3.5">
-              {/* Search Engine Input Bar */}
-              <div>
-                <Label className="text-xs font-bold text-slate-800 block mb-1">
-                  Search Inhabitant (Name, Phone Number, or Household #)
-                </Label>
-                <div className="relative flex items-center">
-                  <Search size={15} className="absolute left-3 text-slate-400 pointer-events-none" />
-                  <Input
-                    type="text"
-                    value={resAccCensusSearch}
-                    onChange={e => setResAccCensusSearch(e.target.value)}
-                    placeholder="e.g. Juan dela Cruz, 09XXXXXXXXX, or HH-001..."
-                    className="w-full h-10 pl-9 pr-8 text-xs bg-slate-50 border-slate-300 focus:border-blue-500 focus:bg-white rounded-xl shadow-2xs"
-                    autoFocus
-                  />
-                  {resAccCensusSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setResAccCensusSearch('')}
-                      className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
-                      title="Clear search"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Inhabitants List */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between px-0.5">
-                  <span className="text-[11px] font-bold text-slate-700">
-                    {resAccCensusSearch.trim() ? (
-                      <>Matching Census Records ({censusMatches.length})</>
-                    ) : (
-                      <>Official Census Directory ({censusMatches.length} Inhabitants)</>
-                    )}
-                  </span>
-                  <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-1">
-                    <CheckCircle2 size={11} /> Verified Barangay Registry
-                  </span>
-                </div>
-
-                {censusMatches.length === 0 ? (
-                  <div className="py-8 px-4 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                    <Users size={28} className="mx-auto text-slate-400 mb-2" />
-                    <h4 className="text-xs font-bold text-slate-700">
-                      No Censused Resident Found
-                    </h4>
-                    <p className="text-[11px] text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
-                      We could not find an official census record matching &ldquo;{resAccCensusSearch}&rdquo; in Barangay {resAccBarangay || user?.barangay || 'Pianing'}. Please make sure the citizen is first recorded in the <strong>Census &amp; Demographics</strong> tab.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
-                    {censusMatches.map(r => {
-                      const hasUser = users.some(u => 
-                        (u.resident_id && u.resident_id === r.id) || 
-                        (r.email && u.email?.toLowerCase().trim() === r.email.toLowerCase().trim())
-                      );
-
-                      return (
-                        <div
-                          key={r.id}
-                          className="p-3 bg-white hover:bg-blue-50/40 border border-slate-200 hover:border-blue-300 rounded-xl transition-all shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                        >
-                          <div className="flex items-start sm:items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
-                              {(r.first_name || 'R').charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xs font-bold text-slate-900">
-                                  {r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}
-                                </span>
-                                <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-[9.5px] font-semibold py-0">
-                                  Censused Resident
-                                </Badge>
-                                {hasUser && (
-                                  <Badge className="bg-amber-50 text-amber-800 border-amber-200 text-[9.5px] font-semibold py-0">
-                                    Account Active
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-slate-500 mt-1">
-                                <span className="flex items-center gap-1">
-                                  <Building2 size={11} className="text-blue-600" />
-                                  Purok {r.purok || '1'}
-                                </span>
-                                <span>•</span>
-                                <span>Household: <strong className="font-mono text-blue-700">{r.household_number || 'N/A'}</strong></span>
-                                {r.gender && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{r.gender}</span>
-                                  </>
-                                )}
-                                {r.phone && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="font-mono text-slate-600">📱 {r.phone}</span>
-                                  </>
-                                )}
-                                {r.email && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="text-slate-600">✉️ {r.email}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => applyCensusMatch(r)}
-                            className="h-8 px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs whitespace-nowrap self-end sm:self-center flex items-center gap-1.5"
-                          >
-                            <UserCheck size={13} />
-                            Select Resident
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter className="pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsCreateResidentUserOpen(false)}
-                  className="text-xs h-9 font-medium"
-                >
-                  Close
-                </Button>
-              </DialogFooter>
-            </div>
+            </>
           ) : (
-            /* STEP 2: ENTER RESIDENT EMAIL & PHONE NUMBER */
-            <form onSubmit={handleCreateResidentUser} className="space-y-4 pt-1">
-              {/* Selected Resident Profile Card */}
-              <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-sm flex items-center justify-center shrink-0">
-                    {(resAccCensusMatch.first_name || 'R').charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-emerald-950 truncate">
-                        {resAccCensusMatch.first_name} {resAccCensusMatch.middle_name ? resAccCensusMatch.middle_name + ' ' : ''}{resAccCensusMatch.last_name}
-                      </p>
-                      <Badge className="bg-emerald-600 text-white text-[9.5px] font-bold">
-                        Selected Resident
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] text-emerald-800 mt-0.5">
-                      Barangay {resAccCensusMatch.barangay || user?.barangay || 'Pianing'} • Purok {resAccCensusMatch.purok || '1'} • Household: <span className="font-mono font-semibold">{resAccCensusMatch.household_number || 'N/A'}</span>
-                      {resAccCensusMatch.gender ? ` • ${resAccCensusMatch.gender}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setResAccCensusMatch(null);
-                    setResAccLinkedCensusId(null);
-                    setResAccEmail('');
-                    setResAccPhone('');
-                  }}
-                  className="h-7 text-xs px-2.5 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100 cursor-pointer shrink-0 font-semibold"
-                >
-                  Change
-                </Button>
-              </div>
-
-              {/* Email & Phone Number Inputs ONLY */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3.5">
-                <div>
-                  <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Mail size={14} className="text-blue-600" />
-                    Resident Gmail / Email Address *
-                  </Label>
-                  <div className="relative mt-1">
-                    <Input
-                      type="email"
-                      value={resAccEmail}
-                      onChange={e => setResAccEmail(e.target.value)}
-                      placeholder="e.g. resident@gmail.com"
-                      className="text-xs bg-white border-slate-300 focus:border-blue-500 rounded-xl h-10 shadow-xs"
-                      required
-                    />
-                  </div>
-                  <p className="text-[10.5px] text-slate-500 mt-1">
-                    The resident will use this email to log in. Official credentials will be delivered to this address.
-                  </p>
-                </div>
-
-                <div>
-                  <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Phone size={14} className="text-blue-600" />
-                    Resident Mobile Phone Number (11-Digit) *
-                  </Label>
-                  <div className="relative mt-1">
-                    <Input
-                      type="tel"
-                      value={resAccPhone}
-                      onChange={e => setResAccPhone(e.target.value.replace(/[^0-9+]/g, '').slice(0, 13))}
-                      placeholder="09XXXXXXXXX"
-                      className="text-xs font-mono bg-white border-slate-300 focus:border-blue-500 rounded-xl h-10 shadow-xs"
-                      required
-                    />
-                  </div>
-                  <p className="text-[10.5px] text-slate-500 mt-1">
-                    Philippine 11-digit mobile number (e.g. 09171234567) for instant SMS notification and OTP recovery.
-                  </p>
-                </div>
-              </div>
-
-              {/* Automated Credentials Notice */}
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2.5 text-xs text-blue-900">
-                <KeyRound size={16} className="text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-blue-900">✨ Automated Credential Generation & Delivery</p>
-                  <p className="text-[11px] text-blue-800 mt-0.5 leading-relaxed">
-                    The system will automatically generate a secure default password (e.g., <code className="font-mono font-bold bg-blue-100 px-1 py-0.5 rounded">Brgy@{new Date().getFullYear()}!***</code>) and dispatch login credentials directly via <strong>Email</strong> and <strong>SMS</strong>.
-                  </p>
-                </div>
-              </div>
-
-              <DialogFooter className="pt-2 flex flex-col sm:flex-row gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setResAccCensusMatch(null);
-                    setResAccLinkedCensusId(null);
-                    setResAccEmail('');
-                    setResAccPhone('');
-                  }}
-                  className="text-xs h-9 font-medium"
-                >
-                  Back to Search
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isCreatingResAccount}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-9 shadow-xs cursor-pointer flex-1 gap-1.5"
-                >
-                  {isCreatingResAccount ? (
-                    <>
-                      <RefreshCcw size={14} className="animate-spin" />
-                      <span>Creating Account & Dispatching Credentials...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send size={14} />
-                      <span>Create Resident Account & Send Credentials</span>
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Official Document Print & Download Modal */}
-      <DocumentPrintModal
-        isOpen={printModalOpen}
-        onClose={() => setPrintModalOpen(false)}
-        document={selectedPrintDoc}
-        onStatusUpdated={() => loadData(false)}
-      />
-
-      {/* Document Info / Specifics Viewer Modal */}
-      <DocumentInfoModal
-        isOpen={isDocInfoOpen}
-        onClose={() => {
-          setIsDocInfoOpen(false);
-          setReturnToDocOnProfileClose(null);
-        }}
-        document={selectedInfoDoc}
-        onUpdateStatus={(id, status) => handleUpdateDocStatus(id, status)}
-        onPrint={(doc) => openPrintModal(doc)}
-        onViewResidentProfile={(resId, fromDoc) => {
-          const targetDoc = fromDoc || selectedInfoDoc;
-          setReturnToDocOnProfileClose(targetDoc);
-          setIsDocInfoOpen(false);
-          const resolvedId = (resId && resId > 1) ? resId : resolveResidentIdForDoc(targetDoc);
-          openResidentProfile(resolvedId);
-        }}
-        canEdit={true}
-      />
-
-      {/* Submitted Government ID Photo Full-View Inspection Modal with Zoom, Rotate, and Download */}
-      <ImageViewerModal
-        isOpen={!!selectedIdPreview}
-        onClose={() => setSelectedIdPreview(null)}
-        imageUrl={selectedIdPreview}
-        title="Submitted Resident Government ID"
-        subtitle="Official Philippine Government ID / Cedula Verification Document"
-        fileName="resident-submitted-id.png"
-      />
-
-      {/* ═══ FULL USER & OFFICIAL EXECUTIVE PROFILE MODAL ════════════════════ */}
-      <Dialog open={!!selectedStaffInfo} onOpenChange={(open) => !open && setSelectedStaffInfo(null)}>
-        <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto p-0 rounded-3xl border border-slate-200 shadow-2xl">
-          {selectedStaffInfo && (() => {
-            const roleCfg = getStaffRoleConfig(selectedStaffInfo.role);
-            const userInitials = selectedStaffInfo.name
-              ? selectedStaffInfo.name.split(' ').map((n: string) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
-              : 'U';
-            const fullName = selectedStaffInfo.first_name
-              ? `${selectedStaffInfo.first_name} ${selectedStaffInfo.middle_name ? selectedStaffInfo.middle_name + ' ' : ''}${selectedStaffInfo.last_name || ''}`
-              : selectedStaffInfo.name;
-
-            const canEdit = isSuperAdmin || (user?.role === 'admin' && (selectedStaffInfo.role === 'staff' || selectedStaffInfo.role === 'bhw' || selectedStaffInfo.role === 'resident'));
-
-            const copyText = (val: string, label: string) => {
-              if (!val) return;
-              navigator.clipboard.writeText(val);
-              toast.success(`${label} copied to clipboard!`);
-            };
-
-            return (
-              <div className="flex flex-col">
-                {/* Modal Header */}
-                <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`p-2 rounded-xl border ${roleCfg.bgAccent}`}>
-                      {selectedStaffInfo.role === 'superadmin' ? <Shield size={18} /> :
-                        selectedStaffInfo.role === 'admin' ? <Building2 size={18} /> :
-                          selectedStaffInfo.role === 'nurse' ? <Heart size={18} /> :
-                            selectedStaffInfo.role === 'bhw' ? <Activity size={18} /> :
-                              selectedStaffInfo.role === 'resident' ? <UserCircle size={18} /> :
-                                <FileText size={18} />}
-                    </div>
-                    <div>
-                      <DialogTitle className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                        {selectedStaffInfo.role === 'resident' ? 'Resident Citizen Profile' : 'Personnel & Official Profile'}
-                      </DialogTitle>
-                      <DialogDescription className="text-xs text-slate-500">
-                        {selectedStaffInfo.role === 'resident'
-                          ? 'Official demographic record, civil status, and residency identification.'
-                          : 'Operational credentials, municipal jurisdiction, and assigned authorities.'}
-                      </DialogDescription>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className={`text-xs font-semibold px-2.5 py-0.5 border ${roleCfg.badge}`}>
-                    {selectedStaffInfo.role === 'superadmin' ? 'SUPER ADMIN' :
-                      selectedStaffInfo.role === 'admin' ? 'BARANGAY ADMIN' :
-                        selectedStaffInfo.role === 'nurse' ? 'HEALTH NURSE' :
-                          selectedStaffInfo.role === 'bhw' ? 'BHW WORKER' :
-                            selectedStaffInfo.role === 'staff' ? 'STAFF / CLERK' : 'RESIDENT'}
-                  </Badge>
-                </div>
-
-                <div className="p-5 sm:p-6 space-y-5 text-xs">
-                  {/* ── Executive Hero Card ── */}
-                  <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-xs relative overflow-hidden">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-                      {/* Photo / Avatar & Info */}
-                      <div className="flex items-center gap-4 sm:gap-5">
-                        <div className="relative group/avatar shrink-0">
-                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl overflow-hidden bg-slate-50 border-2 border-slate-200 shadow-sm flex items-center justify-center">
-                            {selectedStaffInfo.profile_photo ? (
-                              <img
-                                src={selectedStaffInfo.profile_photo}
-                                alt={selectedStaffInfo.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className={`w-full h-full flex items-center justify-center text-2xl font-bold tracking-wider ${roleCfg.bgAccent}`}>
-                                {userInitials}
-                              </div>
-                            )}
-                          </div>
-                          {canEdit && (
-                            <button
-                              type="button"
-                              onClick={() => staffFileInputRef.current?.click()}
-                              className="absolute inset-0 bg-slate-900/40 text-white flex flex-col items-center justify-center rounded-3xl opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer backdrop-blur-[2px]"
-                              title="Upload or change profile photo"
-                            >
-                              <Camera size={18} />
-                              <span className="text-[10px] font-semibold mt-0.5">Change</span>
-                            </button>
-                          )}
-                        </div>
-
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-                              {fullName}
-                            </h3>
-                            <Badge className={
-                              selectedStaffInfo.status === 'Active'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold'
-                                : selectedStaffInfo.status === 'Archived'
-                                  ? 'bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 font-bold'
-                                  : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold'
-                            }>
-                              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${selectedStaffInfo.status === 'Active' ? 'bg-emerald-500 animate-pulse' :
-                                  selectedStaffInfo.status === 'Archived' ? 'bg-violet-500' : 'bg-amber-500'
-                                }`} />
-                              {selectedStaffInfo.status || 'Active'}
-                            </Badge>
-                            {selectedStaffInfo.role === 'resident' && (
-                              <Badge variant="outline" className={
-                                selectedStaffInfo.verification_status === 'Verified' ? 'border-emerald-300 text-emerald-700 bg-emerald-50 font-semibold' :
-                                  selectedStaffInfo.verification_status === 'Rejected' ? 'border-rose-300 text-rose-700 bg-rose-50 font-semibold' :
-                                    'border-amber-300 text-amber-800 bg-amber-50 font-semibold'
-                              }>
-                                {selectedStaffInfo.verification_status || 'Verified'}
-                              </Badge>
-                            )}
-                          </div>
-
-                          {/* Quick Photo Upload Actions */}
-                          {canEdit && (
-                            <div className="flex items-center gap-1.5 mt-1.5">
-                              <button
-                                type="button"
-                                onClick={() => staffFileInputRef.current?.click()}
-                                className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-700 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
-                                title="Upload or change profile photo"
-                              >
-                                <Camera size={11} />
-                                <span>{selectedStaffInfo.profile_photo ? 'Change Photo' : 'Upload Photo'}</span>
-                              </button>
-                              {selectedStaffInfo.profile_photo && (
-                                <button
-                                  type="button"
-                                  onClick={handleRemoveStaffPhoto}
-                                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
-                                  title="Remove profile photo"
-                                >
-                                  <Trash2 size={11} />
-                                  <span>Remove</span>
-                                </button>
-                              )}
-                              <input
-                                ref={staffFileInputRef}
-                                type="file"
-                                accept="image/png, image/jpeg, image/jpg, image/webp"
-                                onChange={handleStaffPhotoUpload}
-                                className="hidden"
-                              />
-                            </div>
-                          )}
-
-                          <div className="text-xs text-slate-500 mt-2 flex items-center gap-2.5 flex-wrap font-medium">
-                            <button
-                              type="button"
-                              onClick={() => copyText(selectedStaffInfo.email, 'Email')}
-                              className="inline-flex items-center gap-1 hover:text-indigo-600 transition-colors cursor-pointer bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200/80"
-                              title="Click to copy email"
-                            >
-                              <Mail size={12} className="text-slate-400" />
-                              <span className="font-mono">{selectedStaffInfo.email}</span>
-                              <Copy size={10} className="text-slate-400 ml-0.5" />
-                            </button>
-
-                            {selectedStaffInfo.phone && !selectedStaffInfo.phone.includes('@') && (
-                              <button
-                                type="button"
-                                onClick={() => copyText(selectedStaffInfo.phone || '', 'Phone')}
-                                className="inline-flex items-center gap-1 hover:text-indigo-600 transition-colors cursor-pointer bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200/80"
-                                title="Click to copy phone"
-                              >
-                                <Phone size={12} className="text-slate-400" />
-                                <span className="font-mono">{selectedStaffInfo.phone}</span>
-                                <Copy size={10} className="text-slate-400 ml-0.5" />
-                              </button>
-                            )}
-
-                            <span className="inline-flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200/80">
-                              <MapPin size={12} className="text-slate-400" />
-                              <span>Barangay {selectedStaffInfo.barangay || 'Pianing'}</span>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Top Right Badge / Clearance Pill */}
-                      <div className="text-xs text-slate-500 bg-slate-50 px-3.5 py-2.5 rounded-2xl border border-slate-200/80 shrink-0 space-y-1">
-                        <div className="flex items-center gap-1.5 font-bold text-slate-700">
-                          <ShieldCheck size={14} className={roleCfg.accent} />
-                          <span>Badge #{selectedStaffInfo.employee_id || selectedStaffInfo.id || 'N/A'}</span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                          <CheckCircle size={12} className="text-emerald-600" />
-                          <span>Official System Profile</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* 4-Tile Quick Highlights Bar */}
-                    <div className="mt-5 pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                      <div className="p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/70">
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Official Designation</span>
-                        <span className="font-bold text-slate-800 mt-0.5 block truncate">{selectedStaffInfo.job_title || roleCfg.title}</span>
-                      </div>
-                      <div className="p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/70">
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Assigned Station</span>
-                        <span className="font-bold text-slate-800 mt-0.5 block truncate">Brgy. {selectedStaffInfo.barangay || 'Pianing'} {roleCfg.station}</span>
-                      </div>
-                      <div className="p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/70">
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Clearance Level</span>
-                        <span className="font-bold text-slate-800 mt-0.5 block truncate">{roleCfg.tier}</span>
-                      </div>
-                      <div className="p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/70">
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Security Status</span>
-                        <span className="font-bold text-emerald-700 mt-0.5 flex items-center gap-1">
-                          <CheckCircle size={12} /> {selectedStaffInfo.status === 'Active' ? 'Active & Protected' : selectedStaffInfo.status || 'Active'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── Official Profile Credentials Card ── */}
-                  <Card className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-                    <div className="border-b border-slate-100 px-4 py-3 bg-slate-50/40 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`p-1.5 rounded-lg ${roleCfg.bgAccent}`}>
-                          <UserCircle size={15} />
-                        </div>
-                        <h4 className="font-bold text-slate-900 text-xs">Official Profile Credentials &amp; Identifiers</h4>
-                      </div>
-                      <span className="font-mono text-slate-400 text-[10px]">ID #{selectedStaffInfo.id}</span>
-                    </div>
-
-                    <CardContent className="p-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        <div>
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Full Legal Name</span>
-                          <span className="font-bold text-slate-800 text-xs block mt-0.5">{fullName}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Official Email</span>
-                          <span className="font-mono font-medium text-slate-800 text-xs block mt-0.5 truncate">{selectedStaffInfo.email}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Contact Mobile</span>
-                          <span className="font-mono font-medium text-slate-800 text-xs block mt-0.5">
-                            {selectedStaffInfo.phone && !selectedStaffInfo.phone.includes('@') ? selectedStaffInfo.phone : 'None specified'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Assigned Barangay</span>
-                          <span className="font-medium text-slate-800 text-xs block mt-0.5">Barangay {selectedStaffInfo.barangay || 'Pianing'}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Employee Badge #</span>
-                          <span className="font-mono font-medium text-slate-800 text-xs block mt-0.5">
-                            {selectedStaffInfo.employee_id || 'N/A'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Last Active Session</span>
-                          <span className="font-mono font-medium text-slate-700 text-xs block mt-0.5">
-                            {selectedStaffInfo.last_login && selectedStaffInfo.last_login !== 'Never'
-                              ? new Date(selectedStaffInfo.last_login).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                              : 'Never logged in'}
-                          </span>
-                        </div>
-                        {selectedStaffInfo.address && (
-                          <div className="sm:col-span-2 md:col-span-3">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Station / Registered Address</span>
-                            <span className="font-medium text-slate-800 text-xs block mt-0.5">{selectedStaffInfo.address}</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* ── Operational Responsibilities OR Resident Demographics ── */}
-                  {selectedStaffInfo.role === 'resident' ? (
-                    <Card className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-                      <div className="border-b border-slate-100 px-4 py-3 bg-slate-50/40 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1.5 rounded-lg bg-sky-50 text-sky-700 border border-sky-200">
-                            <User size={15} />
-                          </div>
-                          <h4 className="font-bold text-slate-900 text-xs">Civil &amp; Demographic Details</h4>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] border-sky-200 text-sky-700 bg-sky-50">
-                          {selectedStaffInfo.purok ? (selectedStaffInfo.purok.startsWith('Purok') ? selectedStaffInfo.purok : `Purok ${selectedStaffInfo.purok}`) : 'Purok 1'}
-                        </Badge>
-                      </div>
-
-                      <CardContent className="p-4 space-y-3">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Date of Birth</span>
-                            <span className="font-medium text-slate-800 text-xs block mt-0.5">
-                              {selectedStaffInfo.date_of_birth
-                                ? `${new Date(selectedStaffInfo.date_of_birth).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}${(() => {
-                                  const d = new Date(selectedStaffInfo.date_of_birth);
-                                  if (isNaN(d.getTime())) return '';
-                                  const diff = Date.now() - d.getTime();
-                                  const age = Math.abs(new Date(diff).getUTCFullYear() - 1970);
-                                  return ` (${age} yrs old)`;
-                                })()}`
-                                : 'Not specified'}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Gender</span>
-                            <span className="font-medium text-slate-800 text-xs block mt-0.5">{selectedStaffInfo.gender || 'Not specified'}</span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Civil Status</span>
-                            <span className="font-medium text-slate-800 text-xs block mt-0.5">{selectedStaffInfo.civil_status || 'Single'}</span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Household #</span>
-                            <span className="font-mono font-medium text-slate-800 text-xs block mt-0.5">{selectedStaffInfo.household_number || 'N/A'}</span>
-                          </div>
-                        </div>
-
-                        {/* Government ID Preview Row */}
-                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-slate-600 font-medium">Government ID Document:</span>
-                            {selectedStaffInfo.submitted_id ? (
-                              <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                                Uploaded &amp; Available
-                              </Badge>
-                            ) : (
-                              <span className="text-slate-400 italic text-[11px]">No ID photo attached</span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {selectedStaffInfo.submitted_id && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                type="button"
-                                onClick={() => setSelectedIdPreview(selectedStaffInfo.submitted_id || null)}
-                                className="h-8 text-xs font-semibold rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 cursor-pointer gap-1.5"
-                              >
-                                <Eye size={13} />
-                                <span>View ID Document</span>
-                              </Button>
-                            )}
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              type="button"
-                              onClick={() => {
-                                const residentId = selectedStaffInfo.id;
-                                setSelectedStaffInfo(null);
-                                openResidentProfile(residentId);
-                              }}
-                              className="h-8 text-xs font-semibold rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50 cursor-pointer gap-1.5"
-                            >
-                              <ExternalLink size={13} />
-                              <span>Open User Info Dossier</span>
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Card className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-                      <div className="border-b border-slate-100 px-4 py-3 bg-slate-50/40 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 rounded-lg ${roleCfg.bgAccent}`}>
-                            <ShieldCheck size={15} />
-                          </div>
-                          <h4 className="font-bold text-slate-900 text-xs">Operational Scope &amp; Role Responsibilities</h4>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-600 bg-white">
-                          Official Scope
-                        </Badge>
-                      </div>
-
-                      <CardContent className="p-4">
-                        <ul className="space-y-2 text-xs text-slate-600">
-                          {selectedStaffInfo.role === 'superadmin' && (
-                            <>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-violet-600 shrink-0 mt-0.5" />
-                                <span>Full city-wide central governance across all 86 barangays in Butuan City.</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-violet-600 shrink-0 mt-0.5" />
-                                <span>Create, authorize, and govern Barangay Executive Administrators.</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-violet-600 shrink-0 mt-0.5" />
-                                <span>Master document template catalog, system audit logs, and city demographics.</span>
-                              </li>
-                            </>
-                          )}
-                          {selectedStaffInfo.role === 'admin' && (
-                            <>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-indigo-600 shrink-0 mt-0.5" />
-                                <span>Executive administration and operational jurisdiction over Barangay {selectedStaffInfo.barangay || 'Pianing'}.</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-indigo-600 shrink-0 mt-0.5" />
-                                <span>Approve resident registrations, verify identity documents, and issue official clearances.</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-indigo-600 shrink-0 mt-0.5" />
-                                <span>Direct oversight of Barangay Staff, clerks, and Barangay Health Workers (BHW).</span>
-                              </li>
-                            </>
-                          )}
-                          {selectedStaffInfo.role === 'staff' && (
-                            <>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-blue-600 shrink-0 mt-0.5" />
-                                <span>Process and issue official Barangay Clearances, Certificates of Residency, and Indigency.</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-blue-600 shrink-0 mt-0.5" />
-                                <span>Register walk-in residents and verify demographic information in the census database.</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-blue-600 shrink-0 mt-0.5" />
-                                <span>Operational communication and document dispatch via Barangay Staff Messenger.</span>
-                              </li>
-                            </>
-                          )}
-                          {selectedStaffInfo.role === 'bhw' && (
-                            <>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                                <span>Community health census mapping and family profiling for Barangay {selectedStaffInfo.barangay || 'Pianing'}.</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                                <span>Field vital signs monitoring, maternal care follow-ups, and child immunization tracking.</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                                <span>Coordinate medical referrals and community health schedules with the Health Center Nurse.</span>
-                              </li>
-                            </>
-                          )}
-                          {selectedStaffInfo.role === 'nurse' && (
-                            <>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-teal-600 shrink-0 mt-0.5" />
-                                <span>Health Center clinical intake, medical consultations, and EHR patient history records.</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-teal-600 shrink-0 mt-0.5" />
-                                <span>Prenatal examinations, pediatric vaccine administration, and pharmacy inventory control.</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle size={14} className="text-teal-600 shrink-0 mt-0.5" />
-                                <span>Clinical appointment approvals, physician consultations, and health summary reporting.</span>
-                              </li>
-                            </>
-                          )}
-                        </ul>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-
-                {/* Modal Footer / Actions */}
-                <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-500 font-mono">Account #{selectedStaffInfo.id}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-[11px] text-slate-500">
-                      Brgy. {selectedStaffInfo.barangay || 'Pianing'}
+            <>
+              <div className="sm:col-span-2 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-800">Search &amp; Select Household *</Label>
+                  {newResHouseholdNum && (
+                    <span className="text-[11px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                      Selected: {newResHouseholdNum}
                     </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Edit User Button */}
-                    {canEdit && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        type="button"
-                        onClick={() => {
-                          const target = selectedStaffInfo;
-                          setSelectedStaffInfo(null);
-                          handleOpenEditUser(target);
-                        }}
-                        className="h-8 text-xs font-semibold rounded-xl border-slate-200 text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 cursor-pointer gap-1.5"
-                      >
-                        <Edit3 size={13} />
-                        <span>Edit Details</span>
-                      </Button>
-                    )}
-
-                    {/* Reset Password Button */}
-                    {canEdit && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        type="button"
-                        onClick={() => {
-                          const target = selectedStaffInfo;
-                          setSelectedStaffInfo(null);
-                          handleOpenResetPassword(target);
-                        }}
-                        className="h-8 text-xs font-semibold rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50 cursor-pointer gap-1.5"
-                      >
-                        <Key size={13} />
-                        <span>Reset Password</span>
-                      </Button>
-                    )}
-
-                    {/* Toggle Status Button */}
-                    {canEdit && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        type="button"
-                        onClick={() => {
-                          const target = selectedStaffInfo;
-                          handleToggleUserStatus(target);
-                          setSelectedStaffInfo({
-                            ...target,
-                            status: target.status === 'Active' ? 'Inactive' : 'Active'
-                          });
-                        }}
-                        className={`h-8 text-xs font-semibold rounded-xl cursor-pointer gap-1.5 ${selectedStaffInfo.status === 'Active'
-                            ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
-                            : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
-                          }`}
-                      >
-                        {selectedStaffInfo.status === 'Active' ? (
-                          <>
-                            <UserX size={13} />
-                            <span>Deactivate</span>
-                          </>
-                        ) : (
-                          <>
-                            <UserCheck size={13} />
-                            <span>Activate</span>
-                          </>
-                        )}
-                      </Button>
-                    )}
-
-                    <Button
-                      size="sm"
-                      type="button"
-                      onClick={() => setSelectedStaffInfo(null)}
-                      className="h-8 px-4 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl cursor-pointer"
-                    >
-                      Close
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
-
-      {/* Applicant Registration Rejection & Notification Modal */}
-      <Dialog open={!!smsApplicantModal} onOpenChange={(open) => !open && setSmsApplicantModal(null)}>
-        <DialogContent className="bg-white dark:bg-slate-900 max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2 text-red-600 dark:text-red-400">
-              <AlertCircle size={18} />
-              Reject Resident Application
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Specify the discrepancy cause. The applicant will be notified immediately on their resident portal.
-            </DialogDescription>
-          </DialogHeader>
-
-          {smsApplicantModal && (
-            <form onSubmit={handleSendSmsNotice} className="space-y-4 py-2 text-xs">
-              {/* Applicant Card */}
-              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Applicant Name</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                    {smsApplicantModal.name || `${smsApplicantModal.first_name || ''} ${smsApplicantModal.last_name || ''}`}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Mobile Phone</span>
-                  <span className="font-mono font-bold text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1">
-                    <Phone size={11} className="text-indigo-600" />
-                    {smsApplicantModal.phone && !smsApplicantModal.phone.includes('@') ? smsApplicantModal.phone : '09171234567'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Provided Birthday</span>
-                  <span className="text-slate-700 dark:text-slate-300 font-mono font-medium">
-                    {smsApplicantModal.date_of_birth && smsApplicantModal.date_of_birth !== '0000-00-00'
-                      ? new Date(smsApplicantModal.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                      : 'Not specified'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Submitted ID</span>
-                  {smsApplicantModal.submitted_id ? (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedIdPreview(smsApplicantModal.submitted_id || null)}
-                      className="text-[11px] text-indigo-600 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Eye size={11} /> View ID Document
-                    </button>
-                  ) : (
-                    <span className="text-slate-400 text-[11px] italic">None attached</span>
                   )}
                 </div>
-              </div>
 
-              {/* Quick Issue Reason Selector */}
-              <div>
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Select Discrepancy Cause / Rejection Reason
-                </Label>
-                <div className="grid grid-cols-2 gap-2 mt-1.5">
-                  {[
-                    { key: 'Invalid / Blurry ID Photo', label: '📸 Blurry / Invalid ID' },
-                    { key: 'Name Mismatch', label: '🏷️ Name Mismatch' },
-                    { key: 'Birthday Discrepancy', label: '🎂 Birthday Mismatch' },
-                    { key: 'Address Discrepancy', label: '📍 Address Issue' },
-                  ].map(opt => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => handleNoticeReasonChange(opt.key, smsApplicantModal)}
-                      className={`p-2 rounded-lg border text-left text-xs font-semibold transition-all cursor-pointer ${smsNoticeReason === opt.key
-                          ? 'border-red-600 bg-red-50 text-red-700 dark:bg-red-950 dark:border-red-500'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 dark:bg-slate-800 dark:border-slate-700'
-                        }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Rejection Cause Message Textarea */}
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Detailed Reason for Applicant <span className="text-red-500">*</span>
-                  </Label>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {smsCustomMessage.length} characters
-                  </span>
-                </div>
-                <textarea
-                  value={smsCustomMessage}
-                  onChange={e => setSmsCustomMessage(e.target.value)}
-                  rows={3}
-                  required
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none leading-relaxed"
-                  placeholder="Explain why the registration cannot be approved and what the resident should correct..."
-                />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  This explanation will be displayed prominently on the resident's portal and notification center.
-                </p>
-              </div>
-
-              {/* Notification Option Box */}
-              <div className="space-y-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <span>Portal In-App Notification: <strong>Active (Always sent to resident)</strong></span>
-                </div>
-                <div className="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
-                  <input
-                    type="checkbox"
-                    id="markRejectedCheckbox"
-                    checked={smsMarkAsRejected}
-                    onChange={e => setSmsMarkAsRejected(e.target.checked)}
-                    className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                  />
-                  <label htmlFor="markRejectedCheckbox" className="text-xs text-slate-600 dark:text-slate-400 font-medium cursor-pointer">
-                    Also send SMS text alert to applicant mobile number
-                  </label>
-                </div>
-              </div>
-
-              <DialogFooter className="gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSmsApplicantModal(null)}
-                  className="text-xs cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={smsSending || !smsCustomMessage.trim()}
-                  className="bg-red-600 hover:bg-red-700 text-white text-xs gap-1.5 shadow-sm cursor-pointer"
-                >
-                  <X size={13} />
-                  {smsSending ? 'Processing Rejection...' : 'Confirm Rejection & Notify'}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Global Issue & Process Barangay Document Modal */}
-      <Dialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
-        <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-slate-900">Issue &amp; Process Barangay Document</DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Fill in document parameters, auto-fill resident profile, and print or archive directly into completed records.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateDocument} className="space-y-4 py-2 text-xs">
-            {/* 1. Searchable Registered Resident / Census Selector */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Search size={13} className="text-blue-600" />
-                  Select Registered Resident / Census Search
-                  <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">
-                    (Searchable Dropdown • Auto-Syncs to Database)
-                  </span>
-                </Label>
-                {docSelectedResident && (
-                  <button
-                    type="button"
-                    onClick={handleUnlinkDocResident}
-                    className="text-[11px] text-red-600 hover:text-red-700 font-semibold cursor-pointer flex items-center gap-1"
-                  >
-                    <X size={12} />
-                    Unlink Record
-                  </button>
-                )}
-              </div>
-
-              {!docSelectedResident ? (
                 <div className="relative">
-                  <div className="relative flex items-center">
-                    <Search size={14} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400 pointer-events-none" />
                     <Input
-                      value={docResidentSearch}
-                      onChange={e => {
-                        setDocResidentSearch(e.target.value);
-                        setIsDocSearchDropdownOpen(true);
+                      value={householdSearchQuery}
+                      onChange={(e) => {
+                        setHouseholdSearchQuery(e.target.value);
+                        setIsHouseholdDropdownOpen(true);
                       }}
-                      onFocus={() => {
-                        if (docResidentSearch.trim().length > 0) {
-                          setIsDocSearchDropdownOpen(true);
-                        }
-                      }}
-                      placeholder="Type name, letter, household #, or purok to auto-fill..."
-                      className="text-xs pl-8 pr-8 bg-white border-slate-300 focus:border-blue-500 rounded-lg h-9 shadow-xs"
+                      onFocus={() => setIsHouseholdDropdownOpen(true)}
+                      placeholder="Type family name, household #, or head of family..."
+                      className="text-xs pl-8 pr-8 bg-white border-slate-300 focus:border-blue-500 rounded-lg"
                     />
-                    {docResidentSearch && (
+                    {householdSearchQuery && (
                       <button
                         type="button"
                         onClick={() => {
-                          setDocResidentSearch('');
-                          setIsDocSearchDropdownOpen(false);
+                          setHouseholdSearchQuery('');
+                          setIsHouseholdDropdownOpen(false);
                         }}
-                        className="absolute right-2 p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
-                        title="Clear search"
+                        className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
                       >
-                        <X size={13} />
+                        <X size={14} />
                       </button>
                     )}
                   </div>
 
-                  {/* Dropdown Menu — ONLY displays when the user types something! */}
-                  {docResidentSearch.trim().length > 0 && isDocSearchDropdownOpen && (
-                    <div className="mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100 max-h-56 overflow-y-auto z-20">
-                      <div className="px-3 py-1.5 bg-slate-50 flex items-center justify-between text-[11px] font-semibold text-slate-600">
-                        <span>
-                          Matching Residents &amp; Census for &quot;{docResidentSearch.trim()}&quot; ({docResidentMatches.length})
-                        </span>
-                        <span className="text-[10px] text-blue-600 font-normal">
-                          Click resident to auto-fill
-                        </span>
-                      </div>
-
-                      {/* Quick Manual Walk-in Option */}
-                      <div
-                        onClick={handleManualDocConstituent}
-                        className="p-2.5 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-100"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">✍️</span>
-                          <div>
-                            <p className="text-xs font-semibold text-slate-800">
-                              Manual / Walk-in Constituent: &quot;{docResidentSearch.trim()}&quot;
-                            </p>
-                            <p className="text-[10px] text-slate-500">
-                              Proceed without linking to an existing database record
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleManualDocConstituent();
-                          }}
-                          className="h-6 px-2 text-[10px] font-semibold"
-                        >
-                          Use Manual
-                        </Button>
-                      </div>
-
-                      {docResidentMatches.length > 0 ? (
-                        docResidentMatches.map(r => (
-                          <div
-                            key={`doc-res-match-${r.id}`}
-                            onClick={() => applyDocResidentMatch(r)}
-                            className="p-2.5 flex items-center justify-between hover:bg-blue-50/80 cursor-pointer transition-colors gap-2 group"
+                  {/* Searchable dropdown list */}
+                  {isHouseholdDropdownOpen && (
+                    <div className="absolute z-50 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100">
+                      {filteredHouseholdsList.length > 0 ? (
+                        filteredHouseholdsList.map(h => (
+                          <button
+                            type="button"
+                            key={h.household_number}
+                            onClick={() => {
+                              setNewResHouseholdNum(h.household_number);
+                              setNewResFamilyName(h.family_name);
+                              const pClean = (h.purok || '').replace(/purok\s*/i, '').trim();
+                              if (pClean) setNewResPurok(pClean);
+                              setHouseholdSearchQuery(`${h.household_number} - ${h.family_name} Family`);
+                              setIsHouseholdDropdownOpen(false);
+                            }}
+                            className={`w-full text-left p-2.5 hover:bg-blue-50 transition-colors flex items-center justify-between cursor-pointer ${newResHouseholdNum === h.household_number ? 'bg-blue-50 font-semibold' : ''
+                              }`}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
-                                {(r.first_name || 'R').charAt(0).toUpperCase()}
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-xs font-bold text-blue-700">{h.household_number}</span>
+                                <span className="text-xs font-medium text-slate-800">• {h.family_name} Family</span>
                               </div>
-                              <div className="truncate">
-                                <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700">
-                                  {r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}
-                                </p>
-                                <p className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
-                                  <span>Household: <strong className="font-mono text-blue-600">{r.household_number || 'N/A'}</strong></span>
-                                  <span>•</span>
-                                  <span>Purok {r.purok || '1'}</span>
-                                  {r.gender && (
-                                    <>
-                                      <span>•</span>
-                                      <span>{r.gender}</span>
-                                    </>
-                                  )}
-                                  <span>•</span>
-                                  <span className={r.is_census_only ? 'text-amber-600' : 'text-emerald-600 font-medium'}>
-                                    {r.is_census_only ? 'Census Inhabitant' : 'Registered Resident'}
-                                  </span>
-                                </p>
-                              </div>
+                              <p className="text-[11px] text-slate-500 mt-0.5">
+                                Head: <span className="text-slate-700 font-medium">{h.head_name || 'Not Recorded'}</span> • Purok {h.purok} ({h.total_members || h.members?.length || 1} members)
+                              </p>
                             </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                applyDocResidentMatch(r);
-                              }}
-                              className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shadow-2xs shrink-0 cursor-pointer"
-                            >
-                              Auto-Fill
-                            </Button>
-                          </div>
+                            <Badge variant="outline" className="text-[10px] text-slate-600 shrink-0 ml-2">
+                              Purok {h.purok}
+                            </Badge>
+                          </button>
                         ))
                       ) : (
-                        <div className="p-3.5 text-center space-y-2">
-                          <div className="flex items-center justify-center text-amber-500">
-                            <AlertCircle size={20} />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-slate-800">
-                              No matching resident found for &quot;{docResidentSearch}&quot;
-                            </p>
-                            <p className="text-[11px] text-slate-500 mt-0.5">
-                              This resident is not yet registered in the Barangay database.
-                            </p>
-                          </div>
-                          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-800 flex items-center justify-between text-left gap-2">
-                            <div>
-                              <span className="font-bold text-emerald-900 block">✨ Auto-Registration Enabled</span>
-                              <span>Enter constituent details below. When you issue the document, this person will be <strong>automatically added to the Barangay Census database</strong>!</span>
-                            </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={handleManualDocConstituent}
-                              className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 cursor-pointer"
-                            >
-                              Fill Form Below
-                            </Button>
-                          </div>
+                        <div className="p-3 text-center text-xs text-slate-500">
+                          No matching households found for &ldquo;{householdSearchQuery}&rdquo;.
                         </div>
                       )}
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-emerald-100 rounded-full text-emerald-700">
-                      <CheckCircle2 size={16} />
+
+                {newResHouseholdNum && (
+                  <div className="p-2 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <Home size={14} className="text-blue-600 shrink-0" />
+                      <div>
+                        <span className="font-mono font-bold text-blue-900">{newResHouseholdNum}</span>
+                        <span className="text-slate-700 ml-1.5">({newResFamilyName || 'Family'} Family)</span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-emerald-950">
-                        Linked: {docSelectedResident.first_name} {docSelectedResident.last_name}
-                      </p>
-                      <p className="text-[11px] text-emerald-800">
-                        Household: <span className="font-mono font-semibold">{docSelectedResident.household_number || 'HH-N/A'}</span> • Purok {docSelectedResident.purok || '1'} • {docSelectedResident.gender || '—'} • {docSelectedResident.is_census_only ? 'Census Record' : 'Registered Resident'}
-                      </p>
-                    </div>
+                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                      Assigned
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
-                      Database Linked
-                    </Badge>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+          <div>
+            <Label className="text-xs font-semibold">Relationship to Household Head</Label>
+            <Select
+              value={newResRelationship}
+              onValueChange={(val) => {
+                setNewResRelationship(val);
+                // Auto-uncheck & disable head checkbox for dependent relations
+                const dependentRelations = ['Spouse', 'Son', 'Daughter', 'Parent', 'Grandparent', 'Grandson', 'Granddaughter', 'Relative', 'Other'];
+                if (dependentRelations.includes(val)) {
+                  setNewResIsHead(false);
+                } else if (val === 'Head') {
+                  setNewResIsHead(true);
+                }
+              }}
+            >
+              <SelectTrigger className="text-xs bg-white"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Head">Head of Family</SelectItem>
+                <SelectItem value="Spouse">Spouse</SelectItem>
+                <SelectItem value="Son">Son</SelectItem>
+                <SelectItem value="Daughter">Daughter</SelectItem>
+                <SelectItem value="Parent">Parent</SelectItem>
+                <SelectItem value="Grandparent">Grandparent</SelectItem>
+                <SelectItem value="Grandson">Grandson</SelectItem>
+                <SelectItem value="Granddaughter">Granddaughter</SelectItem>
+                <SelectItem value="Relative">Relative</SelectItem>
+                <SelectItem value="Other">Other / Member</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2 pt-5">
+            <input
+              type="checkbox"
+              id="is_head_checkbox"
+              checked={newResIsHead}
+              disabled={['Spouse', 'Son', 'Daughter', 'Parent', 'Grandparent', 'Grandson', 'Granddaughter', 'Relative', 'Other'].includes(newResRelationship)}
+              onChange={e => {
+                setNewResIsHead(e.target.checked);
+                if (e.target.checked) setNewResRelationship('Head');
+              }}
+              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            />
+            <label htmlFor="is_head_checkbox" className={`text-xs font-semibold cursor-pointer ${['Spouse', 'Son', 'Daughter', 'Parent', 'Grandparent', 'Grandson', 'Granddaughter', 'Relative', 'Other'].includes(newResRelationship) ? 'text-slate-400' : 'text-slate-700'}`}>
+              Set as Primary Head of Household
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Step 2: Member Personal Identity */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div>
+          <Label className="text-xs font-semibold">First Name *</Label>
+          <Input value={newResFirstName} onChange={e => setNewResFirstName(e.target.value)} placeholder="e.g. Juan" required className="text-xs" />
+        </div>
+        <div>
+          <Label className="text-xs font-semibold">Middle Name</Label>
+          <Input value={newResMiddleName} onChange={e => setNewResMiddleName(e.target.value)} placeholder="e.g. Perez" className="text-xs" />
+        </div>
+        <div>
+          <Label className="text-xs font-semibold">Last Name *</Label>
+          <Input
+            value={newResLastName}
+            onChange={e => {
+              setNewResLastName(e.target.value);
+              if (addResidentMode === 'new_household' && !newResFamilyName) {
+                setNewResFamilyName(e.target.value);
+              }
+            }}
+            placeholder="e.g. Dela Cruz"
+            required
+            className="text-xs"
+          />
+        </div>
+      </div>
+
+      {/* Birthday, Computed Age & Gender */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div>
+          <Label className="text-xs font-semibold">Date of Birth *</Label>
+          <Input type="date" value={newResDOB} onChange={e => setNewResDOB(e.target.value)} required className="text-xs" />
+        </div>
+        <div>
+          <Label className="text-xs font-semibold">Gender *</Label>
+          <Select value={newResGender} onValueChange={(val: any) => setNewResGender(val)}>
+            <SelectTrigger className="text-xs"><SelectValue placeholder="Select Gender" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Male">Male</SelectItem>
+              <SelectItem value="Female">Female</SelectItem>
+              <SelectItem value="Other">Other / Non-Binary</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs font-semibold">Civil Status</Label>
+          <Select value={newResCivilStatus} onValueChange={setNewResCivilStatus}>
+            <SelectTrigger className="text-xs"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Single">Single</SelectItem>
+              <SelectItem value="Married">Married</SelectItem>
+              <SelectItem value="Widowed">Widowed</SelectItem>
+              <SelectItem value="Separated">Separated</SelectItem>
+              <SelectItem value="Live-In">Live-In / Common Law</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Dynamic Age & Sector Detection Banner */}
+      {newResDOB && getDynamicAge(newResDOB) !== null && (() => {
+        const age = getDynamicAge(newResDOB)!;
+        return (
+          <div className="text-xs p-2.5 rounded-lg border flex items-center justify-between bg-slate-50 border-slate-200">
+            <div>
+              <span className="text-slate-500">Calculated Age: </span>
+              <strong className="text-slate-800">{age} years old</strong>
+            </div>
+            {age >= 60 ? (
+              <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded text-[11px] border border-amber-300">
+                Senior Citizen (60+) — Auto-tallied in Household
+              </span>
+            ) : age < 18 ? (
+              <span className="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[11px] border border-blue-300">
+                Child / Minor (&lt;18)
+              </span>
+            ) : (
+              <span className="bg-slate-200 text-slate-700 font-medium px-2 py-0.5 rounded text-[11px]">
+                Adult (18-59)
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Employment Status & Contact */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs font-semibold">Employment Status *</Label>
+          <Select value={newResEmployment} onValueChange={setNewResEmployment}>
+            <SelectTrigger className="text-xs"><SelectValue placeholder="Select Employment Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Employed">Employed (Have Work)</SelectItem>
+              <SelectItem value="Self-Employed">Self-Employed / Business</SelectItem>
+              <SelectItem value="Unemployed">Unemployed (Looking for work)</SelectItem>
+              <SelectItem value="Student">Student</SelectItem>
+              <SelectItem value="Retired">Retired / Pensioner</SelectItem>
+              <SelectItem value="Minor">Dependent Minor</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs font-semibold">Contact Number *</Label>
+          <Input
+            value={newResPhone}
+            onChange={e => setNewResPhone(e.target.value.replace(/[^0-9+]/g, '').slice(0, 13))}
+            placeholder="09XXXXXXXXX"
+            className="text-xs font-mono"
+            inputMode="tel"
+            required
+          />
+        </div>
+      </div>
+
+      <DialogFooter className="pt-2">
+        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white w-full text-xs font-bold h-9 shadow-xs">
+          Save to Population Registry
+        </Button>
+      </DialogFooter>
+    </form>
+  </DialogContent>
+</Dialog>
+
+{/* Dedicated Resident User Account Creation Modal via Census Search */ }
+<Dialog open={isCreateResidentUserOpen} onOpenChange={setIsCreateResidentUserOpen}>
+  <DialogContent className="bg-white max-w-2xl max-h-[88vh] overflow-y-auto p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xl">
+    <DialogHeader>
+      <div className="flex items-center justify-between gap-2 flex-wrap pb-1">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-600">
+            <UserPlus size={18} />
+          </div>
+          <DialogTitle className="text-base font-bold text-slate-900">
+            Create Resident System Account
+          </DialogTitle>
+        </div>
+        <Badge className="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] uppercase font-bold tracking-wider">
+          Census Resident Search
+        </Badge>
+      </div>
+      <DialogDescription className="text-xs text-slate-500">
+        Search for an official inhabitant from the Barangay {resAccBarangay || user?.barangay || 'Pianing'} Census Registry to provision their resident portal account.
+      </DialogDescription>
+    </DialogHeader>
+
+    {/* Existing Account Notice */}
+    {existingResidentUserAccount && (
+      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
+        <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-bold text-amber-900">Existing Account Warning</p>
+          <p className="text-[11px] text-amber-800 mt-0.5">
+            A system user account already exists for <strong className="font-semibold">{existingResidentUserAccount.name}</strong> ({existingResidentUserAccount.email}). Role: <span className="uppercase font-mono font-bold">{existingResidentUserAccount.role}</span> • Status: <span className="font-semibold">{existingResidentUserAccount.status}</span>.
+          </p>
+        </div>
+      </div>
+    )}
+
+    {!resAccCensusMatch ? (
+      /* STEP 1: SEARCH & SELECT RESIDENT FROM CENSUS REGISTRY */
+      <div className="space-y-3.5">
+        {/* Search Engine Input Bar */}
+        <div>
+          <Label className="text-xs font-bold text-slate-800 block mb-1">
+            Search Inhabitant (Name, Phone Number, or Household #)
+          </Label>
+          <div className="relative flex items-center">
+            <Search size={15} className="absolute left-3 text-slate-400 pointer-events-none" />
+            <Input
+              type="text"
+              value={resAccCensusSearch}
+              onChange={e => setResAccCensusSearch(e.target.value)}
+              placeholder="e.g. Juan dela Cruz, 09XXXXXXXXX, or HH-001..."
+              className="w-full h-10 pl-9 pr-8 text-xs bg-slate-50 border-slate-300 focus:border-blue-500 focus:bg-white rounded-xl shadow-2xs"
+              autoFocus
+            />
+            {resAccCensusSearch && (
+              <button
+                type="button"
+                onClick={() => setResAccCensusSearch('')}
+                className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Inhabitants List */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-0.5">
+            <span className="text-[11px] font-bold text-slate-700">
+              {resAccCensusSearch.trim() ? (
+                <>Matching Census Records ({censusMatches.length})</>
+              ) : (
+                <>Official Census Directory ({censusMatches.length} Inhabitants)</>
+              )}
+            </span>
+            <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-1">
+              <CheckCircle2 size={11} /> Verified Barangay Registry
+            </span>
+          </div>
+
+          {censusMatches.length === 0 ? (
+            <div className="py-8 px-4 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+              <Users size={28} className="mx-auto text-slate-400 mb-2" />
+              <h4 className="text-xs font-bold text-slate-700">
+                No Censused Resident Found
+              </h4>
+              <p className="text-[11px] text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
+                We could not find an official census record matching &ldquo;{resAccCensusSearch}&rdquo; in Barangay {resAccBarangay || user?.barangay || 'Pianing'}. Please make sure the citizen is first recorded in the <strong>Census &amp; Demographics</strong> tab.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+              {censusMatches.map(r => {
+                const hasUser = users.some(u =>
+                  (u.resident_id && u.resident_id === r.id) ||
+                  (r.email && u.email?.toLowerCase().trim() === r.email.toLowerCase().trim())
+                );
+
+                return (
+                  <div
+                    key={r.id}
+                    className="p-3 bg-white hover:bg-blue-50/40 border border-slate-200 hover:border-blue-300 rounded-xl transition-all shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="flex items-start sm:items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+                        {(r.first_name || 'R').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-slate-900">
+                            {r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}
+                          </span>
+                          <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-[9.5px] font-semibold py-0">
+                            Censused Resident
+                          </Badge>
+                          {hasUser && (
+                            <Badge className="bg-amber-50 text-amber-800 border-amber-200 text-[9.5px] font-semibold py-0">
+                              Account Active
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-slate-500 mt-1">
+                          <span className="flex items-center gap-1">
+                            <Building2 size={11} className="text-blue-600" />
+                            Purok {r.purok || '1'}
+                          </span>
+                          <span>•</span>
+                          <span>Household: <strong className="font-mono text-blue-700">{r.household_number || 'N/A'}</strong></span>
+                          {r.gender && (
+                            <>
+                              <span>•</span>
+                              <span>{r.gender}</span>
+                            </>
+                          )}
+                          {r.phone && (
+                            <>
+                              <span>•</span>
+                              <span className="font-mono text-slate-600">📱 {r.phone}</span>
+                            </>
+                          )}
+                          {r.email && (
+                            <>
+                              <span>•</span>
+                              <span className="text-slate-600">✉️ {r.email}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
                     <Button
                       type="button"
-                      variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setDocSelectedResident(null);
-                        setDocResidentSearch('');
-                        setIsDocSearchDropdownOpen(true);
-                      }}
-                      className="h-6 text-[10px] px-2 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100 cursor-pointer"
+                      onClick={() => applyCensusMatch(r)}
+                      className="h-8 px-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs whitespace-nowrap self-end sm:self-center flex items-center gap-1.5"
                     >
-                      Change
+                      <UserCheck size={13} />
+                      Select Resident
                     </Button>
                   </div>
-                </div>
-              )}
+                );
+              })}
             </div>
+          )}
+        </div>
 
-            {/* 2. Resident Profile Card */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">Resident Information</span>
-                <span className="text-[10px] text-slate-400">Used for certificate variables</span>
+        <DialogFooter className="pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsCreateResidentUserOpen(false)}
+            className="text-xs h-9 font-medium"
+          >
+            Close
+          </Button>
+        </DialogFooter>
+      </div>
+    ) : (
+      /* STEP 2: ENTER RESIDENT EMAIL & PHONE NUMBER */
+      <form onSubmit={handleCreateResidentUser} className="space-y-4 pt-1">
+        {/* Selected Resident Profile Card */}
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-sm flex items-center justify-center shrink-0">
+              {(resAccCensusMatch.first_name || 'R').charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold text-emerald-950 truncate">
+                  {resAccCensusMatch.first_name} {resAccCensusMatch.middle_name ? resAccCensusMatch.middle_name + ' ' : ''}{resAccCensusMatch.last_name}
+                </p>
+                <Badge className="bg-emerald-600 text-white text-[9.5px] font-bold">
+                  Selected Resident
+                </Badge>
+              </div>
+              <p className="text-[11px] text-emerald-800 mt-0.5">
+                Barangay {resAccCensusMatch.barangay || user?.barangay || 'Pianing'} • Purok {resAccCensusMatch.purok || '1'} • Household: <span className="font-mono font-semibold">{resAccCensusMatch.household_number || 'N/A'}</span>
+                {resAccCensusMatch.gender ? ` • ${resAccCensusMatch.gender}` : ''}
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setResAccCensusMatch(null);
+              setResAccLinkedCensusId(null);
+              setResAccEmail('');
+              setResAccPhone('');
+            }}
+            className="h-7 text-xs px-2.5 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100 cursor-pointer shrink-0 font-semibold"
+          >
+            Change
+          </Button>
+        </div>
+
+        {/* Email & Phone Number Inputs ONLY */}
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3.5">
+          <div>
+            <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <Mail size={14} className="text-blue-600" />
+              Resident Gmail / Email Address *
+            </Label>
+            <div className="relative mt-1">
+              <Input
+                type="email"
+                value={resAccEmail}
+                onChange={e => setResAccEmail(e.target.value)}
+                placeholder="e.g. resident@gmail.com"
+                className="text-xs bg-white border-slate-300 focus:border-blue-500 rounded-xl h-10 shadow-xs"
+                required
+              />
+            </div>
+            <p className="text-[10.5px] text-slate-500 mt-1">
+              The resident will use this email to log in. Official credentials will be delivered to this address.
+            </p>
+          </div>
+
+          <div>
+            <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <Phone size={14} className="text-blue-600" />
+              Resident Mobile Phone Number (11-Digit) *
+            </Label>
+            <div className="relative mt-1">
+              <Input
+                type="tel"
+                value={resAccPhone}
+                onChange={e => setResAccPhone(e.target.value.replace(/[^0-9+]/g, '').slice(0, 13))}
+                placeholder="09XXXXXXXXX"
+                className="text-xs font-mono bg-white border-slate-300 focus:border-blue-500 rounded-xl h-10 shadow-xs"
+                required
+              />
+            </div>
+            <p className="text-[10.5px] text-slate-500 mt-1">
+              Philippine 11-digit mobile number (e.g. 09171234567) for instant SMS notification and OTP recovery.
+            </p>
+          </div>
+        </div>
+
+        {/* Automated Credentials Notice */}
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2.5 text-xs text-blue-900">
+          <KeyRound size={16} className="text-blue-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-blue-900">✨ Automated Credential Generation & Delivery</p>
+            <p className="text-[11px] text-blue-800 mt-0.5 leading-relaxed">
+              The system will automatically generate a secure default password (e.g., <code className="font-mono font-bold bg-blue-100 px-1 py-0.5 rounded">Brgy@{new Date().getFullYear()}!***</code>) and dispatch login credentials directly via <strong>Email</strong> and <strong>SMS</strong>.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter className="pt-2 flex flex-col sm:flex-row gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setResAccCensusMatch(null);
+              setResAccLinkedCensusId(null);
+              setResAccEmail('');
+              setResAccPhone('');
+            }}
+            className="text-xs h-9 font-medium"
+          >
+            Back to Search
+          </Button>
+          <Button
+            type="submit"
+            disabled={isCreatingResAccount}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-9 shadow-xs cursor-pointer flex-1 gap-1.5"
+          >
+            {isCreatingResAccount ? (
+              <>
+                <RefreshCcw size={14} className="animate-spin" />
+                <span>Creating Account & Dispatching Credentials...</span>
+              </>
+            ) : (
+              <>
+                <Send size={14} />
+                <span>Create Resident Account & Send Credentials</span>
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </form>
+    )}
+  </DialogContent>
+</Dialog>
+
+{/* Official Document Print & Download Modal */ }
+<DocumentPrintModal
+  isOpen={printModalOpen}
+  onClose={() => setPrintModalOpen(false)}
+  document={selectedPrintDoc}
+  onStatusUpdated={() => loadData(false)}
+/>
+
+{/* Document Info / Specifics Viewer Modal */ }
+<DocumentInfoModal
+  isOpen={isDocInfoOpen}
+  onClose={() => {
+    setIsDocInfoOpen(false);
+    setReturnToDocOnProfileClose(null);
+  }}
+  document={selectedInfoDoc}
+  onUpdateStatus={(id, status) => handleUpdateDocStatus(id, status)}
+  onPrint={(doc) => openPrintModal(doc)}
+  onViewResidentProfile={(resId, fromDoc) => {
+    const targetDoc = fromDoc || selectedInfoDoc;
+    setReturnToDocOnProfileClose(targetDoc);
+    setIsDocInfoOpen(false);
+    const resolvedId = (resId && resId > 1) ? resId : resolveResidentIdForDoc(targetDoc);
+    openResidentProfile(resolvedId);
+  }}
+  canEdit={true}
+/>
+
+{/* Submitted Government ID Photo Full-View Inspection Modal with Zoom, Rotate, and Download */ }
+<ImageViewerModal
+  isOpen={!!selectedIdPreview}
+  onClose={() => setSelectedIdPreview(null)}
+  imageUrl={selectedIdPreview}
+  title="Submitted Resident Government ID"
+  subtitle="Official Philippine Government ID / Cedula Verification Document"
+  fileName="resident-submitted-id.png"
+/>
+
+{/* ═══ FULL USER & OFFICIAL EXECUTIVE PROFILE MODAL ════════════════════ */ }
+<Dialog open={!!selectedStaffInfo} onOpenChange={(open) => !open && setSelectedStaffInfo(null)}>
+  <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto p-0 rounded-3xl border border-slate-200 shadow-2xl">
+    {selectedStaffInfo && (() => {
+      const roleCfg = getStaffRoleConfig(selectedStaffInfo.role);
+      const userInitials = selectedStaffInfo.name
+        ? selectedStaffInfo.name.split(' ').map((n: string) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+        : 'U';
+      const fullName = selectedStaffInfo.first_name
+        ? `${selectedStaffInfo.first_name} ${selectedStaffInfo.middle_name ? selectedStaffInfo.middle_name + ' ' : ''}${selectedStaffInfo.last_name || ''}`
+        : selectedStaffInfo.name;
+
+      const canEdit = isSuperAdmin || (user?.role === 'admin' && (selectedStaffInfo.role === 'staff' || selectedStaffInfo.role === 'bhw' || selectedStaffInfo.role === 'resident'));
+
+      const copyText = (val: string, label: string) => {
+        if (!val) return;
+        navigator.clipboard.writeText(val);
+        toast.success(`${label} copied to clipboard!`);
+      };
+
+      return (
+        <div className="flex flex-col">
+          {/* Modal Header */}
+          <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="flex items-center gap-2.5">
+              <div className={`p-2 rounded-xl border ${roleCfg.bgAccent}`}>
+                {selectedStaffInfo.role === 'superadmin' ? <Shield size={18} /> :
+                  selectedStaffInfo.role === 'admin' ? <Building2 size={18} /> :
+                    selectedStaffInfo.role === 'nurse' ? <Heart size={18} /> :
+                      selectedStaffInfo.role === 'bhw' ? <Activity size={18} /> :
+                        selectedStaffInfo.role === 'resident' ? <UserCircle size={18} /> :
+                          <FileText size={18} />}
+              </div>
+              <div>
+                <DialogTitle className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                  {selectedStaffInfo.role === 'resident' ? 'Resident Citizen Profile' : 'Personnel & Official Profile'}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500">
+                  {selectedStaffInfo.role === 'resident'
+                    ? 'Official demographic record, civil status, and residency identification.'
+                    : 'Operational credentials, municipal jurisdiction, and assigned authorities.'}
+                </DialogDescription>
+              </div>
+            </div>
+            <Badge variant="outline" className={`text-xs font-semibold px-2.5 py-0.5 border ${roleCfg.badge}`}>
+              {selectedStaffInfo.role === 'superadmin' ? 'SUPER ADMIN' :
+                selectedStaffInfo.role === 'admin' ? 'BARANGAY ADMIN' :
+                  selectedStaffInfo.role === 'nurse' ? 'HEALTH NURSE' :
+                    selectedStaffInfo.role === 'bhw' ? 'BHW WORKER' :
+                      selectedStaffInfo.role === 'staff' ? 'STAFF / CLERK' : 'RESIDENT'}
+            </Badge>
+          </div>
+
+          <div className="p-5 sm:p-6 space-y-5 text-xs">
+            {/* ── Executive Hero Card ── */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-xs relative overflow-hidden">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                {/* Photo / Avatar & Info */}
+                <div className="flex items-center gap-4 sm:gap-5">
+                  <div className="relative group/avatar shrink-0">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl overflow-hidden bg-slate-50 border-2 border-slate-200 shadow-sm flex items-center justify-center">
+                      {selectedStaffInfo.profile_photo ? (
+                        <img
+                          src={selectedStaffInfo.profile_photo}
+                          alt={selectedStaffInfo.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className={`w-full h-full flex items-center justify-center text-2xl font-bold tracking-wider ${roleCfg.bgAccent}`}>
+                          {userInitials}
+                        </div>
+                      )}
+                    </div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => staffFileInputRef.current?.click()}
+                        className="absolute inset-0 bg-slate-900/40 text-white flex flex-col items-center justify-center rounded-3xl opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer backdrop-blur-[2px]"
+                        title="Upload or change profile photo"
+                      >
+                        <Camera size={18} />
+                        <span className="text-[10px] font-semibold mt-0.5">Change</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+                        {fullName}
+                      </h3>
+                      <Badge className={
+                        selectedStaffInfo.status === 'Active'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold'
+                          : selectedStaffInfo.status === 'Archived'
+                            ? 'bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 font-bold'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold'
+                      }>
+                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${selectedStaffInfo.status === 'Active' ? 'bg-emerald-500 animate-pulse' :
+                          selectedStaffInfo.status === 'Archived' ? 'bg-violet-500' : 'bg-amber-500'
+                          }`} />
+                        {selectedStaffInfo.status || 'Active'}
+                      </Badge>
+                      {selectedStaffInfo.role === 'resident' && (
+                        <Badge variant="outline" className={
+                          selectedStaffInfo.verification_status === 'Verified' ? 'border-emerald-300 text-emerald-700 bg-emerald-50 font-semibold' :
+                            selectedStaffInfo.verification_status === 'Rejected' ? 'border-rose-300 text-rose-700 bg-rose-50 font-semibold' :
+                              'border-amber-300 text-amber-800 bg-amber-50 font-semibold'
+                        }>
+                          {selectedStaffInfo.verification_status || 'Verified'}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Quick Photo Upload Actions */}
+                    {canEdit && (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => staffFileInputRef.current?.click()}
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-700 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                          title="Upload or change profile photo"
+                        >
+                          <Camera size={11} />
+                          <span>{selectedStaffInfo.profile_photo ? 'Change Photo' : 'Upload Photo'}</span>
+                        </button>
+                        {selectedStaffInfo.profile_photo && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveStaffPhoto}
+                            className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                            title="Remove profile photo"
+                          >
+                            <Trash2 size={11} />
+                            <span>Remove</span>
+                          </button>
+                        )}
+                        <input
+                          ref={staffFileInputRef}
+                          type="file"
+                          accept="image/png, image/jpeg, image/jpg, image/webp"
+                          onChange={handleStaffPhotoUpload}
+                          className="hidden"
+                        />
+                      </div>
+                    )}
+
+                    <div className="text-xs text-slate-500 mt-2 flex items-center gap-2.5 flex-wrap font-medium">
+                      <button
+                        type="button"
+                        onClick={() => copyText(selectedStaffInfo.email, 'Email')}
+                        className="inline-flex items-center gap-1 hover:text-indigo-600 transition-colors cursor-pointer bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200/80"
+                        title="Click to copy email"
+                      >
+                        <Mail size={12} className="text-slate-400" />
+                        <span className="font-mono">{selectedStaffInfo.email}</span>
+                        <Copy size={10} className="text-slate-400 ml-0.5" />
+                      </button>
+
+                      {selectedStaffInfo.phone && !selectedStaffInfo.phone.includes('@') && (
+                        <button
+                          type="button"
+                          onClick={() => copyText(selectedStaffInfo.phone || '', 'Phone')}
+                          className="inline-flex items-center gap-1 hover:text-indigo-600 transition-colors cursor-pointer bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200/80"
+                          title="Click to copy phone"
+                        >
+                          <Phone size={12} className="text-slate-400" />
+                          <span className="font-mono">{selectedStaffInfo.phone}</span>
+                          <Copy size={10} className="text-slate-400 ml-0.5" />
+                        </button>
+                      )}
+
+                      <span className="inline-flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200/80">
+                        <MapPin size={12} className="text-slate-400" />
+                        <span>Barangay {selectedStaffInfo.barangay || 'Pianing'}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Right Badge / Clearance Pill */}
+                <div className="text-xs text-slate-500 bg-slate-50 px-3.5 py-2.5 rounded-2xl border border-slate-200/80 shrink-0 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                    <ShieldCheck size={14} className={roleCfg.accent} />
+                    <span>Badge #{selectedStaffInfo.employee_id || selectedStaffInfo.id || 'N/A'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                    <CheckCircle size={12} className="text-emerald-600" />
+                    <span>Official System Profile</span>
+                  </p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="space-y-1 relative">
-                  <Label className="text-[11px] text-slate-600">Full Name <span className="text-red-500">*</span> <span className="text-blue-500 font-normal">(type to search Census)</span></Label>
-                  <Input
-                    value={newDocName}
-                    onChange={e => handleDocNameInput(e.target.value)}
-                    onFocus={() => { if (docNameSuggestions.length > 0) setShowDocNameSuggestions(true); }}
-                    onBlur={() => setTimeout(() => setShowDocNameSuggestions(false), 180)}
-                    placeholder="Type name to search Census or enter manually..."
-                    required
-                    className="h-8 text-xs bg-white"
-                    autoComplete="off"
-                  />
-                  {/* Census name suggestions dropdown */}
-                  {showDocNameSuggestions && docNameSuggestions.length > 0 && (
-                    <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-blue-200 rounded-lg shadow-xl overflow-hidden">
-                      <div className="px-2 py-1 bg-blue-50 border-b border-blue-100">
-                        <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">📋 Census / Resident Matches</span>
-                      </div>
-                      {docNameSuggestions.map(r => (
-                        <button
-                          key={`census-sug-${r.id}`}
-                          type="button"
-                          onMouseDown={() => applyDocCensusSuggestion(r)}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-100 last:border-0 flex items-center gap-2"
-                        >
-                          <span className="text-sm">{r.is_census_only ? '📋' : '👤'}</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-slate-800 truncate">{r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}</div>
-                            <div className="text-[10px] text-slate-500">{r.purok ? `Purok ${r.purok}` : ''} • {r.gender || '—'} • {r.age ? `${r.age} yrs` : r.date_of_birth || '—'} {r.is_census_only ? '• Census Record' : '• Registered'}</div>
-                          </div>
-                        </button>
-                      ))}
+              {/* 4-Tile Quick Highlights Bar */}
+              <div className="mt-5 pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                <div className="p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/70">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Official Designation</span>
+                  <span className="font-bold text-slate-800 mt-0.5 block truncate">{selectedStaffInfo.job_title || roleCfg.title}</span>
+                </div>
+                <div className="p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/70">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Assigned Station</span>
+                  <span className="font-bold text-slate-800 mt-0.5 block truncate">Brgy. {selectedStaffInfo.barangay || 'Pianing'} {roleCfg.station}</span>
+                </div>
+                <div className="p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/70">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Clearance Level</span>
+                  <span className="font-bold text-slate-800 mt-0.5 block truncate">{roleCfg.tier}</span>
+                </div>
+                <div className="p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/70">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Security Status</span>
+                  <span className="font-bold text-emerald-700 mt-0.5 flex items-center gap-1">
+                    <CheckCircle size={12} /> {selectedStaffInfo.status === 'Active' ? 'Active & Protected' : selectedStaffInfo.status || 'Active'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Official Profile Credentials Card ── */}
+            <Card className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+              <div className="border-b border-slate-100 px-4 py-3 bg-slate-50/40 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-lg ${roleCfg.bgAccent}`}>
+                    <UserCircle size={15} />
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-xs">Official Profile Credentials &amp; Identifiers</h4>
+                </div>
+                <span className="font-mono text-slate-400 text-[10px]">ID #{selectedStaffInfo.id}</span>
+              </div>
+
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Full Legal Name</span>
+                    <span className="font-bold text-slate-800 text-xs block mt-0.5">{fullName}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Official Email</span>
+                    <span className="font-mono font-medium text-slate-800 text-xs block mt-0.5 truncate">{selectedStaffInfo.email}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Contact Mobile</span>
+                    <span className="font-mono font-medium text-slate-800 text-xs block mt-0.5">
+                      {selectedStaffInfo.phone && !selectedStaffInfo.phone.includes('@') ? selectedStaffInfo.phone : 'None specified'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Assigned Barangay</span>
+                    <span className="font-medium text-slate-800 text-xs block mt-0.5">Barangay {selectedStaffInfo.barangay || 'Pianing'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Employee Badge #</span>
+                    <span className="font-mono font-medium text-slate-800 text-xs block mt-0.5">
+                      {selectedStaffInfo.employee_id || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Last Active Session</span>
+                    <span className="font-mono font-medium text-slate-700 text-xs block mt-0.5">
+                      {selectedStaffInfo.last_login && selectedStaffInfo.last_login !== 'Never'
+                        ? new Date(selectedStaffInfo.last_login).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        : 'Never logged in'}
+                    </span>
+                  </div>
+                  {selectedStaffInfo.address && (
+                    <div className="sm:col-span-2 md:col-span-3">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Station / Registered Address</span>
+                      <span className="font-medium text-slate-800 text-xs block mt-0.5">{selectedStaffInfo.address}</span>
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-slate-600">Gender</Label>
-                    <Select value={newDocGender} onValueChange={(v: any) => setNewDocGender(v)}>
-                      <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Gender" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-slate-600">Civil Status</Label>
-                    <Select value={newDocCivilStatus} onValueChange={setNewDocCivilStatus}>
-                      <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Single">Single</SelectItem>
-                        <SelectItem value="Married">Married</SelectItem>
-                        <SelectItem value="Widowed">Widowed</SelectItem>
-                        <SelectItem value="Separated">Separated</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-slate-600">Purok / Zone</Label>
-                  <Select value={newDocPurok} onValueChange={setNewDocPurok}>
-                    <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Purok" /></SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6].map(p => (
-                        <SelectItem key={`purok-doc-${p}`} value={`Purok ${p}`}>Purok {p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-slate-600">Age / Date of Birth</Label>
-                  <Input
-                    value={newDocAge}
-                    onChange={e => setNewDocAge(e.target.value)}
-                    placeholder="e.g. 28 yrs old"
-                    className="h-8 text-xs bg-white"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Document Type Selection */}
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold text-slate-700">Document Type <span className="text-red-500">*</span></Label>
-              <Select value={newDocType} onValueChange={handleNewDocTypeChange}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Document Type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Barangay Clearance">Barangay Clearance</SelectItem>
-                  <SelectItem value="Certificate of Residency">Certificate of Residency</SelectItem>
-                  <SelectItem value="Certificate of Indigency">Certificate of Indigency</SelectItem>
-                  <SelectItem value="Good Moral Clearance">Good Moral Clearance</SelectItem>
-                  <SelectItem value="Business Clearance">Business Clearance</SelectItem>
-                  <SelectItem value="Business Permit">Business Permit</SelectItem>
-                  <SelectItem value="Certificate of Employment">Certificate of Employment</SelectItem>
-                  <SelectItem value="Certificate of Land Occupancy">Certificate of Land Occupancy (Actual Occupancy)</SelectItem>
-                  <SelectItem value="Barangay ID">Barangay ID</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 4. Dynamic Document Fields (Matches Resident Portal exactly) */}
-            {/* For Certificate of Land Occupancy */}
-            {(newDocType === 'Certificate of Land Occupancy' || newDocType === 'Actual Occupancy') && (
-              <div className="space-y-2.5 bg-amber-50/70 border border-amber-200 rounded-xl p-3">
-                <span className="font-bold text-amber-900 text-[11px] uppercase tracking-wide">Land Occupancy Details</span>
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-700">Parcel Land Area (in Words &amp; Figures) <span className="text-red-500">*</span></Label>
-                  <Input
-                    value={newDocExtraFields['Land Area'] || ''}
-                    onChange={e => setNewDocField('Land Area', e.target.value)}
-                    placeholder="e.g. Nine Hundred Thirty-One (931)"
-                    required
-                    className="h-8 text-xs bg-white"
-                  />
-                  <p className="text-[10px] text-slate-400">e.g. Nine Hundred Thirty-One (931)</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-700">Lot Number (Lot #) <span className="text-red-500">*</span></Label>
-                    <Input
-                      value={newDocExtraFields['Lot Number'] || ''}
-                      onChange={e => setNewDocField('Lot Number', e.target.value)}
-                      placeholder="e.g. 1005"
-                      required
-                      className="h-8 text-xs bg-white"
-                    />
+            {/* ── Operational Responsibilities OR Resident Demographics ── */}
+            {selectedStaffInfo.role === 'resident' ? (
+              <Card className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+                <div className="border-b border-slate-100 px-4 py-3 bg-slate-50/40 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-sky-50 text-sky-700 border border-sky-200">
+                      <User size={15} />
+                    </div>
+                    <h4 className="font-bold text-slate-900 text-xs">Civil &amp; Demographic Details</h4>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-700">Survey Info</Label>
-                    <Input
-                      value={newDocExtraFields['Survey Info'] || ''}
-                      onChange={e => setNewDocField('Survey Info', e.target.value)}
-                      placeholder="e.g. PLS-74"
-                      className="h-8 text-xs bg-white"
-                    />
+                  <Badge variant="outline" className="text-[10px] border-sky-200 text-sky-700 bg-sky-50">
+                    {selectedStaffInfo.purok ? (selectedStaffInfo.purok.startsWith('Purok') ? selectedStaffInfo.purok : `Purok ${selectedStaffInfo.purok}`) : 'Purok 1'}
+                  </Badge>
+                </div>
+
+                <CardContent className="p-4 space-y-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Date of Birth</span>
+                      <span className="font-medium text-slate-800 text-xs block mt-0.5">
+                        {selectedStaffInfo.date_of_birth
+                          ? `${new Date(selectedStaffInfo.date_of_birth).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}${(() => {
+                            const d = new Date(selectedStaffInfo.date_of_birth);
+                            if (isNaN(d.getTime())) return '';
+                            const diff = Date.now() - d.getTime();
+                            const age = Math.abs(new Date(diff).getUTCFullYear() - 1970);
+                            return ` (${age} yrs old)`;
+                          })()}`
+                          : 'Not specified'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Gender</span>
+                      <span className="font-medium text-slate-800 text-xs block mt-0.5">{selectedStaffInfo.gender || 'Not specified'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Civil Status</span>
+                      <span className="font-medium text-slate-800 text-xs block mt-0.5">{selectedStaffInfo.civil_status || 'Single'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Household #</span>
+                      <span className="font-mono font-medium text-slate-800 text-xs block mt-0.5">{selectedStaffInfo.household_number || 'N/A'}</span>
+                    </div>
                   </div>
+
+                  {/* Government ID Preview Row */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-600 font-medium">Government ID Document:</span>
+                      {selectedStaffInfo.submitted_id ? (
+                        <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                          Uploaded &amp; Available
+                        </Badge>
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">No ID photo attached</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {selectedStaffInfo.submitted_id && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          type="button"
+                          onClick={() => setSelectedIdPreview(selectedStaffInfo.submitted_id || null)}
+                          className="h-8 text-xs font-semibold rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50 cursor-pointer gap-1.5"
+                        >
+                          <Eye size={13} />
+                          <span>View ID Document</span>
+                        </Button>
+                      )}
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        type="button"
+                        onClick={() => {
+                          const residentId = selectedStaffInfo.id;
+                          setSelectedStaffInfo(null);
+                          openResidentProfile(residentId);
+                        }}
+                        className="h-8 text-xs font-semibold rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50 cursor-pointer gap-1.5"
+                      >
+                        <ExternalLink size={13} />
+                        <span>Open User Info Dossier</span>
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+                <div className="border-b border-slate-100 px-4 py-3 bg-slate-50/40 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg ${roleCfg.bgAccent}`}>
+                      <ShieldCheck size={15} />
+                    </div>
+                    <h4 className="font-bold text-slate-900 text-xs">Operational Scope &amp; Role Responsibilities</h4>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-600 bg-white">
+                    Official Scope
+                  </Badge>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-700">Year Started <span className="text-red-500">*</span></Label>
-                  <Input
-                    value={newDocExtraFields['Occupancy Since'] || ''}
-                    onChange={e => setNewDocField('Occupancy Since', e.target.value)}
-                    placeholder="e.g. 1970's (or 1995)"
-                    required
-                    className="h-8 text-xs bg-white"
-                  />
-                </div>
-              </div>
+
+                <CardContent className="p-4">
+                  <ul className="space-y-2 text-xs text-slate-600">
+                    {selectedStaffInfo.role === 'superadmin' && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-violet-600 shrink-0 mt-0.5" />
+                          <span>Full city-wide central governance across all 86 barangays in Butuan City.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-violet-600 shrink-0 mt-0.5" />
+                          <span>Create, authorize, and govern Barangay Executive Administrators.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-violet-600 shrink-0 mt-0.5" />
+                          <span>Master document template catalog, system audit logs, and city demographics.</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedStaffInfo.role === 'admin' && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-indigo-600 shrink-0 mt-0.5" />
+                          <span>Executive administration and operational jurisdiction over Barangay {selectedStaffInfo.barangay || 'Pianing'}.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-indigo-600 shrink-0 mt-0.5" />
+                          <span>Approve resident registrations, verify identity documents, and issue official clearances.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-indigo-600 shrink-0 mt-0.5" />
+                          <span>Direct oversight of Barangay Staff, clerks, and Barangay Health Workers (BHW).</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedStaffInfo.role === 'staff' && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-blue-600 shrink-0 mt-0.5" />
+                          <span>Process and issue official Barangay Clearances, Certificates of Residency, and Indigency.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-blue-600 shrink-0 mt-0.5" />
+                          <span>Register walk-in residents and verify demographic information in the census database.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-blue-600 shrink-0 mt-0.5" />
+                          <span>Operational communication and document dispatch via Barangay Staff Messenger.</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedStaffInfo.role === 'bhw' && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                          <span>Community health census mapping and family profiling for Barangay {selectedStaffInfo.barangay || 'Pianing'}.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                          <span>Field vital signs monitoring, maternal care follow-ups, and child immunization tracking.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                          <span>Coordinate medical referrals and community health schedules with the Health Center Nurse.</span>
+                        </li>
+                      </>
+                    )}
+                    {selectedStaffInfo.role === 'nurse' && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-teal-600 shrink-0 mt-0.5" />
+                          <span>Health Center clinical intake, medical consultations, and EHR patient history records.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-teal-600 shrink-0 mt-0.5" />
+                          <span>Prenatal examinations, pediatric vaccine administration, and pharmacy inventory control.</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-teal-600 shrink-0 mt-0.5" />
+                          <span>Clinical appointment approvals, physician consultations, and health summary reporting.</span>
+                        </li>
+                      </>
+                    )}
+                  </ul>
+                </CardContent>
+              </Card>
             )}
-
-            {/* For Certificate of Employment */}
-            {newDocType === 'Certificate of Employment' && (
-              <div className="space-y-2.5 bg-blue-50/70 border border-blue-200 rounded-xl p-3">
-                <span className="font-bold text-blue-900 text-[11px] uppercase tracking-wide">Employment Details</span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-700">Job Position <span className="text-red-500">*</span></Label>
-                    <Input
-                      value={newDocExtraFields['Job Position'] || ''}
-                      onChange={e => setNewDocField('Job Position', e.target.value)}
-                      placeholder="e.g. Barangay Tanod"
-                      required
-                      className="h-8 text-xs bg-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-700">Employer / Office <span className="text-red-500">*</span></Label>
-                    <Input
-                      value={newDocExtraFields['Employer'] || ''}
-                      onChange={e => setNewDocField('Employer', e.target.value)}
-                      placeholder="e.g. Barangay Hall / Office"
-                      required
-                      className="h-8 text-xs bg-white"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-700">Start Date <span className="text-red-500">*</span></Label>
-                    <Input
-                      value={newDocExtraFields['Start Date'] || ''}
-                      onChange={e => setNewDocField('Start Date', e.target.value)}
-                      placeholder="e.g. January 2022"
-                      required
-                      className="h-8 text-xs bg-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-700">End Date <span className="text-red-500">*</span></Label>
-                    <Input
-                      value={newDocExtraFields['End Date'] || ''}
-                      onChange={e => setNewDocField('End Date', e.target.value)}
-                      placeholder="e.g. Present"
-                      required
-                      className="h-8 text-xs bg-white"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* For Business Clearance / Permit */}
-            {(newDocType === 'Business Clearance' || newDocType === 'Business Permit') && (
-              <div className="space-y-2 bg-emerald-50/70 border border-emerald-200 rounded-xl p-3">
-                <span className="font-bold text-emerald-900 text-[11px] uppercase tracking-wide">Business Details</span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-700">Business / Store Name <span className="text-red-500">*</span></Label>
-                    <Input
-                      value={newDocExtraFields['Business Name'] || ''}
-                      onChange={e => setNewDocField('Business Name', e.target.value)}
-                      placeholder="e.g. Dela Cruz Store"
-                      required
-                      className="h-8 text-xs bg-white"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-700">Nature of Business</Label>
-                    <Input
-                      value={newDocExtraFields['Nature of Business'] || ''}
-                      onChange={e => setNewDocField('Nature of Business', e.target.value)}
-                      placeholder="e.g. Sari-sari / Retail"
-                      className="h-8 text-xs bg-white"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* For Certificate of Residency */}
-            {newDocType === 'Certificate of Residency' && (
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-700">Years of Residency / Living in Barangay</Label>
-                <Input
-                  value={newDocExtraFields['Duration of Residence'] || ''}
-                  onChange={e => setNewDocField('Duration of Residence', e.target.value)}
-                  placeholder="e.g. 5 years (or since 2019)"
-                  className="h-8 text-xs"
-                />
-              </div>
-            )}
-
-            {/* Purpose */}
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold text-slate-700">
-                {newDocType === 'Good Moral Clearance' ? 'Purpose / Application To Support' : 'State Purpose'} <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                value={newDocPurpose}
-                onChange={e => setNewDocPurpose(e.target.value)}
-                placeholder={
-                  newDocType === 'Good Moral Clearance'
-                    ? 'e.g. Employment application / PRC Board Examination'
-                    : newDocType === 'Certificate of Employment'
-                      ? 'e.g. Proof of employment / Loan / Bank Requirement'
-                      : (newDocType === 'Certificate of Land Occupancy' || newDocType === 'Actual Occupancy')
-                        ? 'e.g. Proof of land occupancy / Utility Connection'
-                        : (newDocType === 'Business Clearance' || newDocType === 'Business Permit')
-                          ? 'e.g. Business permit application / Renewal / Mayor\'s Permit'
-                          : newDocType === 'Certificate of Indigency'
-                            ? 'e.g. Medical Assistance / Scholarship / Burial / Legal Aid'
-                            : newDocType === 'Certificate of Residency'
-                              ? 'e.g. Postal ID / School Requirement / Police Clearance'
-                              : 'e.g. Bank Account / Loan / School Requirement / Employment'
-                }
-                required
-                className="h-8 text-xs"
-              />
-            </div>
-
-            <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-100">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleSaveAndPrintDoc(false)}
-                className="text-xs border-slate-300 hover:bg-slate-50 w-full sm:w-auto"
-              >
-                Save to Active Queue (Pending)
-              </Button>
-              <Button
-                type="button"
-                onClick={() => handleSaveAndPrintDoc(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 shadow-sm w-full sm:w-auto"
-              >
-                <Printer size={13} />
-                Save, Print &amp; Archive (Completed)
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Pending Applicant Review Modal */}
-      {selectedApplicantForReview && (
-        <PendingApplicantReviewModal
-          applicant={selectedApplicantForReview}
-          isOpen={isApplicantReviewOpen}
-          allResidents={residents}
-          onClose={() => {
-            setIsApplicantReviewOpen(false);
-            setSelectedApplicantForReview(null);
-          }}
-          onApprove={async (id: number, linkCensusId?: number) => {
-            setIsApprovingApplicant(true);
-            try {
-              const applicant = selectedApplicantForReview;
-              const approveRes = await apiService.approveResident(id, user?.name || 'Admin', linkCensusId);
-              toast.success('Resident account approved and verified!', {
-                description: `Official login credentials dispatched to ${(approveRes as any)?.email || applicant?.email || 'resident email'} and SMS.`
-              });
-              if (applicant && (applicant.email || applicant.phone)) {
-                const applicantName = applicant.name || `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() || 'Resident';
-                dispatchResidentNotification({
-                  residentEmail: applicant.email || '',
-                  residentName: applicantName,
-                  phone: applicant.phone,
-                  type: 'account',
-                  title: '🎉 Account Verified & Approved',
-                  message: `Mabuhay ${applicantName}! Your Barangay ${applicant.barangay || user?.barangay || 'Pianing'} resident account has been officially approved and verified by the Barangay Administration. You can now log in to the portal to request clearances, certificates, and access healthcare appointments.`,
-                  statusBadge: 'Verified',
-                  badgeColor: 'emerald',
-                  barangay: applicant.barangay || user?.barangay || 'Pianing',
-                  externalDispatchedByBackend: true
-                }).then(() => {
-                  if (applicant.phone) {
-                    toast.info(`📱 Live SMS verification sent to ${applicant.phone}`);
-                  }
-                  if (applicant.email) {
-                    toast.info(`📧 Verification email dispatched to ${applicant.email}`);
-                  }
-                }).catch(() => { });
-              }
-              setIsApplicantReviewOpen(false);
-              setSelectedApplicantForReview(null);
-              loadData();
-            } catch {
-              toast.error('Failed to approve resident');
-            } finally {
-              setIsApprovingApplicant(false);
-            }
-          }}
-          onRejectWithReason={async (id: number, reason: string) => {
-            await handleRejectWithDirectReason(id, reason);
-            setIsApplicantReviewOpen(false);
-            setSelectedApplicantForReview(null);
-          }}
-          approving={isApprovingApplicant}
-        />
-      )}
-
-      {/* Super Admin User Permissions Modal */}
-      <UserPermissionsModal
-        isOpen={isPermissionsModalOpen}
-        onClose={() => {
-          setIsPermissionsModalOpen(false);
-          setSelectedUserForPermissions(null);
-        }}
-        user={selectedUserForPermissions}
-        onSave={handleSavePermissions}
-      />
-
-      {/* Manual Resident Notification Dispatcher Modal */}
-      <ManualResidentNotifyModal
-        isOpen={isManualNotifyOpen}
-        onClose={() => {
-          setIsManualNotifyOpen(false);
-          setSelectedNotifyResident(null);
-        }}
-        defaultResident={selectedNotifyResident}
-        currentSenderRole={isSuperAdmin ? 'superadmin' : 'admin'}
-        currentSenderName={user?.name || 'Barangay Administrator'}
-        currentSenderBarangay={userBarangay || 'Pianing'}
-        residentsList={barangayResidents.map(r => ({
-          id: r.id,
-          name: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
-          email: r.email,
-          phone: r.phone,
-          barangay: (r as any).barangay || userBarangay || 'Pianing',
-          purok: r.purok
-        }))}
-        initialCategory={notifyCategory}
-      />
-
-      {/* Census Excel Import Modal */}
-      <Dialog
-        open={isExcelImportOpen}
-        onOpenChange={(open) => {
-          if (!isImportingExcel) {
-            setIsExcelImportOpen(open);
-            if (!open) resetExcelImportState();
-          }
-        }}
-      >
-        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0 rounded-2xl bg-white border border-slate-200 shadow-2xl">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 text-white rounded-t-2xl relative overflow-hidden">
-            <div className="relative z-10 flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-white/10 rounded-xl backdrop-blur-xs border border-white/20">
-                  <FileSpreadsheet size={26} className="text-emerald-100" />
-                </div>
-                <div>
-                  <DialogTitle className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                    Upload Official Barangay Census
-                    <Badge className="bg-emerald-500/40 text-emerald-100 border border-emerald-300/30 text-[10px]">
-                      Excel / CSV
-                    </Badge>
-                  </DialogTitle>
-                  <DialogDescription className="text-emerald-100/90 text-xs mt-1 max-w-xl">
-                    Import your Barangay demographic census workbook (.xlsx, .xls, .csv). The system automatically detects missing variables (e.g. HPN, DM, FP Method, PhilHealth), dynamically creates missing table variables, and automatically provisions citizen portal accounts.
-                  </DialogDescription>
-                </div>
-              </div>
-            </div>
           </div>
 
-          <div className="p-6 space-y-5">
-            {/* FILE DROPZONE & PICKER */}
-            {!excelFile ? (
-              <div className="space-y-4">
-                <div
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const file = e.dataTransfer.files?.[0];
-                    if (file) handleExcelFileSelect(file);
-                  }}
-                  className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50/70 transition-all rounded-2xl p-8 text-center cursor-pointer group"
+          {/* Modal Footer / Actions */}
+          <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-500 font-mono">Account #{selectedStaffInfo.id}</span>
+              <span className="text-slate-300">•</span>
+              <span className="text-[11px] text-slate-500">
+                Brgy. {selectedStaffInfo.barangay || 'Pianing'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Edit User Button */}
+              {canEdit && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  type="button"
                   onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = '.xlsx, .xls, .csv';
-                    input.onchange = (e: any) => {
-                      const file = e.target?.files?.[0];
-                      if (file) handleExcelFileSelect(file);
-                    };
-                    input.click();
+                    const target = selectedStaffInfo;
+                    setSelectedStaffInfo(null);
+                    handleOpenEditUser(target);
                   }}
+                  className="h-8 text-xs font-semibold rounded-xl border-slate-200 text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 cursor-pointer gap-1.5"
                 >
-                  <div className="w-14 h-14 mx-auto mb-3 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
-                    <UploadCloud size={28} />
-                  </div>
-                  <h3 className="font-bold text-slate-800 text-sm">
-                    Choose Excel / Spreadsheet or drag &amp; drop here
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                    Supports <span className="font-semibold text-slate-700">.xlsx, .xls, and .csv</span>. Multi-sheet workbooks (e.g. PUROK 1, 3, 4, 5) are automatically parsed and structured.
-                  </p>
-                  <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold shadow-2xs group-hover:border-emerald-400">
-                    <FileSpreadsheet size={14} />
-                    <span>Browse Local Files</span>
-                  </div>
+                  <Edit3 size={13} />
+                  <span>Edit Details</span>
+                </Button>
+              )}
+
+              {/* Reset Password Button */}
+              {canEdit && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    const target = selectedStaffInfo;
+                    setSelectedStaffInfo(null);
+                    handleOpenResetPassword(target);
+                  }}
+                  className="h-8 text-xs font-semibold rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50 cursor-pointer gap-1.5"
+                >
+                  <Key size={13} />
+                  <span>Reset Password</span>
+                </Button>
+              )}
+
+              {/* Toggle Status Button */}
+              {canEdit && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    const target = selectedStaffInfo;
+                    handleToggleUserStatus(target);
+                    setSelectedStaffInfo({
+                      ...target,
+                      status: target.status === 'Active' ? 'Inactive' : 'Active'
+                    });
+                  }}
+                  className={`h-8 text-xs font-semibold rounded-xl cursor-pointer gap-1.5 ${selectedStaffInfo.status === 'Active'
+                    ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
+                    : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                    }`}
+                >
+                  {selectedStaffInfo.status === 'Active' ? (
+                    <>
+                      <UserX size={13} />
+                      <span>Deactivate</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck size={13} />
+                      <span>Activate</span>
+                    </>
+                  )}
+                </Button>
+              )}
+
+              <Button
+                size="sm"
+                type="button"
+                onClick={() => setSelectedStaffInfo(null)}
+                className="h-8 px-4 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl cursor-pointer"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+  </DialogContent>
+</Dialog>
+
+{/* Applicant Registration Rejection & Notification Modal */ }
+<Dialog open={!!smsApplicantModal} onOpenChange={(open) => !open && setSmsApplicantModal(null)}>
+  <DialogContent className="bg-white dark:bg-slate-900 max-w-lg max-h-[90vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle className="text-base font-bold flex items-center gap-2 text-red-600 dark:text-red-400">
+        <AlertCircle size={18} />
+        Reject Resident Application
+      </DialogTitle>
+      <DialogDescription className="text-xs text-slate-500">
+        Specify the discrepancy cause. The applicant will be notified immediately on their resident portal.
+      </DialogDescription>
+    </DialogHeader>
+
+    {smsApplicantModal && (
+      <form onSubmit={handleSendSmsNotice} className="space-y-4 py-2 text-xs">
+        {/* Applicant Card */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-2">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Applicant Name</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+              {smsApplicantModal.name || `${smsApplicantModal.first_name || ''} ${smsApplicantModal.last_name || ''}`}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Mobile Phone</span>
+            <span className="font-mono font-bold text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1">
+              <Phone size={11} className="text-indigo-600" />
+              {smsApplicantModal.phone && !smsApplicantModal.phone.includes('@') ? smsApplicantModal.phone : '09171234567'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Provided Birthday</span>
+            <span className="text-slate-700 dark:text-slate-300 font-mono font-medium">
+              {smsApplicantModal.date_of_birth && smsApplicantModal.date_of_birth !== '0000-00-00'
+                ? new Date(smsApplicantModal.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                : 'Not specified'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Submitted ID</span>
+            {smsApplicantModal.submitted_id ? (
+              <button
+                type="button"
+                onClick={() => setSelectedIdPreview(smsApplicantModal.submitted_id || null)}
+                className="text-[11px] text-indigo-600 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Eye size={11} /> View ID Document
+              </button>
+            ) : (
+              <span className="text-slate-400 text-[11px] italic">None attached</span>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Issue Reason Selector */}
+        <div>
+          <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Select Discrepancy Cause / Rejection Reason
+          </Label>
+          <div className="grid grid-cols-2 gap-2 mt-1.5">
+            {[
+              { key: 'Invalid / Blurry ID Photo', label: '📸 Blurry / Invalid ID' },
+              { key: 'Name Mismatch', label: '🏷️ Name Mismatch' },
+              { key: 'Birthday Discrepancy', label: '🎂 Birthday Mismatch' },
+              { key: 'Address Discrepancy', label: '📍 Address Issue' },
+            ].map(opt => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => handleNoticeReasonChange(opt.key, smsApplicantModal)}
+                className={`p-2 rounded-lg border text-left text-xs font-semibold transition-all cursor-pointer ${smsNoticeReason === opt.key
+                  ? 'border-red-600 bg-red-50 text-red-700 dark:bg-red-950 dark:border-red-500'
+                  : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700 dark:bg-slate-800 dark:border-slate-700'
+                  }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Rejection Cause Message Textarea */}
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Detailed Reason for Applicant <span className="text-red-500">*</span>
+            </Label>
+            <span className="text-[10px] text-slate-400 font-mono">
+              {smsCustomMessage.length} characters
+            </span>
+          </div>
+          <textarea
+            value={smsCustomMessage}
+            onChange={e => setSmsCustomMessage(e.target.value)}
+            rows={3}
+            required
+            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none leading-relaxed"
+            placeholder="Explain why the registration cannot be approved and what the resident should correct..."
+          />
+          <p className="text-[10px] text-slate-400 mt-1">
+            This explanation will be displayed prominently on the resident's portal and notification center.
+          </p>
+        </div>
+
+        {/* Notification Option Box */}
+        <div className="space-y-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            <span>Portal In-App Notification: <strong>Active (Always sent to resident)</strong></span>
+          </div>
+          <div className="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
+            <input
+              type="checkbox"
+              id="markRejectedCheckbox"
+              checked={smsMarkAsRejected}
+              onChange={e => setSmsMarkAsRejected(e.target.checked)}
+              className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+            />
+            <label htmlFor="markRejectedCheckbox" className="text-xs text-slate-600 dark:text-slate-400 font-medium cursor-pointer">
+              Also send SMS text alert to applicant mobile number
+            </label>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setSmsApplicantModal(null)}
+            className="text-xs cursor-pointer"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={smsSending || !smsCustomMessage.trim()}
+            className="bg-red-600 hover:bg-red-700 text-white text-xs gap-1.5 shadow-sm cursor-pointer"
+          >
+            <X size={13} />
+            {smsSending ? 'Processing Rejection...' : 'Confirm Rejection & Notify'}
+          </Button>
+        </DialogFooter>
+      </form>
+    )}
+  </DialogContent>
+</Dialog>
+
+{/* Global Issue & Process Barangay Document Modal */ }
+<Dialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
+  <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle className="text-base font-bold text-slate-900">Issue &amp; Process Barangay Document</DialogTitle>
+      <DialogDescription className="text-xs text-slate-500">
+        Fill in document parameters, auto-fill resident profile, and print or archive directly into completed records.
+      </DialogDescription>
+    </DialogHeader>
+    <form onSubmit={handleCreateDocument} className="space-y-4 py-2 text-xs">
+      {/* 1. Searchable Registered Resident / Census Selector */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <Search size={13} className="text-blue-600" />
+            Select Registered Resident / Census Search
+            <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">
+              (Searchable Dropdown • Auto-Syncs to Database)
+            </span>
+          </Label>
+          {docSelectedResident && (
+            <button
+              type="button"
+              onClick={handleUnlinkDocResident}
+              className="text-[11px] text-red-600 hover:text-red-700 font-semibold cursor-pointer flex items-center gap-1"
+            >
+              <X size={12} />
+              Unlink Record
+            </button>
+          )}
+        </div>
+
+        {!docSelectedResident ? (
+          <div className="relative">
+            <div className="relative flex items-center">
+              <Search size={14} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+              <Input
+                value={docResidentSearch}
+                onChange={e => {
+                  setDocResidentSearch(e.target.value);
+                  setIsDocSearchDropdownOpen(true);
+                }}
+                onFocus={() => {
+                  if (docResidentSearch.trim().length > 0) {
+                    setIsDocSearchDropdownOpen(true);
+                  }
+                }}
+                placeholder="Type name, letter, household #, or purok to auto-fill..."
+                className="text-xs pl-8 pr-8 bg-white border-slate-300 focus:border-blue-500 rounded-lg h-9 shadow-xs"
+              />
+              {docResidentSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDocResidentSearch('');
+                    setIsDocSearchDropdownOpen(false);
+                  }}
+                  className="absolute right-2 p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                  title="Clear search"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Dropdown Menu — ONLY displays when the user types something! */}
+            {docResidentSearch.trim().length > 0 && isDocSearchDropdownOpen && (
+              <div className="mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg divide-y divide-slate-100 max-h-56 overflow-y-auto z-20">
+                <div className="px-3 py-1.5 bg-slate-50 flex items-center justify-between text-[11px] font-semibold text-slate-600">
+                  <span>
+                    Matching Residents &amp; Census for &quot;{docResidentSearch.trim()}&quot; ({docResidentMatches.length})
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-normal">
+                    Click resident to auto-fill
+                  </span>
                 </div>
 
-                {/* 1-Click Demo Spreadsheet Test Helper */}
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                {/* Quick Manual Walk-in Option */}
+                <div
+                  onClick={handleManualDocConstituent}
+                  className="p-2.5 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-100"
+                >
                   <div className="flex items-center gap-2">
-                    <Sparkles size={16} className="text-amber-500 shrink-0" />
+                    <span className="text-sm">✍️</span>
                     <div>
-                      <span className="font-bold text-slate-800">Quick Test with Demo Dataset</span>
-                      <p className="text-[11px] text-slate-500">
-                        Load <span className="font-mono font-semibold text-slate-700">PUROK 1,3,4,5.xlsx</span> (1,804 records across 4 Puroks with health &amp; civic variables).
+                      <p className="text-xs font-semibold text-slate-800">
+                        Manual / Walk-in Constituent: &quot;{docResidentSearch.trim()}&quot;
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                        Proceed without linking to an existing database record
                       </p>
                     </div>
                   </div>
                   <Button
+                    type="button"
                     size="sm"
                     variant="outline"
-                    onClick={async () => {
-                      try {
-                        const res = await fetch('/PUROK 1,3,4,5.xlsx');
-                        const blob = await res.blob();
-                        const file = new File([blob], 'PUROK 1,3,4,5.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                        handleExcelFileSelect(file);
-                        toast.success('Loaded PUROK 1,3,4,5.xlsx demo file!');
-                      } catch (err: any) {
-                        toast.error('Could not load demo file: ' + err.message);
-                      }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleManualDocConstituent();
                     }}
-                    className="h-8 text-xs font-semibold text-emerald-700 border-emerald-300 hover:bg-emerald-50 shrink-0 cursor-pointer"
+                    className="h-6 px-2 text-[10px] font-semibold"
                   >
-                    Load PUROK 1,3,4,5.xlsx
+                    Use Manual
                   </Button>
                 </div>
-              </div>
-            ) : (
-              /* FILE LOADED PREVIEW & CONFIGURATION */
-              <div className="space-y-4">
-                {/* File Header Bar */}
-                <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700">
-                      <FileSpreadsheet size={20} />
+
+                {docResidentMatches.length > 0 ? (
+                  docResidentMatches.map(r => (
+                    <div
+                      key={`doc-res-match-${r.id}`}
+                      onClick={() => applyDocResidentMatch(r)}
+                      className="p-2.5 flex items-center justify-between hover:bg-blue-50/80 cursor-pointer transition-colors gap-2 group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                          {(r.first_name || 'R').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="truncate">
+                          <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700">
+                            {r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}
+                          </p>
+                          <p className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
+                            <span>Household: <strong className="font-mono text-blue-600">{r.household_number || 'N/A'}</strong></span>
+                            <span>•</span>
+                            <span>Purok {r.purok || '1'}</span>
+                            {r.gender && (
+                              <>
+                                <span>•</span>
+                                <span>{r.gender}</span>
+                              </>
+                            )}
+                            <span>•</span>
+                            <span className={r.is_census_only ? 'text-amber-600' : 'text-emerald-600 font-medium'}>
+                              {r.is_census_only ? 'Census Inhabitant' : 'Registered Resident'}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          applyDocResidentMatch(r);
+                        }}
+                        className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold rounded-lg shadow-2xs shrink-0 cursor-pointer"
+                      >
+                        Auto-Fill
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3.5 text-center space-y-2">
+                    <div className="flex items-center justify-center text-amber-500">
+                      <AlertCircle size={20} />
                     </div>
                     <div>
-                      <span className="font-bold text-slate-900 block">{excelFile.name}</span>
-                      <span className="text-[11px] text-slate-500">
-                        {(excelFile.size / 1024).toFixed(1)} KB • {parsedExcelRows.length} total rows detected • {excelSheets.length} sheet(s)
-                      </span>
-                    </div>
-                  </div>
-                  {!isImportingExcel && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={resetExcelImportState}
-                      className="h-7 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
-                    >
-                      Change File
-                    </Button>
-                  )}
-                </div>
-
-                {/* Multi-sheet Selector (if applicable) */}
-                {excelSheets.length > 1 && (
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide block mb-1.5">
-                      Select Sheet to Import:
-                    </label>
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedExcelSheet('all');
-                          if (excelWorkbook) parseWorkbookSheets(excelWorkbook, 'all');
-                        }}
-                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                          selectedExcelSheet === 'all'
-                            ? 'bg-emerald-700 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        All Sheets (Combined)
-                      </button>
-                      {excelSheets.map((sh) => (
-                        <button
-                          key={sh}
-                          type="button"
-                          onClick={() => {
-                            setSelectedExcelSheet(sh);
-                            if (excelWorkbook) parseWorkbookSheets(excelWorkbook, sh);
-                          }}
-                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                            selectedExcelSheet === sh
-                              ? 'bg-emerald-700 text-white shadow-xs'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                          }`}
-                        >
-                          {sh}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Dynamic Variables Auto-Detection Banner */}
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <CheckCircle2 size={14} className="text-emerald-600" />
-                      Dynamic Variable Detection &amp; Auto-Adaptive Schema
-                    </span>
-                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[10px]">
-                      {detectedNewColumns.length} Custom Variables
-                    </Badge>
-                  </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
-                    The system detected columns in your Excel file that will automatically be created in the database table schema so that all health, social, and civil variables are permanently stored:
-                  </p>
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {detectedNewColumns.map((col) => (
-                      <Badge
-                        key={col}
-                        variant="outline"
-                        className="bg-white border-emerald-300 text-emerald-800 font-semibold text-[10px]"
-                      >
-                        + {col}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Automatic Account Creation Notice */}
-                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-start gap-2.5 text-xs text-blue-900">
-                  <ShieldCheck size={16} className="text-blue-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold block">Automatic Citizen Portal Account Provisioning</span>
-                    <p className="text-[11px] text-blue-700 mt-0.5">
-                      A digital citizen portal account will automatically be created for each resident with standard default password (<span className="font-mono font-bold">Brgy@{new Date().getFullYear()}!</span>). Residents can claim and verify their credentials securely through the public Resident Search Engine.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Data Preview Table */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
-                      Parsed Records Preview (First 5 of {parsedExcelRows.length}):
-                    </label>
-                  </div>
-                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-52 overflow-x-auto text-[11px]">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-semibold">
-                        <tr>
-                          <th className="p-2">#</th>
-                          <th className="p-2">Household</th>
-                          <th className="p-2">Full Name</th>
-                          <th className="p-2">Age</th>
-                          <th className="p-2">Sex</th>
-                          {detectedNewColumns.slice(0, 4).map(c => (
-                            <th key={c} className="p-2 text-emerald-700">{c}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
-                        {parsedExcelRows.slice(0, 5).map((row, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="p-2 text-slate-400 font-mono">{idx + 1}</td>
-                            <td className="p-2 font-mono font-medium text-slate-700">
-                              {row['Household #'] || row['Household Number'] || row['household_number'] || '—'}
-                            </td>
-                            <td className="p-2 font-bold text-slate-900">
-                              {row['Full Name'] || row['Name'] || row['name'] || row['full_name'] || '—'}
-                            </td>
-                            <td className="p-2 text-slate-700">{row['Age'] || row['age'] || '—'}</td>
-                            <td className="p-2 text-slate-700">{row['Sex'] || row['Gender'] || row['sex'] || '—'}</td>
-                            {detectedNewColumns.slice(0, 4).map(c => (
-                              <td key={c} className="p-2 text-slate-600">{row[c] || '—'}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Import Progress Bar */}
-                {isImportingExcel && excelImportProgress && (
-                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
-                    <div className="flex justify-between items-center text-xs font-semibold text-emerald-900">
-                      <span>{excelImportProgress.stage}</span>
-                      <span>{Math.round((excelImportProgress.current / excelImportProgress.total) * 100)}%</span>
-                    </div>
-                    <div className="w-full bg-emerald-200 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${(excelImportProgress.current / excelImportProgress.total) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Success Summary Result */}
-                {excelImportResult && (
-                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2 text-xs text-emerald-900">
-                    <div className="flex items-center gap-2 font-bold text-sm text-emerald-800">
-                      <CheckCircle size={18} className="text-emerald-600" />
-                      Census Import &amp; Account Provisioning Complete!
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 pt-1 text-center">
-                      <div className="bg-white p-2 rounded-lg border border-emerald-200">
-                        <span className="text-[10px] text-slate-500 font-bold block uppercase">New Inhabitants</span>
-                        <span className="font-extrabold text-emerald-700 text-sm">{excelImportResult.imported}</span>
-                      </div>
-                      <div className="bg-white p-2 rounded-lg border border-emerald-200">
-                        <span className="text-[10px] text-slate-500 font-bold block uppercase">Updated Records</span>
-                        <span className="font-extrabold text-slate-700 text-sm">{excelImportResult.updated}</span>
-                      </div>
-                      <div className="bg-white p-2 rounded-lg border border-emerald-200">
-                        <span className="text-[10px] text-slate-500 font-bold block uppercase">Accounts Created</span>
-                        <span className="font-extrabold text-blue-700 text-sm">{excelImportResult.accounts}</span>
-                      </div>
-                    </div>
-                    {excelImportResult.columns.length > 0 && (
-                      <p className="text-[11px] text-emerald-700 pt-1">
-                        Dynamic columns registered: <span className="font-mono font-semibold">{excelImportResult.columns.join(', ')}</span>
+                      <p className="text-xs font-bold text-slate-800">
+                        No matching resident found for &quot;{docResidentSearch}&quot;
                       </p>
-                    )}
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        This resident is not yet registered in the Barangay database.
+                      </p>
+                    </div>
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-800 flex items-center justify-between text-left gap-2">
+                      <div>
+                        <span className="font-bold text-emerald-900 block">✨ Auto-Registration Enabled</span>
+                        <span>Enter constituent details below. When you issue the document, this person will be <strong>automatically added to the Barangay Census database</strong>!</span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleManualDocConstituent}
+                        className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg shrink-0 cursor-pointer"
+                      >
+                        Fill Form Below
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
             )}
           </div>
-
-          {/* Modal Footer */}
-          <div className="p-4 bg-slate-50 border-t border-slate-200 rounded-b-2xl flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isImportingExcel}
-              onClick={() => {
-                setIsExcelImportOpen(false);
-                resetExcelImportState();
-              }}
-              className="text-xs text-slate-600 hover:text-slate-800 cursor-pointer"
-            >
-              {excelImportResult ? 'Close' : 'Cancel'}
-            </Button>
-
-            {excelFile && !excelImportResult && (
+        ) : (
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-emerald-100 rounded-full text-emerald-700">
+                <CheckCircle2 size={16} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-emerald-950">
+                  Linked: {docSelectedResident.first_name} {docSelectedResident.last_name}
+                </p>
+                <p className="text-[11px] text-emerald-800">
+                  Household: <span className="font-mono font-semibold">{docSelectedResident.household_number || 'HH-N/A'}</span> • Purok {docSelectedResident.purok || '1'} • {docSelectedResident.gender || '—'} • {docSelectedResident.is_census_only ? 'Census Record' : 'Registered Resident'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
+                Database Linked
+              </Badge>
               <Button
-                size="sm"
-                disabled={isImportingExcel || parsedExcelRows.length === 0}
-                onClick={handleExecuteExcelImport}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 font-semibold px-4 cursor-pointer shadow-xs"
-              >
-                {isImportingExcel ? (
-                  <>
-                    <RefreshCcw size={13} className="animate-spin" />
-                    <span>Importing &amp; Provisioning...</span>
-                  </>
-                ) : (
-                  <>
-                    <FileSpreadsheet size={13} />
-                    <span>Start Census Import ({parsedExcelRows.length} Records)</span>
-                  </>
-                )}
-              </Button>
-            )}
-
-            {excelImportResult && (
-              <Button
+                type="button"
+                variant="outline"
                 size="sm"
                 onClick={() => {
-                  setIsExcelImportOpen(false);
-                  resetExcelImportState();
-                  setCensusViewMode('table');
+                  setDocSelectedResident(null);
+                  setDocResidentSearch('');
+                  setIsDocSearchDropdownOpen(true);
                 }}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs gap-1.5 font-semibold px-4 cursor-pointer"
+                className="h-6 text-[10px] px-2 bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100 cursor-pointer"
               >
-                View Updated Census Inhabitants
+                Change
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Resident Profile Card */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">Resident Information</span>
+          <span className="text-[10px] text-slate-400">Used for certificate variables</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="space-y-1 relative">
+            <Label className="text-[11px] text-slate-600">Full Name <span className="text-red-500">*</span> <span className="text-blue-500 font-normal">(type to search Census)</span></Label>
+            <Input
+              value={newDocName}
+              onChange={e => handleDocNameInput(e.target.value)}
+              onFocus={() => { if (docNameSuggestions.length > 0) setShowDocNameSuggestions(true); }}
+              onBlur={() => setTimeout(() => setShowDocNameSuggestions(false), 180)}
+              placeholder="Type name to search Census or enter manually..."
+              required
+              className="h-8 text-xs bg-white"
+              autoComplete="off"
+            />
+            {/* Census name suggestions dropdown */}
+            {showDocNameSuggestions && docNameSuggestions.length > 0 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-blue-200 rounded-lg shadow-xl overflow-hidden">
+                <div className="px-2 py-1 bg-blue-50 border-b border-blue-100">
+                  <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">📋 Census / Resident Matches</span>
+                </div>
+                {docNameSuggestions.map(r => (
+                  <button
+                    key={`census-sug-${r.id}`}
+                    type="button"
+                    onMouseDown={() => applyDocCensusSuggestion(r)}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-100 last:border-0 flex items-center gap-2"
+                  >
+                    <span className="text-sm">{r.is_census_only ? '📋' : '👤'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-slate-800 truncate">{r.first_name} {r.middle_name ? r.middle_name + ' ' : ''}{r.last_name}</div>
+                      <div className="text-[10px] text-slate-500">{r.purok ? `Purok ${r.purok}` : ''} • {r.gender || '—'} • {r.age ? `${r.age} yrs` : r.date_of_birth || '—'} {r.is_census_only ? '• Census Record' : '• Registered'}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-slate-600">Gender</Label>
+              <Select value={newDocGender} onValueChange={(v: any) => setNewDocGender(v)}>
+                <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Gender" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-slate-600">Civil Status</Label>
+              <Select value={newDocCivilStatus} onValueChange={setNewDocCivilStatus}>
+                <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Civil Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Single">Single</SelectItem>
+                  <SelectItem value="Married">Married</SelectItem>
+                  <SelectItem value="Widowed">Widowed</SelectItem>
+                  <SelectItem value="Separated">Separated</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Label className="text-[11px] text-slate-600">Purok / Zone</Label>
+            <Select value={newDocPurok} onValueChange={setNewDocPurok}>
+              <SelectTrigger className="h-8 text-xs bg-white"><SelectValue placeholder="Select Purok" /></SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5, 6].map(p => (
+                  <SelectItem key={`purok-doc-${p}`} value={`Purok ${p}`}>Purok {p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] text-slate-600">Age / Date of Birth</Label>
+            <Input
+              value={newDocAge}
+              onChange={e => setNewDocAge(e.target.value)}
+              placeholder="e.g. 28 yrs old"
+              className="h-8 text-xs bg-white"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Document Type Selection */}
+      <div className="space-y-1">
+        <Label className="text-xs font-semibold text-slate-700">Document Type <span className="text-red-500">*</span></Label>
+        <Select value={newDocType} onValueChange={handleNewDocTypeChange}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select Document Type" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Barangay Clearance">Barangay Clearance</SelectItem>
+            <SelectItem value="Certificate of Residency">Certificate of Residency</SelectItem>
+            <SelectItem value="Certificate of Indigency">Certificate of Indigency</SelectItem>
+            <SelectItem value="Good Moral Clearance">Good Moral Clearance</SelectItem>
+            <SelectItem value="Business Clearance">Business Clearance</SelectItem>
+            <SelectItem value="Business Permit">Business Permit</SelectItem>
+            <SelectItem value="Certificate of Employment">Certificate of Employment</SelectItem>
+            <SelectItem value="Certificate of Land Occupancy">Certificate of Land Occupancy (Actual Occupancy)</SelectItem>
+            <SelectItem value="Barangay ID">Barangay ID</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* 4. Dynamic Document Fields (Matches Resident Portal exactly) */}
+      {/* For Certificate of Land Occupancy */}
+      {(newDocType === 'Certificate of Land Occupancy' || newDocType === 'Actual Occupancy') && (
+        <div className="space-y-2.5 bg-amber-50/70 border border-amber-200 rounded-xl p-3">
+          <span className="font-bold text-amber-900 text-[11px] uppercase tracking-wide">Land Occupancy Details</span>
+          <div className="space-y-1">
+            <Label className="text-xs text-slate-700">Parcel Land Area (in Words &amp; Figures) <span className="text-red-500">*</span></Label>
+            <Input
+              value={newDocExtraFields['Land Area'] || ''}
+              onChange={e => setNewDocField('Land Area', e.target.value)}
+              placeholder="e.g. Nine Hundred Thirty-One (931)"
+              required
+              className="h-8 text-xs bg-white"
+            />
+            <p className="text-[10px] text-slate-400">e.g. Nine Hundred Thirty-One (931)</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-700">Lot Number (Lot #) <span className="text-red-500">*</span></Label>
+              <Input
+                value={newDocExtraFields['Lot Number'] || ''}
+                onChange={e => setNewDocField('Lot Number', e.target.value)}
+                placeholder="e.g. 1005"
+                required
+                className="h-8 text-xs bg-white"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-700">Survey Info</Label>
+              <Input
+                value={newDocExtraFields['Survey Info'] || ''}
+                onChange={e => setNewDocField('Survey Info', e.target.value)}
+                placeholder="e.g. PLS-74"
+                className="h-8 text-xs bg-white"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-slate-700">Year Started <span className="text-red-500">*</span></Label>
+            <Input
+              value={newDocExtraFields['Occupancy Since'] || ''}
+              onChange={e => setNewDocField('Occupancy Since', e.target.value)}
+              placeholder="e.g. 1970's (or 1995)"
+              required
+              className="h-8 text-xs bg-white"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* For Certificate of Employment */}
+      {newDocType === 'Certificate of Employment' && (
+        <div className="space-y-2.5 bg-blue-50/70 border border-blue-200 rounded-xl p-3">
+          <span className="font-bold text-blue-900 text-[11px] uppercase tracking-wide">Employment Details</span>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-700">Job Position <span className="text-red-500">*</span></Label>
+              <Input
+                value={newDocExtraFields['Job Position'] || ''}
+                onChange={e => setNewDocField('Job Position', e.target.value)}
+                placeholder="e.g. Barangay Tanod"
+                required
+                className="h-8 text-xs bg-white"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-700">Employer / Office <span className="text-red-500">*</span></Label>
+              <Input
+                value={newDocExtraFields['Employer'] || ''}
+                onChange={e => setNewDocField('Employer', e.target.value)}
+                placeholder="e.g. Barangay Hall / Office"
+                required
+                className="h-8 text-xs bg-white"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-700">Start Date <span className="text-red-500">*</span></Label>
+              <Input
+                value={newDocExtraFields['Start Date'] || ''}
+                onChange={e => setNewDocField('Start Date', e.target.value)}
+                placeholder="e.g. January 2022"
+                required
+                className="h-8 text-xs bg-white"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-700">End Date <span className="text-red-500">*</span></Label>
+              <Input
+                value={newDocExtraFields['End Date'] || ''}
+                onChange={e => setNewDocField('End Date', e.target.value)}
+                placeholder="e.g. Present"
+                required
+                className="h-8 text-xs bg-white"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* For Business Clearance / Permit */}
+      {(newDocType === 'Business Clearance' || newDocType === 'Business Permit') && (
+        <div className="space-y-2 bg-emerald-50/70 border border-emerald-200 rounded-xl p-3">
+          <span className="font-bold text-emerald-900 text-[11px] uppercase tracking-wide">Business Details</span>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-700">Business / Store Name <span className="text-red-500">*</span></Label>
+              <Input
+                value={newDocExtraFields['Business Name'] || ''}
+                onChange={e => setNewDocField('Business Name', e.target.value)}
+                placeholder="e.g. Dela Cruz Store"
+                required
+                className="h-8 text-xs bg-white"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-700">Nature of Business</Label>
+              <Input
+                value={newDocExtraFields['Nature of Business'] || ''}
+                onChange={e => setNewDocField('Nature of Business', e.target.value)}
+                placeholder="e.g. Sari-sari / Retail"
+                className="h-8 text-xs bg-white"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* For Certificate of Residency */}
+      {newDocType === 'Certificate of Residency' && (
+        <div className="space-y-1">
+          <Label className="text-xs text-slate-700">Years of Residency / Living in Barangay</Label>
+          <Input
+            value={newDocExtraFields['Duration of Residence'] || ''}
+            onChange={e => setNewDocField('Duration of Residence', e.target.value)}
+            placeholder="e.g. 5 years (or since 2019)"
+            className="h-8 text-xs"
+          />
+        </div>
+      )}
+
+      {/* Purpose */}
+      <div className="space-y-1">
+        <Label className="text-xs font-semibold text-slate-700">
+          {newDocType === 'Good Moral Clearance' ? 'Purpose / Application To Support' : 'State Purpose'} <span className="text-red-500">*</span>
+        </Label>
+        <Input
+          value={newDocPurpose}
+          onChange={e => setNewDocPurpose(e.target.value)}
+          placeholder={
+            newDocType === 'Good Moral Clearance'
+              ? 'e.g. Employment application / PRC Board Examination'
+              : newDocType === 'Certificate of Employment'
+                ? 'e.g. Proof of employment / Loan / Bank Requirement'
+                : (newDocType === 'Certificate of Land Occupancy' || newDocType === 'Actual Occupancy')
+                  ? 'e.g. Proof of land occupancy / Utility Connection'
+                  : (newDocType === 'Business Clearance' || newDocType === 'Business Permit')
+                    ? 'e.g. Business permit application / Renewal / Mayor\'s Permit'
+                    : newDocType === 'Certificate of Indigency'
+                      ? 'e.g. Medical Assistance / Scholarship / Burial / Legal Aid'
+                      : newDocType === 'Certificate of Residency'
+                        ? 'e.g. Postal ID / School Requirement / Police Clearance'
+                        : 'e.g. Bank Account / Loan / School Requirement / Employment'
+          }
+          required
+          className="h-8 text-xs"
+        />
+      </div>
+
+      <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-100">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => handleSaveAndPrintDoc(false)}
+          className="text-xs border-slate-300 hover:bg-slate-50 w-full sm:w-auto"
+        >
+          Save to Active Queue (Pending)
+        </Button>
+        <Button
+          type="button"
+          onClick={() => handleSaveAndPrintDoc(true)}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-1.5 shadow-sm w-full sm:w-auto"
+        >
+          <Printer size={13} />
+          Save, Print &amp; Archive (Completed)
+        </Button>
+      </DialogFooter>
+    </form>
+  </DialogContent>
+</Dialog>
+
+{/* Pending Applicant Review Modal */ }
+{
+  selectedApplicantForReview && (
+    <PendingApplicantReviewModal
+      applicant={selectedApplicantForReview}
+      isOpen={isApplicantReviewOpen}
+      allResidents={residents}
+      onClose={() => {
+        setIsApplicantReviewOpen(false);
+        setSelectedApplicantForReview(null);
+      }}
+      onApprove={async (id: number, linkCensusId?: number) => {
+        setIsApprovingApplicant(true);
+        try {
+          const applicant = selectedApplicantForReview;
+          const approveRes = await apiService.approveResident(id, user?.name || 'Admin', linkCensusId);
+          toast.success('Resident account approved and verified!', {
+            description: `Official login credentials dispatched to ${(approveRes as any)?.email || applicant?.email || 'resident email'} and SMS.`
+          });
+          if (applicant && (applicant.email || applicant.phone)) {
+            const applicantName = applicant.name || `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim() || 'Resident';
+            dispatchResidentNotification({
+              residentEmail: applicant.email || '',
+              residentName: applicantName,
+              phone: applicant.phone,
+              type: 'account',
+              title: '🎉 Account Verified & Approved',
+              message: `Mabuhay ${applicantName}! Your Barangay ${applicant.barangay || user?.barangay || 'Pianing'} resident account has been officially approved and verified by the Barangay Administration. You can now log in to the portal to request clearances, certificates, and access healthcare appointments.`,
+              statusBadge: 'Verified',
+              badgeColor: 'emerald',
+              barangay: applicant.barangay || user?.barangay || 'Pianing',
+              externalDispatchedByBackend: true
+            }).then(() => {
+              if (applicant.phone) {
+                toast.info(`📱 Live SMS verification sent to ${applicant.phone}`);
+              }
+              if (applicant.email) {
+                toast.info(`📧 Verification email dispatched to ${applicant.email}`);
+              }
+            }).catch(() => { });
+          }
+          setIsApplicantReviewOpen(false);
+          setSelectedApplicantForReview(null);
+          loadData();
+        } catch {
+          toast.error('Failed to approve resident');
+        } finally {
+          setIsApprovingApplicant(false);
+        }
+      }}
+      onRejectWithReason={async (id: number, reason: string) => {
+        await handleRejectWithDirectReason(id, reason);
+        setIsApplicantReviewOpen(false);
+        setSelectedApplicantForReview(null);
+      }}
+      approving={isApprovingApplicant}
+    />
+  )
+}
+
+{/* Super Admin User Permissions Modal */ }
+<UserPermissionsModal
+  isOpen={isPermissionsModalOpen}
+  onClose={() => {
+    setIsPermissionsModalOpen(false);
+    setSelectedUserForPermissions(null);
+  }}
+  user={selectedUserForPermissions}
+  onSave={handleSavePermissions}
+/>
+
+{/* Manual Resident Notification Dispatcher Modal */ }
+<ManualResidentNotifyModal
+  isOpen={isManualNotifyOpen}
+  onClose={() => {
+    setIsManualNotifyOpen(false);
+    setSelectedNotifyResident(null);
+  }}
+  defaultResident={selectedNotifyResident}
+  currentSenderRole={isSuperAdmin ? 'superadmin' : 'admin'}
+  currentSenderName={user?.name || 'Barangay Administrator'}
+  currentSenderBarangay={userBarangay || 'Pianing'}
+  residentsList={barangayResidents.map(r => ({
+    id: r.id,
+    name: `${r.first_name || ''} ${r.last_name || ''}`.trim(),
+    email: r.email,
+    phone: r.phone,
+    barangay: (r as any).barangay || userBarangay || 'Pianing',
+    purok: r.purok
+  }))}
+  initialCategory={notifyCategory}
+/>
+
+{/* Census Excel Import Modal */ }
+<Dialog
+  open={isExcelImportOpen}
+  onOpenChange={(open) => {
+    if (!isImportingExcel) {
+      setIsExcelImportOpen(open);
+      if (!open) resetExcelImportState();
+    }
+  }}
+>
+  <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0 rounded-2xl bg-white border border-slate-200 shadow-2xl">
+    {/* Header */}
+    <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 text-white rounded-t-2xl relative overflow-hidden">
+      <div className="relative z-10 flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-white/10 rounded-xl backdrop-blur-xs border border-white/20">
+            <FileSpreadsheet size={26} className="text-emerald-100" />
+          </div>
+          <div>
+            <DialogTitle className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              Upload Official Barangay Census
+              <Badge className="bg-emerald-500/40 text-emerald-100 border border-emerald-300/30 text-[10px]">
+                Excel / CSV
+              </Badge>
+            </DialogTitle>
+            <DialogDescription className="text-emerald-100/90 text-xs mt-1 max-w-xl">
+              Import your Barangay demographic census workbook (.xlsx, .xls, .csv). The system automatically detects missing variables (e.g. HPN, DM, FP Method, PhilHealth), dynamically creates missing table variables, and automatically provisions citizen portal accounts.
+            </DialogDescription>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div className="p-6 space-y-5">
+      {/* FILE DROPZONE & PICKER */}
+      {!excelFile ? (
+        <div className="space-y-4">
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const file = e.dataTransfer.files?.[0];
+              if (file) handleExcelFileSelect(file);
+            }}
+            className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50/70 transition-all rounded-2xl p-8 text-center cursor-pointer group"
+            onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.xlsx, .xls, .csv';
+              input.onchange = (e: any) => {
+                const file = e.target?.files?.[0];
+                if (file) handleExcelFileSelect(file);
+              };
+              input.click();
+            }}
+          >
+            <div className="w-14 h-14 mx-auto mb-3 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+              <UploadCloud size={28} />
+            </div>
+            <h3 className="font-bold text-slate-800 text-sm">
+              Choose Excel / Spreadsheet or drag &amp; drop here
+            </h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+              Supports <span className="font-semibold text-slate-700">.xlsx, .xls, and .csv</span>. Multi-sheet workbooks (e.g. PUROK 1, 3, 4, 5) are automatically parsed and structured.
+            </p>
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold shadow-2xs group-hover:border-emerald-400">
+              <FileSpreadsheet size={14} />
+              <span>Browse Local Files</span>
+            </div>
+          </div>
+
+          {/* 1-Click Demo Spreadsheet Test Helper */}
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-amber-500 shrink-0" />
+              <div>
+                <span className="font-bold text-slate-800">Quick Test with Demo Dataset</span>
+                <p className="text-[11px] text-slate-500">
+                  Load <span className="font-mono font-semibold text-slate-700">PUROK 1,3,4,5.xlsx</span> (1,804 records across 4 Puroks with health &amp; civic variables).
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const res = await fetch('/PUROK 1,3,4,5.xlsx');
+                  const blob = await res.blob();
+                  const file = new File([blob], 'PUROK 1,3,4,5.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                  handleExcelFileSelect(file);
+                  toast.success('Loaded PUROK 1,3,4,5.xlsx demo file!');
+                } catch (err: any) {
+                  toast.error('Could not load demo file: ' + err.message);
+                }
+              }}
+              className="h-8 text-xs font-semibold text-emerald-700 border-emerald-300 hover:bg-emerald-50 shrink-0 cursor-pointer"
+            >
+              Load PUROK 1,3,4,5.xlsx
+            </Button>
+          </div>
+        </div>
+      ) : (
+        /* FILE LOADED PREVIEW & CONFIGURATION */
+        <div className="space-y-4">
+          {/* File Header Bar */}
+          <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700">
+                <FileSpreadsheet size={20} />
+              </div>
+              <div>
+                <span className="font-bold text-slate-900 block">{excelFile.name}</span>
+                <span className="text-[11px] text-slate-500">
+                  {(excelFile.size / 1024).toFixed(1)} KB • {parsedExcelRows.length} total rows detected • {excelSheets.length} sheet(s)
+                </span>
+              </div>
+            </div>
+            {!isImportingExcel && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={resetExcelImportState}
+                className="h-7 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+              >
+                Change File
               </Button>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+
+          {/* Multi-sheet Selector (if applicable) */}
+          {excelSheets.length > 1 && (
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide block mb-1.5">
+                Select Sheet to Import:
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedExcelSheet('all');
+                    if (excelWorkbook) parseWorkbookSheets(excelWorkbook, 'all');
+                  }}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${selectedExcelSheet === 'all'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                >
+                  All Sheets (Combined)
+                </button>
+                {excelSheets.map((sh) => (
+                  <button
+                    key={sh}
+                    type="button"
+                    onClick={() => {
+                      setSelectedExcelSheet(sh);
+                      if (excelWorkbook) parseWorkbookSheets(excelWorkbook, sh);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${selectedExcelSheet === sh
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                  >
+                    {sh}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Dynamic Variables Auto-Detection Banner */}
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <CheckCircle2 size={14} className="text-emerald-600" />
+                Dynamic Variable Detection &amp; Auto-Adaptive Schema
+              </span>
+              <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[10px]">
+                {detectedNewColumns.length} Custom Variables
+              </Badge>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              The system detected columns in your Excel file that will automatically be created in the database table schema so that all health, social, and civil variables are permanently stored:
+            </p>
+            <div className="flex flex-wrap gap-1 pt-1">
+              {detectedNewColumns.map((col) => (
+                <Badge
+                  key={col}
+                  variant="outline"
+                  className="bg-white border-emerald-300 text-emerald-800 font-semibold text-[10px]"
+                >
+                  + {col}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {/* Automatic Account Creation Notice */}
+          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-start gap-2.5 text-xs text-blue-900">
+            <ShieldCheck size={16} className="text-blue-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block">Automatic Citizen Portal Account Provisioning</span>
+              <p className="text-[11px] text-blue-700 mt-0.5">
+                A digital citizen portal account will automatically be created for each resident with standard default password (<span className="font-mono font-bold">Brgy@{new Date().getFullYear()}!</span>). Residents can claim and verify their credentials securely through the public Resident Search Engine.
+              </p>
+            </div>
+          </div>
+
+          {/* Data Preview Table */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
+                Parsed Records Preview (First 5 of {parsedExcelRows.length}):
+              </label>
+            </div>
+            <div className="border border-slate-200 rounded-xl overflow-hidden max-h-52 overflow-x-auto text-[11px]">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-semibold">
+                  <tr>
+                    <th className="p-2">#</th>
+                    <th className="p-2">Household</th>
+                    <th className="p-2">Full Name</th>
+                    <th className="p-2">Age</th>
+                    <th className="p-2">Sex</th>
+                    {detectedNewColumns.slice(0, 4).map(c => (
+                      <th key={c} className="p-2 text-emerald-700">{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {parsedExcelRows.slice(0, 5).map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50">
+                      <td className="p-2 text-slate-400 font-mono">{idx + 1}</td>
+                      <td className="p-2 font-mono font-medium text-slate-700">
+                        {row['Household #'] || row['Household Number'] || row['household_number'] || '—'}
+                      </td>
+                      <td className="p-2 font-bold text-slate-900">
+                        {row['Full Name'] || row['Name'] || row['name'] || row['full_name'] || '—'}
+                      </td>
+                      <td className="p-2 text-slate-700">{row['Age'] || row['age'] || '—'}</td>
+                      <td className="p-2 text-slate-700">{row['Sex'] || row['Gender'] || row['sex'] || '—'}</td>
+                      {detectedNewColumns.slice(0, 4).map(c => (
+                        <td key={c} className="p-2 text-slate-600">{row[c] || '—'}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Import Progress Bar */}
+          {isImportingExcel && excelImportProgress && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+              <div className="flex justify-between items-center text-xs font-semibold text-emerald-900">
+                <span>{excelImportProgress.stage}</span>
+                <span>{Math.round((excelImportProgress.current / excelImportProgress.total) * 100)}%</span>
+              </div>
+              <div className="w-full bg-emerald-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(excelImportProgress.current / excelImportProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Success Summary Result */}
+          {excelImportResult && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2 text-xs text-emerald-900">
+              <div className="flex items-center gap-2 font-bold text-sm text-emerald-800">
+                <CheckCircle size={18} className="text-emerald-600" />
+                Census Import &amp; Account Provisioning Complete!
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                <div className="bg-white p-2 rounded-lg border border-emerald-200">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">New Inhabitants</span>
+                  <span className="font-extrabold text-emerald-700 text-sm">{excelImportResult.imported}</span>
+                </div>
+                <div className="bg-white p-2 rounded-lg border border-emerald-200">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">Updated Records</span>
+                  <span className="font-extrabold text-slate-700 text-sm">{excelImportResult.updated}</span>
+                </div>
+                <div className="bg-white p-2 rounded-lg border border-emerald-200">
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase">Accounts Created</span>
+                  <span className="font-extrabold text-blue-700 text-sm">{excelImportResult.accounts}</span>
+                </div>
+              </div>
+              {excelImportResult.columns.length > 0 && (
+                <p className="text-[11px] text-emerald-700 pt-1">
+                  Dynamic columns registered: <span className="font-mono font-semibold">{excelImportResult.columns.join(', ')}</span>
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+
+    {/* Modal Footer */}
+    <div className="p-4 bg-slate-50 border-t border-slate-200 rounded-b-2xl flex items-center justify-between">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={isImportingExcel}
+        onClick={() => {
+          setIsExcelImportOpen(false);
+          resetExcelImportState();
+        }}
+        className="text-xs text-slate-600 hover:text-slate-800 cursor-pointer"
+      >
+        {excelImportResult ? 'Close' : 'Cancel'}
+      </Button>
+
+      {excelFile && !excelImportResult && (
+        <Button
+          size="sm"
+          disabled={isImportingExcel || parsedExcelRows.length === 0}
+          onClick={handleExecuteExcelImport}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 font-semibold px-4 cursor-pointer shadow-xs"
+        >
+          {isImportingExcel ? (
+            <>
+              <RefreshCcw size={13} className="animate-spin" />
+              <span>Importing &amp; Provisioning...</span>
+            </>
+          ) : (
+            <>
+              <FileSpreadsheet size={13} />
+              <span>Start Census Import ({parsedExcelRows.length} Records)</span>
+            </>
+          )}
+        </Button>
+      )}
+
+      {excelImportResult && (
+        <Button
+          size="sm"
+          onClick={() => {
+            setIsExcelImportOpen(false);
+            resetExcelImportState();
+            setCensusViewMode('table');
+          }}
+          className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs gap-1.5 font-semibold px-4 cursor-pointer"
+        >
+          View Updated Census Inhabitants
+        </Button>
+      )}
+    </div>
+  </DialogContent>
+</Dialog>
     </div>
   );
 }
