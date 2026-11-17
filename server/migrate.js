@@ -58,7 +58,7 @@ async function syncAllSchemas(connection) {
   // 2. Users
   await safeExecute(connection, "ALTER TABLE `users` MODIFY COLUMN `role` VARCHAR(50) NOT NULL DEFAULT 'resident'");
   await safeExecute(connection, "ALTER TABLE `users` MODIFY COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'Active'");
-  await safeExecute(connection, "ALTER TABLE `users` MODIFY COLUMN `verification_status` ENUM('Verified', 'Pending_Review', 'Rejected', 'Unverified', 'Pending') NOT NULL DEFAULT 'Pending_Review'");
+  await safeExecute(connection, "ALTER TABLE `users` MODIFY COLUMN `verification_status` ENUM('Verified', 'Pending_Review', 'Correction_Required', 'Rejected', 'Unverified', 'Pending') NOT NULL DEFAULT 'Pending_Review'");
   await safeExecute(connection, "ALTER TABLE `users` MODIFY COLUMN `password_hash` VARCHAR(255) NOT NULL");
   await safeExecute(connection, "ALTER TABLE `users` MODIFY COLUMN `civil_status` VARCHAR(50) DEFAULT 'Single'");
   await safeExecute(connection, "ALTER TABLE `users` MODIFY COLUMN `phone` VARCHAR(50) DEFAULT ''");
@@ -81,7 +81,7 @@ async function syncAllSchemas(connection) {
   await safeAddColumn(connection, 'users', 'staged_password', "VARCHAR(255) NULL DEFAULT NULL");
 
   // 3. Residents
-  await safeExecute(connection, "ALTER TABLE `residents` MODIFY COLUMN `verification_status` ENUM('Verified', 'Pending_Review', 'Rejected', 'Unverified', 'Pending') NOT NULL DEFAULT 'Pending_Review'");
+  await safeExecute(connection, "ALTER TABLE `residents` MODIFY COLUMN `verification_status` ENUM('Verified', 'Pending_Review', 'Correction_Required', 'Rejected', 'Unverified', 'Pending') NOT NULL DEFAULT 'Pending_Review'");
   await safeExecute(connection, "ALTER TABLE `residents` MODIFY COLUMN `civil_status` VARCHAR(50) DEFAULT 'Single'");
   await safeExecute(connection, "ALTER TABLE `residents` MODIFY COLUMN `gender` VARCHAR(20) DEFAULT 'Male'");
 
@@ -127,6 +127,20 @@ async function syncAllSchemas(connection) {
     WHERE \`linked_user_id\` IS NULL 
       AND \`claimed_at\` IS NULL 
       AND (\`verification_status\` = 'Verified' OR \`verification_status\` IS NULL)
+  `);
+
+  // Heal any records where verification_status became empty or unlisted during a correction request
+  await safeExecute(connection, `
+    UPDATE \`residents\` 
+    SET \`verification_status\` = 'Correction_Required' 
+    WHERE (\`verification_status\` = '' OR \`verification_status\` IS NULL)
+      AND (\`rejection_reason\` IS NOT NULL AND \`rejection_reason\` != '')
+  `);
+  await safeExecute(connection, `
+    UPDATE \`users\` 
+    SET \`verification_status\` = 'Correction_Required' 
+    WHERE (\`verification_status\` = '' OR \`verification_status\` IS NULL)
+      AND (\`rejection_reason\` IS NOT NULL AND \`rejection_reason\` != '')
   `);
 
   // 4. Messages

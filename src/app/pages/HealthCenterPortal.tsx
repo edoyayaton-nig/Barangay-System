@@ -768,7 +768,7 @@ export default function HealthCenterPortal() {
             </div>
             <Button size="sm" onClick={() => navigate('/login')} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-9 px-4 shrink-0">Sign In</Button>
           </div>
-        ) : user?.verification_status === 'Rejected' && !isRejectionBannerDismissed ? (
+        ) : (user?.verification_status === 'Rejected' || user?.verification_status === 'Correction_Required') && !isRejectionBannerDismissed ? (
           <div className="relative flex items-center justify-between gap-4 bg-red-50 rounded-2xl border border-red-200 p-4 pr-12">
             <button
               type="button"

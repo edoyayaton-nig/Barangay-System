@@ -2142,7 +2142,7 @@ app.put('/api/residents/:id/reject', async (req, res) => {
         targetEmail = rows[0].email;
         targetPhone = rows[0].phone;
         residentName = `${rows[0].first_name} ${rows[0].last_name}`.trim();
-        await pool.query("UPDATE residents SET verification_status = 'Rejected', rejection_reason = ? WHERE id = ?", [rejectionCause, id]);
+        await pool.query("UPDATE residents SET verification_status = 'Correction_Required', rejection_reason = ? WHERE id = ?", [rejectionCause, id]);
       } else {
         const [uRows] = await pool.query("SELECT name, email, phone FROM users WHERE id = ?", [id]);
         if (uRows.length > 0) {
@@ -2153,8 +2153,8 @@ app.put('/api/residents/:id/reject', async (req, res) => {
       }
 
       if (targetEmail) {
-        await pool.query("UPDATE users SET verification_status = 'Rejected', rejection_reason = ? WHERE LOWER(email) = LOWER(?)", [rejectionCause, targetEmail]);
-        await pool.query("UPDATE residents SET verification_status = 'Rejected', rejection_reason = ? WHERE LOWER(email) = LOWER(?)", [rejectionCause, targetEmail]);
+        await pool.query("UPDATE users SET verification_status = 'Correction_Required', rejection_reason = ? WHERE LOWER(email) = LOWER(?)", [rejectionCause, targetEmail]);
+        await pool.query("UPDATE residents SET verification_status = 'Correction_Required', rejection_reason = ? WHERE LOWER(email) = LOWER(?)", [rejectionCause, targetEmail]);
       }
 
       // Send SMS notice to resident explaining the correction required
@@ -2186,26 +2186,26 @@ app.put('/api/residents/:id/reject', async (req, res) => {
   }
   const idx = mockData.pendingRegistrations.findIndex(r => String(r.id) === String(id));
   if (idx !== -1) {
-    mockData.pendingRegistrations[idx].verification_status = 'Rejected';
+    mockData.pendingRegistrations[idx].verification_status = 'Correction_Required';
     mockData.pendingRegistrations[idx].rejection_reason = rejectionCause;
     const email = mockData.pendingRegistrations[idx].email;
     const u = mockData.users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (u) {
-      u.verification_status = 'Rejected';
+      u.verification_status = 'Correction_Required';
       u.rejection_reason = rejectionCause;
     }
     if (email) {
       sendVerificationNoticeEmail({
         to: email,
         fullName: mockData.pendingRegistrations[idx].first_name + ' ' + mockData.pendingRegistrations[idx].last_name,
-        status: 'Rejected',
+        status: 'Correction_Required',
         reason: rejectionCause
       }).catch(() => {});
     }
   }
   const rIdx = mockData.residents.findIndex(r => String(r.id) === String(id));
   if (rIdx !== -1) {
-    mockData.residents[rIdx].verification_status = 'Rejected';
+    mockData.residents[rIdx].verification_status = 'Correction_Required';
     mockData.residents[rIdx].rejection_reason = rejectionCause;
   }
   res.json({ success: true, message: 'Notice sent to resident. The resident can now resubmit a corrected ID on their portal.' });

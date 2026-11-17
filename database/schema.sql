@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `password_hash` VARCHAR(255) NOT NULL,
   `role` VARCHAR(50) NOT NULL DEFAULT 'resident',
   `status` ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
-  `verification_status` ENUM('Verified', 'Unverified', 'Pending_Review', 'Rejected', 'Pending') NOT NULL DEFAULT 'Verified',
+  `verification_status` ENUM('Verified', 'Unverified', 'Pending_Review', 'Correction_Required', 'Rejected', 'Pending') NOT NULL DEFAULT 'Verified',
   `civil_status` ENUM('Single', 'Married', 'Widowed', 'Separated') DEFAULT 'Single',
   `phone` VARCHAR(20) DEFAULT '',
   `address` VARCHAR(255) DEFAULT '',
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS `residents` (
   `is_census_only` TINYINT(1) DEFAULT 0,
   `years_of_residency` VARCHAR(50) DEFAULT NULL COMMENT 'How many years resident has lived in barangay',
   `staged_password` VARCHAR(255) NULL DEFAULT NULL,
-  `verification_status` ENUM('Verified', 'Unverified', 'Pending_Review', 'Rejected', 'Pending') DEFAULT 'Pending_Review',
+  `verification_status` ENUM('Verified', 'Unverified', 'Pending_Review', 'Correction_Required', 'Rejected', 'Pending') DEFAULT 'Pending_Review',
   `rejection_reason` TEXT DEFAULT NULL,
   `last_profile_update_note` TEXT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP

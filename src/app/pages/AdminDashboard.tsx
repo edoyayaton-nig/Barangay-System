@@ -3100,7 +3100,7 @@ export default function AdminDashboard() {
 
       // Local Barangay Superadmin / Admin / Staff: strictly isolated to their own barangay
       const cleanAdminB = (userBarangay || 'Pianing').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
-      const bLower = (res.barangay || '').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
+      const bLower = (res.barangay || userBarangay || 'Pianing').toLowerCase().replace(/^barangay\s+/i, '').replace(/^brgy\.?\s+/i, '').trim();
       const addr = (res.address || '').toLowerCase();
       return bLower === cleanAdminB || bLower.includes(cleanAdminB) || cleanAdminB.includes(bLower) || addr.includes(cleanAdminB);
     })

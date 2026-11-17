@@ -401,10 +401,10 @@ export default function ResidentProfileModal({
                         <Clock size={11} className="mr-1 text-amber-600" />
                         Pending Review
                       </Badge>
-                    ) : resident?.verification_status === 'Rejected' ? (
+                    ) : resident?.verification_status === 'Rejected' || resident?.verification_status === 'Correction_Required' ? (
                       <Badge variant="outline" className="text-[11px] bg-rose-50 text-rose-700 border-rose-300 shrink-0 py-0 px-2 font-semibold">
                         <XCircle size={11} className="mr-1 text-rose-600" />
-                        Application Rejected
+                        {resident?.verification_status === 'Correction_Required' ? 'Correction Requested' : 'Application Rejected'}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-[11px] bg-slate-100 text-slate-700 border-slate-300 shrink-0 py-0 px-2 font-semibold">

@@ -957,7 +957,7 @@ export default function BarangayPortal() {
               Sign In / Register
             </Button>
           </div>
-        ) : user?.verification_status === 'Rejected' && !isRejectionBannerDismissed ? (
+        ) : (user?.verification_status === 'Rejected' || user?.verification_status === 'Correction_Required') && !isRejectionBannerDismissed ? (
           /* Prominent Rejection Banner with Cause */
           <div className="relative bg-red-50 dark:bg-red-950/40 border-2 border-red-300 dark:border-red-800 rounded-2xl p-4 sm:p-5 pr-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
             <button

@@ -253,12 +253,63 @@ class ResidentController extends Controller
         if (!empty($barangay) && !str_contains(strtolower($barangay), 'all') && !str_contains(strtolower($barangay), 'city-wide')) {
             $norm = AuthController::normalizeBarangayName($barangay);
             $query->where(function ($q) use ($norm) {
-                $q->whereRaw('LOWER(barangay) = ?', [strtolower($norm)])
-                  ->orWhereRaw('LOWER(address) LIKE ?', ['%' . strtolower($norm) . '%']);
+                $q->whereRaw('LOWER(COALESCE(barangay, "Pianing")) = ?', [strtolower($norm)])
+                  ->orWhereRaw('LOWER(COALESCE(address, "")) LIKE ?', ['%' . strtolower($norm) . '%'])
+                  ->orWhereRaw('LOWER(COALESCE(barangay, "")) LIKE ?', ['%' . strtolower($norm) . '%']);
             });
         }
 
         $pending = $query->orderBy('submitted_at', 'desc')->get();
+
+        // Also cross-check users table so any resident user account pending verification is never missed
+        $pendingEmails = $pending->pluck('email')->filter()->map(fn($e) => strtolower(trim($e)))->toArray();
+        $pendingUserIds = $pending->pluck('linked_user_id')->filter()->toArray();
+
+        $userQuery = User::where('role', 'resident')
+            ->whereIn('verification_status', ['Pending_Review', 'Pending', 'Correction_Required', 'Rejected'])
+            ->where(function($q) {
+                $q->where('status', '!=', 'Archived')->orWhereNull('status');
+            });
+
+        if (!empty($barangay) && !str_contains(strtolower($barangay), 'all') && !str_contains(strtolower($barangay), 'city-wide')) {
+            $norm = AuthController::normalizeBarangayName($barangay);
+            $userQuery->where(function ($q) use ($norm) {
+                $q->whereRaw('LOWER(COALESCE(barangay, "Pianing")) = ?', [strtolower($norm)])
+                  ->orWhereRaw('LOWER(COALESCE(address, "")) LIKE ?', ['%' . strtolower($norm) . '%'])
+                  ->orWhereRaw('LOWER(COALESCE(barangay, "")) LIKE ?', ['%' . strtolower($norm) . '%']);
+            });
+        }
+
+        $extraUsers = $userQuery->get()->filter(function ($u) use ($pendingEmails, $pendingUserIds) {
+            $uEmail = strtolower(trim($u->email));
+            return !in_array($uEmail, $pendingEmails) && !in_array($u->id, $pendingUserIds);
+        });
+
+        foreach ($extraUsers as $u) {
+            $nameParts = explode(' ', trim($u->name));
+            $fName = $nameParts[0] ?? 'Resident';
+            $lName = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : '';
+
+            $synthResident = new Resident();
+            $synthResident->forceFill([
+                'id' => $u->id,
+                'first_name' => $fName,
+                'last_name' => $lName,
+                'email' => $u->email,
+                'phone' => $u->phone,
+                'address' => $u->address ?: ("Barangay " . ($u->barangay ?: 'Pianing') . ", Butuan City"),
+                'barangay' => $u->barangay ?: 'Pianing',
+                'purok' => $u->purok ?: '1',
+                'civil_status' => $u->civil_status ?: 'Single',
+                'submitted_id' => $u->submitted_id,
+                'id_type' => $u->id_type ?: 'Government ID',
+                'verification_status' => $u->verification_status,
+                'rejection_reason' => $u->rejection_reason,
+                'linked_user_id' => $u->id,
+                'submitted_at' => $u->created_at ?: now(),
+            ]);
+            $pending->push($synthResident);
+        }
 
         // Cross-reference each pending application against official census records
         $pendingIds = $pending->pluck('id')->toArray();
@@ -804,18 +855,34 @@ class ResidentController extends Controller
 
         $reason = $request->input('rejection_reason') ?: $request->input('reason') ?: 'Uploaded Government ID is blurry or unreadable. Please upload a clear photo.';
 
-        // Use 'Correction_Required' / 'Rejected' status — NEVER delete the user submission!
+        // Use 'Correction_Required' status — NEVER delete or unlist the user submission!
+        // Record MUST remain in the Pending Verification queue with status 'Correction_Required'.
         if ($resident) {
-            $resident->update([
+            $residentUpdate = [
                 'verification_status' => 'Correction_Required',
                 'rejection_reason' => $reason,
-            ]);
+            ];
+            if (empty($resident->submitted_at)) {
+                $residentUpdate['submitted_at'] = now();
+            }
+            if (empty($resident->barangay) && !empty($user?->barangay)) {
+                $residentUpdate['barangay'] = $user->barangay;
+            } elseif (empty($resident->barangay)) {
+                $residentUpdate['barangay'] = 'Pianing';
+            }
+            $resident->update($residentUpdate);
         }
         if ($user) {
-            $user->update([
+            $userUpdate = [
                 'verification_status' => 'Correction_Required',
                 'rejection_reason' => $reason,
-            ]);
+            ];
+            if (empty($user->barangay) && !empty($resident?->barangay)) {
+                $userUpdate['barangay'] = $resident->barangay;
+            } elseif (empty($user->barangay)) {
+                $userUpdate['barangay'] = 'Pianing';
+            }
+            $user->update($userUpdate);
         }
 
         $email = $resident?->email ?: ($user?->email ?: '');

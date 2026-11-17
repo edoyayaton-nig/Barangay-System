@@ -572,7 +572,7 @@ class SystemController extends Controller
     {
         $admins = User::where('role', 'admin')->where('status', 'Active')->get();
         $resCounts = Resident::select('barangay', DB::raw('COUNT(*) as cnt'))->groupBy('barangay')->pluck('cnt', 'barangay')->toArray();
-        $pendCounts = Resident::where('verification_status', 'Pending_Review')->select('barangay', DB::raw('COUNT(*) as cnt'))->groupBy('barangay')->pluck('cnt', 'barangay')->toArray();
+        $pendCounts = Resident::whereIn('verification_status', ['Pending_Review', 'Pending', 'Correction_Required', 'Rejected'])->select('barangay', DB::raw('COUNT(*) as cnt'))->groupBy('barangay')->pluck('cnt', 'barangay')->toArray();
         $docCounts = DocumentRequest::select('barangay', DB::raw('COUNT(*) as cnt'))->groupBy('barangay')->pluck('cnt', 'barangay')->toArray();
 
         $resMap = [];
