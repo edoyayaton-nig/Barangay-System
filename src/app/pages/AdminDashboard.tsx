@@ -498,7 +498,7 @@ export default function AdminDashboard() {
 
       toast.success(`Excel Census successfully imported! ${totalImported} records synced, ${totalAccounts} citizen accounts provisioned.`);
       await handleRefreshCensus();
-      await fetchResidents();
+      await loadData(false);
     } catch (err: any) {
       toast.error('Import process failed: ' + (err?.message || 'Unknown error'));
     } finally {

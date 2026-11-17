@@ -151,3 +151,4 @@ assert(defaultPassword.length >= 8);
 console.log('  ✓ Automatic account provisioning produces compliant email and staged password');
 
 console.log('\n✓ Phase 13 Excel Census Import & Dynamic Variables: ALL TESTS PASSED!\n');
+
