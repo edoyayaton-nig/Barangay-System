@@ -4378,6 +4378,300 @@ app.get('/api/census/households', async (req, res) => {
 });
 
 // -------------------------------------------------------------
+// Excel Census Import Endpoint (Dynamic Schema & Auto Accounts)
+// -------------------------------------------------------------
+app.post('/api/census/import-records', async (req, res) => {
+  const { records = [], new_columns = [], barangay = 'Pianing', auto_create_accounts = true } = req.body;
+
+  if (!Array.isArray(records) || records.length === 0) {
+    return res.status(400).json({ success: false, error: 'No census records provided for import.' });
+  }
+
+  const pool = getPool();
+  let importedCount = 0;
+  let updatedCount = 0;
+  let accountsCreated = 0;
+  const dynamicallyAdded = [];
+
+  // Helper date parser
+  const parseExcelDate = (val, fallbackAge) => {
+    if (!val || String(val).toLowerCase() === '[blank]') {
+      if (fallbackAge && !isNaN(fallbackAge)) {
+        const yr = new Date().getFullYear() - Number(fallbackAge);
+        return `${yr}-06-15`;
+      }
+      return null;
+    }
+    if (!isNaN(val) && Number(val) > 1000) {
+      const utcDays = Math.floor(Number(val) - 25569);
+      const timestamp = utcDays * 86400 * 1000;
+      const d = new Date(timestamp);
+      return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : null;
+    }
+    if (typeof val === 'string') {
+      const parts = val.trim().split(/[-/]/);
+      if (parts.length === 3) {
+        let [m, d, y] = parts.map(n => parseInt(n, 10));
+        if (y < 100) y += (y > 30 ? 1900 : 2000);
+        if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+          return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        }
+      }
+      const t = Date.parse(val);
+      if (!isNaN(t)) return new Date(t).toISOString().split('T')[0];
+    }
+    if (fallbackAge && !isNaN(fallbackAge)) {
+      const yr = new Date().getFullYear() - Number(fallbackAge);
+      return `${yr}-06-15`;
+    }
+    return null;
+  };
+
+  // Helper name parser
+  const parseExcelName = (rawName) => {
+    if (!rawName) return { first_name: 'Resident', middle_name: '', last_name: '' };
+    let clean = String(rawName).replace(/^[*•#\-\s]+/, '').replace(/\[Blank\]/gi, '').trim();
+    if (!clean) return { first_name: 'Resident', middle_name: '', last_name: '' };
+
+    if (clean.includes(',')) {
+      const parts = clean.split(',').map(s => s.trim());
+      const lastName = parts[0] || '';
+      const remainder = parts[1] || '';
+      const words = remainder.split(/\s+/).filter(Boolean);
+      if (words.length <= 1) {
+        return { first_name: words[0] || clean, middle_name: '', last_name: lastName || clean };
+      }
+      const middleName = words.pop();
+      const firstName = words.join(' ');
+      return { first_name: firstName || middleName, middle_name: firstName ? middleName : '', last_name: lastName };
+    } else {
+      const words = clean.split(/\s+/).filter(Boolean);
+      if (words.length === 1) return { first_name: words[0], middle_name: '', last_name: '' };
+      if (words.length === 2) return { first_name: words[0], middle_name: '', last_name: words[1] };
+      const lastName = words.pop();
+      const middleName = words.pop();
+      const firstName = words.join(' ');
+      return { first_name: firstName, middle_name: middleName, last_name: lastName };
+    }
+  };
+
+  if (pool && getStatus().connected) {
+    try {
+      // 1. Get existing columns
+      const [colRows] = await pool.query('SHOW COLUMNS FROM residents');
+      const existingCols = new Set(colRows.map(c => c.Field.toLowerCase()));
+
+      // Ensure extra_fields exists
+      if (!existingCols.has('extra_fields')) {
+        await pool.query('ALTER TABLE `residents` ADD COLUMN `extra_fields` LONGTEXT NULL');
+        existingCols.add('extra_fields');
+      }
+
+      // 2. Dynamic schema addition for custom variables
+      const sampleKeys = new Set(new_columns);
+      for (const r of records.slice(0, 50)) {
+        for (const k of Object.keys(r)) sampleKeys.add(k);
+      }
+
+      const ignoredKeys = new Set([
+        'id', 'created_at', 'updated_at', 'household', 'household_number', 'household_#',
+        'line_#', 'line_number', 'full_name', 'name', 'b_date', 'birthdate', 'dob',
+        'sex', 'gender', 'age', 'purok', 'barangay', 'phone', 'email', 'address',
+        'employment_status', 'civil_status', 'is_head_of_household', 'relationship_to_head'
+      ]);
+
+      for (const rawKey of sampleKeys) {
+        let safeKey = String(rawKey).toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, '').replace(/_+/g, '_');
+        if (['hpn'].includes(safeKey)) safeKey = 'hpn';
+        else if (['dm'].includes(safeKey)) safeKey = 'dm';
+        else if (['fp_method', 'fpmethod', 'fp'].includes(safeKey)) safeKey = 'fp_method';
+        else if (['phic_no', 'philhealth_no', 'philhealth', 'phic'].includes(safeKey)) safeKey = 'phic_no';
+        else if (['nhts'].includes(safeKey)) safeKey = 'nhts';
+        else if (['ips', 'ip'].includes(safeKey)) safeKey = 'ips';
+        else if (safeKey.includes('remark')) safeKey = 'remarks';
+        else if (safeKey.includes('note')) safeKey = 'notes';
+
+        if (!safeKey || ignoredKeys.has(safeKey)) continue;
+
+        if (!existingCols.has(safeKey)) {
+          try {
+            const colType = ['remarks', 'notes', 'header_notes', 'marginal_notes'].includes(safeKey) ? 'TEXT' : 'VARCHAR(255)';
+            await pool.query(`ALTER TABLE \`residents\` ADD COLUMN \`${safeKey}\` ${colType} NULL`);
+            existingCols.add(safeKey);
+            dynamicallyAdded.push(safeKey);
+          } catch (colErr) {
+            // Already added or concurrent alter
+          }
+        }
+      }
+
+      const defaultPassword = `Brgy@${new Date().getFullYear()}!`;
+      const defaultPasswordHash = await bcrypt.hash(defaultPassword, 10);
+
+      // Process rows
+      for (const row of records) {
+        const rawName = row['Full Name'] || row['Name'] || row['name'] || row['full_name'] || '';
+        const { first_name, middle_name, last_name } = parseExcelName(rawName);
+
+        if (!first_name || (first_name.toLowerCase() === 'resident' && !last_name)) continue;
+
+        const rawPurok = row['purok'] || row['Purok'] || row['sheet'] || '1';
+        const cleanPurok = String(rawPurok).replace(/[^0-9]/g, '').trim() || '1';
+
+        const rawAge = row['Age'] || row['age'];
+        let cleanAge = null;
+        if (rawAge && rawAge !== '[Blank]') {
+          cleanAge = !isNaN(rawAge) ? Number(rawAge) : parseInt(String(rawAge).replace(/[^0-9]/g, ''), 10) || null;
+        }
+
+        const rawDob = row['B-Date'] || row['B-date'] || row['b_date'] || row['birthdate'] || row['Date of Birth'];
+        const dob = parseExcelDate(rawDob, cleanAge);
+
+        const rawSex = String(row['Sex'] || row['Gender'] || row['sex'] || '').toUpperCase().trim();
+        const gender = (rawSex.startsWith('F') || rawSex === 'FEMALE') ? 'Female' : 'Male';
+
+        const rawHh = row['Household #'] || row['Household Number'] || row['household_number'] || 'Household # 1';
+        const hhDigits = String(rawHh).replace(/[^0-9]/g, '').trim() || '1';
+        const hhNumber = `P${cleanPurok}-H${hhDigits}`;
+        const familyName = last_name || row['family_name'] || 'Resident';
+
+        const rawLine = row['Line #'] || row['Line Number'] || row['line_number'];
+        const isHead = (rawLine == 1 || String(rawLine).includes('1'));
+        const relToHead = isHead ? 'Head' : (row['relationship_to_head'] || 'Member');
+
+        const isSenior = cleanAge && cleanAge >= 60;
+        const isChild = cleanAge && cleanAge < 18;
+        const empStatus = row['employment_status'] || (isSenior ? 'Retired' : (isChild ? 'Student' : 'Employed'));
+
+        const cleanVal = v => (v === undefined || v === null || String(v).trim() === '' || String(v).trim() === '[Blank]') ? null : String(v).trim();
+
+        const hpnVal = cleanVal(row['HPN'] || row['hpn']);
+        const dmVal = cleanVal(row['DM'] || row['dm']);
+        const fpVal = cleanVal(row['FP Method'] || row['fp_method']);
+        const phicVal = cleanVal(row['PHIC NO'] || row['PhilHealth No.'] || row['phic_no']);
+        const nhtsVal = cleanVal(row['NHTS'] || row['nhts']);
+        const ipsVal = cleanVal(row['IPs'] || row['IPS'] || row['ips']);
+        const remarksVal = cleanVal(row['Remarks / Side Notes'] || row['Remarks'] || row['remarks']);
+        const notesVal = cleanVal(row['Notes / Marginal Notes'] || row['Notes'] || row['notes'] || row['Top-Level Metadata / Header Notes']);
+
+        // Check if resident exists
+        const [existing] = await pool.query(
+          `SELECT id, linked_user_id, email, phone FROM residents WHERE LOWER(first_name) = ? AND LOWER(last_name) = ? AND purok = ? AND LOWER(barangay) = ? LIMIT 1`,
+          [first_name.toLowerCase(), last_name.toLowerCase(), cleanPurok, barangay.toLowerCase()]
+        );
+
+        let residentId = null;
+        let linkedUserId = null;
+        let existingEmail = null;
+
+        if (existing.length > 0) {
+          residentId = existing[0].id;
+          linkedUserId = existing[0].linked_user_id;
+          existingEmail = existing[0].email;
+
+          await pool.query(
+            `UPDATE residents SET 
+              middle_name = COALESCE(?, middle_name),
+              date_of_birth = COALESCE(?, date_of_birth),
+              gender = ?,
+              household_number = ?,
+              family_name = ?,
+              is_head_of_household = ?,
+              relationship_to_head = ?,
+              employment_status = ?,
+              is_census_only = 0,
+              hpn = COALESCE(?, hpn),
+              dm = COALESCE(?, dm),
+              fp_method = COALESCE(?, fp_method),
+              phic_no = COALESCE(?, phic_no),
+              nhts = COALESCE(?, nhts),
+              ips = COALESCE(?, ips),
+              remarks = COALESCE(?, remarks),
+              notes = COALESCE(?, notes),
+              extra_fields = ?
+            WHERE id = ?`,
+            [
+              middle_name || null, dob || null, gender, hhNumber, familyName,
+              isHead ? 1 : 0, relToHead, empStatus,
+              hpnVal, dmVal, fpVal, phicVal, nhtsVal, ipsVal, remarksVal, notesVal,
+              JSON.stringify(row), residentId
+            ]
+          );
+          updatedCount++;
+        } else {
+          const [ins] = await pool.query(
+            `INSERT INTO residents (
+              first_name, middle_name, last_name, date_of_birth, gender, civil_status,
+              address, purok, barangay, city, province, zip_code, household_number,
+              family_name, is_head_of_household, relationship_to_head, employment_status,
+              is_census_only, verification_status, hpn, dm, fp_method, phic_no, nhts, ips,
+              remarks, notes, extra_fields
+            ) VALUES (?, ?, ?, ?, ?, 'Single', ?, ?, ?, 'Butuan City', 'Agusan del Norte', '8600', ?, ?, ?, ?, ?, 0, 'Unverified', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              first_name, middle_name || '', last_name, dob || null, gender,
+              `Purok ${cleanPurok}, Barangay ${barangay}, Butuan City`, cleanPurok, barangay,
+              hhNumber, familyName, isHead ? 1 : 0, relToHead, empStatus,
+              hpnVal, dmVal, fpVal, phicVal, nhtsVal, ipsVal, remarksVal, notesVal,
+              JSON.stringify(row)
+            ]
+          );
+          residentId = ins.insertId;
+          importedCount++;
+        }
+
+        // Automatic Account Creation
+        if (auto_create_accounts && residentId) {
+          const baseSlug = `${first_name.replace(/[^a-z0-9]/gi, '').toLowerCase()}.${last_name.replace(/[^a-z0-9]/gi, '').toLowerCase()}` || `resident.${residentId}`;
+          const targetEmail = existingEmail || `${baseSlug}.p${cleanPurok}@resident.barangay.ph`;
+
+          const [userCheck] = await pool.query(`SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1`, [targetEmail.toLowerCase()]);
+          let userId = userCheck.length > 0 ? userCheck[0].id : null;
+
+          if (!userId) {
+            const fullName = `${first_name} ${middle_name ? middle_name + ' ' : ''}${last_name}`.trim();
+            const [userIns] = await pool.query(
+              `INSERT INTO users (name, email, password_hash, role, status, verification_status, civil_status, phone, address, barangay, city, province, zip_code, staged_password)
+               VALUES (?, ?, ?, 'resident', 'Active', 'Unverified', 'Single', '', ?, ?, 'Butuan City', 'Agusan del Norte', '8600', ?)`,
+              [fullName, targetEmail, defaultPasswordHash, `Purok ${cleanPurok}, Barangay ${barangay}`, barangay, defaultPassword]
+            );
+            userId = userIns.insertId;
+            accountsCreated++;
+          }
+
+          if (userId && !linkedUserId) {
+            await pool.query(`UPDATE residents SET linked_user_id = ?, email = COALESCE(NULLIF(email, ''), ?) WHERE id = ?`, [userId, targetEmail, residentId]);
+          }
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: `Successfully processed ${importedCount} new and ${updatedCount} updated census residents! Provisioned ${accountsCreated} citizen portal accounts.`,
+        imported_count: importedCount,
+        updated_count: updatedCount,
+        accounts_created: accountsCreated,
+        added_columns: dynamicallyAdded,
+        barangay
+      });
+    } catch (err) {
+      console.error('Census import error:', err);
+      return res.status(500).json({ success: false, error: 'Database census import failed: ' + err.message });
+    }
+  }
+
+  // Mock fallback
+  return res.json({
+    success: true,
+    message: `Processed ${records.length} records in memory mock mode.`,
+    imported_count: records.length,
+    updated_count: 0,
+    accounts_created: records.length,
+    added_columns: new_columns,
+    barangay
+  });
+});
+
+// -------------------------------------------------------------
 // Register New Resident / Census Intake
 // -------------------------------------------------------------
 app.post('/api/residents', async (req, res) => {

@@ -638,4 +638,394 @@ class CensusController extends Controller
             'barangay' => $resident->barangay ?: 'Pianing'
         ]);
     }
+
+    /**
+     * Parse Excel Name into First, Middle, and Last Name components
+     */
+    public static function parseExcelName($rawName)
+    {
+        if (empty($rawName)) {
+            return ['first_name' => 'Resident', 'middle_name' => '', 'last_name' => ''];
+        }
+        $clean = trim(preg_replace('/^[*•#\-\s]+/', '', (string)$rawName));
+        $clean = trim(preg_replace('/\[Blank\]/i', '', $clean));
+        if (empty($clean)) {
+            return ['first_name' => 'Resident', 'middle_name' => '', 'last_name' => ''];
+        }
+
+        if (str_contains($clean, ',')) {
+            $parts = array_map('trim', explode(',', $clean, 2));
+            $lastName = $parts[0] ?? '';
+            $remainder = $parts[1] ?? '';
+            $words = preg_split('/\s+/', $remainder, -1, PREG_SPLIT_NO_EMPTY);
+            if (count($words) <= 1) {
+                return [
+                    'first_name' => $words[0] ?? $clean,
+                    'middle_name' => '',
+                    'last_name' => $lastName ?: $clean,
+                ];
+            }
+            $middleName = array_pop($words);
+            $firstName = implode(' ', $words);
+            return [
+                'first_name' => $firstName ?: $middleName,
+                'middle_name' => $firstName ? $middleName : '',
+                'last_name' => $lastName,
+            ];
+        } else {
+            $words = preg_split('/\s+/', $clean, -1, PREG_SPLIT_NO_EMPTY);
+            if (count($words) === 1) {
+                return ['first_name' => $words[0], 'middle_name' => '', 'last_name' => ''];
+            }
+            if (count($words) === 2) {
+                return ['first_name' => $words[0], 'middle_name' => '', 'last_name' => $words[1]];
+            }
+            $lastName = array_pop($words);
+            $middleName = array_pop($words);
+            $firstName = implode(' ', $words);
+            return [
+                'first_name' => $firstName,
+                'middle_name' => $middleName,
+                'last_name' => $lastName,
+            ];
+        }
+    }
+
+    /**
+     * Parse Excel Date (serial number, date string, or calculate from fallback age)
+     */
+    public static function parseExcelDate($val, $fallbackAge = null)
+    {
+        if (empty($val) || strtolower((string)$val) === '[blank]') {
+            if (!empty($fallbackAge) && is_numeric($fallbackAge)) {
+                $calcYear = (int)date('Y') - (int)$fallbackAge;
+                return "{$calcYear}-06-15";
+            }
+            return null;
+        }
+        if (is_numeric($val) && (float)$val > 1000) {
+            $serial = (float)$val;
+            $utcDays = floor($serial - 25569);
+            $timestamp = $utcDays * 86400;
+            return gmdate('Y-m-d', $timestamp);
+        }
+        if (is_string($val)) {
+            $trimmed = trim($val);
+            $parts = preg_split('/[-\/]/', $trimmed);
+            if (count($parts) === 3) {
+                $m = (int)$parts[0];
+                $d = (int)$parts[1];
+                $y = (int)$parts[2];
+                if ($y < 100) {
+                    $y += ($y > 30 ? 1900 : 2000);
+                }
+                if ($m >= 1 && $m <= 12 && $d >= 1 && $d <= 31) {
+                    return sprintf('%04d-%02d-%02d', $y, $m, $d);
+                }
+            }
+            $time = strtotime($trimmed);
+            if ($time !== false && $time > 0) {
+                return date('Y-m-d', $time);
+            }
+        }
+        if (!empty($fallbackAge) && is_numeric($fallbackAge)) {
+            $calcYear = (int)date('Y') - (int)$fallbackAge;
+            return "{$calcYear}-06-15";
+        }
+        return null;
+    }
+
+    /**
+     * Import Census Records from Excel with Dynamic Table Column Addition & Auto Account Provisioning
+     */
+    public function importRecords(Request $request)
+    {
+        $records = $request->input('records', []);
+        $rawColumns = $request->input('new_columns', []);
+        $targetBarangay = $request->input('barangay') ?: 'Pianing';
+        $autoCreateAccounts = $request->input('auto_create_accounts', true);
+
+        if (empty($records) || !is_array($records)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No census records provided for import.'
+            ], 400);
+        }
+
+        // 1. Fetch current database columns of `residents`
+        $existingCols = [];
+        try {
+            $colRows = DB::select("SHOW COLUMNS FROM residents");
+            foreach ($colRows as $col) {
+                $existingCols[] = strtolower($col->Field);
+            }
+        } catch (\Throwable $e) {
+            // fallback if show columns fails
+        }
+
+        // Ensure extra_fields column exists
+        if (!in_array('extra_fields', $existingCols)) {
+            try {
+                DB::statement("ALTER TABLE `residents` ADD COLUMN `extra_fields` LONGTEXT NULL");
+                $existingCols[] = 'extra_fields';
+            } catch (\Throwable $e) {}
+        }
+
+        // 2. Dynamic column addition for any non-standard variables in Excel
+        $dynamicallyAdded = [];
+        $ignoredKeys = [
+            'id', 'created_at', 'updated_at', 'household', 'household_number', 'household_#',
+            'line_#', 'line_number', 'full_name', 'name', 'b_date', 'b_date', 'birthdate',
+            'sex', 'gender', 'age', 'purok', 'barangay', 'phone', 'email', 'address',
+            'employment_status', 'civil_status', 'is_head_of_household', 'relationship_to_head'
+        ];
+
+        // Gather all unique keys from records and new_columns
+        $allKeys = array_values(array_unique(array_merge($rawColumns, ...array_map('array_keys', array_slice($records, 0, 50)))));
+
+        foreach ($allKeys as $rawKey) {
+            $safeKey = strtolower(trim(preg_replace('/[^a-zA-Z0-9_]/', '_', $rawKey), '_'));
+            $safeKey = preg_replace('/_+/', '_', $safeKey);
+
+            // Aliases mapping
+            if (in_array($safeKey, ['hpn'])) $safeKey = 'hpn';
+            elseif (in_array($safeKey, ['dm'])) $safeKey = 'dm';
+            elseif (in_array($safeKey, ['fp_method', 'fpmethod', 'fp'])) $safeKey = 'fp_method';
+            elseif (in_array($safeKey, ['phic_no', 'philhealth_no', 'philhealth', 'phic'])) $safeKey = 'phic_no';
+            elseif (in_array($safeKey, ['nhts'])) $safeKey = 'nhts';
+            elseif (in_array($safeKey, ['ips', 'ip'])) $safeKey = 'ips';
+            elseif (str_contains($safeKey, 'remark')) $safeKey = 'remarks';
+            elseif (str_contains($safeKey, 'note')) $safeKey = 'notes';
+
+            if (empty($safeKey) || in_array($safeKey, $ignoredKeys)) {
+                continue;
+            }
+
+            if (!in_array($safeKey, $existingCols)) {
+                try {
+                    $colType = in_array($safeKey, ['remarks', 'notes', 'header_notes', 'marginal_notes']) ? 'TEXT' : 'VARCHAR(255)';
+                    DB::statement("ALTER TABLE `residents` ADD COLUMN `{$safeKey}` {$colType} NULL");
+                    $existingCols[] = $safeKey;
+                    $dynamicallyAdded[] = $safeKey;
+                } catch (\Throwable $e) {
+                    // Column might already exist or concurrent alter
+                }
+            }
+        }
+
+        // 3. Process and persist records in transactions
+        $importedCount = 0;
+        $updatedCount = 0;
+        $accountsCreated = 0;
+        $defaultPassword = 'Brgy@' . date('Y') . '!';
+
+        DB::beginTransaction();
+        try {
+            foreach ($records as $row) {
+                // Determine Raw Name
+                $rawName = $row['Full Name'] ?? $row['Name'] ?? $row['name'] ?? $row['full_name'] ?? '';
+                $nameParts = self::parseExcelName($rawName);
+                $firstName = $nameParts['first_name'];
+                $middleName = $nameParts['middle_name'];
+                $lastName = $nameParts['last_name'];
+
+                if (empty($firstName) || strtolower($firstName) === 'resident' && empty($lastName)) {
+                    continue; // Skip blank or invalid row
+                }
+
+                // Purok determination
+                $rawPurok = $row['purok'] ?? $row['Purok'] ?? $row['sheet'] ?? '1';
+                $cleanPurok = trim(preg_replace('/[^0-9]/', '', (string)$rawPurok)) ?: '1';
+
+                // Age & DOB determination
+                $rawAge = $row['Age'] ?? $row['age'] ?? null;
+                $cleanAge = null;
+                if (!empty($rawAge) && $rawAge !== '[Blank]') {
+                    $cleanAge = is_numeric($rawAge) ? (int)$rawAge : (int)preg_replace('/[^0-9]/', '', (string)$rawAge);
+                }
+                $rawDob = $row['B-Date'] ?? $row['B-date'] ?? $row['b_date'] ?? $row['birthdate'] ?? $row['Date of Birth'] ?? null;
+                $dob = self::parseExcelDate($rawDob, $cleanAge);
+
+                // Gender determination
+                $rawSex = strtoupper(trim((string)($row['Sex'] ?? $row['Gender'] ?? $row['sex'] ?? '')));
+                $gender = (str_starts_with($rawSex, 'F') || $rawSex === 'FEMALE') ? 'Female' : 'Male';
+
+                // Household & Family determination
+                $rawHh = $row['Household #'] ?? $row['Household Number'] ?? $row['household_number'] ?? "Household # 1";
+                $hhDigits = preg_replace('/[^0-9]/', '', (string)$rawHh) ?: '1';
+                $hhNumber = "P{$cleanPurok}-H{$hhDigits}";
+                $familyName = !empty($lastName) ? $lastName : ($row['family_name'] ?? 'Resident');
+
+                // Line Number & Head of Household
+                $rawLine = $row['Line #'] ?? $row['Line Number'] ?? $row['line_number'] ?? null;
+                $lineNum = is_numeric($rawLine) ? (int)$rawLine : (preg_match('/1\b/', (string)$rawLine) ? 1 : 2);
+                $isHead = ($lineNum === 1);
+                $relToHead = $isHead ? 'Head' : ($row['relationship_to_head'] ?? 'Member');
+
+                // Employment status
+                $isSenior = ($cleanAge && $cleanAge >= 60);
+                $isChild = ($cleanAge && $cleanAge < 18);
+                $empStatus = $row['employment_status'] ?? ($isSenior ? 'Retired' : ($isChild ? 'Student' : 'Employed'));
+
+                // Phone & Email
+                $phone = $row['phone'] ?? $row['Phone'] ?? $row['Contact'] ?? '';
+                $email = $row['email'] ?? $row['Email'] ?? '';
+
+                // Dynamic Health and Civic variables
+                $hpnVal = $row['HPN'] ?? $row['hpn'] ?? null;
+                $dmVal = $row['DM'] ?? $row['dm'] ?? null;
+                $fpVal = $row['FP Method'] ?? $row['fp_method'] ?? null;
+                $phicVal = $row['PHIC NO'] ?? $row['PhilHealth No.'] ?? $row['phic_no'] ?? null;
+                $nhtsVal = $row['NHTS'] ?? $row['nhts'] ?? null;
+                $ipsVal = $row['IPs'] ?? $row['IPS'] ?? $row['ips'] ?? null;
+                $remarksVal = $row['Remarks / Side Notes'] ?? $row['Remarks'] ?? $row['remarks'] ?? null;
+                $notesVal = $row['Notes / Marginal Notes'] ?? $row['Notes'] ?? $row['notes'] ?? $row['Top-Level Metadata / Header Notes'] ?? null;
+
+                // Clean '[Blank]' placeholders
+                $cleanVal = function($v) {
+                    if (is_null($v)) return null;
+                    $s = trim((string)$v);
+                    return ($s === '[Blank]' || $s === '') ? null : $s;
+                };
+
+                $residentData = [
+                    'first_name' => $firstName,
+                    'middle_name' => $middleName,
+                    'last_name' => $lastName,
+                    'date_of_birth' => $dob,
+                    'gender' => $gender,
+                    'civil_status' => $row['civil_status'] ?? 'Single',
+                    'address' => "Purok {$cleanPurok}, Barangay {$targetBarangay}, Butuan City",
+                    'purok' => $cleanPurok,
+                    'barangay' => $targetBarangay,
+                    'city' => 'Butuan City',
+                    'province' => 'Agusan del Norte',
+                    'zip_code' => '8600',
+                    'household_number' => $hhNumber,
+                    'family_name' => $familyName,
+                    'is_head_of_household' => $isHead ? 1 : 0,
+                    'relationship_to_head' => $relToHead,
+                    'employment_status' => $empStatus,
+                    'is_census_only' => 0, // Provisioned resident
+                    'verification_status' => 'Unverified',
+                ];
+
+                if (!empty($phone)) $residentData['phone'] = $phone;
+                if (!empty($email)) $residentData['email'] = $email;
+
+                // Attach dynamically identified fields
+                if (in_array('hpn', $existingCols)) $residentData['hpn'] = $cleanVal($hpnVal);
+                if (in_array('dm', $existingCols)) $residentData['dm'] = $cleanVal($dmVal);
+                if (in_array('fp_method', $existingCols)) $residentData['fp_method'] = $cleanVal($fpVal);
+                if (in_array('phic_no', $existingCols)) $residentData['phic_no'] = $cleanVal($phicVal);
+                if (in_array('nhts', $existingCols)) $residentData['nhts'] = $cleanVal($nhtsVal);
+                if (in_array('ips', $existingCols)) $residentData['ips'] = $cleanVal($ipsVal);
+                if (in_array('remarks', $existingCols)) $residentData['remarks'] = $cleanVal($remarksVal);
+                if (in_array('notes', $existingCols)) $residentData['notes'] = $cleanVal($notesVal);
+
+                // Any other custom columns passed in row
+                foreach ($dynamicallyAdded as $dynCol) {
+                    if (isset($row[$dynCol]) && !isset($residentData[$dynCol])) {
+                        $residentData[$dynCol] = $cleanVal($row[$dynCol]);
+                    }
+                }
+
+                // Preserve entire raw row in extra_fields
+                if (in_array('extra_fields', $existingCols)) {
+                    $residentData['extra_fields'] = json_encode($row);
+                }
+
+                // Search for existing resident record to avoid duplicates
+                $resident = Resident::whereRaw("LOWER(first_name) = ? AND LOWER(last_name) = ? AND purok = ? AND LOWER(barangay) = ?", [
+                    strtolower($firstName),
+                    strtolower($lastName),
+                    $cleanPurok,
+                    strtolower($targetBarangay)
+                ])->first();
+
+                if (!$resident) {
+                    $resident = Resident::create($residentData);
+                    $importedCount++;
+                } else {
+                    $resident->update($residentData);
+                    $updatedCount++;
+                }
+
+                // 4. Automatic User Account Creation
+                if ($autoCreateAccounts) {
+                    $baseSlug = strtolower(preg_replace('/[^a-z0-9]/', '', $firstName) . '.' . preg_replace('/[^a-z0-9]/', '', $lastName));
+                    if (empty($baseSlug) || $baseSlug === '.') {
+                        $baseSlug = 'resident.' . $resident->id;
+                    }
+                    $genEmail = "{$baseSlug}.p{$cleanPurok}@resident.barangay.ph";
+                    $targetEmail = !empty($resident->email) ? strtolower(trim($resident->email)) : $genEmail;
+
+                    $user = User::whereRaw("LOWER(email) = ?", [$targetEmail])->first();
+                    if (!$user) {
+                        $userFields = [
+                            'name' => trim("{$resident->first_name} {$resident->last_name}"),
+                            'email' => $targetEmail,
+                            'password_hash' => Hash::make($defaultPassword),
+                            'role' => 'resident',
+                            'status' => 'Active',
+                            'verification_status' => 'Unverified',
+                            'civil_status' => $resident->civil_status ?: 'Single',
+                            'phone' => $resident->phone ?: '',
+                            'address' => $resident->address,
+                            'barangay' => $resident->barangay ?: $targetBarangay,
+                            'city' => 'Butuan City',
+                            'province' => 'Agusan del Norte',
+                            'zip_code' => '8600',
+                            'staged_password' => $defaultPassword,
+                        ];
+
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'purok')) {
+                            $userFields['purok'] = $cleanPurok;
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'staged_password')) {
+                            unset($userFields['staged_password']);
+                        }
+
+                        $user = User::create($userFields);
+                        $accountsCreated++;
+                    }
+
+                    if ($user && empty($resident->linked_user_id)) {
+                        $resident->linked_user_id = $user->id;
+                        if (empty($resident->email)) {
+                            $resident->email = $targetEmail;
+                        }
+                        $resident->save();
+                    }
+                }
+            }
+
+            // Log activity
+            try {
+                ActivityLog::create([
+                    'user_name' => 'Barangay Administrator',
+                    'user_role' => 'admin',
+                    'action' => "Excel Census Import: Imported {$importedCount} new, updated {$updatedCount} residents, provisioned {$accountsCreated} citizen accounts for Barangay {$targetBarangay}.",
+                ]);
+            } catch (\Throwable $e) {}
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'error' => 'Census import transaction failed: ' . $e->getMessage()
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Successfully processed {$importedCount} new and {$updatedCount} updated census residents! Provisioned {$accountsCreated} citizen portal accounts.",
+            'imported_count' => $importedCount,
+            'updated_count' => $updatedCount,
+            'accounts_created' => $accountsCreated,
+            'added_columns' => $dynamicallyAdded,
+            'barangay' => $targetBarangay,
+        ]);
+    }
 }

@@ -81,6 +81,15 @@ export interface Resident {
   is_census_only?: boolean | number;
   linked_user_id?: number | null;
   claimed_at?: string | null;
+  hpn?: string | null;
+  dm?: string | null;
+  fp_method?: string | null;
+  phic_no?: string | null;
+  nhts?: string | null;
+  ips?: string | null;
+  remarks?: string | null;
+  notes?: string | null;
+  extra_fields?: string | null;
 }
 
 export interface HouseholdGroup {
@@ -681,6 +690,48 @@ export const apiService = {
         success: false,
         message: err?.message || 'Network connection error. Please try again.',
         error: err?.message || 'Network connection error. Please try again.'
+      };
+    }
+  },
+
+  async importCensusRecords(data: {
+    barangay: string;
+    records: any[];
+    new_columns?: string[];
+    auto_create_accounts?: boolean;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    imported_count: number;
+    updated_count: number;
+    accounts_created: number;
+    added_columns: string[];
+    barangay?: string;
+    error?: string;
+  }> {
+    try {
+      const res = await fetch(`${API_BASE}/census/import-records`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || json.message || 'Census import failed');
+      }
+      return json;
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Failed to import census records',
+        error: err.message || 'Failed to import census records',
+        imported_count: 0,
+        updated_count: 0,
+        accounts_created: 0,
+        added_columns: []
       };
     }
   },

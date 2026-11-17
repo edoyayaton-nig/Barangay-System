@@ -107,6 +107,15 @@ async function syncAllSchemas(connection) {
   await safeAddColumn(connection, 'residents', 'submitted_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
   await safeAddColumn(connection, 'residents', 'rejection_reason', "TEXT NULL");
   await safeAddColumn(connection, 'residents', 'staged_password', "VARCHAR(255) NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'residents', 'hpn', "VARCHAR(100) NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'residents', 'dm', "VARCHAR(100) NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'residents', 'fp_method', "VARCHAR(100) NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'residents', 'phic_no', "VARCHAR(100) NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'residents', 'nhts', "VARCHAR(100) NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'residents', 'ips', "VARCHAR(100) NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'residents', 'remarks', "TEXT NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'residents', 'notes', "TEXT NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'residents', 'extra_fields', "LONGTEXT NULL DEFAULT NULL");
 
   // Ensure raw census records (unclaimed) are set to 'Unverified'.
   // Citizens only become 'Verified' once they claim their account and are approved by the administrator!

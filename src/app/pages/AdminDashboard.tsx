@@ -77,8 +77,12 @@ import {
   Copy,
   ExternalLink,
   UserCog,
-  FileCheck
+  FileCheck,
+  FileSpreadsheet,
+  UploadCloud,
+  CheckSquare
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { apiService, DocumentRequest, Resident, SystemUser, UserPermissions, hasUserPermission, PendingResident, ActivityLog, ClinicSchedule, HealthAppointment, PopulationStats, BarangayOverviewItem, HouseholdGroup, CensusAnalytics } from '../../services/api';
 import { notificationStore } from '../../services/notificationStore';
 import { ID_TYPES } from '../../utils/idTypes';
@@ -350,6 +354,158 @@ export default function AdminDashboard() {
   const [censusHouseholds, setCensusHouseholds] = useState<HouseholdGroup[]>([]);
   const [censusViewMode, setCensusViewMode] = useState<'households' | 'table'>('households');
   const [expandedHouseholds, setExpandedHouseholds] = useState<Record<string, boolean>>({});
+
+  // Census Excel Import Modal State
+  const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [excelWorkbook, setExcelWorkbook] = useState<any | null>(null);
+  const [excelSheets, setExcelSheets] = useState<string[]>([]);
+  const [selectedExcelSheet, setSelectedExcelSheet] = useState<string>('all');
+  const [parsedExcelRows, setParsedExcelRows] = useState<any[]>([]);
+  const [detectedNewColumns, setDetectedNewColumns] = useState<string[]>([]);
+  const [detectedTotalColumns, setDetectedTotalColumns] = useState<string[]>([]);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
+  const [excelImportProgress, setExcelImportProgress] = useState<{ current: number; total: number; stage: string } | null>(null);
+  const [excelImportResult, setExcelImportResult] = useState<{ imported: number; updated: number; accounts: number; columns: string[] } | null>(null);
+
+  const resetExcelImportState = () => {
+    setExcelFile(null);
+    setExcelWorkbook(null);
+    setExcelSheets([]);
+    setSelectedExcelSheet('all');
+    setParsedExcelRows([]);
+    setDetectedNewColumns([]);
+    setDetectedTotalColumns([]);
+    setIsImportingExcel(false);
+    setExcelImportProgress(null);
+    setExcelImportResult(null);
+  };
+
+  const handleExcelFileSelect = (file: File) => {
+    setExcelFile(file);
+    setExcelImportResult(null);
+    setExcelImportProgress(null);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array' });
+        setExcelWorkbook(wb);
+        setExcelSheets(wb.SheetNames);
+        setSelectedExcelSheet('all');
+        parseWorkbookSheets(wb, 'all');
+      } catch (err: any) {
+        toast.error('Failed to parse Excel file: ' + (err?.message || 'Invalid format'));
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const parseWorkbookSheets = (wb: any, targetSheet: string) => {
+    const sheetsToProcess = targetSheet === 'all' ? wb.SheetNames : [targetSheet];
+    const allRows: any[] = [];
+    const allColSet = new Set<string>();
+
+    sheetsToProcess.forEach((sheetName: string) => {
+      const ws = wb.Sheets[sheetName];
+      if (!ws) return;
+      const json: any[] = XLSX.utils.sheet_to_json(ws);
+      const purokMatch = sheetName.match(/purok\s*([0-9]+)/i);
+      const sheetPurok = purokMatch ? purokMatch[1] : '1';
+
+      json.forEach((row: any) => {
+        if (!row.purok && !row.Purok) {
+          row.purok = sheetPurok;
+        }
+        allRows.push(row);
+        Object.keys(row).forEach(k => allColSet.add(k));
+      });
+    });
+
+    setParsedExcelRows(allRows);
+    const colList = Array.from(allColSet);
+    setDetectedTotalColumns(colList);
+
+    const standardCols = new Set([
+      'household #', 'household number', 'hh #', 'hh number', 'household',
+      'line #', 'line number', 'line',
+      'full name', 'name', 'resident name',
+      'b-date', 'b-date', 'birthdate', 'dob', 'date of birth',
+      'sex', 'gender', 'age', 'purok', 'barangay', 'address',
+      'employment', 'employment_status', 'civil status', 'civil_status'
+    ]);
+
+    const newCols = colList.filter(col => {
+      const clean = col.trim().toLowerCase();
+      return !standardCols.has(clean) && clean !== 'purok';
+    });
+
+    setDetectedNewColumns(newCols);
+  };
+
+  const handleExecuteExcelImport = async () => {
+    if (!parsedExcelRows.length) {
+      toast.error('No valid rows found in Excel to import.');
+      return;
+    }
+
+    setIsImportingExcel(true);
+    setExcelImportProgress({ current: 0, total: parsedExcelRows.length, stage: 'Starting census import...' });
+
+    const batchSize = 150;
+    let totalImported = 0;
+    let totalUpdated = 0;
+    let totalAccounts = 0;
+    let addedCols: string[] = [];
+
+    try {
+      const totalBatches = Math.ceil(parsedExcelRows.length / batchSize);
+      for (let i = 0; i < totalBatches; i++) {
+        const start = i * batchSize;
+        const end = Math.min(start + batchSize, parsedExcelRows.length);
+        const batch = parsedExcelRows.slice(start, end);
+
+        setExcelImportProgress({
+          current: end,
+          total: parsedExcelRows.length,
+          stage: `Syncing batch ${i + 1} of ${totalBatches} (${end} of ${parsedExcelRows.length} inhabitants)...`
+        });
+
+        const res = await apiService.importCensusRecords({
+          barangay: userBarangay || 'Pianing',
+          records: batch,
+          new_columns: detectedNewColumns,
+          auto_create_accounts: true
+        });
+
+        if (res.success) {
+          totalImported += (res.imported_count || 0);
+          totalUpdated += (res.updated_count || 0);
+          totalAccounts += (res.accounts_created || 0);
+          if (res.added_columns && res.added_columns.length) {
+            addedCols = Array.from(new Set([...addedCols, ...res.added_columns]));
+          }
+        }
+      }
+
+      setExcelImportResult({
+        imported: totalImported,
+        updated: totalUpdated,
+        accounts: totalAccounts,
+        columns: addedCols.length ? addedCols : detectedNewColumns
+      });
+
+      toast.success(`Excel Census successfully imported! ${totalImported} records synced, ${totalAccounts} citizen accounts provisioned.`);
+      await handleRefreshCensus();
+      await fetchResidents();
+    } catch (err: any) {
+      toast.error('Import process failed: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setIsImportingExcel(false);
+      setExcelImportProgress(null);
+    }
+  };
 
   // Add Resident / Household Modal Extension
   const [addResidentMode, setAddResidentMode] = useState<'new_household' | 'existing_household'>('new_household');
@@ -5378,6 +5534,17 @@ export default function AdminDashboard() {
                   </Button>
 
                   <Button
+                    onClick={() => {
+                      resetExcelImportState();
+                      setIsExcelImportOpen(true);
+                    }}
+                    className="text-xs h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer rounded-lg font-semibold transition-all"
+                  >
+                    <FileSpreadsheet size={13} />
+                    Upload Census Excel
+                  </Button>
+
+                  <Button
                     variant="outline"
                     size="sm"
                     onClick={handleRefreshCensus}
@@ -5782,6 +5949,41 @@ export default function AdminDashboard() {
                                     {res.first_name} {res.last_name}
                                   </button>
                                   {res.phone && <span className="text-[10px] text-slate-400 font-mono block mt-0.5">{res.phone}</span>}
+                                  {/* Dynamic Health & Civic Variable Badges */}
+                                  {((res as any).hpn || (res as any).dm || (res as any).fp_method || (res as any).phic_no || (res as any).nhts || (res as any).ips) && (
+                                    <div className="flex flex-wrap items-center gap-1 mt-1">
+                                      {(res as any).hpn && (
+                                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${(res as any).hpn === 'DIED' ? 'bg-rose-100 text-rose-800 border-rose-300 font-black' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
+                                          HPN: {(res as any).hpn}
+                                        </span>
+                                      )}
+                                      {(res as any).dm && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border bg-amber-50 text-amber-700 border-amber-200">
+                                          DM: {(res as any).dm}
+                                        </span>
+                                      )}
+                                      {(res as any).fp_method && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border bg-purple-50 text-purple-700 border-purple-200">
+                                          FP: {(res as any).fp_method}
+                                        </span>
+                                      )}
+                                      {(res as any).phic_no && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border bg-blue-50 text-blue-700 border-blue-200 font-mono">
+                                          PHIC: {(res as any).phic_no}
+                                        </span>
+                                      )}
+                                      {(res as any).nhts && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border bg-emerald-50 text-emerald-700 border-emerald-200">
+                                          NHTS
+                                        </span>
+                                      )}
+                                      {(res as any).ips && (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border bg-teal-50 text-teal-700 border-teal-200">
+                                          IP
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   <span className="font-bold text-slate-800">{(res as any).age ?? 25} yo</span>
@@ -6891,6 +7093,17 @@ export default function AdminDashboard() {
                     >
                       <Download size={14} />
                       Export Residents (CSV)
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        resetExcelImportState();
+                        setIsExcelImportOpen(true);
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 font-semibold h-9 px-3 rounded-xl shadow-xs cursor-pointer transition-all"
+                    >
+                      <FileSpreadsheet size={14} />
+                      Upload Census Excel
                     </Button>
                     <Button
                       size="sm"
@@ -11307,6 +11520,360 @@ export default function AdminDashboard() {
         }))}
         initialCategory={notifyCategory}
       />
+
+      {/* Census Excel Import Modal */}
+      <Dialog
+        open={isExcelImportOpen}
+        onOpenChange={(open) => {
+          if (!isImportingExcel) {
+            setIsExcelImportOpen(open);
+            if (!open) resetExcelImportState();
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0 rounded-2xl bg-white border border-slate-200 shadow-2xl">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 text-white rounded-t-2xl relative overflow-hidden">
+            <div className="relative z-10 flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-white/10 rounded-xl backdrop-blur-xs border border-white/20">
+                  <FileSpreadsheet size={26} className="text-emerald-100" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                    Upload Official Barangay Census
+                    <Badge className="bg-emerald-500/40 text-emerald-100 border border-emerald-300/30 text-[10px]">
+                      Excel / CSV
+                    </Badge>
+                  </DialogTitle>
+                  <DialogDescription className="text-emerald-100/90 text-xs mt-1 max-w-xl">
+                    Import your Barangay demographic census workbook (.xlsx, .xls, .csv). The system automatically detects missing variables (e.g. HPN, DM, FP Method, PhilHealth), dynamically creates missing table variables, and automatically provisions citizen portal accounts.
+                  </DialogDescription>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-5">
+            {/* FILE DROPZONE & PICKER */}
+            {!excelFile ? (
+              <div className="space-y-4">
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleExcelFileSelect(file);
+                  }}
+                  className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50/70 transition-all rounded-2xl p-8 text-center cursor-pointer group"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.xlsx, .xls, .csv';
+                    input.onchange = (e: any) => {
+                      const file = e.target?.files?.[0];
+                      if (file) handleExcelFileSelect(file);
+                    };
+                    input.click();
+                  }}
+                >
+                  <div className="w-14 h-14 mx-auto mb-3 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+                    <UploadCloud size={28} />
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm">
+                    Choose Excel / Spreadsheet or drag &amp; drop here
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                    Supports <span className="font-semibold text-slate-700">.xlsx, .xls, and .csv</span>. Multi-sheet workbooks (e.g. PUROK 1, 3, 4, 5) are automatically parsed and structured.
+                  </p>
+                  <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-emerald-200 text-emerald-700 text-xs font-semibold shadow-2xs group-hover:border-emerald-400">
+                    <FileSpreadsheet size={14} />
+                    <span>Browse Local Files</span>
+                  </div>
+                </div>
+
+                {/* 1-Click Demo Spreadsheet Test Helper */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={16} className="text-amber-500 shrink-0" />
+                    <div>
+                      <span className="font-bold text-slate-800">Quick Test with Demo Dataset</span>
+                      <p className="text-[11px] text-slate-500">
+                        Load <span className="font-mono font-semibold text-slate-700">PUROK 1,3,4,5.xlsx</span> (1,804 records across 4 Puroks with health &amp; civic variables).
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/PUROK 1,3,4,5.xlsx');
+                        const blob = await res.blob();
+                        const file = new File([blob], 'PUROK 1,3,4,5.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                        handleExcelFileSelect(file);
+                        toast.success('Loaded PUROK 1,3,4,5.xlsx demo file!');
+                      } catch (err: any) {
+                        toast.error('Could not load demo file: ' + err.message);
+                      }
+                    }}
+                    className="h-8 text-xs font-semibold text-emerald-700 border-emerald-300 hover:bg-emerald-50 shrink-0 cursor-pointer"
+                  >
+                    Load PUROK 1,3,4,5.xlsx
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              /* FILE LOADED PREVIEW & CONFIGURATION */
+              <div className="space-y-4">
+                {/* File Header Bar */}
+                <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg text-emerald-700">
+                      <FileSpreadsheet size={20} />
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900 block">{excelFile.name}</span>
+                      <span className="text-[11px] text-slate-500">
+                        {(excelFile.size / 1024).toFixed(1)} KB • {parsedExcelRows.length} total rows detected • {excelSheets.length} sheet(s)
+                      </span>
+                    </div>
+                  </div>
+                  {!isImportingExcel && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={resetExcelImportState}
+                      className="h-7 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                    >
+                      Change File
+                    </Button>
+                  )}
+                </div>
+
+                {/* Multi-sheet Selector (if applicable) */}
+                {excelSheets.length > 1 && (
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide block mb-1.5">
+                      Select Sheet to Import:
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedExcelSheet('all');
+                          if (excelWorkbook) parseWorkbookSheets(excelWorkbook, 'all');
+                        }}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          selectedExcelSheet === 'all'
+                            ? 'bg-emerald-700 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        All Sheets (Combined)
+                      </button>
+                      {excelSheets.map((sh) => (
+                        <button
+                          key={sh}
+                          type="button"
+                          onClick={() => {
+                            setSelectedExcelSheet(sh);
+                            if (excelWorkbook) parseWorkbookSheets(excelWorkbook, sh);
+                          }}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            selectedExcelSheet === sh
+                              ? 'bg-emerald-700 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          }`}
+                        >
+                          {sh}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dynamic Variables Auto-Detection Banner */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <CheckCircle2 size={14} className="text-emerald-600" />
+                      Dynamic Variable Detection &amp; Auto-Adaptive Schema
+                    </span>
+                    <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[10px]">
+                      {detectedNewColumns.length} Custom Variables
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    The system detected columns in your Excel file that will automatically be created in the database table schema so that all health, social, and civil variables are permanently stored:
+                  </p>
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {detectedNewColumns.map((col) => (
+                      <Badge
+                        key={col}
+                        variant="outline"
+                        className="bg-white border-emerald-300 text-emerald-800 font-semibold text-[10px]"
+                      >
+                        + {col}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Automatic Account Creation Notice */}
+                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-start gap-2.5 text-xs text-blue-900">
+                  <ShieldCheck size={16} className="text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block">Automatic Citizen Portal Account Provisioning</span>
+                    <p className="text-[11px] text-blue-700 mt-0.5">
+                      A digital citizen portal account will automatically be created for each resident with standard default password (<span className="font-mono font-bold">Brgy@{new Date().getFullYear()}!</span>). Residents can claim and verify their credentials securely through the public Resident Search Engine.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Data Preview Table */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
+                      Parsed Records Preview (First 5 of {parsedExcelRows.length}):
+                    </label>
+                  </div>
+                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-52 overflow-x-auto text-[11px]">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-semibold">
+                        <tr>
+                          <th className="p-2">#</th>
+                          <th className="p-2">Household</th>
+                          <th className="p-2">Full Name</th>
+                          <th className="p-2">Age</th>
+                          <th className="p-2">Sex</th>
+                          {detectedNewColumns.slice(0, 4).map(c => (
+                            <th key={c} className="p-2 text-emerald-700">{c}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {parsedExcelRows.slice(0, 5).map((row, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="p-2 text-slate-400 font-mono">{idx + 1}</td>
+                            <td className="p-2 font-mono font-medium text-slate-700">
+                              {row['Household #'] || row['Household Number'] || row['household_number'] || '—'}
+                            </td>
+                            <td className="p-2 font-bold text-slate-900">
+                              {row['Full Name'] || row['Name'] || row['name'] || row['full_name'] || '—'}
+                            </td>
+                            <td className="p-2 text-slate-700">{row['Age'] || row['age'] || '—'}</td>
+                            <td className="p-2 text-slate-700">{row['Sex'] || row['Gender'] || row['sex'] || '—'}</td>
+                            {detectedNewColumns.slice(0, 4).map(c => (
+                              <td key={c} className="p-2 text-slate-600">{row[c] || '—'}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Import Progress Bar */}
+                {isImportingExcel && excelImportProgress && (
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+                    <div className="flex justify-between items-center text-xs font-semibold text-emerald-900">
+                      <span>{excelImportProgress.stage}</span>
+                      <span>{Math.round((excelImportProgress.current / excelImportProgress.total) * 100)}%</span>
+                    </div>
+                    <div className="w-full bg-emerald-200 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${(excelImportProgress.current / excelImportProgress.total) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Success Summary Result */}
+                {excelImportResult && (
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2 text-xs text-emerald-900">
+                    <div className="flex items-center gap-2 font-bold text-sm text-emerald-800">
+                      <CheckCircle size={18} className="text-emerald-600" />
+                      Census Import &amp; Account Provisioning Complete!
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                      <div className="bg-white p-2 rounded-lg border border-emerald-200">
+                        <span className="text-[10px] text-slate-500 font-bold block uppercase">New Inhabitants</span>
+                        <span className="font-extrabold text-emerald-700 text-sm">{excelImportResult.imported}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded-lg border border-emerald-200">
+                        <span className="text-[10px] text-slate-500 font-bold block uppercase">Updated Records</span>
+                        <span className="font-extrabold text-slate-700 text-sm">{excelImportResult.updated}</span>
+                      </div>
+                      <div className="bg-white p-2 rounded-lg border border-emerald-200">
+                        <span className="text-[10px] text-slate-500 font-bold block uppercase">Accounts Created</span>
+                        <span className="font-extrabold text-blue-700 text-sm">{excelImportResult.accounts}</span>
+                      </div>
+                    </div>
+                    {excelImportResult.columns.length > 0 && (
+                      <p className="text-[11px] text-emerald-700 pt-1">
+                        Dynamic columns registered: <span className="font-mono font-semibold">{excelImportResult.columns.join(', ')}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Modal Footer */}
+          <div className="p-4 bg-slate-50 border-t border-slate-200 rounded-b-2xl flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isImportingExcel}
+              onClick={() => {
+                setIsExcelImportOpen(false);
+                resetExcelImportState();
+              }}
+              className="text-xs text-slate-600 hover:text-slate-800 cursor-pointer"
+            >
+              {excelImportResult ? 'Close' : 'Cancel'}
+            </Button>
+
+            {excelFile && !excelImportResult && (
+              <Button
+                size="sm"
+                disabled={isImportingExcel || parsedExcelRows.length === 0}
+                onClick={handleExecuteExcelImport}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 font-semibold px-4 cursor-pointer shadow-xs"
+              >
+                {isImportingExcel ? (
+                  <>
+                    <RefreshCcw size={13} className="animate-spin" />
+                    <span>Importing &amp; Provisioning...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet size={13} />
+                    <span>Start Census Import ({parsedExcelRows.length} Records)</span>
+                  </>
+                )}
+              </Button>
+            )}
+
+            {excelImportResult && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setIsExcelImportOpen(false);
+                  resetExcelImportState();
+                  setCensusViewMode('table');
+                }}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs gap-1.5 font-semibold px-4 cursor-pointer"
+              >
+                View Updated Census Inhabitants
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

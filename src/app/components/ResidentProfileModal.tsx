@@ -756,6 +756,77 @@ export default function ResidentProfileModal({
                   </div>
                 )}
 
+                {/* CENSUS & HEALTH PROFILE INDICATORS */}
+                {(resident?.hpn || resident?.dm || resident?.fp_method || resident?.phic_no || resident?.nhts || resident?.ips || resident?.remarks || resident?.notes) && (
+                  <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                        <Heart size={13} className="text-rose-500" />
+                        Census Health &amp; Demographic Indicators
+                      </span>
+                      <Badge variant="outline" className="text-[10px] bg-white border-slate-200 text-slate-600 font-semibold">
+                        Excel Synced
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                      {resident?.phic_no && (
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase block">PhilHealth / PHIC</span>
+                          <span className="font-mono font-bold text-slate-800 text-[11px]">{resident.phic_no}</span>
+                        </div>
+                      )}
+                      {resident?.hpn && (
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase block">Hypertension (HPN)</span>
+                          <span className={`text-[11px] font-bold ${resident.hpn === 'DIED' ? 'text-rose-600 font-black' : 'text-amber-600'}`}>{resident.hpn}</span>
+                        </div>
+                      )}
+                      {resident?.dm && (
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase block">Diabetes (DM)</span>
+                          <span className="font-bold text-amber-600 text-[11px]">{resident.dm}</span>
+                        </div>
+                      )}
+                      {resident?.fp_method && (
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase block">Family Planning (FP)</span>
+                          <span className="font-bold text-purple-700 text-[11px]">{resident.fp_method}</span>
+                        </div>
+                      )}
+                      {resident?.nhts && (
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase block">NHTS Status</span>
+                          <span className="font-bold text-emerald-700 text-[11px]">{resident.nhts}</span>
+                        </div>
+                      )}
+                      {resident?.ips && (
+                        <div className="bg-white p-2 rounded-xl border border-slate-200/80">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase block">Indigenous People (IP)</span>
+                          <span className="font-bold text-teal-700 text-[11px]">{resident.ips}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {(resident?.remarks || resident?.notes) && (
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-[11px] space-y-1">
+                        {resident?.remarks && (
+                          <div>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Remarks / Side Notes:</span>
+                            <span className="text-slate-700 font-medium">{resident.remarks}</span>
+                          </div>
+                        )}
+                        {resident?.notes && (
+                          <div>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide block">Census Marginal Notes:</span>
+                            <span className="text-slate-600 font-medium">{resident.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <h4 className="text-xs font-bold text-slate-900 mb-2 flex items-center gap-1.5">
                     <FileText size={14} className="text-indigo-600" />
