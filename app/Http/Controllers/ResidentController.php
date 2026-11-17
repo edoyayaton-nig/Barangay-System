@@ -293,6 +293,15 @@ class ResidentController extends Controller
             }
 
             $pArray = $p->toArray();
+            if (empty($pArray['email'])) {
+                $pArray['email'] = $p->claimed_email ?: ($p->linkedUser?->email ?: '');
+            }
+            if (empty($pArray['phone'])) {
+                $pArray['phone'] = $p->claimed_phone ?: ($p->linkedUser?->phone ?: '');
+            }
+            if (empty($pArray['submitted_id'])) {
+                $pArray['submitted_id'] = $p->linkedUser?->submitted_id ?: null;
+            }
             // Minimum threshold for "Has Record": 55% similarity
             $hasRecord = ($bestScore >= 55 && $bestCensus !== null);
             $pArray['census_match_status'] = $hasRecord ? 'has_record' : 'no_record';
@@ -614,8 +623,8 @@ class ResidentController extends Controller
                 'linked_user_id' => $user?->id ?: ($cen->linked_user_id ?: $resident?->linked_user_id),
                 'verification_status' => 'Verified',
                 'is_census_only' => 0,
-                'phone' => $resident?->phone ?: ($user?->phone ?: $cen->phone),
-                'email' => $resident?->email ?: ($user?->email ?: $cen->email),
+                'phone' => $resident?->claimed_phone ?: ($resident?->phone ?: ($user?->phone ?: $cen->phone)),
+                'email' => $resident?->claimed_email ?: ($resident?->email ?: ($user?->email ?: $cen->email)),
                 'submitted_id' => $resident?->submitted_id ?: ($user?->submitted_id ?: $cen->submitted_id),
                 'id_type' => $resident?->id_type ?: ($user?->id_type ?: $cen->id_type),
                 'rejection_reason' => null,
@@ -651,12 +660,22 @@ class ResidentController extends Controller
             $hhNum = !empty($resident?->household_number) ? $resident->household_number : "P{$cleanP}-H{$resident->id}";
 
             if ($resident) {
-                $resident->update([
+                $resUpdate = [
                     'household_number' => $hhNum,
                     'verification_status' => 'Verified',
                     'is_census_only' => 0,
                     'rejection_reason' => null,
-                ]);
+                ];
+                if (!empty($resident->claimed_phone) || !empty($user?->phone)) {
+                    $resUpdate['phone'] = $resident->claimed_phone ?: ($user?->phone ?: $resident->phone);
+                }
+                if (!empty($resident->claimed_email) || !empty($user?->email)) {
+                    $resUpdate['email'] = $resident->claimed_email ?: ($user?->email ?: $resident->email);
+                }
+                if (!empty($resident->submitted_id) || !empty($user?->submitted_id)) {
+                    $resUpdate['submitted_id'] = $resident->submitted_id ?: $user?->submitted_id;
+                }
+                $resident->update($resUpdate);
             }
 
             if ($user) {

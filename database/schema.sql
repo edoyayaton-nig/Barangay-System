@@ -71,6 +71,8 @@ CREATE TABLE IF NOT EXISTS `residents` (
   `id_type` VARCHAR(100) DEFAULT 'Government ID',
   `submitted_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `claimed_at` DATETIME NULL,
+  `claimed_email` VARCHAR(191) NULL DEFAULT NULL,
+  `claimed_phone` VARCHAR(50) NULL DEFAULT NULL,
   `linked_user_id` INT NULL DEFAULT NULL,
   `household_number` VARCHAR(50) DEFAULT NULL,
   `family_name` VARCHAR(100) DEFAULT NULL,

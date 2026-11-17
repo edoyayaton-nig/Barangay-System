@@ -253,7 +253,7 @@ export default function PendingApplicantReviewModal({
         <DialogHeader className="border-b border-slate-100 dark:border-slate-800 pb-3.5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900 shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-900 shadow-xs">
                 {applicant.profile_photo ? (
                   <img src={applicant.profile_photo} alt={fullName} className="w-full h-full object-cover rounded-2xl" />
                 ) : (
@@ -262,21 +262,15 @@ export default function PendingApplicantReviewModal({
               </div>
               <div>
                 <DialogTitle className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
-                  <span>Resident Application Review &amp; Census Reconciliation</span>
-                  {hasCensusRecord ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                      <CheckCircle2 size={12} /> Has Record ({matchScore}% Match)
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                      <AlertCircle size={12} /> No Census Record Found
-                    </span>
-                  )}
+                  <span>Resident Profile Verification</span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    <CheckCircle2 size={12} /> Official Census Inhabitant
+                  </span>
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
                   <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">APP-#{applicant.id}</span>
                   <span>•</span>
-                  <span>{applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay'}</span>
+                  <span>{applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay Pianing'}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <Clock size={11} />
@@ -287,95 +281,155 @@ export default function PendingApplicantReviewModal({
             </div>
 
             <div className="flex items-center gap-2">
-              {hasCensusRecord ? (
-                <Badge className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 text-xs px-3 py-1 font-bold rounded-xl shadow-xs">
-                  ✓ Database Record Matched
-                </Badge>
-              ) : (
-                <Badge className="bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 text-xs px-3 py-1 font-bold rounded-xl shadow-xs">
-                  ⚠ Unmatched Census
-                </Badge>
-              )}
+              <Badge className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 text-xs px-3 py-1 font-bold rounded-xl shadow-xs">
+                ✓ Census Profile Verification
+              </Badge>
+              <Badge className="bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 text-xs px-3 py-1 font-bold rounded-xl shadow-xs">
+                ⏳ Pending Admin Approval
+              </Badge>
             </div>
           </div>
         </DialogHeader>
 
-        {/* ── TWO-CONTAINER FRONT SCREEN (APPLICANT vs CLOSEST CENSUS RECORD) ── */}
+        {/* ── PROFILE VERIFICATION VIEW (OFFICIAL CENSUS RECORD & SUBMITTED IDENTITY CLAIM) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 py-4">
           
-          {/* CONTAINER 1 (LEFT): USER'S APPLICATION DATA */}
-          <div className="bg-slate-50/90 dark:bg-slate-800/50 p-4 rounded-3xl border-2 border-slate-200 dark:border-slate-700/80 space-y-4 shadow-xs flex flex-col justify-between">
+          {/* CONTAINER 1 (LEFT): OFFICIAL CENSUS DEMOGRAPHIC DATA */}
+          <div className="bg-emerald-50/40 dark:bg-emerald-950/20 p-4.5 rounded-3xl border-2 border-emerald-200 dark:border-emerald-800/60 space-y-4 shadow-xs flex flex-col justify-between">
             <div className="space-y-3.5">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-slate-700">
+              <div className="flex items-center justify-between pb-2 border-b border-emerald-200/80 dark:border-emerald-800/60">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
                     1
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
-                      User's Submitted Application
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+                      Verified Census Demographic Profile
                     </h4>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Data inputted by citizen during registration</span>
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400">Official demographic data from Barangay Civil Registry</span>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
-                  Citizen Input
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                  Official Census Data
                 </span>
               </div>
 
               {/* Personal Demographic Fields */}
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="col-span-2 bg-white dark:bg-slate-900/80 p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
-                  <span className="text-[10.5px] text-slate-400 font-medium block">Submitted Legal Name</span>
+                <div className="col-span-2 bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
+                  <span className="text-[10.5px] text-slate-400 font-medium block">Official Inhabitant Name</span>
                   <p className="font-extrabold text-slate-900 dark:text-white text-sm mt-0.5">{fullName}</p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900/80 p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
+                <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
                   <span className="text-[10.5px] text-slate-400 font-medium block">Date of Birth</span>
                   <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5 flex items-center gap-1">
-                    <Calendar size={12} className="text-slate-400" />
+                    <Calendar size={12} className="text-emerald-600" />
                     {applicant.date_of_birth ? new Date(applicant.date_of_birth).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900/80 p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
+                <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
                   <span className="text-[10.5px] text-slate-400 font-medium block">Age &amp; Gender</span>
                   <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
                     {age !== null ? `${age} yrs` : '—'} • {applicant.gender || '—'}
                   </p>
                 </div>
 
-                {/* Inputted Address & Purok */}
-                <div className="col-span-2 bg-white dark:bg-slate-900/80 p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
+                <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
+                  <span className="text-[10.5px] text-slate-400 font-medium block">Civil Status</span>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
+                    {applicant.civil_status || 'Single'}
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
+                  <span className="text-[10.5px] text-slate-400 font-medium block">Household Assignment</span>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
+                    {applicant.household_number || `Purok ${applicant.purok || '1'} Cluster`}
+                  </p>
+                </div>
+
+                {/* Official Census Address */}
+                <div className="col-span-2 bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10.5px] text-slate-400 font-medium block">Inputted Address &amp; Purok</span>
-                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.2 rounded">
+                    <span className="text-[10.5px] text-slate-400 font-medium block">Official Census Registered Address</span>
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded border border-emerald-200">
                       Purok {applicant.purok || '1'}
                     </span>
                   </div>
                   <p className="font-semibold text-slate-800 dark:text-slate-200 mt-1 leading-relaxed">
-                    {applicant.address || `Purok ${applicant.purok || '1'}, ${applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay'}`}
+                    {applicant.address || `Purok ${applicant.purok || '1'}, ${applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay Pianing'}, Butuan City`}
                   </p>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                     Province: {applicant.province || 'Agusan del Norte'} • Zip: {applicant.zip_code || '8600'}
                   </p>
                 </div>
+              </div>
 
-                {/* Contact details */}
-                <div className="bg-white dark:bg-slate-900/80 p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
-                  <span className="text-[10.5px] text-slate-400 font-medium block">Mobile Phone</span>
-                  <p className="font-mono font-semibold text-slate-800 dark:text-slate-200 mt-0.5 flex items-center gap-1 truncate">
-                    <Phone size={11} className="text-emerald-600" />
-                    {applicant.phone || 'None'}
+              {/* Census Accreditation Badge */}
+              <div className="p-3 bg-white dark:bg-slate-900/90 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <CheckCircle2 size={18} />
+                </div>
+                <div>
+                  <h5 className="text-xs font-bold text-slate-900 dark:text-white">Registered Civil Registry Inhabitant</h5>
+                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                    This citizen record exists permanently in the official census database.
                   </p>
                 </div>
+              </div>
+            </div>
 
-                <div className="bg-white dark:bg-slate-900/80 p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
-                  <span className="text-[10.5px] text-slate-400 font-medium block">Email Address</span>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5 flex items-center gap-1 truncate" title={applicant.email}>
-                    <Mail size={11} className="text-blue-600 shrink-0" />
-                    {applicant.email || 'None'}
+            <div className="pt-2 border-t border-emerald-200/70 dark:border-emerald-800/60 text-[10.5px] text-emerald-800 dark:text-emerald-400 flex items-center justify-between">
+              <span>Census Reference: <strong>#CENSUS-{applicant.id}</strong></span>
+              <span>Jurisdiction: Barangay {applicant.barangay || 'Pianing'}</span>
+            </div>
+          </div>
+
+          {/* CONTAINER 2 (RIGHT): SUBMITTED IDENTITY CLAIM & GOVERNMENT ID */}
+          <div className="bg-blue-50/50 dark:bg-blue-950/20 p-4.5 rounded-3xl border-2 border-blue-200 dark:border-blue-800/70 space-y-4 shadow-xs flex flex-col justify-between">
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between pb-2 border-b border-blue-100 dark:border-blue-800/60">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-blue-950 dark:text-blue-200">
+                      Submitted Identity Claim &amp; Government ID
+                    </h4>
+                    <span className="text-[10px] text-blue-700 dark:text-blue-400">Citizen input provided via Search Engine claim flow</span>
+                  </div>
+                </div>
+
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+                  Citizen Input
+                </span>
+              </div>
+
+              {/* Claimed Contact Details */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800/60">
+                  <span className="text-[10.5px] text-slate-400 font-medium block">Claimed Mobile Phone</span>
+                  <p className="font-mono font-semibold text-slate-800 dark:text-slate-200 mt-0.5 flex items-center gap-1.5 truncate">
+                    <Phone size={12} className="text-emerald-600 shrink-0" />
+                    {applicant.phone || (applicant as any).claimed_phone || 'None entered'}
                   </p>
+                  <span className="text-[9.5px] text-amber-700 dark:text-amber-400 block mt-0.5">
+                    Staged • Bound upon approval
+                  </span>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800/60">
+                  <span className="text-[10.5px] text-slate-400 font-medium block">Claimed Gmail / Email</span>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5 flex items-center gap-1.5 truncate" title={applicant.email || (applicant as any).claimed_email}>
+                    <Mail size={12} className="text-blue-600 shrink-0" />
+                    {applicant.email || (applicant as any).claimed_email || 'None entered'}
+                  </p>
+                  <span className="text-[9.5px] text-amber-700 dark:text-amber-400 block mt-0.5">
+                    Staged • Bound upon approval
+                  </span>
                 </div>
               </div>
 
@@ -384,14 +438,14 @@ export default function PendingApplicantReviewModal({
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                     <FileText size={13} className="text-blue-600" />
-                    Submitted Government ID ({applicant.id_type || 'ID Document'})
+                    Submitted Government ID ({applicant.id_type || 'Government ID'})
                   </span>
                   {applicant.submitted_id && !imageError && (
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => setRotation(r => (r + 90) % 360)}
-                        className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded transition-colors"
+                        className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded transition-colors cursor-pointer"
                         title="Rotate 90°"
                       >
                         <RotateCw size={12} />
@@ -399,7 +453,7 @@ export default function PendingApplicantReviewModal({
                       <button
                         type="button"
                         onClick={() => setIsZoomed(!isZoomed)}
-                        className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded transition-colors"
+                        className="p-1 text-slate-500 hover:text-slate-800 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded transition-colors cursor-pointer"
                         title={isZoomed ? "Zoom out" : "Zoom in"}
                       >
                         {isZoomed ? <ZoomOut size={12} /> : <ZoomIn size={12} />}
@@ -407,7 +461,7 @@ export default function PendingApplicantReviewModal({
                       <button
                         type="button"
                         onClick={() => setIsViewerOpen(true)}
-                        className="p-1 text-blue-600 hover:bg-blue-100/70 dark:hover:bg-blue-900/50 rounded transition-colors font-bold text-[10.5px] flex items-center gap-0.5"
+                        className="p-1 text-blue-600 hover:bg-blue-100/70 dark:hover:bg-blue-900/50 rounded transition-colors font-bold text-[10.5px] flex items-center gap-0.5 cursor-pointer"
                         title="Full Screen Viewer"
                       >
                         <Maximize2 size={11} /> Expand
@@ -416,7 +470,7 @@ export default function PendingApplicantReviewModal({
                   )}
                 </div>
 
-                <div className="h-44 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center p-2 overflow-hidden relative group">
+                <div className="h-44 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center p-2 overflow-hidden relative group">
                   {applicant.submitted_id && !imageError ? (
                     <img
                       src={applicant.submitted_id}
@@ -431,182 +485,33 @@ export default function PendingApplicantReviewModal({
                     />
                   ) : (
                     <div className="text-center p-3 text-slate-400">
-                      <ShieldAlert size={20} className="mx-auto mb-1 text-slate-400" />
-                      <p className="font-semibold text-xs text-slate-600 dark:text-slate-400">
-                        {imageError ? 'Could not render ID image' : 'No ID Photo Attached'}
+                      <ShieldAlert size={22} className="mx-auto mb-1 text-amber-500" />
+                      <p className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                        {imageError ? 'Could not render ID image' : 'No Government ID Photo Attached'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Citizen claimed account without an ID attachment.
                       </p>
                     </div>
                   )}
                 </div>
               </div>
-            </div>
 
-            <div className="pt-2 border-t border-slate-200/70 dark:border-slate-700/60 text-[10.5px] text-slate-500">
-              <span>Application ID: <strong>APP-#{applicant.id}</strong> • Role: Citizen Resident</span>
-            </div>
-          </div>
-
-          {/* CONTAINER 2 (RIGHT): CLOSEST CENSUS RECORD IN DATABASE */}
-          <div className="bg-blue-50/50 dark:bg-blue-950/20 p-4 rounded-3xl border-2 border-blue-200 dark:border-blue-800/70 space-y-4 shadow-xs flex flex-col justify-between">
-            <div className="space-y-3.5">
-              <div className="flex items-center justify-between pb-2 border-b border-blue-100 dark:border-blue-800/60">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-blue-950 dark:text-blue-200">
-                      Closest Database Census Record
-                    </h4>
-                    <span className="text-[10px] text-blue-700 dark:text-blue-400">Live census registry similarity comparison</span>
-                  </div>
+              {/* Informative Security Notice */}
+              <div className="p-3 bg-blue-50/80 dark:bg-blue-950/40 rounded-2xl border border-blue-200 dark:border-blue-800/60 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-[11px] text-blue-950 dark:text-blue-100">
+                  <Sparkles size={13} className="text-blue-600 shrink-0" />
+                  <span>Profile Verification &amp; Account Activation</span>
                 </div>
-
-                {hasCensusRecord ? (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
-                    <Sparkles size={11} /> {matchScore}% Match
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-                    No Record
-                  </span>
-                )}
+                <p className="text-[10.5px] text-blue-800 dark:text-blue-300 leading-relaxed">
+                  In the census database, contact details and Government ID remain unassigned until approved. Approving this profile will officially bind these credentials to the resident's account, activate portal access, and dispatch login credentials via Email &amp; SMS.
+                </p>
               </div>
-
-              {/* Matched Census Record Content */}
-              {matchedResident ? (
-                <div className="space-y-3">
-                  {/* Census Details Grid */}
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="col-span-2 bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800/60">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10.5px] text-slate-400 font-medium">Official Census Record Name</span>
-                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded">
-                          Official Inhabitant
-                        </span>
-                      </div>
-                      <p className="font-extrabold text-slate-900 dark:text-white text-sm mt-0.5">
-                        {matchedResident.first_name} {matchedResident.middle_name ? `${matchedResident.middle_name} ` : ''}{matchedResident.last_name}
-                      </p>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800/60">
-                      <span className="text-[10.5px] text-slate-400 font-medium block">Census Birthdate</span>
-                      <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
-                        {matchedResident.date_of_birth ? new Date(matchedResident.date_of_birth).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                      </p>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800/60">
-                      <span className="text-[10.5px] text-slate-400 font-medium block">Civil Status &amp; Gender</span>
-                      <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
-                        {matchedResident.civil_status || 'Single'} • {matchedResident.gender || '—'}
-                      </p>
-                    </div>
-
-                    {/* Official Census Address */}
-                    <div className="col-span-2 bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800/60">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10.5px] text-slate-400 font-medium block">Official Census Registered Address</span>
-                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded">
-                          Purok {matchedResident.purok || '1'}
-                        </span>
-                      </div>
-                      <p className="font-bold text-slate-900 dark:text-white mt-1 leading-relaxed">
-                        {matchedResident.address || `Purok ${matchedResident.purok || '1'}, ${matchedResident.barangay ? `Barangay ${matchedResident.barangay}` : 'Barangay'}`}
-                      </p>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800/60">
-                      <span className="text-[10.5px] text-slate-400 font-medium block">Household Number</span>
-                      <p className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
-                        {matchedResident.household_number || `P${(matchedResident.purok || '1').toString().replace(/purok\s*/i, '').trim() || '1'}-H${matchedResident.id}`}
-                      </p>
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-900/90 p-2.5 rounded-xl border border-blue-200 dark:border-blue-800/60">
-                      <span className="text-[10.5px] text-slate-400 font-medium block">Census Reference ID</span>
-                      <p className="font-mono font-bold text-blue-700 dark:text-blue-300 mt-0.5">
-                        #CENSUS-{matchedResident.id}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* ── DISCREPANCY RECONCILIATION HIGHLIGHT BOX ── */}
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700/80 rounded-2xl space-y-2 text-xs">
-                    <div className="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-200">
-                      <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
-                      <span>Comparison &amp; Discrepancy Reconciliation</span>
-                    </div>
-
-                    <div className="space-y-1.5 text-[11px] text-amber-950 dark:text-amber-200">
-                      {/* Check Purok discrepancy */}
-                      {applicant.purok !== matchedResident.purok && (
-                        <div className="p-1.5 bg-white/80 dark:bg-slate-900/70 rounded-lg border border-amber-200 dark:border-amber-800/60">
-                          <strong className="text-amber-900 dark:text-amber-300">Purok Discrepancy:</strong> Applicant typed <em>"Purok {applicant.purok || '1'}"</em>, but official database has <strong>"Purok {matchedResident.purok || '1'}"</strong>.
-                        </div>
-                      )}
-
-                      {/* Check address discrepancy */}
-                      {applicant.address && matchedResident.address && applicant.address.toLowerCase() !== matchedResident.address.toLowerCase() && (
-                        <div className="p-1.5 bg-white/80 dark:bg-slate-900/70 rounded-lg border border-amber-200 dark:border-amber-800/60">
-                          <strong className="text-amber-900 dark:text-amber-300">Full Address Discrepancy:</strong> Database has complete recorded location: <strong>"{matchedResident.address}"</strong>.
-                        </div>
-                      )}
-
-                      {/* Discrepancy summary list */}
-                      {activeCandidate?.discrepancies && activeCandidate.discrepancies.length > 0 ? (
-                        <ul className="list-disc list-inside space-y-0.5 text-[10.5px] text-amber-800 dark:text-amber-300">
-                          {activeCandidate.discrepancies.map((d, i) => (
-                            <li key={i}>{d}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-emerald-700 dark:text-emerald-400 font-semibold text-[10.5px]">
-                          ✓ All census fields closely match applicant registration details.
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Option to adopt official census address */}
-                    <div className="pt-2 border-t border-amber-200/80 dark:border-amber-800/60 flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="adopt_census_addr"
-                        checked={useOfficialCensusAddress}
-                        onChange={(e) => setUseOfficialCensusAddress(e.target.checked)}
-                        className="rounded border-amber-400 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <label htmlFor="adopt_census_addr" className="text-[10.5px] text-amber-950 dark:text-amber-200 font-medium cursor-pointer">
-                        Link &amp; adopt official Census Address upon approving this resident
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* No matching census record found */
-                <div className="p-6 bg-white dark:bg-slate-900/80 border-2 border-dashed border-amber-300 dark:border-amber-700/60 rounded-2xl text-center space-y-3">
-                  <div className="w-12 h-12 mx-auto rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                    <AlertTriangle size={24} />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-white">
-                      No Matching Record in Barangay Census
-                    </h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-1 leading-relaxed">
-                      We searched <strong>{applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay'}</strong> census records for &ldquo;{fullName}&rdquo;, but found no existing census entry.
-                    </p>
-                  </div>
-                  <div className="p-2.5 bg-amber-50/80 dark:bg-amber-950/40 rounded-xl text-[10.5px] text-amber-900 dark:text-amber-200 border border-amber-200 text-left">
-                    💡 <strong>Recommendation:</strong> Request the applicant to visit the Barangay Hall for in-person census profiling or reject if fraudulent.
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="pt-2 border-t border-blue-200/70 dark:border-blue-800/60 text-[10.5px] text-blue-700 dark:text-blue-400 flex items-center justify-between">
-              <span>Jurisdiction: {applicant.barangay ? `Barangay ${applicant.barangay}` : 'Barangay'}</span>
-              <span>Census Engine v2.4</span>
+              <span>Claim Reference: <strong>CLAIM-#{applicant.id}</strong></span>
+              <span>Authentication Status: <strong>Pending Review</strong></span>
             </div>
           </div>
         </div>
@@ -717,14 +622,10 @@ export default function PendingApplicantReviewModal({
                 size="sm"
                 disabled={approving}
                 onClick={handleApproveWithLink}
-                className={`text-xs font-bold gap-1.5 shadow-md cursor-pointer h-9 px-4 rounded-xl transition-all ${
-                  hasCensusRecord
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/25'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25'
-                }`}
+                className="text-xs font-bold gap-1.5 shadow-md cursor-pointer h-9 px-4.5 rounded-xl transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/25"
               >
                 <CheckCircle2 size={14} />
-                {approving ? 'Verifying...' : hasCensusRecord ? 'Confirm Census Match & Approve' : 'Approve Citizen Account'}
+                {approving ? 'Verifying...' : 'Verify & Activate Resident Account'}
               </Button>
             </div>
           </DialogFooter>

@@ -7097,17 +7097,6 @@ export default function AdminDashboard() {
                     <Button
                       size="sm"
                       onClick={() => {
-                        resetExcelImportState();
-                        setIsExcelImportOpen(true);
-                      }}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 font-semibold h-9 px-3 rounded-xl shadow-xs cursor-pointer transition-all"
-                    >
-                      <FileSpreadsheet size={14} />
-                      Upload Census Excel
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => {
                         setResAccBarangay(user?.barangay || 'Pianing');
                         setResAccCensusMatch(null);
                         setResAccLinkedCensusId(null);
@@ -7116,10 +7105,10 @@ export default function AdminDashboard() {
                         setResAccPhone('');
                         setIsCreateResidentUserOpen(true);
                       }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 font-semibold h-9 px-3 rounded-xl shadow-xs cursor-pointer"
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 font-semibold h-9 px-3.5 rounded-xl shadow-xs cursor-pointer"
                     >
-                      <UserPlus size={14} />
-                      Create Resident Account
+                      <UserCheck size={14} />
+                      Verify Account
                     </Button>
                     <Button
                       size="sm"
@@ -9848,25 +9837,25 @@ export default function AdminDashboard() {
   </DialogContent>
 </Dialog>
 
-{/* Dedicated Resident User Account Creation Modal via Census Search */ }
+{/* Dedicated Resident User Account Verification Modal via Census Search */ }
 <Dialog open={isCreateResidentUserOpen} onOpenChange={setIsCreateResidentUserOpen}>
   <DialogContent className="bg-white max-w-2xl max-h-[88vh] overflow-y-auto p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xl">
     <DialogHeader>
       <div className="flex items-center justify-between gap-2 flex-wrap pb-1">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-600">
-            <UserPlus size={18} />
+            <UserCheck size={18} />
           </div>
           <DialogTitle className="text-base font-bold text-slate-900">
-            Create Resident System Account
+            Verify Resident Account
           </DialogTitle>
         </div>
         <Badge className="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] uppercase font-bold tracking-wider">
-          Census Resident Search
+          Census Resident Verification
         </Badge>
       </div>
       <DialogDescription className="text-xs text-slate-500">
-        Search for an official inhabitant from the Barangay {resAccBarangay || user?.barangay || 'Pianing'} Census Registry to provision their resident portal account.
+        Search for an official inhabitant from the Barangay {resAccBarangay || user?.barangay || 'Pianing'} Census Registry to verify and activate their resident portal account directly.
       </DialogDescription>
     </DialogHeader>
 
@@ -10142,12 +10131,12 @@ export default function AdminDashboard() {
             {isCreatingResAccount ? (
               <>
                 <RefreshCcw size={14} className="animate-spin" />
-                <span>Creating Account & Dispatching Credentials...</span>
+                <span>Verifying Account & Dispatching Credentials...</span>
               </>
             ) : (
               <>
-                <Send size={14} />
-                <span>Create Resident Account & Send Credentials</span>
+                <UserCheck size={14} />
+                <span>Verify Resident Account & Send Credentials</span>
               </>
             )}
           </Button>

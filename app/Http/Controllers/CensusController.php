@@ -540,7 +540,6 @@ class CensusController extends Controller
         if (empty($targetEmail)) {
             if (!empty($inputEmail) && filter_var($inputEmail, FILTER_VALIDATE_EMAIL)) {
                 $targetEmail = $inputEmail;
-                $resident->email = $targetEmail;
             } else {
                 return response()->json([
                     'success' => false,
@@ -550,8 +549,12 @@ class CensusController extends Controller
             }
         }
 
-        if (empty($resident->phone) && !empty($confirmPhone)) {
-            $resident->phone = $confirmPhone;
+        // Handle uploaded Government ID
+        $rawId = $request->input('submitted_id') ?: $request->input('government_id') ?: $request->input('id_photo_url');
+        $idType = $request->input('id_type', 'Government ID');
+        $idPath = null;
+        if (!empty($rawId)) {
+            $idPath = AuthController::saveBase64Image($rawId, 'claimed_ids') ?: $rawId;
         }
 
         // Generate default password and stage it (DO NOT SEND AUTOMATICALLY YET)
@@ -569,12 +572,14 @@ class CensusController extends Controller
                 'status' => 'Pending',                   // Pending approval!
                 'verification_status' => 'Pending_Review',  // Enters pending approval queue!
                 'civil_status' => $resident->civil_status ?: 'Single',
-                'phone' => $resident->phone ?: $confirmPhone,
+                'phone' => $confirmPhone,
                 'address' => $resident->address,
                 'barangay' => $resident->barangay ?: 'Pianing',
                 'city' => $resident->city ?: 'Butuan City',
                 'province' => $resident->province ?: 'Agusan del Norte',
                 'zip_code' => $resident->zip_code ?: '8600',
+                'submitted_id' => $idPath,
+                'id_type' => $idType,
                 'staged_password' => $defaultPassword,   // Staged until Admin approves!
             ];
 
@@ -586,6 +591,12 @@ class CensusController extends Controller
             } else {
                 unset($userFields['staged_password']);
             }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'submitted_id')) {
+                unset($userFields['submitted_id']);
+            }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('users', 'id_type')) {
+                unset($userFields['id_type']);
+            }
 
             if (!$user) {
                 $user = User::create($userFields);
@@ -596,15 +607,34 @@ class CensusController extends Controller
                 if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'staged_password')) {
                     $user->staged_password = $defaultPassword;
                 }
-                if (!empty($resident->phone)) $user->phone = $resident->phone;
+                if (!empty($confirmPhone)) $user->phone = $confirmPhone;
+                if (!empty($idPath) && \Illuminate\Support\Facades\Schema::hasColumn('users', 'submitted_id')) {
+                    $user->submitted_id = $idPath;
+                }
+                if (!empty($idType) && \Illuminate\Support\Facades\Schema::hasColumn('users', 'id_type')) {
+                    $user->id_type = $idType;
+                }
                 $user->save();
             }
 
             // Update resident record into Pending_Review queue
+            // Contact details (phone, email, ID) remain staged until Admin approval
             $resident->linked_user_id = $user->id;
             $resident->claimed_at = now();
             $resident->submitted_at = now();
             $resident->verification_status = 'Pending_Review'; // Place into pending approval queue!
+            if (\Illuminate\Support\Facades\Schema::hasColumn('residents', 'claimed_email')) {
+                $resident->claimed_email = $targetEmail;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('residents', 'claimed_phone')) {
+                $resident->claimed_phone = $confirmPhone;
+            }
+            if (!empty($idPath) && \Illuminate\Support\Facades\Schema::hasColumn('residents', 'submitted_id')) {
+                $resident->submitted_id = $idPath;
+            }
+            if (!empty($idType) && \Illuminate\Support\Facades\Schema::hasColumn('residents', 'id_type')) {
+                $resident->id_type = $idType;
+            }
             if (\Illuminate\Support\Facades\Schema::hasColumn('residents', 'staged_password')) {
                 $resident->staged_password = $defaultPassword;
             }

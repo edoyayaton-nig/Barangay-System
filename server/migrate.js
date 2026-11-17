@@ -103,6 +103,8 @@ async function syncAllSchemas(connection) {
   await safeAddColumn(connection, 'residents', 'linked_user_id', "INT NULL DEFAULT NULL");
   await safeAddColumn(connection, 'residents', 'id_type', "VARCHAR(100) DEFAULT 'Government ID'");
   await safeAddColumn(connection, 'residents', 'claimed_at', "DATETIME NULL");
+  await safeAddColumn(connection, 'residents', 'claimed_email', "VARCHAR(191) NULL DEFAULT NULL");
+  await safeAddColumn(connection, 'residents', 'claimed_phone', "VARCHAR(50) NULL DEFAULT NULL");
   await safeAddColumn(connection, 'residents', 'submitted_id', "LONGTEXT NULL");
   await safeAddColumn(connection, 'residents', 'submitted_at', "DATETIME DEFAULT CURRENT_TIMESTAMP");
   await safeAddColumn(connection, 'residents', 'rejection_reason', "TEXT NULL");

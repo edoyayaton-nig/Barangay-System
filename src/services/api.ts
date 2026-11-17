@@ -265,6 +265,12 @@ export interface PendingResident {
   gender?: string;
   civil_status?: string;
   years_of_residency?: string;
+  household_number?: string;
+  employment_status?: string;
+  is_head_of_household?: boolean | number;
+  relationship_to_head?: string;
+  claimed_email?: string;
+  claimed_phone?: string;
   submitted_id?: string | null;
   id_type?: string;
   submitted_at?: string;
@@ -662,7 +668,13 @@ export const apiService = {
     return await res.json();
   },
 
-  async claimCensusCredentials(residentId: number, confirmPhone: string, email?: string): Promise<{ success: boolean; message: string; masked_email?: string; email?: string; error?: string; requires_email?: boolean }> {
+  async claimCensusCredentials(
+    residentId: number, 
+    confirmPhone: string, 
+    email?: string, 
+    submittedId?: string,
+    idType?: string
+  ): Promise<{ success: boolean; message: string; masked_email?: string; email?: string; error?: string; requires_email?: boolean }> {
     try {
       const res = await fetch(`${API_BASE}/census/claim-credentials`, {
         method: 'POST',
@@ -673,7 +685,9 @@ export const apiService = {
         body: JSON.stringify({
           resident_id: residentId,
           confirm_phone: confirmPhone,
-          email: email || undefined
+          email: email || undefined,
+          submitted_id: submittedId || undefined,
+          id_type: idType || 'Government ID'
         })
       });
       const data = await res.json().catch(() => null);

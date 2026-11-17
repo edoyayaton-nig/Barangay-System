@@ -18,7 +18,10 @@ import {
   Loader2,
   RefreshCw,
   Send,
-  Sparkles
+  Sparkles,
+  Upload,
+  FileText,
+  Trash2
 } from 'lucide-react';
 import { apiService, MaskedCensusResult } from '../../services/api';
 import { Button } from '../components/ui/button';
@@ -72,6 +75,9 @@ export default function LoginPage() {
   const [selectedResident, setSelectedResident] = useState<MaskedCensusResult | null>(null);
   const [confirmPhone, setConfirmPhone] = useState('');
   const [claimEmail, setClaimEmail] = useState('');
+  const [claimIdPhoto, setClaimIdPhoto] = useState<string | null>(null);
+  const [claimIdType, setClaimIdType] = useState('PhilSys National ID');
+  const [claimIdFileName, setClaimIdFileName] = useState<string>('');
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimSuccess, setClaimSuccess] = useState<{ masked_email: string; email?: string; message: string } | null>(null);
@@ -130,6 +136,9 @@ export default function LoginPage() {
     setSelectedResident(resident);
     setConfirmPhone('');
     setClaimEmail('');
+    setClaimIdPhoto(null);
+    setClaimIdType('PhilSys National ID');
+    setClaimIdFileName('');
     setClaimError(null);
     setClaimSuccess(null);
     setIsConfirmModalOpen(true);
@@ -150,6 +159,11 @@ export default function LoginPage() {
       return;
     }
 
+    if (!claimIdPhoto) {
+      setClaimError('Please upload a clear photo of your valid Government ID (PhilSys, Driver\'s License, Voter\'s ID, etc.) to claim your account.');
+      return;
+    }
+
     setIsClaiming(true);
     setClaimError(null);
 
@@ -157,7 +171,9 @@ export default function LoginPage() {
       const res = await apiService.claimCensusCredentials(
         selectedResident.id,
         cleanInputPhone,
-        claimEmail.trim() || undefined
+        claimEmail.trim() || undefined,
+        claimIdPhoto,
+        claimIdType
       );
 
       if (res.success) {
@@ -656,28 +672,111 @@ export default function LoginPage() {
                 </p>
               </div>
 
-              {/* If resident has no email on file, ask for Gmail */}
-              {!selectedResident?.has_email && (
-                <div>
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Your Gmail / Email Address <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <Mail size={14} className="absolute left-3.5 top-3 text-slate-400 pointer-events-none" />
-                    <input
-                      type="email"
-                      value={claimEmail}
-                      onChange={(e) => setClaimEmail(e.target.value)}
-                      placeholder="e.g. name@gmail.com"
-                      required
-                      className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white focus:ring-2 focus:ring-[#006B66]/30 outline-none"
-                    />
-                  </div>
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
-                    Your census record did not include an email. Provide your Gmail to receive credentials.
-                  </p>
+              {/* Enter or Confirm Gmail Address */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Your Gmail / Email Address <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Mail size={14} className="absolute left-3.5 top-3 text-slate-400 pointer-events-none" />
+                  <input
+                    type="email"
+                    value={claimEmail}
+                    onChange={(e) => setClaimEmail(e.target.value)}
+                    placeholder="e.g. name@gmail.com"
+                    required
+                    className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white focus:ring-2 focus:ring-[#006B66]/30 outline-none"
+                  />
                 </div>
-              )}
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                  Your official portal login email and default password will be delivered to this address once approved.
+                </p>
+              </div>
+
+              {/* Upload Government ID (Required to Claim Account) */}
+              <div className="space-y-1.5 pt-0.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                    <FileText size={13} className="text-[#006B66] dark:text-teal-400" />
+                    Upload Valid Government ID <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={claimIdType}
+                    onChange={(e) => setClaimIdType(e.target.value)}
+                    className="text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+                  >
+                    <option value="PhilSys National ID">PhilSys National ID</option>
+                    <option value="Driver's License">Driver's License</option>
+                    <option value="Voter's ID">Voter's ID / Certificate</option>
+                    <option value="Philippine Passport">Passport</option>
+                    <option value="UMID">UMID</option>
+                    <option value="Postal ID">Postal ID</option>
+                    <option value="Senior Citizen ID">Senior Citizen ID</option>
+                    <option value="Barangay ID">Barangay ID</option>
+                    <option value="Government ID">Other Valid ID</option>
+                  </select>
+                </div>
+
+                {claimIdPhoto ? (
+                  <div className="relative rounded-2xl border-2 border-emerald-300 dark:border-emerald-700/80 bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 flex items-center gap-3">
+                    <div className="w-16 h-14 rounded-xl overflow-hidden bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0 flex items-center justify-center">
+                      <img src={claimIdPhoto} alt="Government ID" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                        {claimIdFileName || `${claimIdType} Uploaded`}
+                      </p>
+                      <span className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-semibold block mt-0.5">
+                        ✓ Government ID Attached
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClaimIdPhoto(null);
+                        setClaimIdFileName('');
+                      }}
+                      className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      title="Remove ID"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-[#006B66] dark:hover:border-teal-400 rounded-2xl p-3 flex flex-col items-center justify-center cursor-pointer bg-slate-50/70 dark:bg-slate-800/40 hover:bg-[#006B66]/5 transition-all text-center group">
+                    <Upload size={18} className="text-slate-400 group-hover:text-[#006B66] dark:group-hover:text-teal-400 mb-1 transition-colors" />
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                      Select or Take Photo of Government ID
+                    </span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">
+                      JPG, PNG, WebP up to 10MB
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 10 * 1024 * 1024) {
+                          setClaimError('ID file size exceeds 10MB. Please choose a smaller image.');
+                          return;
+                        }
+                        setClaimIdFileName(file.name);
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setClaimIdPhoto(reader.result as string);
+                          setClaimError(null);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                )}
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                  Required: Barangay Admin will authenticate this ID against your official census record before granting access.
+                </p>
+              </div>
 
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
                 <Button
@@ -690,7 +789,7 @@ export default function LoginPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isClaiming || confirmPhone.trim().length < 10}
+                  disabled={isClaiming || confirmPhone.trim().length < 10 || !claimIdPhoto}
                   className="h-9 px-4 bg-[#006B66] hover:bg-[#005753] text-white font-bold text-xs rounded-xl cursor-pointer flex items-center gap-1.5"
                 >
                   {isClaiming ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
